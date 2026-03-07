@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useShop } from '@/components/context/ShopContext';
 import { api } from '@/api/supabase';
@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Plus, Search, Package, Edit2, Trash2, AlertTriangle, Download, Upload, FileSpreadsheet } from 'lucide-react';
+import { Plus, Search, Package, Edit2, Trash2, AlertTriangle, Download, Upload, FileSpreadsheet, Check } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import PageHeader from '../components/ui-custom/PageHeader';
 import EmptyState from '../components/ui-custom/EmptyState';
@@ -24,13 +24,27 @@ export default function Stock() {
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState(null);
   const [productToDelete, setProductToDelete] = useState(null);
+  const [deletedMessage, setDeletedMessage] = useState(null);
   const fileInputRef = useRef(null);
+  const deletedMessageRef = useRef(null);
 
   const queryClient = useQueryClient();
 
   const { data: products = [], isLoading } = useQuery({
     queryKey: ['products', shopId],
     queryFn: () => api.products.list(shopId),
+    enabled: !!shopId,
+  });
+
+  const { data: categories = [] } = useQuery({
+    queryKey: ['categories', shopId],
+    queryFn: () => api.categories.list(shopId),
+    enabled: !!shopId,
+  });
+
+  const { data: suppliers = [] } = useQuery({
+    queryKey: ['suppliers', shopId],
+    queryFn: () => api.suppliers.list(shopId),
     enabled: !!shopId,
   });
 
@@ -48,7 +62,13 @@ export default function Stock() {
 
   const deleteMutation = useMutation({
     mutationFn: (id) => api.products.delete(id),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['products'] }); setProductToDelete(null); toast({ title: 'Produit supprimé' }); },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      setProductToDelete(null);
+      setDeletedMessage('Produit supprimé');
+      if (deletedMessageRef.current) clearTimeout(deletedMessageRef.current);
+      deletedMessageRef.current = window.setTimeout(() => { setDeletedMessage(null); deletedMessageRef.current = null; }, 2800);
+    },
     onError: (err) => { setProductToDelete(null); toast({ title: 'Erreur', description: err?.message || 'Impossible de supprimer le produit.', variant: 'destructive' }); },
   });
 
@@ -154,8 +174,16 @@ export default function Stock() {
     );
   }
 
+  useEffect(() => () => { if (deletedMessageRef.current) clearTimeout(deletedMessageRef.current); }, []);
+
   return (
-    <div className="animate-fade-in">
+    <div className="animate-fade-in relative">
+      {deletedMessage && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[300] flex items-center gap-2 px-5 py-3 rounded-xl bg-emerald-500/95 dark:bg-emerald-600/95 text-white text-sm font-medium shadow-lg animate-in fade-in slide-in-from-top-4 duration-300" role="status">
+          <Check className="w-4 h-4 flex-shrink-0" />
+          <span>{deletedMessage}</span>
+        </div>
+      )}
       <PageHeader
         title="Gestion du Stock"
         subtitle={`${products.length} produits · ${products.filter(p => p.quantity <= (p.min_stock_alert || 5)).length} alertes`}
@@ -238,8 +266,8 @@ export default function Stock() {
                         <span className="text-xs text-orange-400 font-semibold">{p.sale_price?.toLocaleString()} F</span>
                       </div>
                       <div className="flex gap-1">
-                        <button onClick={() => { setEditProduct(p); setShowForm(true); }} className="p-2 rounded-xl bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"><Edit2 className="w-4 h-4" /></button>
-                        <button onClick={() => setProductToDelete(p)} className="p-2 rounded-xl bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:text-red-500 dark:hover:text-red-400"><Trash2 className="w-4 h-4" /></button>
+                        <button type="button" onClick={() => { setEditProduct(p); setShowForm(true); }} className="p-2 rounded-xl bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"><Edit2 className="w-4 h-4" /></button>
+                        <button type="button" onClick={() => setProductToDelete(p)} className="p-2 rounded-xl bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:text-red-500 dark:hover:text-red-400"><Trash2 className="w-4 h-4" /></button>
                       </div>
                     </div>
                   </div>
@@ -287,8 +315,8 @@ export default function Stock() {
                         </td>
                         <td className="p-4 text-right">
                           <div className="flex items-center justify-end gap-1">
-                            <button onClick={() => { setEditProduct(p); setShowForm(true); }} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"><Edit2 className="w-4 h-4" /></button>
-                            <button onClick={() => setProductToDelete(p)} className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10 text-slate-500 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"><Trash2 className="w-4 h-4" /></button>
+                            <button type="button" onClick={() => { setEditProduct(p); setShowForm(true); }} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"><Edit2 className="w-4 h-4" /></button>
+                            <button type="button" onClick={() => setProductToDelete(p)} className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10 text-slate-500 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"><Trash2 className="w-4 h-4" /></button>
                           </div>
                         </td>
                       </tr>
@@ -303,7 +331,7 @@ export default function Stock() {
 
       {showForm && (
         <div className="fixed inset-0 z-[200] bg-black/60 flex items-start justify-center pt-20 pb-8 overflow-y-auto" role="dialog" aria-modal="true" aria-label={editProduct ? 'Modifier le produit' : 'Nouveau produit'}>
-          <ProductForm key={editProduct?.id ?? 'new'} product={editProduct} onSave={handleSave} onCancel={() => { setShowForm(false); setEditProduct(null); }} />
+          <ProductForm key={editProduct?.id ?? 'new'} product={editProduct} categories={categories} suppliers={suppliers} onSave={handleSave} onCancel={() => { setShowForm(false); setEditProduct(null); }} />
         </div>
       )}
 

@@ -62,6 +62,7 @@ export const AuthProvider = ({ children }) => {
     init();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!mounted) return;
       if (session?.user) {
         const p = await loadProfile(session.user);
         if (!mounted) return;
@@ -72,6 +73,7 @@ export const AuthProvider = ({ children }) => {
           full_name: p?.full_name || session.user.user_metadata?.full_name || session.user.email?.split('@')[0],
           role: p?.role || 'cashier',
         });
+        setAuthError(null);
       } else {
         setUser(null);
         setProfile(null);
@@ -86,6 +88,7 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const login = async (email, password) => {
+    setAuthError(null);
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
     if (data?.session?.user) {

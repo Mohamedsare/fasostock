@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { useShop } from '@/components/context/ShopContext';
-import { api } from '@/api/supabase';
 import { uploadFile } from '@/lib/storage';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,9 +9,8 @@ import { X, Save, Upload } from 'lucide-react';
 
 const BRANDS = ['Yamaha', 'Honda', 'Suzuki', 'Kawasaki', 'BMW', 'KTM', 'Ducati', 'Bajaj', 'TVS', 'Lifan', 'Haojue', 'Autre'];
 
-export default function ProductForm({ product, onSave, onCancel }) {
+export default function ProductForm({ product, categories = [], suppliers = [], onSave, onCancel }) {
   const { currentShop } = useShop();
-  const shopId = currentShop?.id;
   const [form, setForm] = useState({
     name: '', category: '', subcategory: '', brand: '', compatible_model: '',
     compatible_year: '', internal_ref: '', barcode: '', photo_url: '',
@@ -59,18 +56,6 @@ export default function ProductForm({ product, onSave, onCancel }) {
       console.error('ProductForm init error:', err);
     }
   }, [product]);
-
-  const { data: categories = [] } = useQuery({
-    queryKey: ['categories', shopId],
-    queryFn: () => api.categories.list(shopId),
-    enabled: !!shopId,
-  });
-
-  const { data: suppliers = [] } = useQuery({
-    queryKey: ['suppliers', shopId],
-    queryFn: () => api.suppliers.list(shopId),
-    enabled: !!shopId,
-  });
 
   const handleChange = (field, value) => setForm(prev => ({ ...prev, [field]: value }));
 
