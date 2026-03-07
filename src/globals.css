@@ -1,0 +1,138 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Light theme (default) */
+  --bg-primary: #F8FAFC;
+  --bg-secondary: #FFFFFF;
+  --card-bg: rgba(255,255,255,0.9);
+  --card-border: rgba(226,232,240,0.9);
+  --input-bg: #FFFFFF;
+  --accent: #F97316;
+  --accent-hover: #EA580C;
+  --text-primary: #0F172A;
+  --text-secondary: #475569;
+  --text-muted: #64748B;
+  --success: #22C55E;
+  --danger: #EF4444;
+  --warning: #EAB308;
+  --border: rgba(226,232,240,0.9);
+  --border-solid: #CBD5E1;
+  --chart-grid: #E2E8F0;
+  --chart-tooltip-bg: #FFFFFF;
+  --chart-tooltip-border: #E2E8F0;
+  --chart-tick: #64748B;
+  --hover-bg: rgba(241,245,249,0.9);
+  --divider: rgba(226,232,240,0.6);
+}
+
+.dark {
+  --bg-primary: #0F172A;
+  --bg-secondary: #1E293B;
+  --card-bg: rgba(30,41,59,0.6);
+  --card-border: rgba(51,65,85,0.5);
+  --input-bg: #0F172A;
+  --text-primary: #F8FAFC;
+  --text-secondary: #94A3B8;
+  --text-muted: #64748B;
+  --border: rgba(51,65,85,0.5);
+  --border-solid: #334155;
+  --chart-grid: #334155;
+  --chart-tooltip-bg: #1E293B;
+  --chart-tooltip-border: #334155;
+  --chart-tick: #94A3B8;
+  --hover-bg: rgba(51,65,85,0.4);
+  --divider: rgba(51,65,85,0.3);
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  transition: background-color 0.25s, color 0.25s;
+}
+
+/* Global theme-aware utility classes */
+.theme-card {
+  background-color: var(--card-bg);
+  border: 1px solid var(--card-border);
+}
+.theme-text { color: var(--text-primary); }
+.theme-text-secondary { color: var(--text-secondary); }
+.theme-text-muted { color: var(--text-muted); }
+.theme-input { background-color: var(--input-bg); border-color: var(--border-solid); color: var(--text-primary); }
+.theme-divider { border-color: var(--divider); }
+.theme-hover:hover { background-color: var(--hover-bg); }
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+/* Animation keyframes */
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.animate-slide-up {
+  animation: slideUp 0.4s ease-out forwards;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+/* POS specific styles */
+.pos-grid {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 0;
+  height: 100%;
+}
+
+@media (max-width: 1024px) {
+  .pos-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Print styles */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .print-receipt, .print-receipt * {
+    visibility: visible;
+  }
+  .print-receipt {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 80mm;
+    font-size: 12px;
+  }
+}
