@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useShop } from '@/components/context/ShopContext';
 import { api } from '@/api/supabase';
@@ -17,10 +18,10 @@ import { exportProductsToCsv, downloadCsv, parseCsvFile, csvRowToProduct, PRODUC
 export default function Stock() {
   const { currentShop } = useShop();
   const shopId = currentShop?.id;
+  const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [brandFilter, setBrandFilter] = useState('all');
   const [showForm, setShowForm] = useState(false);
-  const [editProduct, setEditProduct] = useState(null);
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState(null);
   const [productToDelete, setProductToDelete] = useState(null);
@@ -52,12 +53,6 @@ export default function Stock() {
     mutationFn: (data) => api.products.create({ ...data, shop_id: shopId }),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['products'] }); setShowForm(false); toast({ title: 'Produit créé' }); },
     onError: (err) => toast({ title: 'Erreur', description: err?.message || 'Impossible de créer le produit.', variant: 'destructive' }),
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => api.products.update(id, data),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['products'] }); setShowForm(false); setEditProduct(null); toast({ title: 'Produit mis à jour' }); },
-    onError: (err) => toast({ title: 'Erreur', description: err?.message || 'Impossible de modifier le produit.', variant: 'destructive' }),
   });
 
   const deleteMutation = useMutation({
@@ -199,7 +194,7 @@ export default function Stock() {
               <Upload className="w-4 h-4 mr-1.5" />{importing ? 'Import...' : 'Importer CSV'}
             </Button>
             <input ref={fileInputRef} type="file" accept=".csv,.txt,text/csv" className="hidden" onChange={handleImportCsv} />
-            <Button onClick={() => { setEditProduct(null); setShowForm(true); }} className="bg-orange-500 hover:bg-orange-600">
+            <Button onClick={() => setShowForm(true)} className="bg-orange-500 hover:bg-orange-600">
               <Plus className="w-4 h-4 mr-2" />Nouveau Produit
             </Button>
           </div>
@@ -266,7 +261,7 @@ export default function Stock() {
                         <span className="text-xs text-orange-400 font-semibold">{p.sale_price?.toLocaleString()} F</span>
                       </div>
                       <div className="flex gap-1">
-                        <button type="button" onClick={() => { setEditProduct(p); setShowForm(true); }} className="p-2 rounded-xl bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"><Edit2 className="w-4 h-4" /></button>
+                        <button type="button" onClick={() => navigate('/Stock/Edit/' + p.id)} className="p-2 rounded-xl bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"><Edit2 className="w-4 h-4" /></button>
                         <button type="button" onClick={() => setProductToDelete(p)} className="p-2 rounded-xl bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:text-red-500 dark:hover:text-red-400"><Trash2 className="w-4 h-4" /></button>
                       </div>
                     </div>
@@ -330,8 +325,8 @@ export default function Stock() {
       )}
 
       {showForm && (
-        <div className="fixed inset-0 z-[200] bg-black/60 flex items-start justify-center pt-20 pb-8 overflow-y-auto" role="dialog" aria-modal="true" aria-label={editProduct ? 'Modifier le produit' : 'Nouveau produit'}>
-          <ProductForm key={editProduct?.id ?? 'new'} product={editProduct} categories={categories} suppliers={suppliers} onSave={handleSave} onCancel={() => { setShowForm(false); setEditProduct(null); }} />
+        <div className="fixed inset-0 z-[200] bg-black/60 flex items-start justify-center pt-20 pb-8 overflow-y-auto" role="dialog" aria-modal="true" aria-label="Nouveau produit">
+          <ProductForm product={null} categories={categories} suppliers={suppliers} onSave={handleSave} onCancel={() => setShowForm(false)} />
         </div>
       )}
 

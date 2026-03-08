@@ -113,6 +113,11 @@ export const api = {
 
   // Products (filtrés par shop_id via ShopContext)
   products: {
+    get: async (id) => {
+      const { data, error } = await supabase.from('products').select('*').eq('id', id).single();
+      if (error) throw error;
+      return data;
+    },
     list: async (shopId) => {
       let q = supabase.from('products').select('*').order('created_at', { ascending: false });
       if (shopId) q = q.eq('shop_id', shopId);

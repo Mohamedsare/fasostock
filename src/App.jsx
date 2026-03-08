@@ -5,6 +5,7 @@ import { pagesConfig } from './pages.config'
 import { BrowserRouter as Router, Route, Routes, Navigate, useLocation } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import Login from './pages/Login';
+import StockEdit from './pages/StockEdit';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import { ShopProvider } from './components/context/ShopContext';
 import { ThemeProvider } from './components/context/ThemeContext';
@@ -59,6 +60,7 @@ const AuthenticatedApp = () => {
             <MainPage />
           </LayoutWrapper>
         } />
+        <Route path="/Stock/Edit/:productId" element={<LayoutWrapper currentPageName="Stock"><StockEdit /></LayoutWrapper>} />
         {Object.entries(Pages).map(([path, Page]) => {
           if (path === 'Login') return null;
           return (
