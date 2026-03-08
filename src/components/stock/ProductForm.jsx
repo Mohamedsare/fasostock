@@ -92,16 +92,16 @@ export default function ProductForm({ product, categories = [], suppliers = [], 
             </div>
             <div>
               <Label className="text-slate-600 dark:text-slate-300 text-xs">Catégorie</Label>
-              <Select value={form.category ?? ''} onValueChange={(v) => handleChange('category', v)}>
+              <Select value={form.category || '__none__'} onValueChange={(v) => handleChange('category', v === '__none__' ? '' : v)}>
                 <SelectTrigger className="bg-slate-50 dark:bg-slate-900 border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white mt-1"><SelectValue placeholder="Choisir" /></SelectTrigger>
-                <SelectContent><SelectItem value="">Aucune</SelectItem>{categories.map(c => <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>)}</SelectContent>
+                <SelectContent><SelectItem value="__none__">Aucune</SelectItem>{categories.map(c => <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div>
               <Label className="text-slate-600 dark:text-slate-300 text-xs">Marque</Label>
-              <Select value={form.brand ?? ''} onValueChange={(v) => handleChange('brand', v)}>
+              <Select value={form.brand || '__none__'} onValueChange={(v) => handleChange('brand', v === '__none__' ? '' : v)}>
                 <SelectTrigger className="bg-slate-50 dark:bg-slate-900 border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white mt-1"><SelectValue placeholder="Choisir" /></SelectTrigger>
-                <SelectContent><SelectItem value="">Aucune</SelectItem>{BRANDS.map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}</SelectContent>
+                <SelectContent><SelectItem value="__none__">Aucune</SelectItem>{BRANDS.map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div>
@@ -142,9 +142,9 @@ export default function ProductForm({ product, categories = [], suppliers = [], 
             </div>
             <div>
               <Label className="text-slate-600 dark:text-slate-300 text-xs">Fournisseur</Label>
-              <Select value={form.supplier_id ?? ''} onValueChange={(v) => handleChange('supplier_id', v)}>
+              <Select value={form.supplier_id || '__none__'} onValueChange={(v) => handleChange('supplier_id', v === '__none__' ? '' : v)}>
                 <SelectTrigger className="bg-slate-50 dark:bg-slate-900 border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white mt-1"><SelectValue placeholder="Choisir" /></SelectTrigger>
-                <SelectContent><SelectItem value="">Aucun</SelectItem>{suppliers.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
+                <SelectContent><SelectItem value="__none__">Aucun</SelectItem>{suppliers.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div>

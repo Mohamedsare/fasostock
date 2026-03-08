@@ -310,7 +310,7 @@ export default function Stock() {
                         </td>
                         <td className="p-4 text-right">
                           <div className="flex items-center justify-end gap-1">
-                            <button type="button" onClick={() => { setEditProduct(p); setShowForm(true); }} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"><Edit2 className="w-4 h-4" /></button>
+                            <button type="button" onClick={() => navigate('/Stock/Edit/' + p.id)} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"><Edit2 className="w-4 h-4" /></button>
                             <button type="button" onClick={() => setProductToDelete(p)} className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10 text-slate-500 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"><Trash2 className="w-4 h-4" /></button>
                           </div>
                         </td>
