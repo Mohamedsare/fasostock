@@ -256,6 +256,35 @@ export const api = {
       if (error) throw error;
       return data || [];
     },
+    create: async (row) => {
+      const { data, error } = await supabase.from('categories').insert(row).select().single();
+      if (error) throw error;
+      return data;
+    },
+    delete: async (id) => {
+      const { error } = await supabase.from('categories').delete().eq('id', id);
+      if (error) throw error;
+    },
+  },
+
+  // Brands
+  brands: {
+    list: async (shopId) => {
+      let q = supabase.from('brands').select('*').order('name');
+      if (shopId) q = q.eq('shop_id', shopId);
+      const { data, error } = await q;
+      if (error) throw error;
+      return data || [];
+    },
+    create: async (row) => {
+      const { data, error } = await supabase.from('brands').insert(row).select().single();
+      if (error) throw error;
+      return data;
+    },
+    delete: async (id) => {
+      const { error } = await supabase.from('brands').delete().eq('id', id);
+      if (error) throw error;
+    },
   },
 
   // Suppliers

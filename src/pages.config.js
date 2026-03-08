@@ -55,6 +55,7 @@ import Forecast from './pages/Forecast';
 import POS from './pages/POS';
 import Sales from './pages/Sales';
 import Settings from './pages/Settings';
+import Categories from './pages/Categories';
 import ShopManager from './pages/ShopManager';
 import Stock from './pages/Stock';
 import UserManagement from './pages/UserManagement';
@@ -73,6 +74,7 @@ export const PAGES = {
     "POS": POS,
     "Sales": Sales,
     "Settings": Settings,
+    "Categories": Categories,
     "ShopManager": ShopManager,
     "Stock": Stock,
     "UserManagement": UserManagement,

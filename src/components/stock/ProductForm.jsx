@@ -7,9 +7,9 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { X, Save, Upload } from 'lucide-react';
 
-const BRANDS = ['Yamaha', 'Honda', 'Suzuki', 'Kawasaki', 'BMW', 'KTM', 'Ducati', 'Bajaj', 'TVS', 'Lifan', 'Haojue', 'Autre'];
+const BRANDS_FALLBACK = ['Yamaha', 'Honda', 'Suzuki', 'Kawasaki', 'BMW', 'KTM', 'Ducati', 'Bajaj', 'TVS', 'Lifan', 'Haojue', 'Autre'];
 
-export default function ProductForm({ product, categories = [], suppliers = [], onSave, onCancel }) {
+export default function ProductForm({ product, categories = [], brands = [], suppliers = [], onSave, onCancel }) {
   const { currentShop } = useShop();
   const [form, setForm] = useState({
     name: '', category: '', subcategory: '', brand: '', compatible_model: '',
@@ -101,7 +101,12 @@ export default function ProductForm({ product, categories = [], suppliers = [], 
               <Label className="text-slate-600 dark:text-slate-300 text-xs">Marque</Label>
               <Select value={form.brand || '__none__'} onValueChange={(v) => handleChange('brand', v === '__none__' ? '' : v)}>
                 <SelectTrigger className="bg-slate-50 dark:bg-slate-900 border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white mt-1"><SelectValue placeholder="Choisir" /></SelectTrigger>
-                <SelectContent><SelectItem value="__none__">Aucune</SelectItem>{BRANDS.map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}</SelectContent>
+                <SelectContent>
+                  <SelectItem value="__none__">Aucune</SelectItem>
+                  {(brands?.length ? brands.map(b => (typeof b === 'string' ? b : b.name)) : BRANDS_FALLBACK).map((b) => (
+                    <SelectItem key={b} value={b}>{b}</SelectItem>
+                  ))}
+                </SelectContent>
               </Select>
             </div>
             <div>

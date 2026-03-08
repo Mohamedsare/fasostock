@@ -49,6 +49,12 @@ export default function Stock() {
     enabled: !!shopId,
   });
 
+  const { data: brands = [] } = useQuery({
+    queryKey: ['brands', shopId],
+    queryFn: () => api.brands.list(shopId),
+    enabled: !!shopId,
+  });
+
   const createMutation = useMutation({
     mutationFn: (data) => api.products.create({ ...data, shop_id: shopId }),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['products'] }); setShowForm(false); toast({ title: 'Produit créé' }); },
@@ -325,7 +331,7 @@ export default function Stock() {
 
       {showForm && (
         <div className="fixed inset-0 z-[200] bg-black/60 flex items-start justify-center pt-20 pb-8 overflow-y-auto" role="dialog" aria-modal="true" aria-label="Nouveau produit">
-          <ProductForm product={null} categories={categories} suppliers={suppliers} onSave={handleSave} onCancel={() => setShowForm(false)} />
+          <ProductForm product={null} categories={categories} brands={brands} suppliers={suppliers} onSave={handleSave} onCancel={() => setShowForm(false)} />
         </div>
       )}
 

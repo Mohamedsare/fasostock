@@ -5,7 +5,8 @@ import {
   LayoutDashboard, Package, ShoppingCart, Wrench, Wallet,
   Bell, Users, ChevronLeft, ChevronRight, LogOut,
   TrendingUp, Settings, MoreHorizontal, Sun, Moon,
-  Store, ChevronDown, Plus, Brain, ContactRound, FileText
+  Store, ChevronDown, Plus, Brain, ContactRound, FileText,
+  FolderTree
 } from 'lucide-react';
 import { useTheme } from './components/context/ThemeContext';
 import { format } from 'date-fns';
@@ -17,6 +18,7 @@ const ALL_NAV = [
   { name: 'Dashboard', page: 'Dashboard', icon: LayoutDashboard, roles: ['super_admin', 'owner', 'manager', 'cashier', 'product_manager', 'stockist', 'accountant'] },
   { name: 'Point de Vente', page: 'POS', icon: ShoppingCart, roles: ['super_admin', 'owner', 'manager', 'cashier', 'product_manager'] },
   { name: 'Stock', page: 'Stock', icon: Package, roles: ['super_admin', 'owner', 'manager', 'product_manager', 'stockist'] },
+  { name: 'Catégories', page: 'Categories', icon: FolderTree, roles: ['super_admin', 'owner', 'manager', 'product_manager', 'stockist'] },
   { name: 'Ventes', page: 'Sales', icon: TrendingUp, roles: ['super_admin', 'owner', 'manager', 'accountant', 'cashier', 'product_manager'] },
   { name: 'Atelier', page: 'Workshop', icon: Wrench, roles: ['super_admin', 'owner', 'manager'] },
   { name: 'Finances', page: 'Finance', icon: Wallet, roles: ['super_admin', 'owner', 'manager', 'accountant'] },

@@ -32,6 +32,12 @@ export default function StockEdit() {
     enabled: !!shopId,
   });
 
+  const { data: brands = [] } = useQuery({
+    queryKey: ['brands', shopId],
+    queryFn: () => api.brands.list(shopId),
+    enabled: !!shopId,
+  });
+
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => api.products.update(id, data),
     onSuccess: () => {
@@ -97,7 +103,7 @@ export default function StockEdit() {
       <button type="button" onClick={handleCancel} className="flex items-center gap-2 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white mb-4">
         <ArrowLeft className="w-4 h-4" />Retour au stock
       </button>
-      <ProductForm product={product} categories={categories} suppliers={suppliers} onSave={handleSave} onCancel={handleCancel} />
+      <ProductForm product={product} categories={categories} brands={brands} suppliers={suppliers} onSave={handleSave} onCancel={handleCancel} />
     </div>
   );
 }
