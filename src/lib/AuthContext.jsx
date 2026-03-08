@@ -52,7 +52,11 @@ export const AuthProvider = ({ children }) => {
         }
       } catch (err) {
         console.error('Auth init failed:', err);
-        if (mounted) setAuthError({ type: 'unknown', message: err.message });
+        if (mounted) {
+          setAuthError({ type: 'unknown', message: err.message });
+          setUser(null);
+          setProfile(null);
+        }
       } finally {
         clearTimeout(timeout);
         if (mounted) setIsLoadingAuth(false);
@@ -61,41 +65,28 @@ export const AuthProvider = ({ children }) => {
 
     init();
 
+    // IMPORTANT: Ne JAMAIS réagir à session=null dans onAuthStateChange.
+    // Supabase émet des faux SIGNED_OUT lors du rechargement, du resize, du token refresh.
+    // Seul init() et logout() explicite peuvent déconnecter.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
       if (session?.user) {
-        const p = await loadProfile(session.user);
-        if (!mounted) return;
-        setProfile(p);
-        setUser({
-          id: session.user.id,
-          email: session.user.email,
-          full_name: p?.full_name || session.user.user_metadata?.full_name || session.user.email?.split('@')[0],
-          role: p?.role || 'cashier',
-        });
-        setAuthError(null);
-      } else {
-        // Ne pas déconnecter immédiatement : SIGNED_OUT peut survenir lors d'un refresh / rechargement.
-        // On attend 400ms puis on revérifie la session pour éviter les faux sign-out.
-        setTimeout(async () => {
+        try {
+          const p = await loadProfile(session.user);
           if (!mounted) return;
-          const { data: { session: currentSession } } = await supabase.auth.getSession();
-          if (currentSession?.user) {
-            const p = await loadProfile(currentSession.user);
-            if (!mounted) return;
-            setProfile(p);
-            setUser({
-              id: currentSession.user.id,
-              email: currentSession.user.email,
-              full_name: p?.full_name || currentSession.user.user_metadata?.full_name || currentSession.user.email?.split('@')[0],
-              role: p?.role || 'cashier',
-            });
-          } else {
-            setUser(null);
-            setProfile(null);
-          }
-        }, 400);
+          setProfile(p);
+          setUser({
+            id: session.user.id,
+            email: session.user.email,
+            full_name: p?.full_name || session.user.user_metadata?.full_name || session.user.email?.split('@')[0],
+            role: p?.role || 'cashier',
+          });
+          setAuthError(null);
+        } catch (err) {
+          console.warn('loadProfile in onAuthStateChange:', err);
+        }
       }
+      // session === null : on ne fait RIEN (évite les faux sign-out)
     });
 
     return () => {
