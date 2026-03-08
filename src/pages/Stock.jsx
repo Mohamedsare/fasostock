@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Plus, Search, Package, Edit2, Trash2, AlertTriangle, Download, Upload, FileSpreadsheet, Check } from 'lucide-react';
+import { Plus, Search, Package, Edit2, Trash2, AlertTriangle, Download, Upload, FileSpreadsheet } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import PageHeader from '../components/ui-custom/PageHeader';
 import EmptyState from '../components/ui-custom/EmptyState';
@@ -62,7 +62,7 @@ export default function Stock() {
       setProductToDelete(null);
       setDeletedMessage('Produit supprimé');
       if (deletedMessageRef.current) clearTimeout(deletedMessageRef.current);
-      deletedMessageRef.current = window.setTimeout(() => { setDeletedMessage(null); deletedMessageRef.current = null; }, 2800);
+      deletedMessageRef.current = window.setTimeout(() => { setDeletedMessage(null); deletedMessageRef.current = null; }, 1800);
     },
     onError: (err) => { setProductToDelete(null); toast({ title: 'Erreur', description: err?.message || 'Impossible de supprimer le produit.', variant: 'destructive' }); },
   });
@@ -174,9 +174,8 @@ export default function Stock() {
   return (
     <div className="animate-fade-in relative">
       {deletedMessage && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[300] flex items-center gap-2 px-5 py-3 rounded-xl bg-emerald-500/95 dark:bg-emerald-600/95 text-white text-sm font-medium shadow-lg animate-in fade-in slide-in-from-top-4 duration-300" role="status">
-          <Check className="w-4 h-4 flex-shrink-0" />
-          <span>{deletedMessage}</span>
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[99999] px-5 py-3 rounded-xl bg-slate-800/95 dark:bg-slate-700/95 text-white text-sm font-medium shadow-lg backdrop-blur-sm animate-in fade-in slide-in-from-top-2 duration-300 pointer-events-none" role="status">
+          {deletedMessage}
         </div>
       )}
       <PageHeader
