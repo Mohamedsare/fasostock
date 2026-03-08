@@ -75,8 +75,26 @@ export const AuthProvider = ({ children }) => {
         });
         setAuthError(null);
       } else {
-        setUser(null);
-        setProfile(null);
+        // Ne pas déconnecter immédiatement : SIGNED_OUT peut survenir lors d'un refresh / rechargement.
+        // On attend 400ms puis on revérifie la session pour éviter les faux sign-out.
+        setTimeout(async () => {
+          if (!mounted) return;
+          const { data: { session: currentSession } } = await supabase.auth.getSession();
+          if (currentSession?.user) {
+            const p = await loadProfile(currentSession.user);
+            if (!mounted) return;
+            setProfile(p);
+            setUser({
+              id: currentSession.user.id,
+              email: currentSession.user.email,
+              full_name: p?.full_name || currentSession.user.user_metadata?.full_name || currentSession.user.email?.split('@')[0],
+              role: p?.role || 'cashier',
+            });
+          } else {
+            setUser(null);
+            setProfile(null);
+          }
+        }, 400);
       }
     });
 

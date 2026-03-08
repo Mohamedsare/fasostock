@@ -7,4 +7,14 @@ if (!supabaseUrl || !supabaseAnonKey) {
   console.warn('FasoStock: VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY doivent être définis dans .env');
 }
 
-export const supabase = createClient(supabaseUrl || 'https://placeholder.supabase.co', supabaseAnonKey || 'placeholder-key');
+export const supabase = createClient(
+  supabaseUrl || 'https://placeholder.supabase.co',
+  supabaseAnonKey || 'placeholder-key',
+  {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+    },
+  }
+);
