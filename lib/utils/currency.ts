@@ -12,6 +12,18 @@ export function formatCurrency(value: number): string {
 }
 
 /**
+ * Même montant que {@link formatCurrency}, avec espaces sécables pour que le texte
+ * puisse se couper en plusieurs lignes dans les cartes étroites (POS, listes).
+ * `Intl` utilise souvent U+00A0 / U+202F entre milliers et symbole — sans cela le prix déborde.
+ */
+export function formatCurrencyWrappable(value: number): string {
+  return formatCurrency(value)
+    .replace(/[\u00A0\u202F\u2007]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
  * Équivalent strict de `format_currency.dart` Flutter :
  * `NumberFormat.currency(locale: 'fr_FR', symbol: 'FCFA', decimalDigits: 0)`.
  * Utiliser pour tickets thermiques et factures PDF (parité avec l’app mobile).

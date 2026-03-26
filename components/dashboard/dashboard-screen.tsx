@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, parseISO } from "date-fns";
 import { fr } from "date-fns/locale";
 import {
@@ -26,6 +26,7 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  useCallback,
   useEffect,
   useMemo,
   useState,
@@ -66,9 +67,33 @@ function getDashboardFallbackRoute(h: AccessHelpers): string {
   return ROUTES.settings;
 }
 
+/**
+ * Aligné `CompanyProvider.setCurrentStoreId` (Flutter) : la boutique choisie sur le dashboard
+ * doit devenir la boutique active pour toute l’app (Produits, POS, stock, etc.).
+ * Sur le web : `fs_active_store_id` + invalidation du contexte React Query.
+ */
+function persistGlobalActiveStore(storeId: string) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem("fs_active_store_id", storeId);
+  } catch {
+    /* */
+  }
+}
+
 export function DashboardScreen() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const ctx = useAppContext();
+
+  const syncGlobalStoreFromDashboard = useCallback(
+    (storeId: string | null) => {
+      if (!storeId) return;
+      persistGlobalActiveStore(storeId);
+      void queryClient.invalidateQueries({ queryKey: queryKeys.appContext });
+    },
+    [queryClient],
+  );
   const { hasPermission, helpers, isLoading: permLoading } = usePermissions();
   const isWide = useMediaQuery("(min-width: 900px)");
 
@@ -259,7 +284,10 @@ export function DashboardScreen() {
               type="button"
               onClick={() => {
                 setScope("store");
-                setDashboardStoreId((prev) => prev ?? ctxStoreId ?? stores[0]?.id ?? null);
+                const id =
+                  dashboardStoreId ?? ctxStoreId ?? stores[0]?.id ?? null;
+                setDashboardStoreId(id);
+                if (id) syncGlobalStoreFromDashboard(id);
               }}
               className={cn(
                 "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-semibold transition-colors",
@@ -283,7 +311,11 @@ export function DashboardScreen() {
               <span className="sr-only">Boutique</span>
               <select
                 value={dashboardStoreId ?? ""}
-                onChange={(e) => setDashboardStoreId(e.target.value || null)}
+                onChange={(e) => {
+                  const id = e.target.value || null;
+                  setDashboardStoreId(id);
+                  if (id) syncGlobalStoreFromDashboard(id);
+                }}
                 className="w-full min-w-0 rounded-lg border border-black/[0.12] bg-white px-2 py-2 text-sm"
               >
                 {stores.map((s) => (
