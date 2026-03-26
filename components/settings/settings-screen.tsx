@@ -588,6 +588,7 @@ export function SettingsScreen() {
                 onChange={(e) => {
                   try {
                     localStorage.setItem("fs_active_company_id", e.target.value);
+                    localStorage.removeItem("fs_active_store_id");
                   } catch {
                     /* */
                   }

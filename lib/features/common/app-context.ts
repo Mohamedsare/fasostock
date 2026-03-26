@@ -24,9 +24,20 @@ function pickActiveCompanyId(orderedIds: string[]): string {
   return orderedIds[0]!;
 }
 
-function pickActiveStoreId(stores: { id: string; name: string }[]): string | null {
+/** Comme `CompanyProvider._loadStores` / `setCurrentCompanyId` (Flutter) : primaire si présente, sinon première. */
+function defaultStoreIdFromList(
+  stores: { id: string; isPrimary?: boolean }[],
+): string | null {
   if (stores.length === 0) return null;
-  if (typeof window === "undefined") return stores[0]?.id ?? null;
+  const primary = stores.find((s) => s.isPrimary === true);
+  return primary?.id ?? stores[0]!.id;
+}
+
+function pickActiveStoreId(
+  stores: { id: string; name: string; isPrimary?: boolean }[],
+): string | null {
+  if (stores.length === 0) return null;
+  if (typeof window === "undefined") return defaultStoreIdFromList(stores);
   try {
     const v = localStorage.getItem("fs_active_store_id");
     if (v === "__all__") return null;
@@ -34,7 +45,7 @@ function pickActiveStoreId(stores: { id: string; name: string }[]): string | nul
   } catch {
     /* */
   }
-  return stores[0]?.id ?? null;
+  return defaultStoreIdFromList(stores);
 }
 
 function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
@@ -151,6 +162,7 @@ async function fetchAppContext(): Promise<AppContextData | null> {
     const mapped = (stores ?? []).map((s) => ({
       id: s.id as string,
       name: s.name as string,
+      isPrimary: (s as { is_primary?: boolean }).is_primary === true,
     }));
     return {
       companyId,
@@ -174,6 +186,7 @@ async function fetchAppContext(): Promise<AppContextData | null> {
   const mapped = (stores ?? []).map((s) => ({
     id: s.id as string,
     name: s.name as string,
+    isPrimary: (s as { is_primary?: boolean }).is_primary === true,
   }));
 
   let permissionKeys: string[] = [];

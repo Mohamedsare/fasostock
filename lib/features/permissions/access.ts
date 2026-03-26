@@ -14,7 +14,7 @@ export type AppContextData = {
   companyId: string;
   companyName: string;
   storeId: string | null;
-  stores: { id: string; name: string }[];
+  stores: { id: string; name: string; isPrimary?: boolean }[];
   isSuperAdmin: boolean;
   permissionKeys: string[];
   roleSlug: string | null;
