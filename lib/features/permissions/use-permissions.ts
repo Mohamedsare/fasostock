@@ -11,6 +11,10 @@ import type { NavItem } from "@/lib/config/navigation";
 export function usePermissions(): {
   data: ReturnType<typeof useAppContext>["data"];
   isLoading: boolean;
+  isError: boolean;
+  error: ReturnType<typeof useAppContext>["error"];
+  refetch: ReturnType<typeof useAppContext>["refetch"];
+  isFetching: boolean;
   helpers: ReturnType<typeof buildAccessHelpers>;
   hasPermission: (key: string) => boolean;
   canAccessPathname: (pathname: string) => boolean;
@@ -40,6 +44,10 @@ export function usePermissions(): {
   return {
     data,
     isLoading: q.isLoading,
+    isError: q.isError,
+    error: q.error,
+    refetch: q.refetch,
+    isFetching: q.isFetching,
     helpers,
     hasPermission,
     canAccessPathname: canAccess,

@@ -725,9 +725,10 @@ export function PosScreen({ storeId, mode }: { storeId: string; mode: PosMode })
                 <div
                   className={cn(
                     "grid gap-2 pb-4 min-[380px]:gap-2.5",
-                    "grid-cols-2 min-[360px]:grid-cols-3",
-                    "min-[600px]:grid-cols-4",
-                    "min-[900px]:grid-cols-5",
+                    /* Moins de colonnes sur petits écrans = cartes plus larges, prix sur une ligne */
+                    "grid-cols-2 min-[480px]:grid-cols-3",
+                    "min-[680px]:grid-cols-4",
+                    "min-[1024px]:grid-cols-5",
                   )}
                 >
                   {filtered.map((p) => {
@@ -771,10 +772,11 @@ export function PosScreen({ storeId, mode }: { storeId: string; mode: PosMode })
                           </p>
                           <p
                             className={cn(
-                              "w-full min-w-0 max-w-full shrink-0 font-bold leading-tight text-[#F97316]",
-                              "whitespace-normal wrap-anywhere",
+                              "w-full min-w-0 max-w-full shrink-0 font-bold tabular-nums leading-none text-[#F97316]",
+                              "whitespace-nowrap text-center overflow-hidden text-ellipsis",
                               "text-[9px] min-[380px]:text-[10px] min-[480px]:text-[11px] min-[600px]:text-sm",
                             )}
+                            title={formatCurrency(Number(p.sale_price ?? 0))}
                           >
                             {formatCurrencyWrappable(Number(p.sale_price ?? 0))}
                           </p>

@@ -1,8 +1,10 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { useEffect, useRef } from "react";
 import { PERMISSIONS_ALL } from "@/lib/constants/permissions";
 import type { AppContextData } from "@/lib/features/permissions/access";
+import { reportHandledClientError } from "@/lib/monitoring/remote-error-logger";
 import { createClient } from "@/lib/supabase/client";
 import { mapSupabaseError } from "@/lib/supabase/map-error";
 import { queryKeys } from "@/lib/query/query-keys";
@@ -138,6 +140,15 @@ async function fetchAppContext(): Promise<AppContextData | null> {
     .maybeSingle();
   if (cErr) throw mapSupabaseError(cErr);
   if (!companyRow?.id) {
+    void reportHandledClientError(
+      new Error(
+        "Contexte app: ligne companies absente pour un company_id issu de user_company_roles (RLS, suppression ou incohérence).",
+      ),
+      {
+        source: "app_context_company_row_missing",
+        extra: { primaryCompanyId, userId: user.id },
+      },
+    );
     return {
       companyId: "",
       companyName: "",
@@ -223,10 +234,42 @@ async function fetchAppContextWithTimeout(): Promise<AppContextData | null> {
 }
 
 export function useAppContext() {
-  return useQuery({
+  const q = useQuery({
     queryKey: queryKeys.appContext,
     queryFn: fetchAppContextWithTimeout,
     staleTime: 2 * 60 * 1000,
-    retry: 1,
+    retry: 2,
   });
+
+  const sessionNullLogged = useRef(false);
+
+  useEffect(() => {
+    if (!q.isError || !q.error) return;
+    void reportHandledClientError(q.error, {
+      source: "app_context_fetch",
+      extra: {
+        queryKey: "appContext",
+        fetchStatus: q.fetchStatus,
+        failureReason: q.failureReason,
+      },
+    });
+  }, [q.isError, q.error, q.fetchStatus, q.failureReason]);
+
+  useEffect(() => {
+    if (q.isSuccess && q.data === null) {
+      if (!sessionNullLogged.current) {
+        sessionNullLogged.current = true;
+        void reportHandledClientError(
+          new Error(
+            "fetchAppContext: session utilisateur absente côté client alors que la page (app) exige une session.",
+          ),
+          { source: "app_context_session_null", extra: { href: typeof window !== "undefined" ? window.location.href : null } },
+        );
+      }
+    } else if (q.data != null) {
+      sessionNullLogged.current = false;
+    }
+  }, [q.isSuccess, q.data]);
+
+  return q;
 }
