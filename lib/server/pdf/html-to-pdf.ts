@@ -1,19 +1,92 @@
-import type { Browser } from "puppeteer";
+import fs from "fs";
+import path from "path";
+
+import type { Browser } from "puppeteer-core";
 
 let browserPromise: Promise<Browser> | null = null;
 
+/** Vercel / AWS Lambda : pas de Chrome installé — @sparticuz/chromium fournit un binaire compatible serverless. */
+function isServerlessPdfEnv(): boolean {
+  return (
+    process.env.VERCEL === "1" ||
+    process.env.AWS_LAMBDA_FUNCTION_NAME !== undefined ||
+    process.env.AWS_EXECUTION_ENV !== undefined
+  );
+}
+
+function resolveLocalChromeExecutablePath(): string | undefined {
+  const env = process.env.PUPPETEER_EXECUTABLE_PATH?.trim();
+  if (env && fs.existsSync(env)) return env;
+
+  const candidates: string[] = [];
+  if (process.platform === "win32") {
+    const pf = process.env.PROGRAMFILES ?? "C:\\Program Files";
+    const pf86 = process.env["PROGRAMFILES(X86)"] ?? "C:\\Program Files (x86)";
+    const local = process.env.LOCALAPPDATA ?? "";
+    candidates.push(
+      path.join(pf, "Google", "Chrome", "Application", "chrome.exe"),
+      path.join(pf86, "Google", "Chrome", "Application", "chrome.exe"),
+      path.join(local, "Google", "Chrome", "Application", "chrome.exe"),
+      path.join(pf, "Microsoft", "Edge", "Application", "msedge.exe"),
+    );
+  } else if (process.platform === "darwin") {
+    candidates.push(
+      "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+      "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
+    );
+  } else {
+    candidates.push(
+      "/usr/bin/google-chrome-stable",
+      "/usr/bin/google-chrome",
+      "/usr/bin/chromium-browser",
+      "/usr/bin/chromium",
+      "/snap/bin/chromium",
+    );
+  }
+  for (const p of candidates) {
+    if (p && fs.existsSync(p)) return p;
+  }
+  return undefined;
+}
+
+async function launchBrowser(): Promise<Browser> {
+  const puppeteer = await import("puppeteer-core");
+
+  if (isServerlessPdfEnv()) {
+    const chromium = (await import("@sparticuz/chromium")).default;
+    // `chromium.args` inclut déjà `--headless=…` (chrome-headless-shell) : ne pas
+    // redemander un mode headless à Puppeteer pour éviter un double mode.
+    return puppeteer.default.launch({
+      args: chromium.args,
+      executablePath: await chromium.executablePath(),
+      headless: false,
+    });
+  }
+
+  const executablePath = resolveLocalChromeExecutablePath();
+  if (!executablePath) {
+    throw new Error(
+      "Chrome ou Edge introuvable. Installez Google Chrome, ou définissez PUPPETEER_EXECUTABLE_PATH vers chrome.exe / chromium.",
+    );
+  }
+
+  return puppeteer.default.launch({
+    headless: true,
+    executablePath,
+    args: [
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-dev-shm-usage",
+      "--font-render-hinting=none",
+    ],
+  });
+}
+
 async function getBrowser(): Promise<Browser> {
   if (!browserPromise) {
-    const puppeteer = await import("puppeteer");
-    browserPromise = puppeteer.default.launch({
-      headless: true,
-      args: [
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        "--disable-dev-shm-usage",
-        "--font-render-hinting=none",
-      ],
-      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH?.trim() || undefined,
+    browserPromise = launchBrowser().catch((e) => {
+      browserPromise = null;
+      throw e;
     });
   }
   return browserPromise;
