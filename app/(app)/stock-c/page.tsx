@@ -1,10 +1,5 @@
-import { PlaceholderScreen } from "@/components/ui/placeholder-screen";
+import { StockCashierScreen } from "@/components/inventory/stock-cashier-screen";
 
 export default function StockCashierPage() {
-  return (
-    <PlaceholderScreen
-      title="Stock (alertes)"
-      description="Vue caissier — ruptures et alertes (lecture seule), alignée sur l’app Flutter."
-    />
-  );
+  return <StockCashierScreen />;
 }

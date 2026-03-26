@@ -6,9 +6,12 @@ import { cn } from "@/lib/utils/cn";
 export function StockRangeIndicator({
   quantity,
   alertThreshold,
+  className,
 }: {
   quantity: number;
   alertThreshold: number;
+  /** Ex. contrainte largeur sur petits écrans (liste stock caissier). */
+  className?: string;
 }) {
   const t = alertThreshold <= 0 ? 5 : alertThreshold;
   const q = Math.max(0, quantity);
@@ -34,7 +37,7 @@ export function StockRangeIndicator({
   const percent = max > 0 ? Math.min(1, q / max) : 0;
 
   return (
-    <div className="flex min-w-0 items-center gap-2">
+    <div className={cn("flex min-w-0 items-center gap-2", className)}>
       <span className="w-7 shrink-0 text-right text-sm font-semibold tabular-nums text-neutral-800">
         {quantity}
       </span>
