@@ -1,6 +1,6 @@
 "use client";
 
-import { FsFilterChip, fsInputClass } from "@/components/ui/fs-screen-primitives";
+import { fsInputClass } from "@/components/ui/fs-screen-primitives";
 import { P } from "@/lib/constants/permissions";
 import { usePermissions } from "@/lib/features/permissions/use-permissions";
 import { createPosSale, fetchPosData } from "@/lib/features/pos/api";
@@ -959,6 +959,12 @@ export function PosScreen({ storeId, mode }: { storeId: string; mode: PosMode })
   );
 }
 
+/**
+ * Aligné sur Flutter `FilterChip` dans `pos_quick_left_zone.dart` / `pos_main_area.dart` :
+ * `ChipTheme.shape` = `RoundedRectangleBorder` (pas Stadium) — `AppTheme.radiusSmM` (8) mobile,
+ * `radiusSm` (10) ≥ 600px comme `AppTheme.light()` vs `lightMobile()`.
+ * Padding widget : `horizontal: 14, vertical: 10` — bordure sélectionnée 2px, sinon 1px.
+ */
 function CategoryChip({
   label,
   selected,
@@ -973,10 +979,12 @@ function CategoryChip({
       type="button"
       onClick={onClick}
       className={cn(
-        "shrink-0 rounded-full border-2 px-3.5 py-2.5 text-sm font-semibold transition-colors",
+        "shrink-0 px-[14px] py-[10px] text-sm font-semibold transition-colors",
+        /* Même rayon que ChipTheme (mobile 8px, desktop 10px) */
+        "rounded-[8px] min-[600px]:rounded-[10px]",
         selected
-          ? "border-[#F97316] bg-[#F97316] text-white"
-          : "border-[#E5E7EB] bg-[#F8F9FA] text-[#1F2937]",
+          ? "border-2 border-[#F97316] bg-[#F97316] text-white"
+          : "border border-[#E5E7EB] bg-[#F8F9FA] text-[#1F2937]",
       )}
     >
       {label}
