@@ -144,9 +144,10 @@ export function filterNavItemsForPermissions(
     if (href === ROUTES.customers) return h.canCustomers;
     if (href === ROUTES.suppliers) return h.canSuppliers;
     if (href === ROUTES.reports) return h.canReports;
-    if (href === ROUTES.ai) return h.canAi && !h.isCashier;
+    /** Même logique que `app_shell.dart` (Flutter) — pas de filtre `isCashier` sur le menu. */
+    if (href === ROUTES.ai) return h.canAi;
     if (href === ROUTES.users) return h.canUsers;
-    if (href === ROUTES.settings) return h.canSettings && !h.isCashier;
+    if (href === ROUTES.settings) return h.canSettings;
     if (href === ROUTES.transfers) return h.canTransfers;
     if (href === ROUTES.audit) return h.canAudit && !h.isOwner;
     if (href === ROUTES.help) return h.isOwner;
@@ -165,14 +166,49 @@ function normalizeAppRoute(pathname: string): string {
 }
 
 /**
- * Vérifie l’accès à une URL (garde de route). Aligné sur `visibleNavItems` + `GoRouter` Flutter
- * (sauf POS / pos-quick qui vérifient aussi des droits vente ciblés).
+ * Préfixes de routes sous `ShellRoute` (`app_router.dart` Flutter) — même principe que
+ * `GoRouter.redirect` : pas de contrôle de permission sur ces chemins (sauf POS ci‑dessous) ;
+ * chaque écran applique ses propres règles (ex. `settings_page` caissier → ventes,
+ * `warehouse_page` non‑owner → carte « Accès réservé », etc.).
+ */
+const APP_SHELL_ROUTE_PREFIXES: readonly string[] = [
+  ROUTES.dashboard,
+  ROUTES.products,
+  ROUTES.sales,
+  ROUTES.stores,
+  ROUTES.inventory,
+  ROUTES.stockCashier,
+  ROUTES.purchases,
+  ROUTES.warehouse,
+  ROUTES.transfers,
+  ROUTES.customers,
+  ROUTES.suppliers,
+  ROUTES.reports,
+  ROUTES.ai,
+  ROUTES.users,
+  ROUTES.audit,
+  ROUTES.settings,
+  ROUTES.help,
+  ROUTES.notifications,
+  ROUTES.integrations,
+];
+
+function isAppShellRoute(route: string): boolean {
+  for (const prefix of APP_SHELL_ROUTE_PREFIXES) {
+    if (route === prefix || route.startsWith(`${prefix}/`)) return true;
+  }
+  return false;
+}
+
+/**
+ * Garde de route alignée sur `GoRouter` Flutter (`redirect` + routes shell) :
+ * - utilisateur connecté : toutes les routes shell autorisées (les pages gèrent les droits) ;
+ * - seules exceptions : caisse rapide (`sales.create`) et POS facture A4 (`sales.invoice_a4`).
  */
 export function canAccessPathname(pathname: string, h: AccessHelpers | null): boolean {
   if (!h) return false;
   const p = pathname.split("?")[0] ?? pathname;
 
-  /** Aligné `app_router.dart` Flutter : pos-quick = `sales.create`, POS facture = `sales.invoice_a4`. */
   if (p.startsWith("/stores/") && p.endsWith("/pos-quick")) {
     return h.hasPermission(P.salesCreate);
   }
@@ -181,31 +217,5 @@ export function canAccessPathname(pathname: string, h: AccessHelpers | null): bo
   }
 
   const route = normalizeAppRoute(pathname);
-
-  /**
-   * Tableau de bord : toujours accessible si connecté (même sans `dashboard.view`),
-   * comme Flutter — la page affiche « Accès restreint » + bouton Retour.
-   */
-  if (route === ROUTES.dashboard) return true;
-
-  if (route.startsWith(ROUTES.products)) return h.canProducts;
-  if (route.startsWith(ROUTES.sales)) return h.canSales;
-  if (route.startsWith(ROUTES.stores)) return h.canStores;
-  if (route.startsWith(ROUTES.inventory)) return h.canInventory && !h.isCashier;
-  if (route.startsWith(ROUTES.stockCashier)) return h.canInventory && !h.isOwner;
-  if (route.startsWith(ROUTES.purchases)) return h.canPurchases;
-  if (route.startsWith(ROUTES.warehouse)) return h.isOwner;
-  if (route.startsWith(ROUTES.transfers)) return h.canTransfers;
-  if (route.startsWith(ROUTES.customers)) return h.canCustomers;
-  if (route.startsWith(ROUTES.suppliers)) return h.canSuppliers;
-  if (route.startsWith(ROUTES.reports)) return h.canReports;
-  if (route.startsWith(ROUTES.ai)) return h.canAi && !h.isCashier;
-  if (route.startsWith(ROUTES.users)) return h.canUsers;
-  if (route.startsWith(ROUTES.audit)) return h.canAudit && !h.isOwner;
-  if (route.startsWith(ROUTES.settings)) return h.canSettings && !h.isCashier;
-  if (route.startsWith(ROUTES.help)) return h.isOwner;
-  if (route.startsWith(ROUTES.notifications)) return h.isOwner;
-  if (route.startsWith(ROUTES.integrations)) return (h.canSettings || h.isOwner) && !h.isCashier;
-
-  return false;
+  return isAppShellRoute(route);
 }

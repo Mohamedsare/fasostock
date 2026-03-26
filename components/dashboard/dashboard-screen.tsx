@@ -62,8 +62,8 @@ function getDashboardFallbackRoute(h: AccessHelpers): string {
   if (h.canCustomers) return ROUTES.customers;
   if (h.canPurchases) return ROUTES.purchases;
   if (h.canStores) return ROUTES.stores;
-  /** Aligné Flutter : dernier recours Paramètres sauf caissier (qui est renvoyé vers Ventes depuis Paramètres). */
-  return h.isCashier ? ROUTES.sales : ROUTES.settings;
+  /** Dernier recours — `dashboard_page.dart` Flutter (`return AppRoutes.settings`). */
+  return ROUTES.settings;
 }
 
 export function DashboardScreen() {
