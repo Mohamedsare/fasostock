@@ -1,0 +1,170 @@
+@import "tailwindcss";
+
+/* `dark:` basé sur la classe `dark` sur `<html>` (Paramètres → Apparence). */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* FasoStock — aligné sur `cm.md` / AppTheme Flutter (mobile first) */
+:root {
+  --fs-accent: #e85d2c;
+  --fs-surface: #f8f7f5;
+  --fs-surface-container: #f1f0ec;
+  --fs-surface-low: #f5f4f0;
+  --fs-card: #ffffff;
+  --fs-text: #1c1b1f;
+  /* Material 3 onSurfaceVariant (clair) — texte secondaire / labels */
+  --fs-on-surface-variant: #49454f;
+  --fs-on-primary-container: #5c2a0e;
+  --fs-splash: #f1f5f9;
+  --fs-pos-orange: #f97316;
+  --fs-safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+html.dark {
+  --fs-surface: #121212;
+  --fs-surface-container: #1e1e1e;
+  --fs-surface-low: #181818;
+  --fs-card: #1c1b1f;
+  --fs-text: #e6e1e5;
+  /* Aligné AppTheme Flutter (ColorScheme.dark + M3 onSurfaceVariant) */
+  --fs-on-surface-variant: #cac4d0;
+  --fs-on-primary-container: #ffdbd0;
+  --fs-splash: #1a1a1a;
+}
+
+@theme inline {
+  --color-fs-accent: var(--fs-accent);
+  --color-fs-surface: var(--fs-surface);
+  --color-fs-surface-container: var(--fs-surface-container);
+  --color-fs-surface-low: var(--fs-surface-low);
+  --color-fs-card: var(--fs-card);
+  --color-fs-text: var(--fs-text);
+  --color-fs-on-surface-variant: var(--fs-on-surface-variant);
+  --font-sans: var(--font-roboto), ui-sans-serif, system-ui, sans-serif;
+}
+
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  background: var(--fs-surface);
+  color: var(--fs-text);
+  font-family: var(--font-roboto), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Zone tactile minimale mobile (type Flutter 48) */
+.fs-touch-target {
+  min-height: 48px;
+  min-width: 48px;
+}
+
+/*
+ * Mode sombre : les utilitaires Tailwind `text-neutral-*` restent des gris « papier »
+ * (sombre sur fond clair). Sous `html.dark`, on les remap sur les jetons FasoStock /
+ * Flutter (texte principal + onSurfaceVariant) pour retrouver un contraste lisible.
+ */
+@layer utilities {
+  html.dark .text-neutral-950,
+  html.dark .text-neutral-900,
+  html.dark .text-neutral-800 {
+    color: var(--fs-text);
+  }
+
+  html.dark .text-neutral-700 {
+    color: color-mix(in oklab, var(--fs-text) 92%, transparent);
+  }
+
+  html.dark .text-neutral-600 {
+    color: var(--fs-on-surface-variant);
+  }
+
+  html.dark .text-neutral-500 {
+    color: color-mix(in oklab, var(--fs-on-surface-variant) 90%, transparent);
+  }
+
+  html.dark .text-neutral-400 {
+    color: color-mix(in oklab, var(--fs-on-surface-variant) 72%, transparent);
+  }
+
+  html.dark .text-neutral-300 {
+    color: color-mix(in oklab, var(--fs-on-surface-variant) 55%, transparent);
+  }
+
+  /* Surfaces neutres (pagination, pastilles, zones tactiles) */
+  html.dark .bg-neutral-200,
+  html.dark .bg-neutral-200\/90 {
+    background-color: color-mix(in oklab, var(--fs-surface-container) 100%, transparent);
+  }
+
+  html.dark .active\:bg-neutral-300\/90:active {
+    background-color: color-mix(in oklab, var(--fs-surface-low) 95%, transparent);
+  }
+
+  html.dark .bg-neutral-100,
+  html.dark .bg-neutral-100\/80,
+  html.dark .bg-neutral-100\/50 {
+    background-color: var(--fs-surface-container);
+  }
+
+  html.dark .bg-neutral-50,
+  html.dark .bg-neutral-50\/80 {
+    background-color: var(--fs-surface-low);
+  }
+
+  html.dark .active\:bg-neutral-50:active,
+  html.dark .active\:bg-neutral-50\/80:active {
+    background-color: var(--fs-surface-container);
+  }
+
+  html.dark .active\:bg-neutral-100\/80:active,
+  html.dark .hover\:bg-neutral-100\/80:hover {
+    background-color: color-mix(in oklab, var(--fs-surface-container) 90%, transparent);
+  }
+
+  html.dark .hover\:bg-neutral-50:hover {
+    background-color: var(--fs-surface-container);
+  }
+
+  /* Bordures noires très légères : visibles sur fond #121212 / carte */
+  html.dark .border-black\/\[0\.06\] {
+    border-color: color-mix(in oklab, white 10%, transparent);
+  }
+
+  html.dark .border-black\/\[0\.08\] {
+    border-color: color-mix(in oklab, white 11%, transparent);
+  }
+
+  html.dark .border-black\/\[0\.1\] {
+    border-color: color-mix(in oklab, white 12%, transparent);
+  }
+
+  html.dark .border-black\/\[0\.12\] {
+    border-color: color-mix(in oklab, white 14%, transparent);
+  }
+
+  html.dark .border-black\/6 {
+    border-color: color-mix(in oklab, white 10%, transparent);
+  }
+
+  html.dark .border-black\/8 {
+    border-color: color-mix(in oklab, white 10%, transparent);
+  }
+
+  html.dark .border-black\/10 {
+    border-color: color-mix(in oklab, white 12%, transparent);
+  }
+
+  /* Ripples / survol basés sur du noir — équivalent clair sur fond sombre */
+  html.dark .hover\:bg-black\/5:hover,
+  html.dark .active\:bg-black\/5:active {
+    background-color: color-mix(in oklab, white 8%, transparent);
+  }
+
+  html.dark .hover\:bg-black\/\[0\.02\]:hover {
+    background-color: color-mix(in oklab, white 4%, transparent);
+  }
+
+  html.dark .hover\:bg-black\/\[0\.04\]:hover {
+    background-color: color-mix(in oklab, white 6%, transparent);
+  }
+}

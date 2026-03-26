@@ -1,0 +1,27 @@
+import type { Store } from "@/lib/features/stores/types";
+
+export type InvoiceLineData = {
+  description: string;
+  quantity: number;
+  unit: string;
+  unitPrice: number;
+  total: number;
+};
+
+/** Données pour générer une facture A4 (équivalent `InvoiceA4Data` Flutter). */
+export type InvoiceA4Data = {
+  store: Store;
+  saleNumber: string;
+  date: Date;
+  items: InvoiceLineData[];
+  subtotal: number;
+  discount: number;
+  tax: number;
+  total: number;
+  customerName?: string | null;
+  customerPhone?: string | null;
+  customerAddress?: string | null;
+  depositAmount?: number | null;
+  amountInWords?: string | null;
+  logoBytes?: Uint8Array | null;
+};

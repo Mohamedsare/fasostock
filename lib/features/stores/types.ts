@@ -1,0 +1,36 @@
+/** Aligné sur `Store` / `stores_repository.dart` (Flutter). */
+export type Store = {
+  id: string;
+  company_id: string;
+  name: string;
+  code: string | null;
+  address: string | null;
+  logo_url: string | null;
+  phone: string | null;
+  email: string | null;
+  description: string | null;
+  is_active: boolean;
+  is_primary: boolean;
+  pos_discount_enabled: boolean;
+  currency: string | null;
+  primary_color: string | null;
+  secondary_color: string | null;
+  invoice_prefix: string | null;
+  footer_text: string | null;
+  legal_info: string | null;
+  signature_url: string | null;
+  stamp_url: string | null;
+  payment_terms: string | null;
+  tax_label: string | null;
+  tax_number: string | null;
+  city: string | null;
+  country: string | null;
+  commercial_name: string | null;
+  slogan: string | null;
+  activity: string | null;
+  mobile_money: string | null;
+  invoice_short_title: string | null;
+  invoice_signer_title: string | null;
+  invoice_signer_name: string | null;
+  invoice_template: string | null;
+};

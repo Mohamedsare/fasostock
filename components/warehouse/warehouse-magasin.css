@@ -1,0 +1,13 @@
+/**
+ * Module Magasin (dépôt) — TabBar scroll horizontal sans scrollbar (comme Flutter).
+ */
+
+.warehouse-tabbar-scroll {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  touch-action: pan-x;
+}
+
+.warehouse-tabbar-scroll::-webkit-scrollbar {
+  display: none;
+}
