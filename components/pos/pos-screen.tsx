@@ -724,8 +724,8 @@ export function PosScreen({ storeId, mode }: { storeId: string; mode: PosMode })
               ) : (
                 <div
                   className={cn(
-                    "grid gap-2.5 pb-4",
-                    "grid-cols-3",
+                    "grid gap-2 pb-4 min-[380px]:gap-2.5",
+                    "grid-cols-2 min-[360px]:grid-cols-3",
                     "min-[600px]:grid-cols-4",
                     "min-[900px]:grid-cols-5",
                   )}
@@ -747,24 +747,37 @@ export function PosScreen({ storeId, mode }: { storeId: string; mode: PosMode })
                           )
                         }
                         className={cn(
-                          "flex flex-col items-center justify-center rounded-xl border border-[#E5E7EB] bg-white px-2.5 py-2.5 text-center transition active:scale-[0.98]",
+                          "flex min-w-0 flex-col items-stretch rounded-xl border border-[#E5E7EB] bg-white px-1.5 py-2 text-center transition active:scale-[0.98] min-[380px]:px-2.5 min-[380px]:py-2.5",
                           stock <= 0 && "cursor-not-allowed opacity-50",
                         )}
                         disabled={stock <= 0}
                       >
-                        <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-lg bg-[#F8F9FA]">
+                        <div className="mx-auto flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[#F8F9FA] min-[380px]:h-12 min-[380px]:w-12">
                           {thumb ? (
                             <img src={thumb} alt="" className="h-full w-full object-cover" />
                           ) : (
-                            <MdInventory2 className="h-7 w-7 text-[#F97316]/80" aria-hidden />
+                            <MdInventory2 className="h-6 w-6 text-[#F97316]/80 min-[380px]:h-7 min-[380px]:w-7" aria-hidden />
                           )}
                         </div>
-                        <p className="mt-1.5 line-clamp-2 min-h-[2.5rem] text-[13px] font-semibold leading-snug text-[#1F2937]">
-                          {p.name}
-                        </p>
-                        <p className="mt-1 text-sm font-bold text-[#F97316]">
-                          {formatCurrency(Number(p.sale_price ?? 0))}
-                        </p>
+                        <div className="mt-1.5 flex min-h-0 min-w-0 flex-1 flex-col justify-between gap-0.5">
+                          <p
+                            className={cn(
+                              "line-clamp-2 min-h-0 w-full min-w-0 hyphens-auto break-words text-balance font-semibold leading-[1.15] text-[#1F2937]",
+                              "text-[10px] min-[380px]:text-[11px] min-[480px]:text-xs min-[600px]:text-[13px]",
+                            )}
+                            title={p.name}
+                          >
+                            {p.name}
+                          </p>
+                          <p
+                            className={cn(
+                              "w-full min-w-0 shrink-0 font-bold tabular-nums text-[#F97316]",
+                              "text-[10px] min-[380px]:text-[11px] min-[480px]:text-xs min-[600px]:text-sm",
+                            )}
+                          >
+                            {formatCurrency(Number(p.sale_price ?? 0))}
+                          </p>
+                        </div>
                       </button>
                     );
                   })}
