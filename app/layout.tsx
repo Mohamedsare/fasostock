@@ -24,6 +24,11 @@ export const metadata: Metadata = {
   description:
     "Gestion de stock, ventes et dépôt — FasoStock Web (offline-first).",
   applicationName: "FasoStock",
+  icons: {
+    icon: [{ url: "/fasostocklogo.png", type: "image/png" }],
+    apple: [{ url: "/fasostocklogo.png", type: "image/png" }],
+    shortcut: [{ url: "/fasostocklogo.png", type: "image/png" }],
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",

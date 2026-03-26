@@ -1,11 +1,7 @@
 import type { MetadataRoute } from "next";
 
-/**
- * Icônes PWA : utiliser `app/icon.png` (convention Next.js → route `/icon.png`).
- * Chrome utilise surtout ces entrées pour le dialogue « Installer l’appli » ; éviter
- * un seul PNG déclaré en deux tailles si l’URL ne résout pas (fallback icône générique).
- */
-const ICON = "/icon.png";
+/** Même fichier que `public/fasostocklogo.png` (favicon + installation PWA). */
+const ICON = "/fasostocklogo.png";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
