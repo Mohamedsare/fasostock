@@ -1,20 +1,28 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
+import { broadcastOutboxFlushed, subscribeOutboxBroadcast } from "@/lib/offline";
 import { useOnlineStatus } from "@/lib/hooks/use-online-status";
-import { reportHandledClientError } from "@/lib/monitoring/remote-error-logger";
+import { logSyncFlushFailure } from "@/lib/offline";
 import { processOutbox } from "@/lib/sync/sync-manager";
 import { registerOutboxHandlers } from "@/lib/sync/register-handlers";
-import { useEffect, useRef, type ReactNode } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useCallback, useEffect, useRef, type ReactNode } from "react";
 
 const PERIODIC_MS = 90_000;
 
 /**
- * Pousse l’outbox Dexie vers Supabase quand le réseau est disponible + heartbeat périodique (comme Flutter).
+ * Sync outbox : réseau OK, handlers enregistrés, mutex côté `processOutbox`,
+ * invalidation RQ après flush, broadcast multi-onglets, flush au retour visible.
  */
 export function SyncProvider({ children }: { children: ReactNode }) {
   const online = useOnlineStatus();
+  const queryClient = useQueryClient();
   const registered = useRef(false);
+
+  const invalidateAll = useCallback(() => {
+    void queryClient.invalidateQueries();
+  }, [queryClient]);
 
   useEffect(() => {
     if (!registered.current) {
@@ -22,6 +30,10 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       registerOutboxHandlers();
     }
   }, []);
+
+  useEffect(() => {
+    return subscribeOutboxBroadcast(invalidateAll);
+  }, [invalidateAll]);
 
   useEffect(() => {
     if (!online) return;
@@ -38,19 +50,33 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       }
       try {
         const supabase = createClient();
-        await processOutbox(supabase);
+        const { processed } = await processOutbox(supabase);
+        if (processed > 0) {
+          await queryClient.invalidateQueries();
+          broadcastOutboxFlushed();
+        }
       } catch (e) {
-        reportHandledClientError(e, { source: "sync-outbox" });
+        logSyncFlushFailure(e, { phase: "flush" });
       }
     }
 
     void flush();
     const id = window.setInterval(() => void flush(), PERIODIC_MS);
+    const onOnline = () => void flush();
+    window.addEventListener("online", onOnline);
+
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") void flush();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+
     return () => {
       cancelled = true;
       window.clearInterval(id);
+      window.removeEventListener("online", onOnline);
+      document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [online]);
+  }, [online, queryClient]);
 
   return <>{children}</>;
 }

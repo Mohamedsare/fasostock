@@ -1,5 +1,6 @@
 "use client";
 
+import { enqueueOutbox } from "@/lib/db/dexie-db";
 import { createClient } from "@/lib/supabase/client";
 import { listCategories, listProducts, listStoreInventory } from "@/lib/features/products/api";
 import { listCustomers } from "@/lib/features/customers/api";
@@ -50,6 +51,26 @@ export async function createPosSale(params: {
   if (userErr) throw userErr;
   if (!user) throw new Error("Utilisateur non authentifie.");
 
+  const clientRequestId = crypto.randomUUID();
+
+  if (!navigator.onLine) {
+    await enqueueOutbox("pos_sale_create", {
+      companyId: params.companyId,
+      storeId: params.storeId,
+      customerId: params.customerId,
+      items: params.items,
+      discount: params.discount,
+      payments: params.payments,
+      saleMode: params.saleMode,
+      documentType: params.documentType,
+      p_client_request_id: clientRequestId,
+    });
+    return {
+      saleId: `offline:${clientRequestId}`,
+      saleNumber: "Hors ligne — en attente sync",
+    };
+  }
+
   const { data: saleId, error } = await supabase.rpc("create_sale_with_stock", {
     p_company_id: params.companyId,
     p_store_id: params.storeId,
@@ -69,7 +90,7 @@ export async function createPosSale(params: {
     p_discount: params.discount,
     p_sale_mode: params.saleMode,
     p_document_type: params.documentType,
-    p_client_request_id: crypto.randomUUID(),
+    p_client_request_id: clientRequestId,
   });
   if (error) throw error;
 

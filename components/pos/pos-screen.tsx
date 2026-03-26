@@ -252,7 +252,9 @@ export function PosScreen({ storeId, mode }: { storeId: string; mode: PosMode })
       setAmountReceivedTouched(false);
       setCustomerId("");
       setErrorMsg(null);
-      const msg = `Vente ${res.saleNumber} enregistrée.`;
+      const msg = res.saleId.startsWith("offline:")
+        ? "Vente enregistrée hors ligne — synchronisation automatique."
+        : `Vente ${res.saleNumber} enregistrée.`;
       setSuccessMsg(msg);
       toast.success(msg);
       setCartOpen(false);
@@ -265,6 +267,9 @@ export function PosScreen({ storeId, mode }: { storeId: string; mode: PosMode })
       ]);
 
       if (mode === "a4" && store && res.invoiceSnap) {
+        if (res.saleId.startsWith("offline:")) {
+          toast.info("Facture PDF : disponible après synchronisation (vente en file d’attente).");
+        } else
         try {
           const [{ getSaleDetail }, { buildInvoiceA4Data }, { fetchLogoBytes }] =
             await Promise.all([

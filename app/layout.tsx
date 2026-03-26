@@ -24,11 +24,10 @@ export const metadata: Metadata = {
   description:
     "Gestion de stock, ventes et dépôt — FasoStock Web (offline-first).",
   applicationName: "FasoStock",
-  icons: {
-    icon: [{ url: "/fasostocklogo.png", type: "image/png" }],
-    apple: [{ url: "/fasostocklogo.png", type: "image/png" }],
-    shortcut: [{ url: "/fasostocklogo.png", type: "image/png" }],
-  },
+  /**
+   * Favicon / icônes : fichiers `app/icon.png` et `app/apple-icon.png` (même logo que `public/fasostocklogo.png`).
+   * La convention App Router injecte les bons `<link rel="icon">` — évite l’icône Next par défaut.
+   */
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
