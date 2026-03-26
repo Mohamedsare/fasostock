@@ -144,9 +144,9 @@ export function filterNavItemsForPermissions(
     if (href === ROUTES.customers) return h.canCustomers;
     if (href === ROUTES.suppliers) return h.canSuppliers;
     if (href === ROUTES.reports) return h.canReports;
-    if (href === ROUTES.ai) return h.canAi;
+    if (href === ROUTES.ai) return h.canAi && !h.isCashier;
     if (href === ROUTES.users) return h.canUsers;
-    if (href === ROUTES.settings) return h.canSettings;
+    if (href === ROUTES.settings) return h.canSettings && !h.isCashier;
     if (href === ROUTES.transfers) return h.canTransfers;
     if (href === ROUTES.audit) return h.canAudit && !h.isOwner;
     if (href === ROUTES.help) return h.isOwner;
@@ -156,20 +156,38 @@ export function filterNavItemsForPermissions(
   });
 }
 
+/** Normalise le chemin (sans query, sans slash final) pour la garde de route. */
+function normalizeAppRoute(pathname: string): string {
+  const p = pathname.split("?")[0] ?? pathname;
+  const trimmed = p.replace(/\/+$/, "") || "/";
+  if (trimmed === "/" || trimmed === "") return ROUTES.dashboard;
+  return trimmed;
+}
+
 /**
- * Vérifie l’accès à une URL (garde de route). Aligné sur les mêmes règles que le menu.
+ * Vérifie l’accès à une URL (garde de route). Aligné sur `visibleNavItems` + `GoRouter` Flutter
+ * (sauf POS / pos-quick qui vérifient aussi des droits vente ciblés).
  */
 export function canAccessPathname(pathname: string, h: AccessHelpers | null): boolean {
   if (!h) return false;
   const p = pathname.split("?")[0] ?? pathname;
 
-  if (p.startsWith("/stores/") && (p.endsWith("/pos") || p.endsWith("/pos-quick"))) {
-    return h.canSales;
+  /** Aligné `app_router.dart` Flutter : pos-quick = `sales.create`, POS facture = `sales.invoice_a4`. */
+  if (p.startsWith("/stores/") && p.endsWith("/pos-quick")) {
+    return h.hasPermission(P.salesCreate);
+  }
+  if (p.startsWith("/stores/") && p.endsWith("/pos") && !p.endsWith("/pos-quick")) {
+    return h.hasPermission(P.salesInvoiceA4);
   }
 
-  const route = p === "/" || p === "" ? ROUTES.dashboard : p;
+  const route = normalizeAppRoute(pathname);
 
-  if (route === ROUTES.dashboard || route === "/") return h.canDashboard;
+  /**
+   * Tableau de bord : toujours accessible si connecté (même sans `dashboard.view`),
+   * comme Flutter — la page affiche « Accès restreint » + bouton Retour.
+   */
+  if (route === ROUTES.dashboard) return true;
+
   if (route.startsWith(ROUTES.products)) return h.canProducts;
   if (route.startsWith(ROUTES.sales)) return h.canSales;
   if (route.startsWith(ROUTES.stores)) return h.canStores;
@@ -181,13 +199,13 @@ export function canAccessPathname(pathname: string, h: AccessHelpers | null): bo
   if (route.startsWith(ROUTES.customers)) return h.canCustomers;
   if (route.startsWith(ROUTES.suppliers)) return h.canSuppliers;
   if (route.startsWith(ROUTES.reports)) return h.canReports;
-  if (route.startsWith(ROUTES.ai)) return h.canAi;
+  if (route.startsWith(ROUTES.ai)) return h.canAi && !h.isCashier;
   if (route.startsWith(ROUTES.users)) return h.canUsers;
   if (route.startsWith(ROUTES.audit)) return h.canAudit && !h.isOwner;
-  if (route.startsWith(ROUTES.settings)) return h.canSettings;
+  if (route.startsWith(ROUTES.settings)) return h.canSettings && !h.isCashier;
   if (route.startsWith(ROUTES.help)) return h.isOwner;
   if (route.startsWith(ROUTES.notifications)) return h.isOwner;
-  if (route.startsWith(ROUTES.integrations)) return h.canSettings || h.isOwner;
+  if (route.startsWith(ROUTES.integrations)) return (h.canSettings || h.isOwner) && !h.isCashier;
 
-  return true;
+  return false;
 }
