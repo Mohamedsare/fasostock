@@ -106,7 +106,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-dvh flex-col bg-[#FAFBFC] text-slate-900 md:flex-row">
       <aside
-        className="sticky top-0 hidden h-dvh w-[228px] shrink-0 flex-col md:flex"
+        className="sticky top-0 hidden h-dvh w-[204px] shrink-0 flex-col md:flex"
         style={{ backgroundColor: SIDEBAR_BG }}
       >
         <NavBody />

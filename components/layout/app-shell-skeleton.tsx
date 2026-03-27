@@ -15,7 +15,7 @@ export function AppShellSkeleton() {
       <div className="flex min-h-0 flex-1 overflow-hidden">
         <aside
           className={cn(
-            "hidden h-full min-h-0 w-[228px] shrink-0 flex-col border-r border-black/[0.06] bg-fs-card dark:border-white/[0.08] lg:flex",
+            "hidden h-full min-h-0 w-[204px] shrink-0 flex-col border-r border-black/[0.06] bg-fs-card dark:border-white/[0.08] lg:flex",
             "shadow-[inset_-1px_0_0_0_rgba(0,0,0,0.03)] dark:shadow-[inset_-1px_0_0_0_rgba(255,255,255,0.04)]",
           )}
           aria-hidden

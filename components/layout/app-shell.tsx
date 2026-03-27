@@ -66,9 +66,10 @@ export function AppShell({ children, userEmail }: AppShellProps) {
   const isPosRoute = /^\/stores\/[^/]+\/pos(-quick)?\/?$/.test(pathname);
   const [moreOpen, setMoreOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [clock, setClock] = useState(() =>
-    new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
-  );
+  /** Heure uniquement côté client — fuseau = celui du navigateur (pays / OS de l’utilisateur). */
+  const [clock, setClock] = useState("--:--:--");
+  const [clockIso, setClockIso] = useState("");
+  const [clockTitle, setClockTitle] = useState("Heure locale");
 
   const data = ctx.data;
   const isOwner = data?.roleSlug === "owner";
@@ -87,15 +88,26 @@ export function AppShell({ children, userEmail }: AppShellProps) {
   }, [sidebarCollapsed]);
 
   useEffect(() => {
-    const t = setInterval(() => {
+    const tick = () => {
+      const now = new Date();
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const locale =
+        typeof navigator !== "undefined" && navigator.language
+          ? navigator.language
+          : "fr-FR";
       setClock(
-        new Date().toLocaleTimeString("fr-FR", {
+        new Intl.DateTimeFormat(locale, {
+          timeZone: tz,
           hour: "2-digit",
           minute: "2-digit",
           second: "2-digit",
-        }),
+        }).format(now),
       );
-    }, 1000);
+      setClockIso(now.toISOString());
+      setClockTitle(`Heure locale · ${tz}`);
+    };
+    tick();
+    const t = setInterval(tick, 1000);
     return () => clearInterval(t);
   }, []);
 
@@ -245,9 +257,14 @@ export function AppShell({ children, userEmail }: AppShellProps) {
                 )}
               </button>
               <div className="mx-auto min-w-0">
-                <div className={shellClockPillClass}>
+                <div className={shellClockPillClass} title={clockTitle}>
                   <Clock3 className="h-4 w-4 shrink-0 text-fs-accent" aria-hidden />
-                  <p className="text-sm font-semibold tabular-nums text-fs-text">{clock}</p>
+                  <time
+                    dateTime={clockIso || undefined}
+                    className="text-sm font-semibold tabular-nums text-fs-text"
+                  >
+                    {clock}
+                  </time>
                 </div>
               </div>
               <div className="ml-auto flex items-center gap-1.5">

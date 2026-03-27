@@ -37,7 +37,7 @@ export function AppSidebar({
         "border-r border-black/[0.06] dark:border-white/[0.08]",
         "bg-fs-card shadow-[inset_-1px_0_0_0_rgba(0,0,0,0.03)] dark:shadow-[inset_-1px_0_0_0_rgba(255,255,255,0.04)]",
         "transition-[width] duration-300 ease-[cubic-bezier(0.33,1,0.68,1)]",
-        collapsed ? "w-[64px]" : "w-[228px]",
+        collapsed ? "w-[58px]" : "w-[204px]",
       )}
       aria-label="Navigation"
     >
