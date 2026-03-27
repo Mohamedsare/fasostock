@@ -1,12 +1,20 @@
 "use client";
 
 import { OfflineStrip } from "@/components/offline/offline-strip";
+import { AppShellSkeleton } from "@/components/layout/app-shell-skeleton";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { MoreSheet } from "@/components/layout/more-sheet";
+import {
+  shellBottomNavBarClass,
+  shellClockPillClass,
+  shellMobileTabActiveClass,
+  shellMobileTabInactiveClass,
+  shellToolbarIconButtonClass,
+  shellTopBarClass,
+} from "@/components/layout/shell-chrome";
 import { ROUTES } from "@/lib/config/routes";
 import { OwnerNotificationsBell } from "@/components/layout/owner-notifications-bell";
 import { NAV_ITEMS } from "@/lib/config/navigation";
-import { getPageTitle } from "@/lib/config/page-title";
 import { useAppContext } from "@/lib/features/common/app-context";
 import { usePermissions } from "@/lib/features/permissions/use-permissions";
 import { useDesktopNav } from "@/lib/hooks/use-media-query";
@@ -140,8 +148,6 @@ export function AppShell({ children, userEmail }: AppShellProps) {
     return visibleNav.filter((i) => !bottomSet.has(i.href));
   }, [visibleNav]);
 
-  const pageTitle = getPageTitle(pathname);
-
   function isActive(href: string): boolean {
     if (href === "/dashboard") {
       return pathname === href || pathname === "/";
@@ -151,9 +157,9 @@ export function AppShell({ children, userEmail }: AppShellProps) {
 
   if (ctx.isLoading) {
     return (
-      <div className="flex min-h-dvh flex-col items-center justify-center bg-fs-surface">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-fs-accent border-t-transparent" />
-        <p className="mt-4 max-w-sm px-4 text-center text-xs text-neutral-500">
+      <div className="relative min-h-dvh bg-fs-surface">
+        <AppShellSkeleton />
+        <p className="pointer-events-none absolute bottom-6 left-0 right-0 text-center text-xs text-neutral-500">
           Chargement du compte… Si cela dure, vérifiez la connexion ou réessayez.
         </p>
       </div>
@@ -220,24 +226,31 @@ export function AppShell({ children, userEmail }: AppShellProps) {
           )}
         >
           {isDesktop ? (
-            <header className="sticky top-0 z-40 flex h-[58px] shrink-0 items-center border-b border-black/[0.06] bg-fs-card/95 px-3 backdrop-blur supports-[backdrop-filter]:bg-fs-card/80">
+            <header
+              className={cn(
+                "sticky top-0 z-40 flex h-[58px] shrink-0 items-center gap-2 px-3",
+                shellTopBarClass,
+              )}
+            >
               <button
                 type="button"
                 onClick={() => setSidebarCollapsed((v) => !v)}
-                className="rounded-lg p-2 text-neutral-700 hover:bg-fs-surface-container"
+                className={shellToolbarIconButtonClass}
                 aria-label={sidebarCollapsed ? "Ouvrir le menu" : "Réduire le menu"}
               >
                 {sidebarCollapsed ? (
-                  <PanelLeftOpen className="h-6 w-6" aria-hidden />
+                  <PanelLeftOpen className="h-5 w-5" aria-hidden />
                 ) : (
-                  <Menu className="h-6 w-6" aria-hidden />
+                  <Menu className="h-5 w-5" aria-hidden />
                 )}
               </button>
-              <div className="mx-auto inline-flex items-center gap-2 rounded-lg border border-black/[0.08] bg-fs-surface-container px-3 py-1.5">
-                <Clock3 className="h-4 w-4 text-[var(--fs-accent)]" aria-hidden />
-                <p className="text-sm font-semibold tabular-nums text-fs-text">{clock}</p>
+              <div className="mx-auto min-w-0">
+                <div className={shellClockPillClass}>
+                  <Clock3 className="h-4 w-4 shrink-0 text-fs-accent" aria-hidden />
+                  <p className="text-sm font-semibold tabular-nums text-fs-text">{clock}</p>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="ml-auto flex items-center gap-1.5">
                 {isOwner && data?.companyId ? (
                   <OwnerNotificationsBell
                     companyId={data.companyId}
@@ -247,7 +260,7 @@ export function AppShell({ children, userEmail }: AppShellProps) {
                 <button
                   type="button"
                   onClick={() => void signOutAndRedirect(router, { queryClient })}
-                  className="rounded-lg p-2 text-neutral-700 hover:bg-fs-surface-container"
+                  className={shellToolbarIconButtonClass}
                   aria-label="Déconnexion"
                 >
                   <LogOut className="h-5 w-5" aria-hidden />
@@ -257,44 +270,43 @@ export function AppShell({ children, userEmail }: AppShellProps) {
           ) : (
             <header
               className={cn(
-                "sticky top-0 z-40 flex h-[52px] shrink-0 items-center justify-between gap-2 border-b border-black/[0.06] bg-fs-card",
+                "sticky top-0 z-40 flex h-[58px] shrink-0 items-center justify-between gap-2",
+                shellTopBarClass,
                 "px-3 pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))]",
               )}
             >
-              <div className="flex min-w-0 flex-1 items-center gap-1.5">
+              <div className="flex min-w-0 flex-1 items-center gap-2">
                 <Link
                   href="/dashboard"
-                  className="min-w-0 shrink text-base font-bold tracking-tight text-fs-text"
+                  className="flex min-w-0 shrink items-center gap-2 rounded-2xl py-1 pr-2 outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-[var(--fs-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-fs-card"
                 >
-                  Faso<span className="text-[var(--fs-accent)]">Stock</span>
+                  <span
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[color-mix(in_srgb,var(--fs-accent)_14%,transparent)] ring-1 ring-[color-mix(in_srgb,var(--fs-accent)_22%,transparent)]"
+                    aria-hidden
+                  >
+                    <Package className="h-[18px] w-[18px] text-[var(--fs-accent)]" strokeWidth={2.25} />
+                  </span>
+                  <span className="min-w-0 text-base font-bold tracking-tight text-fs-text">
+                    Faso<span className="text-[var(--fs-accent)]">Stock</span>
+                  </span>
                 </Link>
                 {!isPosRoute && primaryMobile.length > 0 ? (
                   <button
                     type="button"
                     onClick={() => setMoreOpen(true)}
-                    className={cn(
-                      "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
-                      "text-neutral-500 transition-colors active:bg-black/[0.06] dark:text-neutral-400 dark:active:bg-white/[0.08]",
-                    )}
+                    className={shellToolbarIconButtonClass}
                     aria-label="Menu et autres sections"
                     aria-expanded={moreOpen}
                     aria-haspopup="dialog"
                   >
-                    <Menu
-                      className="size-[17px]"
-                      strokeWidth={1.35}
-                      aria-hidden
-                    />
+                    <Menu className="h-5 w-5" strokeWidth={2} aria-hidden />
                   </button>
                 ) : null}
               </div>
               <button
                 type="button"
                 onClick={() => void signOutAndRedirect(router, { queryClient })}
-                className={cn(
-                  "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
-                  "text-neutral-500 transition-colors active:bg-black/[0.06] dark:text-neutral-400 dark:active:bg-white/[0.08]",
-                )}
+                className={shellToolbarIconButtonClass}
                 aria-label="Déconnexion"
               >
                 <LogOut className="h-5 w-5" aria-hidden />
@@ -306,8 +318,8 @@ export function AppShell({ children, userEmail }: AppShellProps) {
             className={cn(
               "flex min-h-0 flex-1 flex-col",
               !isPosRoute &&
-                (!isDesktop &&
-                  "pb-[calc(0.5rem+3.25rem+max(0.5rem,var(--fs-safe-bottom)))]"),
+                (              !isDesktop &&
+                  "pb-[calc(0.5rem+3.5rem+max(0.5rem,var(--fs-safe-bottom)))]"),
               isPosRoute && "overflow-hidden",
               isDesktop && !isPosRoute && "overflow-y-auto",
             )}
@@ -319,13 +331,12 @@ export function AppShell({ children, userEmail }: AppShellProps) {
             <>
               <nav
                 className={cn(
-                  "fixed bottom-0 left-0 right-0 z-50 border-t border-black/10 bg-fs-card/95 pb-[max(0.5rem,var(--fs-safe-bottom))] pt-2",
-                  "shadow-[0_-8px_32px_-12px_rgba(0,0,0,0.08)] backdrop-blur-xl supports-[backdrop-filter]:bg-fs-card/88",
-                  "dark:border-white/10 dark:shadow-[0_-8px_32px_-12px_rgba(0,0,0,0.45)]",
+                  "fixed bottom-0 left-0 right-0 z-50 pt-2",
+                  shellBottomNavBarClass,
                 )}
                 aria-label="Navigation principale"
               >
-                <div className="mx-auto grid min-h-[52px] w-full max-w-lg grid-cols-4 items-stretch gap-0 pl-[max(0.5rem,env(safe-area-inset-left))] pr-[max(0.5rem,env(safe-area-inset-right))]">
+                <div className="mx-auto grid min-h-[56px] w-full max-w-lg grid-cols-4 items-stretch gap-1 pl-[max(0.5rem,env(safe-area-inset-left))] pr-[max(0.5rem,env(safe-area-inset-right))]">
                   {primaryMobile.map((item) => {
                     const Icon = MOBILE_ICONS[item.href] ?? item.icon;
                     const active = isActive(item.href);
@@ -336,20 +347,31 @@ export function AppShell({ children, userEmail }: AppShellProps) {
                         href={item.href}
                         aria-current={active ? "page" : undefined}
                         className={cn(
-                          "flex min-h-[52px] min-w-0 touch-manipulation select-none flex-col items-center justify-center gap-1 rounded-2xl px-1.5 transition-[color,background-color] duration-150",
-                          "active:bg-black/[0.05] dark:active:bg-white/[0.07]",
+                          "flex min-h-[56px] min-w-0 touch-manipulation select-none flex-col items-center justify-center gap-1 rounded-2xl px-1.5 transition-[color,background-color,transform] duration-200 ease-out",
                           active
-                            ? "bg-[color-mix(in_srgb,var(--fs-accent)_11%,transparent)] text-fs-accent"
-                            : "text-neutral-500 dark:text-neutral-400",
+                            ? shellMobileTabActiveClass
+                            : [
+                                shellMobileTabInactiveClass,
+                                "active:scale-[0.98] active:bg-black/[0.05] dark:active:bg-white/[0.07]",
+                              ],
                         )}
                       >
-                        <Icon
+                        <span
                           className={cn(
-                            "size-6 shrink-0",
-                            active ? "stroke-[2.5]" : "stroke-[2]",
+                            "flex items-center justify-center rounded-xl transition-colors duration-200",
+                            active
+                              ? "bg-[color-mix(in_srgb,var(--fs-accent)_18%,transparent)] p-1.5"
+                              : "p-0.5",
                           )}
                           aria-hidden
-                        />
+                        >
+                          <Icon
+                            className={cn(
+                              "size-6 shrink-0",
+                              active ? "stroke-[2.5]" : "stroke-[2]",
+                            )}
+                          />
+                        </span>
                         <span className="w-full truncate text-center text-[11px] font-semibold leading-none tracking-tight">
                           {label}
                         </span>
@@ -360,12 +382,15 @@ export function AppShell({ children, userEmail }: AppShellProps) {
                     type="button"
                     onClick={() => setMoreOpen(true)}
                     className={cn(
-                      "flex min-h-[52px] min-w-0 touch-manipulation select-none flex-col items-center justify-center gap-1 rounded-2xl px-1.5 transition-[color,background-color] duration-150",
-                      "text-neutral-500 active:bg-black/[0.05] dark:text-neutral-400 dark:active:bg-white/[0.07]",
+                      "flex min-h-[56px] min-w-0 touch-manipulation select-none flex-col items-center justify-center gap-1 rounded-2xl px-1.5 transition-[color,background-color,transform] duration-200 ease-out",
+                      shellMobileTabInactiveClass,
+                      "active:scale-[0.98] active:bg-black/[0.05] dark:active:bg-white/[0.07]",
                     )}
                     aria-label="Autres sections"
                   >
-                    <MoreHorizontal className="size-6 shrink-0 stroke-[2]" aria-hidden />
+                    <span className="flex items-center justify-center rounded-xl p-0.5" aria-hidden>
+                      <MoreHorizontal className="size-6 shrink-0 stroke-2" />
+                    </span>
                     <span className="w-full truncate text-center text-[11px] font-semibold leading-none tracking-tight">
                       Plus
                     </span>

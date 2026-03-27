@@ -36,7 +36,7 @@ Configurer dans **Supabase Dashboard → Authentication → URL** le site en pro
 
 | Dossier | Rôle |
 |--------|------|
-| `lib/supabase/` | Clients browser / server + rafraîchissement session (`middleware.ts`) |
+| `lib/supabase/` | Clients browser / server + rafraîchissement session (`proxy.ts` → `update-session.ts`) |
 | `lib/config/` | `routes.ts`, `navigation.ts` (menu aligné Flutter), `page-title.ts` |
 | `lib/db/` | Dexie — table `outbox` (file d’attente) |
 | `lib/sync/` | `processOutbox`, `registerOutboxHandler` — aligner les `kind` avec Flutter |
@@ -65,4 +65,4 @@ Toutes les entrées du menu Flutter principal ont une page squelette : `dashboar
 
 ## Notes Next.js 16
 
-Le build peut afficher un avertissement sur `middleware` → migration future vers la convention **proxy** (voir [doc Next.js](https://nextjs.org/docs/messages/middleware-to-proxy)). Le rafraîchissement de session Supabase reste fonctionnel.
+La convention **`proxy.ts`** (remplace `middleware.ts`) rafraîchit la session Supabase sur les routes matchées ; voir [Proxy](https://nextjs.org/docs/app/api-reference/file-conventions/proxy).

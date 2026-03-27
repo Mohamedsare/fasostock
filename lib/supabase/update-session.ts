@@ -1,6 +1,7 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+/** Rafraîchit la session Supabase (cookies) — invoqué depuis `proxy.ts` à chaque requête matchée. */
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
     request,

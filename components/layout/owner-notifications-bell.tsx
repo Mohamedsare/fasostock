@@ -6,6 +6,7 @@ import {
   type OwnerNotificationItem,
 } from "@/lib/features/notifications/owner-notifications";
 import { queryKeys } from "@/lib/query/query-keys";
+import { shellToolbarIconButtonClass } from "@/components/layout/shell-chrome";
 import { cn } from "@/lib/utils/cn";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -145,7 +146,7 @@ export function OwnerNotificationsBell({
           setOpen((v) => !v);
           void q.refetch();
         }}
-        className="relative rounded-lg p-2 text-neutral-700 hover:bg-fs-surface-container"
+        className={shellToolbarIconButtonClass}
         aria-label="Notifications"
         aria-expanded={open}
       >

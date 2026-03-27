@@ -28,7 +28,7 @@ export async function createClient() {
             cookieStore.set(name, value, options),
           );
         } catch {
-          /* Appel depuis un Server Component sans possibilité de set — le middleware rafraîchit la session */
+          /* Appel depuis un Server Component sans possibilité de set — le proxy (`proxy.ts`) rafraîchit la session */
         }
       },
     },
