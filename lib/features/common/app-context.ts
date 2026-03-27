@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { PERMISSIONS_ALL } from "@/lib/constants/permissions";
 import type { AppContextData } from "@/lib/features/permissions/access";
 import { reportHandledClientError } from "@/lib/monitoring/remote-error-logger";
@@ -241,8 +241,6 @@ export function useAppContext() {
     retry: 2,
   });
 
-  const sessionNullLogged = useRef(false);
-
   useEffect(() => {
     if (!q.isError || !q.error) return;
     void reportHandledClientError(q.error, {
@@ -255,21 +253,11 @@ export function useAppContext() {
     });
   }, [q.isError, q.error, q.fetchStatus, q.failureReason]);
 
-  useEffect(() => {
-    if (q.isSuccess && q.data === null) {
-      if (!sessionNullLogged.current) {
-        sessionNullLogged.current = true;
-        void reportHandledClientError(
-          new Error(
-            "fetchAppContext: session utilisateur absente côté client alors que la page (app) exige une session.",
-          ),
-          { source: "app_context_session_null", extra: { href: typeof window !== "undefined" ? window.location.href : null } },
-        );
-      }
-    } else if (q.data != null) {
-      sessionNullLogged.current = false;
-    }
-  }, [q.isSuccess, q.data]);
+  /**
+   * `data === null` = pas de session côté client (expirée, autre onglet, désync cookie / SSR).
+   * Cas métier déjà couvert par `AppRouteGuard` (« Session non synchronisée ») — **ne pas**
+   * remonter comme erreur super-admin : ce n’est pas un défaut applicatif.
+   */
 
   return q;
 }

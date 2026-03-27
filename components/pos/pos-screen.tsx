@@ -314,7 +314,13 @@ export function PosScreen({ storeId, mode }: { storeId: string; mode: PosMode })
         } catch {
           /* date serveur optionnelle */
         }
-        const ticketData = buildReceiptTicketData(store, res.saleNumber, res.receiptSnap, saleDate);
+        const ticketData = buildReceiptTicketData(
+          store,
+          res.saleNumber,
+          res.receiptSnap,
+          saleDate,
+          res.saleId,
+        );
         let auto = false;
         try {
           auto = localStorage.getItem("pos_quick_auto_print") === "true";

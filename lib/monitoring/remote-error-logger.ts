@@ -71,6 +71,8 @@ export function shouldSkipRemoteErrorLog(error: unknown): boolean {
   if (combined.includes("user aborted")) return true;
   if (combined.includes("cancelled") || combined.includes("canceled")) return true;
   if (combined.includes("load failed") && combined.includes("fetch")) return true;
+  /** Session absente / désync — état attendu, écran dédié dans `AppRouteGuard`. */
+  if (combined.includes("session utilisateur absente")) return true;
   return false;
 }
 

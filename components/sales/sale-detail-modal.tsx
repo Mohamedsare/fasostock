@@ -165,7 +165,7 @@ export function SaleDetailModal({
       toast.error("Données boutique manquantes.");
       return;
     }
-    setReceiptDialog(buildReceiptTicketDataFromSale(storeFull, sale));
+    setReceiptDialog(buildReceiptTicketDataFromSale(storeFull, sale, saleId));
   }
 
   return (

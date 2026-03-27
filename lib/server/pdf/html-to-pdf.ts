@@ -112,25 +112,36 @@ export async function htmlToPdfBufferA4(html: string): Promise<Buffer> {
   }
 }
 
-/** Ticket ~80 mm : hauteur = scroll du body (une seule ouverture de page). */
-export async function htmlToPdfBufferThermal(
-  html: string,
-  widthMm = "80mm",
-): Promise<Buffer> {
+/**
+ * Ticket thermique : **papier 80 mm**, zone utile **~72 mm** (marges ~4 mm par côté).
+ * Le PDF a une largeur de page 80 mm ; les marges réduisent la boîte de contenu à 72 mm.
+ */
+const THERMAL_PAPER_WIDTH_MM = 80;
+/** (80 − 72) / 2 — bande non imprimable typique sur rouleau 80 mm. */
+const THERMAL_SIDE_MARGIN_MM = (THERMAL_PAPER_WIDTH_MM - 72) / 2;
+
+export async function htmlToPdfBufferThermal(html: string): Promise<Buffer> {
   const browser = await getBrowser();
   const page = await browser.newPage();
   try {
+    const contentWidthPx = Math.round((72 / 25.4) * 96);
+    await page.setViewport({
+      width: contentWidthPx,
+      height: 1200,
+      deviceScaleFactor: 1,
+    });
     await page.setContent(html, { waitUntil: "load", timeout: 45_000 });
     const heightPx = await page.evaluate(() => {
       const el = document.body;
       if (!el) return 400;
       return Math.ceil(el.scrollHeight + 24);
     });
+    const m = `${THERMAL_SIDE_MARGIN_MM}mm`;
     const pdf = await page.pdf({
-      width: widthMm,
+      width: `${THERMAL_PAPER_WIDTH_MM}mm`,
       height: `${Math.max(heightPx, 200)}px`,
       printBackground: true,
-      margin: { top: "4mm", right: "2mm", bottom: "4mm", left: "2mm" },
+      margin: { top: m, right: m, bottom: m, left: m },
     });
     return Buffer.from(pdf);
   } finally {

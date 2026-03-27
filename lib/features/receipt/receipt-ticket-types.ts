@@ -11,6 +11,8 @@ export type ReceiptTicketData = {
   storeAddress: string | null;
   storePhone: string | null;
   saleNumber: string;
+  /** UUID vente (QR / traçabilité) — aligné Flutter `ReceiptTicketData.saleId`. */
+  saleId?: string | null;
   items: ReceiptTicketItem[];
   subtotal: number;
   discount: number;

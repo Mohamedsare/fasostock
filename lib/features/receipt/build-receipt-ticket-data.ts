@@ -71,6 +71,7 @@ type SaleLikeForReceipt = {
 export function buildReceiptTicketDataFromSale(
   store: Store,
   sale: SaleLikeForReceipt,
+  saleId?: string | null,
 ): ReceiptTicketData {
   const items: ReceiptTicketItem[] = sale.sale_items.map((it) => ({
     name: it.product?.name ?? "—",
@@ -83,6 +84,7 @@ export function buildReceiptTicketDataFromSale(
     storeAddress: store.address ?? null,
     storePhone: store.phone ?? null,
     saleNumber: sale.sale_number,
+    saleId: saleId ?? null,
     items,
     subtotal: sale.subtotal,
     discount: sale.discount,
@@ -101,6 +103,7 @@ export function buildReceiptTicketData(
   saleNumber: string,
   snap: PosReceiptSnap,
   date: Date,
+  saleId?: string | null,
 ): ReceiptTicketData {
   const items: ReceiptTicketItem[] = snap.cart.map((c) => ({
     name: c.name,
@@ -118,6 +121,7 @@ export function buildReceiptTicketData(
     storeAddress: store.address ?? null,
     storePhone: store.phone ?? null,
     saleNumber,
+    saleId: saleId ?? null,
     items,
     subtotal: snap.subtotal,
     discount: snap.discount,

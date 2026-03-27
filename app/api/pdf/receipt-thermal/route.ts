@@ -11,7 +11,7 @@ export async function POST(req: Request) {
   try {
     const json: unknown = await req.json();
     const data = parseReceiptThermalPayload(json);
-    const html = renderReceiptThermalHtml(data);
+    const html = await renderReceiptThermalHtml(data);
     const buf = await htmlToPdfBufferThermal(html);
     return new NextResponse(new Uint8Array(buf), {
       status: 200,
