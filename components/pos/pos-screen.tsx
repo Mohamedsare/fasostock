@@ -18,6 +18,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { InvoicePostSaleDialog } from "@/components/invoices/invoice-post-sale-dialog";
+import { PosBarcodeScannerDialog } from "@/components/pos/pos-barcode-scanner-dialog";
 import { ReceiptTicketDialog } from "@/components/pos/receipt-ticket-dialog";
 import type { InvoiceA4Data } from "@/lib/features/invoices/invoice-a4-types";
 import { printInvoicePdf } from "@/lib/features/invoices/generate-invoice-pdf";
@@ -84,6 +85,7 @@ export function PosScreen({ storeId, mode }: { storeId: string; mode: PosMode })
   const [receiptDialog, setReceiptDialog] = useState<ReceiptTicketData | null>(null);
   const [quickAutoPrint, setQuickAutoPrint] = useState(false);
   const [quickSettingsOpen, setQuickSettingsOpen] = useState(false);
+  const [barcodeScannerOpen, setBarcodeScannerOpen] = useState(false);
   const router = useRouter();
   const [clock, setClock] = useState(() =>
     new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }),
@@ -382,19 +384,30 @@ export function PosScreen({ storeId, mode }: { storeId: string; mode: PosMode })
     });
   }
 
+  /** Aligné `PosQuickPage._addByBarcode` : correspondance exacte sur `barcode` trim, puis `isProductShownOnStoreTill`. */
   function addByBarcode(code: string) {
-    const trimmed = code.trim();
+    const trimmed = code.replace(/\r|\n/g, "").trim();
     if (!trimmed) return;
     const p = products.find(
       (x) => x.is_active && x.barcode && x.barcode.trim() === trimmed,
     );
     if (!p) {
-      setErrorMsg("Aucun produit avec ce code-barres.");
+      const msg = "Aucun produit avec ce code-barres.";
+      if (mode === "quick") {
+        toast.error(msg);
+      } else {
+        setErrorMsg(msg);
+      }
       return;
     }
     const stock = stockByProductId.get(p.id) ?? 0;
     if (stock <= 0) {
-      setErrorMsg("Produit en rupture.");
+      const msg = "Produit indisponible (stock épuisé).";
+      if (mode === "quick") {
+        toast.error(msg);
+      } else {
+        setErrorMsg(msg);
+      }
       return;
     }
     addToCart(
@@ -672,22 +685,34 @@ export function PosScreen({ storeId, mode }: { storeId: string; mode: PosMode })
           {/* Zone gauche — fond blanc */}
           <main className="flex min-h-0 min-w-0 flex-1 flex-col bg-white min-[900px]:flex-[65]">
             <div className="px-4 pb-1.5 pt-2">
-              <div className="relative h-[48px]">
-                <button
-                  type="button"
-                  className="absolute left-1.5 top-1/2 z-[1] -translate-y-1/2 rounded-full p-1.5 text-[#F97316] hover:bg-black/5"
-                  aria-label="Scanner (indisponible sur web)"
-                  onClick={() =>
-                    setErrorMsg("Sur le web, saisissez le code-barres puis validez (Entree).")
-                  }
-                >
-                  <MdQrCodeScanner className="h-[24px] w-[24px]" aria-hidden />
-                </button>
+              <div
+                className={cn(
+                  "relative",
+                  mode === "quick" ? "h-[55px]" : "h-[48px]",
+                )}
+              >
+                {mode === "quick" ? (
+                  <button
+                    type="button"
+                    className="absolute left-1.5 top-1/2 z-[1] -translate-y-1/2 rounded-full p-1.5 text-[#F97316] hover:bg-black/5"
+                    title="Ouvrir le scan caméra"
+                    aria-label="Ouvrir le scan caméra"
+                    onClick={() => {
+                      setErrorMsg(null);
+                      setBarcodeScannerOpen(true);
+                    }}
+                  >
+                    <MdQrCodeScanner className="h-[26px] w-[26px]" aria-hidden />
+                  </button>
+                ) : null}
                 <MdSearch className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-[#F97316]" aria-hidden />
                 <input
                   className={cn(
                     fsInputClass(
-                      "h-[48px] rounded-xl border-[#E5E7EB] bg-white py-0 pl-12 pr-10 text-sm leading-normal text-[#1F2937] placeholder:text-[#1F2937]/50",
+                      cn(
+                        "rounded-xl border-[#E5E7EB] bg-white py-0 pr-10 text-sm leading-normal text-[#1F2937] placeholder:text-[#1F2937]/50",
+                        mode === "quick" ? "h-[55px] pl-12" : "h-[48px] pl-4",
+                      ),
                     ),
                   )}
                   value={search}
@@ -696,9 +721,20 @@ export function PosScreen({ storeId, mode }: { storeId: string; mode: PosMode })
                     setErrorMsg(null);
                   }}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter") addByBarcode(search);
+                    if (e.key === "Enter") {
+                      const v = (e.currentTarget as HTMLInputElement).value;
+                      addByBarcode(v);
+                    }
                   }}
-                  placeholder="Scanner ou rechercher un produit..."
+                  placeholder={
+                    mode === "quick"
+                      ? "Scanner ou rechercher un produit..."
+                      : "Rechercher un produit..."
+                  }
+                  autoComplete="off"
+                  spellCheck={false}
+                  enterKeyHint="done"
+                  autoFocus={mode === "quick"}
                 />
               </div>
             </div>
@@ -730,11 +766,11 @@ export function PosScreen({ storeId, mode }: { storeId: string; mode: PosMode })
               ) : (
                 <div
                   className={cn(
-                    "grid gap-2 pb-4 min-[380px]:gap-2.5",
-                    /* Moins de colonnes sur petits écrans = cartes plus larges, prix sur une ligne */
-                    "grid-cols-2 min-[480px]:grid-cols-3",
-                    "min-[680px]:grid-cols-4",
-                    "min-[1024px]:grid-cols-5",
+                    "grid pb-4",
+                    /* Caisse rapide : 2/3 colonnes mobile & tablette, 4 colonnes à partir du layout desktop (min-[900px]) */
+                    mode === "quick"
+                      ? "gap-2.5 grid-cols-2 min-[480px]:grid-cols-3 min-[900px]:grid-cols-4"
+                      : "gap-2 min-[380px]:gap-2.5 grid-cols-2 min-[480px]:grid-cols-3 min-[900px]:grid-cols-4 min-[1280px]:grid-cols-5",
                   )}
                 >
                   {filtered.map((p) => {
@@ -759,18 +795,34 @@ export function PosScreen({ storeId, mode }: { storeId: string; mode: PosMode })
                         )}
                         disabled={stock <= 0}
                       >
-                        <div className="mx-auto flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[#F8F9FA] min-[380px]:h-12 min-[380px]:w-12">
+                        <div
+                          className={cn(
+                            "mx-auto flex shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[#F8F9FA]",
+                            mode === "quick"
+                              ? "h-12 w-12"
+                              : "h-11 w-11 min-[380px]:h-12 min-[380px]:w-12",
+                          )}
+                        >
                           {thumb ? (
                             <img src={thumb} alt="" className="h-full w-full object-cover" />
                           ) : (
-                            <MdInventory2 className="h-6 w-6 text-[#F97316]/80 min-[380px]:h-7 min-[380px]:w-7" aria-hidden />
+                            <MdInventory2
+                              className={cn(
+                                "text-[#F97316]/80",
+                                mode === "quick"
+                                  ? "h-7 w-7"
+                                  : "h-6 w-6 min-[380px]:h-7 min-[380px]:w-7",
+                              )}
+                              aria-hidden
+                            />
                           )}
                         </div>
                         <div className="mt-1.5 flex min-h-0 min-w-0 flex-1 flex-col justify-between gap-1">
                           <p
                             className={cn(
                               "line-clamp-2 min-h-0 w-full min-w-0 wrap-anywhere font-semibold leading-snug text-[#1F2937]",
-                              "text-[10px] min-[380px]:text-[11px] min-[480px]:text-xs min-[600px]:text-[13px]",
+                              "text-[10px] min-[380px]:text-[11px] min-[480px]:text-xs min-[600px]:max-[899px]:text-[13px]",
+                              "min-[900px]:text-[11px]",
                             )}
                             title={p.name}
                           >
@@ -780,11 +832,28 @@ export function PosScreen({ storeId, mode }: { storeId: string; mode: PosMode })
                             className={cn(
                               "w-full min-w-0 max-w-full shrink-0 font-bold tabular-nums leading-none text-[#F97316]",
                               "whitespace-nowrap text-center overflow-hidden text-ellipsis",
-                              "text-[9px] min-[380px]:text-[10px] min-[480px]:text-[11px] min-[600px]:text-sm",
+                              "text-[9px] min-[380px]:text-[10px] min-[480px]:text-[11px] min-[600px]:max-[899px]:text-sm",
+                              "min-[900px]:text-[11px]",
                             )}
-                            title={formatCurrency(Number(p.sale_price ?? 0))}
+                            title={
+                              mode === "a4"
+                                ? `${stock} · ${formatCurrency(Number(p.sale_price ?? 0))}`
+                                : formatCurrency(Number(p.sale_price ?? 0))
+                            }
                           >
-                            {formatCurrencyWrappable(Number(p.sale_price ?? 0))}
+                            {mode === "a4" ? (
+                              <>
+                                <span className="font-bold text-[#1F2937]/85">{stock}</span>
+                                <span className="mx-0.5 font-bold text-[#1F2937]/35" aria-hidden>
+                                  ·
+                                </span>
+                                <span className="text-[#F97316]">
+                                  {formatCurrencyWrappable(Number(p.sale_price ?? 0))}
+                                </span>
+                              </>
+                            ) : (
+                              formatCurrencyWrappable(Number(p.sale_price ?? 0))
+                            )}
                           </p>
                         </div>
                       </button>
@@ -877,6 +946,17 @@ export function PosScreen({ storeId, mode }: { storeId: string; mode: PosMode })
       ) : null}
       {receiptDialog ? (
         <ReceiptTicketDialog data={receiptDialog} onClose={() => setReceiptDialog(null)} />
+      ) : null}
+
+      {mode === "quick" ? (
+        <PosBarcodeScannerDialog
+          open={barcodeScannerOpen}
+          onClose={() => setBarcodeScannerOpen(false)}
+          onDecoded={(text) => {
+            addByBarcode(text);
+          }}
+          onError={(msg) => toast.error(msg)}
+        />
       ) : null}
 
       {mode === "quick" && quickSettingsOpen && store ? (

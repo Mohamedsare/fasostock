@@ -264,7 +264,7 @@ export function DashboardScreen() {
               setScope("company");
             }}
             className={cn(
-              "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-semibold transition-colors",
+              "inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-semibold transition-colors",
               scope === "company"
                 ? "border-fs-accent/40 bg-[color-mix(in_srgb,var(--fs-accent)_18%,transparent)] text-[var(--fs-accent)]"
                 : "border-black/[0.08] bg-fs-surface text-neutral-800",
@@ -290,7 +290,7 @@ export function DashboardScreen() {
                 if (id) syncGlobalStoreFromDashboard(id);
               }}
               className={cn(
-                "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-semibold transition-colors",
+                "inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-semibold transition-colors",
                 scope === "store"
                   ? "border-fs-accent/40 bg-[color-mix(in_srgb,var(--fs-accent)_18%,transparent)] text-[var(--fs-accent)]"
                   : "border-black/[0.08] bg-fs-surface text-neutral-800",
@@ -340,7 +340,7 @@ export function DashboardScreen() {
               type="button"
               onClick={() => setPeriod(p)}
               className={cn(
-                "rounded-full px-3 py-1.5 text-sm font-semibold",
+                "rounded-lg px-3 py-1.5 text-sm font-semibold",
                 period === p
                   ? "bg-[color-mix(in_srgb,var(--fs-accent)_18%,transparent)] text-[var(--fs-accent)]"
                   : "bg-fs-surface text-neutral-700",

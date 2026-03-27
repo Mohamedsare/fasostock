@@ -579,7 +579,7 @@ export function ProductsScreen() {
                   disabled={safePage <= 0}
                   onClick={() => setPage((p) => Math.max(0, p - 1))}
                   className={cn(
-                    "inline-flex min-h-10 min-w-10 items-center justify-center rounded-full border px-2 py-2 text-sm disabled:opacity-40",
+                    "inline-flex min-h-10 min-w-10 items-center justify-center rounded-lg border px-2 py-2 text-sm disabled:opacity-40",
                     safePage <= 0
                       ? "border-black/[0.1] bg-fs-card text-neutral-500"
                       : "border-fs-accent bg-fs-accent text-white",
@@ -595,7 +595,7 @@ export function ProductsScreen() {
                   disabled={safePage >= pageCount - 1}
                   onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
                   className={cn(
-                    "inline-flex min-h-10 min-w-10 items-center justify-center rounded-full border px-2 py-2 text-sm disabled:opacity-40",
+                    "inline-flex min-h-10 min-w-10 items-center justify-center rounded-lg border px-2 py-2 text-sm disabled:opacity-40",
                     safePage >= pageCount - 1
                       ? "border-black/[0.1] bg-fs-card text-neutral-500"
                       : "border-fs-accent bg-fs-accent text-white",

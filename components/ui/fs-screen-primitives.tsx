@@ -107,7 +107,7 @@ export function FsFilterChip({
       type="button"
       onClick={onClick}
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border px-3 py-2 text-xs font-medium transition-colors sm:py-1.5 sm:text-sm",
+        "inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium transition-colors sm:py-1.5 sm:text-sm",
         selected
           ? "border-fs-accent/30 bg-[color-mix(in_srgb,var(--fs-accent)_20%,transparent)] font-semibold text-fs-accent"
           : "border-black/[0.08] bg-fs-card text-neutral-800",

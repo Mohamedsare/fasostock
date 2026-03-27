@@ -744,7 +744,7 @@ export function ReportsScreen() {
                           <td className="px-3 py-2.5 text-right">
                             <span
                               className={cn(
-                                "inline-block min-w-[2rem] rounded-full px-2 py-0.5 text-center text-[11px] font-bold",
+                                "inline-block min-w-[2rem] rounded-md px-2 py-0.5 text-center text-[11px] font-bold",
                                 i < 3
                                   ? "bg-fs-accent/20 text-fs-accent"
                                   : "bg-fs-surface-container text-neutral-600",
