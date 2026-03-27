@@ -1,7 +1,7 @@
 "use client";
 
 import { AccountLockedScreen } from "@/components/auth/account-locked-screen";
-import { AuthCard, AuthPageShell, authInputClass } from "@/components/auth/auth-page-shell";
+import { authSimpleFieldClass } from "@/components/auth/auth-page-shell";
 import { authErrorToMessage } from "@/lib/auth/auth-errors";
 import {
   getLoginLockStatus,
@@ -13,6 +13,7 @@ import { reportHandledClientError } from "@/lib/monitoring/remote-error-logger";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils/cn";
 import { AlertCircle } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, type FormEvent } from "react";
@@ -153,107 +154,125 @@ export function LoginForm() {
   }
 
   return (
-    <AuthPageShell title="FasoStock" subtitle="Connexion à votre espace">
-      <AuthCard>
-        {registered ? (
-          <div
-            className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900"
-            role="status"
-          >
-            Compte créé. Connectez-vous.
-          </div>
-        ) : null}
-
-        {!hasEnv ? (
-          <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">
-            Config Supabase manquante. Ajoutez{" "}
-            <code className="rounded bg-white/80 px-1">.env.local</code> puis
-            redémarrez le serveur.
-          </div>
-        ) : null}
-
-        {remainingAttempts != null && remainingAttempts < 5 ? (
-          <p className="mb-3 text-sm font-medium text-fs-accent">
-            Tentatives restantes : {remainingAttempts}
+    <div className="w-full">
+      <div className="rounded-2xl border border-neutral-200/80 bg-white p-5 shadow-[0_8px_32px_rgba(0,0,0,0.06)] sm:p-6">
+        <div className="flex flex-col items-center text-center">
+          <Image
+            src="/logo1.png"
+            alt=""
+            width={72}
+            height={72}
+            className="h-14 w-14 object-contain sm:h-16 sm:w-16"
+            priority
+          />
+          <h1 className="mt-2 text-2xl font-bold tracking-tight text-neutral-900 sm:text-[1.65rem]">
+            FasoStock
+          </h1>
+          <p className="mt-1 text-sm text-neutral-600 sm:text-[15px]">
+            Connexion à votre espace
           </p>
-        ) : null}
+        </div>
 
-        <form onSubmit={checkLockAndSubmit}>
-          {error ? (
+        <div className="mt-5">
+          {registered ? (
             <div
-              className="mb-4 flex gap-3 rounded-xl border border-red-200 bg-red-50/90 px-3 py-3 text-sm text-red-950"
-              role="alert"
+              className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900"
+              role="status"
             >
-              <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-red-600" />
-              <p>{error}</p>
+              Compte créé. Connectez-vous.
             </div>
           ) : null}
 
-          <label className="block">
-            <span className="mb-1.5 block text-sm font-medium text-neutral-800">
+          {!hasEnv ? (
+            <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">
+              Config Supabase manquante. Ajoutez{" "}
+              <code className="rounded bg-white/80 px-1">.env.local</code> puis
+              redémarrez le serveur.
+            </div>
+          ) : null}
+
+          {remainingAttempts != null && remainingAttempts < 5 ? (
+            <p className="mb-3 text-center text-sm font-medium text-fs-accent">
+              Tentatives restantes : {remainingAttempts}
+            </p>
+          ) : null}
+
+          <form onSubmit={checkLockAndSubmit}>
+            {error ? (
+              <div
+                className="mb-4 flex gap-3 rounded-lg border border-red-200 bg-red-50 px-3 py-3 text-sm text-red-950"
+                role="alert"
+              >
+                <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-red-600" />
+                <p>{error}</p>
+              </div>
+            ) : null}
+
+            <label htmlFor="login-email" className="sr-only">
               Email
-            </span>
+            </label>
             <input
+              id="login-email"
               type="email"
               name="email"
               autoComplete="email"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className={authInputClass}
-              placeholder="vous@exemple.com"
+              className={authSimpleFieldClass}
+              placeholder="Email"
             />
-          </label>
 
-          <label className="mt-4 block">
-            <span className="mb-1.5 block text-sm font-medium text-neutral-800">
+            <label htmlFor="login-password" className="sr-only">
               Mot de passe
-            </span>
+            </label>
             <input
+              id="login-password"
               type="password"
               name="password"
               autoComplete="current-password"
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className={authInputClass}
+              className={cn(authSimpleFieldClass, "mt-3")}
+              placeholder="Mot de passe"
             />
-          </label>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="fs-touch-target mt-6 flex w-full items-center justify-center rounded-xl bg-gradient-to-b from-fs-accent to-[#d94f1a] py-3.5 text-base font-semibold text-white shadow-[0_4px_14px_-2px_rgba(232,93,44,0.45)] transition-opacity disabled:opacity-60"
-          >
+            <button
+              type="submit"
+              disabled={loading}
+              className="fs-touch-target mt-4 flex w-full items-center justify-center rounded-lg bg-fs-accent py-3 text-base font-semibold text-white transition-opacity hover:opacity-[0.96] disabled:opacity-60"
+            >
+              {loading ? (
+                <span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+              ) : (
+                "Se connecter"
+              )}
+            </button>
+
             {loading ? (
-              <span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-            ) : (
-              "Se connecter"
-            )}
-          </button>
+              <p className="mt-2 text-center text-xs text-neutral-500">
+                {loadingLabel}
+              </p>
+            ) : null}
+          </form>
 
-          {loading ? (
-            <p className="mt-2 text-center text-xs text-neutral-500">
-              {loadingLabel}
-            </p>
-          ) : null}
-        </form>
-
-        <div className="mt-6 flex flex-col items-center justify-center gap-1 border-t border-black/[0.05] pt-5 sm:flex-row sm:gap-6">
-          <Link
-            href="/forgot-password"
-            className="fs-touch-target flex items-center justify-center px-2 py-2 text-sm font-semibold text-fs-accent underline-offset-4 hover:underline"
-          >
-            Mot de passe oublié ?
-          </Link>
-          <Link
-            href="/register"
-            className="fs-touch-target flex items-center justify-center px-2 py-2 text-sm font-semibold text-fs-accent underline-offset-4 hover:underline"
-          >
-            Créer un compte
-          </Link>
+          <div className="mt-4 flex flex-row flex-wrap items-center justify-center gap-x-6 gap-y-1.5 text-sm font-semibold text-fs-accent sm:gap-x-8">
+            <Link
+              href="/forgot-password"
+              className="fs-touch-target py-1 underline-offset-4 hover:underline"
+            >
+              Mot de passe oublié ?
+            </Link>
+            <Link
+              href="/register"
+              className="fs-touch-target py-1 underline-offset-4 hover:underline"
+            >
+              Créer un compte
+            </Link>
+          </div>
         </div>
-      </AuthCard>
-    </AuthPageShell>
+      </div>
+    </div>
   );
 }

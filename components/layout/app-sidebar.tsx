@@ -37,7 +37,7 @@ export function AppSidebar({
         "border-r border-black/[0.06] dark:border-white/[0.08]",
         "bg-fs-card shadow-[inset_-1px_0_0_0_rgba(0,0,0,0.03)] dark:shadow-[inset_-1px_0_0_0_rgba(255,255,255,0.04)]",
         "transition-[width] duration-300 ease-[cubic-bezier(0.33,1,0.68,1)]",
-        collapsed ? "w-[72px]" : "w-[260px]",
+        collapsed ? "w-[64px]" : "w-[228px]",
       )}
       aria-label="Navigation"
     >
@@ -66,15 +66,12 @@ export function AppSidebar({
             className={cn(
               "flex shrink-0 items-center justify-center rounded-xl bg-[color-mix(in_srgb,var(--fs-accent)_14%,transparent)]",
               "ring-1 ring-[color-mix(in_srgb,var(--fs-accent)_22%,transparent)]",
-              collapsed ? "h-10 w-10" : "h-9 w-9",
+              collapsed ? "h-9 w-9" : "h-8 w-8",
             )}
             aria-hidden
           >
             <Package
-              className={cn(
-                "text-[var(--fs-accent)]",
-                collapsed ? "h-5 w-5" : "h-[18px] w-[18px]",
-              )}
+              className="h-4 w-4 text-[var(--fs-accent)]"
               strokeWidth={2.25}
             />
           </span>
@@ -131,12 +128,12 @@ export function AppSidebar({
                   active
                     ? "bg-[color-mix(in_srgb,var(--fs-accent)_18%,transparent)] text-[var(--fs-accent)]"
                     : "bg-black/[0.04] text-neutral-600 group-hover/nav:bg-black/[0.07] group-hover/nav:text-neutral-800 dark:bg-white/[0.06] dark:text-neutral-400 dark:group-hover/nav:bg-white/[0.1] dark:group-hover/nav:text-fs-text",
-                  collapsed ? "h-10 w-10" : "h-9 w-9",
+                  collapsed ? "h-9 w-9" : "h-8 w-8",
                 )}
                 aria-hidden
               >
                 <Icon
-                  className={cn(collapsed ? "h-5 w-5" : "h-[18px] w-[18px]")}
+                  className="h-4 w-4"
                   strokeWidth={active ? 2.35 : 2}
                 />
               </span>
@@ -163,7 +160,7 @@ export function AppSidebar({
           title={collapsed ? "Agrandir le menu" : "Réduire le menu"}
         >
           {collapsed ? (
-            <PanelLeftOpen className="h-5 w-5 shrink-0 text-[var(--fs-accent)]" aria-hidden />
+            <PanelLeftOpen className="h-4 w-4 shrink-0 text-[var(--fs-accent)]" aria-hidden />
           ) : (
             <>
               <span className="flex items-center gap-2 text-xs font-semibold">
@@ -188,7 +185,7 @@ export function AppSidebar({
             {!collapsed ? (
               <div className="flex items-center gap-2.5">
                 <span
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[color-mix(in_srgb,var(--fs-accent)_12%,transparent)] text-[11px] font-bold tabular-nums text-[var(--fs-accent)] ring-1 ring-[color-mix(in_srgb,var(--fs-accent)_20%,transparent)]"
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[color-mix(in_srgb,var(--fs-accent)_12%,transparent)] text-[10px] font-bold tabular-nums text-[var(--fs-accent)] ring-1 ring-[color-mix(in_srgb,var(--fs-accent)_20%,transparent)]"
                   aria-hidden
                 >
                   {navInitials(userEmail)}
@@ -202,7 +199,7 @@ export function AppSidebar({
               </div>
             ) : (
               <span
-                className="flex h-10 w-10 items-center justify-center rounded-xl bg-[color-mix(in_srgb,var(--fs-accent)_12%,transparent)] text-[11px] font-bold tabular-nums text-[var(--fs-accent)] ring-1 ring-[color-mix(in_srgb,var(--fs-accent)_20%,transparent)]"
+                className="flex h-9 w-9 items-center justify-center rounded-xl bg-[color-mix(in_srgb,var(--fs-accent)_12%,transparent)] text-[10px] font-bold tabular-nums text-[var(--fs-accent)] ring-1 ring-[color-mix(in_srgb,var(--fs-accent)_20%,transparent)]"
                 title={userEmail}
               >
                 {navInitials(userEmail)}

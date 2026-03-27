@@ -14,9 +14,5 @@ export default async function RegisterPage() {
   } = await supabase.auth.getUser();
   if (user) redirect("/dashboard");
 
-  return (
-    <div className="flex flex-1 flex-col py-4 sm:py-6">
-      <RegisterForm />
-    </div>
-  );
+  return <RegisterForm />;
 }

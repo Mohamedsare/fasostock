@@ -14,9 +14,5 @@ export default async function ForgotPasswordPage() {
   } = await supabase.auth.getUser();
   if (user) redirect("/dashboard");
 
-  return (
-    <div className="flex flex-1 flex-col justify-center py-4">
-      <ForgotPasswordForm />
-    </div>
-  );
+  return <ForgotPasswordForm />;
 }

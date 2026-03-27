@@ -58,10 +58,10 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       <div className="border-b border-white/10 px-4 py-5">
         <div className="flex items-center gap-3">
           <div
-            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-orange-500/40"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-orange-500/40"
             style={{ backgroundColor: `${ACCENT}33` }}
           >
-            <MdShield className="h-7 w-7" style={{ color: ACCENT }} aria-hidden />
+            <MdShield className="h-6 w-6" style={{ color: ACCENT }} aria-hidden />
           </div>
           <div className="min-w-0">
             <p className="text-lg font-extrabold tracking-tight text-slate-100">Plateforme</p>
@@ -84,7 +84,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               )}
               style={active ? { backgroundColor: `${ACCENT}22`, borderLeft: `3px solid ${ACCENT}` } : undefined}
             >
-              <Icon className="h-5 w-5 shrink-0" style={{ color: active ? ACCENT : undefined }} aria-hidden />
+              <Icon className="h-4 w-4 shrink-0" style={{ color: active ? ACCENT : undefined }} aria-hidden />
               <span className="truncate">{item.label}</span>
             </Link>
           );
@@ -96,7 +96,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           onClick={() => void signOut()}
           className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-red-300 hover:bg-red-500/10"
         >
-          <MdLogout className="h-5 w-5 shrink-0" aria-hidden />
+          <MdLogout className="h-4 w-4 shrink-0" aria-hidden />
           Déconnexion
         </button>
       </div>
@@ -106,7 +106,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-dvh flex-col bg-[#FAFBFC] text-slate-900 md:flex-row">
       <aside
-        className="sticky top-0 hidden h-dvh w-[260px] shrink-0 flex-col md:flex"
+        className="sticky top-0 hidden h-dvh w-[228px] shrink-0 flex-col md:flex"
         style={{ backgroundColor: SIDEBAR_BG }}
       >
         <NavBody />

@@ -13,6 +13,13 @@ export const authInputClass = cn(
   "focus:border-fs-accent focus:bg-white focus:shadow-[0_0_0_3px_rgba(232,93,44,0.18)]",
 );
 
+/** Style carte simple (login / inscription) — fond gris clair, bordure discrète. */
+export const authSimpleFieldClass = cn(
+  "w-full rounded-lg border border-neutral-200 bg-neutral-100 px-3.5 py-2.5 text-[15px] text-neutral-900 shadow-none outline-none transition-colors",
+  "placeholder:text-neutral-500",
+  "focus:border-fs-accent focus:bg-white focus:ring-2 focus:ring-fs-accent/15",
+);
+
 type AuthPageShellProps = {
   children: ReactNode;
   title?: string;
@@ -55,7 +62,7 @@ export function AuthPageShell({
       <div className="text-center">
         <div className="mx-auto flex flex-col items-center gap-0.5">
           <Image
-            src="/fasostocklogo.png"
+            src="/logo1.png"
             alt={title ? "" : "FasoStock"}
             width={112}
             height={112}

@@ -467,6 +467,7 @@ export function InventoryScreen() {
                 inputMode="numeric"
                 value={thresholdInput}
                 onChange={(e) => setThresholdInput(e.target.value)}
+                placeholder="5"
               />
               <button
                 type="button"
@@ -779,7 +780,7 @@ export function InventoryScreen() {
           setAdjustTarget(null);
         }}
         productName={adjustTarget?.name ?? ""}
-        imageUrl={adjustTarget?.imageUrl ?? null}
+        unit={adjustTarget?.unit ?? "pce"}
         currentQty={adjustTarget?.availableQuantity ?? 0}
         onConfirm={async ({ delta, reason }) => {
           if (!adjustTarget) return;
