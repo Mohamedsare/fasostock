@@ -1,6 +1,7 @@
 "use client";
 
 import { OfflineStrip } from "@/components/offline/offline-strip";
+import { AppSidebar } from "@/components/layout/app-sidebar";
 import { MoreSheet } from "@/components/layout/more-sheet";
 import { ROUTES } from "@/lib/config/routes";
 import { OwnerNotificationsBell } from "@/components/layout/owner-notifications-bell";
@@ -203,93 +204,13 @@ export function AppShell({ children, userEmail }: AppShellProps) {
         )}
       >
         {isDesktop ? (
-          <aside
-            className={cn(
-              "flex h-full min-h-0 shrink-0 flex-col border-r border-black/[0.06] bg-gradient-to-br from-fs-card to-fs-surface-container transition-[width] duration-300",
-              sidebarCollapsed ? "w-16" : "w-[228px]",
-            )}
-            aria-label="Navigation"
-          >
-            <div
-              className={cn(
-                "flex h-[58px] items-center border-b border-black/[0.06]",
-                sidebarCollapsed ? "justify-center px-2" : "px-4",
-              )}
-            >
-              <Link
-                href="/dashboard"
-                className={cn(
-                  "font-bold tracking-tight text-[var(--fs-accent)]",
-                  sidebarCollapsed ? "text-base" : "text-lg",
-                )}
-              >
-                {sidebarCollapsed ? "FS" : "FasoStock"}
-              </Link>
-            </div>
-            <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto p-2">
-              {visibleNav.map((item) => {
-                const Icon = item.icon;
-                const active = isActive(item.href);
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    title={sidebarCollapsed ? item.label : undefined}
-                    className={cn(
-                      "relative flex items-center rounded-xl text-sm font-medium transition-colors",
-                      sidebarCollapsed
-                        ? "justify-center px-2 py-2.5"
-                        : "gap-3 px-3 py-2.5",
-                      active
-                        ? "bg-[color-mix(in_srgb,var(--fs-accent)_12%,transparent)] text-[var(--fs-accent)]"
-                        : "text-neutral-700 hover:bg-fs-surface-container",
-                    )}
-                  >
-                    {active ? (
-                      <span className="absolute left-0 top-2 bottom-2 w-[3px] rounded-r bg-[var(--fs-accent)]" />
-                    ) : null}
-                    <Icon
-                      className={cn(
-                        "shrink-0",
-                        sidebarCollapsed ? "h-7 w-7" : "h-5 w-5",
-                      )}
-                      strokeWidth={active ? 2.25 : 2}
-                    />
-                    {!sidebarCollapsed ? <span className="truncate">{item.label}</span> : null}
-                  </Link>
-                );
-              })}
-            </nav>
-            <div className="border-t border-black/[0.06] p-2">
-              <button
-                type="button"
-                onClick={() => setSidebarCollapsed((v) => !v)}
-                className={cn(
-                  "w-full rounded-xl border border-black/[0.08] bg-fs-card text-neutral-700",
-                  sidebarCollapsed
-                    ? "inline-flex items-center justify-center p-2.5"
-                    : "inline-flex items-center justify-center gap-2 px-3 py-2.5 text-xs font-semibold",
-                )}
-                title={sidebarCollapsed ? "Agrandir le menu" : "Réduire le menu"}
-              >
-                {sidebarCollapsed ? (
-                  <PanelLeftOpen className="h-7 w-7" aria-hidden />
-                ) : (
-                  <>
-                    <Menu className="h-4 w-4" aria-hidden />
-                    Réduire le menu
-                  </>
-                )}
-              </button>
-            </div>
-            {userEmail ? (
-              <div className="border-t border-black/[0.06] p-3">
-                {!sidebarCollapsed ? (
-                  <p className="truncate text-xs text-neutral-500">{userEmail}</p>
-                ) : null}
-              </div>
-            ) : null}
-          </aside>
+          <AppSidebar
+            collapsed={sidebarCollapsed}
+            onToggleCollapsed={() => setSidebarCollapsed((v) => !v)}
+            items={visibleNav}
+            userEmail={userEmail}
+            isActive={isActive}
+          />
         ) : null}
 
         <div
