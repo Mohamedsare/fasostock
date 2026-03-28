@@ -81,6 +81,7 @@ export function buildReceiptTicketDataFromSale(
   }));
   return {
     storeName: store.name,
+    storeLogoUrl: store.logo_url ?? null,
     storeAddress: store.address ?? null,
     storePhone: store.phone ?? null,
     saleNumber: sale.sale_number,
@@ -118,6 +119,7 @@ export function buildReceiptTicketData(
 
   return {
     storeName: store.name,
+    storeLogoUrl: store.logo_url ?? null,
     storeAddress: store.address ?? null,
     storePhone: store.phone ?? null,
     saleNumber,

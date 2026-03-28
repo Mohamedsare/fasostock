@@ -38,6 +38,12 @@ export async function renderReceiptThermalHtml(
   });
 
   const parts: string[] = [];
+  const logoUrl = data.storeLogoUrl?.trim();
+  if (logoUrl) {
+    parts.push(
+      `<div class="logo-wrap"><img src="${escapeHtml(logoUrl)}" alt="" /></div>`,
+    );
+  }
   parts.push(
     `<div class="store">${tx(data.storeName).toUpperCase()}</div>`,
   );
@@ -138,6 +144,20 @@ export async function renderReceiptThermalHtml(
     color: #000;
   }
   .mono { font-family: "Courier New", Courier, monospace; }
+  .logo-wrap {
+    text-align: center;
+    margin-bottom: 4px;
+  }
+  .logo-wrap img {
+    max-width: 248px;
+    max-height: 80px;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    object-position: center;
+    display: inline-block;
+    vertical-align: middle;
+  }
   .store {
     font-family: "Archivo Black", sans-serif;
     font-size: 25px;

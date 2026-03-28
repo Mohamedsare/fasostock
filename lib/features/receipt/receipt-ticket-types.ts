@@ -8,6 +8,8 @@ export type ReceiptTicketItem = {
 
 export type ReceiptTicketData = {
   storeName: string;
+  /** `stores.logo_url` — centré en tête (Flutter `ReceiptTicketData.storeLogoUrl`). */
+  storeLogoUrl?: string | null;
   storeAddress: string | null;
   storePhone: string | null;
   saleNumber: string;

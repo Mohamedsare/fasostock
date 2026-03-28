@@ -2,6 +2,7 @@
 
 import { Archivo_Black } from "next/font/google";
 import QRCode from "react-qr-code";
+import { useEffect, useState } from "react";
 import type { ReceiptTicketData } from "@/lib/features/receipt/receipt-ticket-types";
 import {
   RECEIPT_SEP_LONG,
@@ -31,10 +32,16 @@ export function ReceiptTicketPreview({ data }: { data: ReceiptTicketData }) {
   const isCashLike = payU === "ESPECES";
   const tel = telLine(data.storePhone);
   const qrPayload = buildReceiptQrPayload(data);
+  const [logoErr, setLogoErr] = useState(false);
+  const logoUrl = data.storeLogoUrl?.trim() ?? "";
+
+  useEffect(() => {
+    setLogoErr(false);
+  }, [logoUrl]);
 
   return (
     <div
-      className="mx-auto box-border w-[300px] max-w-full px-3 py-4"
+      className="mx-auto box-border w-[296px] max-w-full px-3 py-4"
       style={{
         backgroundColor: "#FDFBF7",
         borderWidth: 1,
@@ -45,6 +52,16 @@ export function ReceiptTicketPreview({ data }: { data: ReceiptTicketData }) {
       }}
     >
       <div style={{ fontSize: 9.5, lineHeight: 1.22 }}>
+        {logoUrl && !logoErr ? (
+          <div className="mb-2 flex justify-center">
+            <img
+              src={logoUrl}
+              alt=""
+              className="max-h-[80px] max-w-[248px] object-contain object-center"
+              onError={() => setLogoErr(true)}
+            />
+          </div>
+        ) : null}
         <p
           className={`${archivoBlack.className} text-center uppercase`}
           style={{
@@ -61,26 +78,20 @@ export function ReceiptTicketPreview({ data }: { data: ReceiptTicketData }) {
           {data.storeName.toUpperCase()}
         </p>
         {data.storeAddress?.trim() ? (
-          <>
-            <div style={{ height: 4 }} />
-            <p
-              className="text-center"
-              style={{ fontFamily: mono, fontSize: 9, margin: 0 }}
-            >
-              {data.storeAddress.trim()}
-            </p>
-          </>
+          <p
+            className="text-center"
+            style={{ fontFamily: mono, fontSize: 9, margin: 0 }}
+          >
+            {data.storeAddress.trim()}
+          </p>
         ) : null}
         {tel ? (
-          <>
-            <div style={{ height: 2 }} />
-            <p
-              className="text-center"
-              style={{ fontFamily: mono, fontSize: 9, margin: 0 }}
-            >
-              {tel}
-            </p>
-          </>
+          <p
+            className="text-center"
+            style={{ fontFamily: mono, fontSize: 9, margin: 0 }}
+          >
+            {tel}
+          </p>
         ) : null}
         <div style={{ height: 8 }} />
         <p
