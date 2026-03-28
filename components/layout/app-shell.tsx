@@ -66,6 +66,7 @@ export function AppShell({ children, userEmail }: AppShellProps) {
   const isPosRoute = /^\/stores\/[^/]+\/pos(-quick)?\/?$/.test(pathname);
   const [moreOpen, setMoreOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileBrandLogoErr, setMobileBrandLogoErr] = useState(false);
   /** Heure uniquement côté client — fuseau = celui du navigateur (pays / OS de l’utilisateur). */
   const [clock, setClock] = useState("--:--:--");
   const [clockIso, setClockIso] = useState("");
@@ -86,6 +87,10 @@ export function AppShell({ children, userEmail }: AppShellProps) {
   useEffect(() => {
     localStorage.setItem("fs_sidebar_collapsed", sidebarCollapsed ? "1" : "0");
   }, [sidebarCollapsed]);
+
+  useEffect(() => {
+    setMobileBrandLogoErr(false);
+  }, [data?.companyLogoUrl]);
 
   useEffect(() => {
     const tick = () => {
@@ -228,6 +233,7 @@ export function AppShell({ children, userEmail }: AppShellProps) {
             items={visibleNav}
             userEmail={userEmail}
             isActive={isActive}
+            companyLogoUrl={data?.companyLogoUrl ?? null}
           />
         ) : null}
 
@@ -298,10 +304,27 @@ export function AppShell({ children, userEmail }: AppShellProps) {
                   className="flex min-w-0 shrink items-center gap-2 rounded-2xl py-1 pr-2 outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-[var(--fs-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-fs-card"
                 >
                   <span
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[color-mix(in_srgb,var(--fs-accent)_14%,transparent)] ring-1 ring-[color-mix(in_srgb,var(--fs-accent)_22%,transparent)]"
+                    className={cn(
+                      "flex h-9 w-9 shrink-0 items-center justify-center",
+                      data?.companyLogoUrl && !mobileBrandLogoErr
+                        ? "rounded-none bg-transparent p-0 ring-0"
+                        : "rounded-xl bg-[color-mix(in_srgb,var(--fs-accent)_14%,transparent)] ring-1 ring-[color-mix(in_srgb,var(--fs-accent)_22%,transparent)]",
+                    )}
                     aria-hidden
                   >
-                    <Package className="h-[18px] w-[18px] text-[var(--fs-accent)]" strokeWidth={2.25} />
+                    {data?.companyLogoUrl && !mobileBrandLogoErr ? (
+                      <img
+                        src={data.companyLogoUrl}
+                        alt=""
+                        className="h-full w-full object-contain object-center"
+                        onError={() => setMobileBrandLogoErr(true)}
+                      />
+                    ) : (
+                      <Package
+                        className="h-[18px] w-[18px] text-[var(--fs-accent)]"
+                        strokeWidth={2.25}
+                      />
+                    )}
                   </span>
                   <span className="min-w-0 text-base font-bold tracking-tight text-fs-text">
                     Faso<span className="text-[var(--fs-accent)]">Stock</span>

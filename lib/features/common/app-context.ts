@@ -124,6 +124,7 @@ async function fetchAppContext(): Promise<AppContextData | null> {
     return {
       companyId: "",
       companyName: "",
+      companyLogoUrl: null,
       storeId: null,
       stores: [],
       isSuperAdmin,
@@ -135,7 +136,7 @@ async function fetchAppContext(): Promise<AppContextData | null> {
   const primaryCompanyId = pickActiveCompanyId(orderedCompanyIds);
   const { data: companyRow, error: cErr } = await supabase
     .from("companies")
-    .select("id, name")
+    .select("id, name, logo_url")
     .eq("id", primaryCompanyId)
     .maybeSingle();
   if (cErr) throw mapSupabaseError(cErr);
@@ -152,6 +153,7 @@ async function fetchAppContext(): Promise<AppContextData | null> {
     return {
       companyId: "",
       companyName: "",
+      companyLogoUrl: null,
       storeId: null,
       stores: [],
       isSuperAdmin,
@@ -162,6 +164,8 @@ async function fetchAppContext(): Promise<AppContextData | null> {
 
   const companyId = companyRow.id as string;
   const companyName = (companyRow.name as string) ?? "Entreprise";
+  const companyLogoUrl =
+    ((companyRow as { logo_url?: string | null }).logo_url ?? null)?.trim() || null;
 
   if (isSuperAdmin) {
     const { data: stores } = await supabase
@@ -178,6 +182,7 @@ async function fetchAppContext(): Promise<AppContextData | null> {
     return {
       companyId,
       companyName,
+      companyLogoUrl,
       storeId: pickActiveStoreId(mapped),
       stores: mapped,
       isSuperAdmin: true,
@@ -221,6 +226,7 @@ async function fetchAppContext(): Promise<AppContextData | null> {
   return {
     companyId,
     companyName,
+    companyLogoUrl,
     storeId: pickActiveStoreId(mapped),
     stores: mapped,
     isSuperAdmin: false,

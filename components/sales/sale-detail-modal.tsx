@@ -82,10 +82,10 @@ export function SaleDetailModal({
   });
 
   const sale = q.data;
-  const storeFull =
-    sale && storesQ.data
-      ? storesQ.data.find((s) => s.id === sale.store_id) ?? null
-      : null;
+  const storesList = Array.isArray(storesQ.data) ? storesQ.data : [];
+  const storeFull = sale
+    ? storesList.find((s) => s.id === sale.store_id) ?? null
+    : null;
 
   const hasItems = Boolean(sale?.sale_items && sale.sale_items.length > 0);
   const canInvoiceActions =

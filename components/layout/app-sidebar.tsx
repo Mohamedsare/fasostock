@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils/cn";
 import type { NavItem } from "@/lib/config/navigation";
 import { ChevronLeft, Menu, Package, PanelLeftOpen } from "lucide-react";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 
 function navInitials(email: string): string {
   const local = email.split("@")[0]?.trim() ?? "";
@@ -21,6 +22,8 @@ type AppSidebarProps = {
   items: NavItem[];
   userEmail?: string | null;
   isActive: (href: string) => boolean;
+  /** `companies.logo_url` — même idée que `AppShell` Flutter (logo au-dessus du menu). */
+  companyLogoUrl?: string | null;
 };
 
 export function AppSidebar({
@@ -29,7 +32,13 @@ export function AppSidebar({
   items,
   userEmail,
   isActive,
+  companyLogoUrl,
 }: AppSidebarProps) {
+  const [brandLogoErr, setBrandLogoErr] = useState(false);
+  useEffect(() => {
+    setBrandLogoErr(false);
+  }, [companyLogoUrl]);
+
   return (
     <aside
       className={cn(
@@ -64,16 +73,33 @@ export function AppSidebar({
         >
           <span
             className={cn(
-              "flex shrink-0 items-center justify-center rounded-xl bg-[color-mix(in_srgb,var(--fs-accent)_14%,transparent)]",
-              "ring-1 ring-[color-mix(in_srgb,var(--fs-accent)_22%,transparent)]",
-              collapsed ? "h-9 w-9" : "h-8 w-8",
+              "flex shrink-0 items-center justify-center",
+              companyLogoUrl && !brandLogoErr
+                ? cn(
+                    "rounded-none bg-transparent p-0 ring-0",
+                    collapsed ? "h-9 w-9" : "h-8 w-8",
+                  )
+                : cn(
+                    "overflow-hidden rounded-xl bg-[color-mix(in_srgb,var(--fs-accent)_14%,transparent)]",
+                    "ring-1 ring-[color-mix(in_srgb,var(--fs-accent)_22%,transparent)]",
+                    collapsed ? "h-9 w-9" : "h-8 w-8",
+                  ),
             )}
             aria-hidden
           >
-            <Package
-              className="h-4 w-4 text-[var(--fs-accent)]"
-              strokeWidth={2.25}
-            />
+            {companyLogoUrl && !brandLogoErr ? (
+              <img
+                src={companyLogoUrl}
+                alt=""
+                className="h-full w-full object-contain object-center"
+                onError={() => setBrandLogoErr(true)}
+              />
+            ) : (
+              <Package
+                className="h-4 w-4 text-[var(--fs-accent)]"
+                strokeWidth={2.25}
+              />
+            )}
           </span>
           {!collapsed ? (
             <span className="min-w-0 font-bold tracking-tight">
@@ -111,8 +137,8 @@ export function AppSidebar({
                       "dark:shadow-[0_1px_3px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.06)]",
                     ]
                   : [
-                      "text-neutral-600 hover:bg-black/[0.035] hover:text-neutral-900",
-                      "active:scale-[0.99] dark:text-neutral-400 dark:hover:bg-white/[0.06] dark:hover:text-fs-text",
+                      "text-black hover:bg-black/[0.035] hover:text-black",
+                      "active:scale-[0.99] dark:text-neutral-100 dark:hover:bg-white/[0.06] dark:hover:text-white",
                     ],
               )}
             >
@@ -127,7 +153,7 @@ export function AppSidebar({
                   "flex shrink-0 items-center justify-center rounded-xl transition-colors duration-200",
                   active
                     ? "bg-[color-mix(in_srgb,var(--fs-accent)_18%,transparent)] text-[var(--fs-accent)]"
-                    : "bg-black/[0.04] text-neutral-600 group-hover/nav:bg-black/[0.07] group-hover/nav:text-neutral-800 dark:bg-white/[0.06] dark:text-neutral-400 dark:group-hover/nav:bg-white/[0.1] dark:group-hover/nav:text-fs-text",
+                    : "bg-black/[0.04] text-black group-hover/nav:bg-black/[0.07] group-hover/nav:text-black dark:bg-white/[0.06] dark:text-neutral-100 dark:group-hover/nav:bg-white/[0.1] dark:group-hover/nav:text-white",
                   collapsed ? "h-9 w-9" : "h-8 w-8",
                 )}
                 aria-hidden

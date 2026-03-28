@@ -58,7 +58,7 @@ export function StoresScreen() {
   const canCreate = hasPermission(P.storesCreate);
 
   const storesQ = useQuery({
-    queryKey: queryKeys.stores(companyId),
+    queryKey: queryKeys.storesPage(companyId),
     queryFn: () => fetchStoresPageData(companyId),
     enabled: !!companyId && canViewOrCreate,
   });

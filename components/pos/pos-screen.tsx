@@ -1,16 +1,18 @@
 "use client";
 
+import { CustomerFormDialog } from "@/components/customers/customer-form-dialog";
 import { fsInputClass } from "@/components/ui/fs-screen-primitives";
+import { createCustomer } from "@/lib/features/customers/api";
 import { P } from "@/lib/constants/permissions";
 import { usePermissions } from "@/lib/features/permissions/use-permissions";
 import { createPosSale, fetchPosData } from "@/lib/features/pos/api";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { ROUTES } from "@/lib/config/routes";
 import { queryKeys } from "@/lib/query/query-keys";
-import { readPosCartQtyUiFromStorage } from "@/lib/utils/pos-cart-settings";
+import { readPosCartQtyUiForMode } from "@/lib/utils/pos-cart-settings";
 import { ensureStringNumberMap } from "@/lib/utils/string-number-map";
 import { messageFromUnknownError, toast } from "@/lib/toast";
-import { formatCurrency, formatCurrencyWrappable, toNumber } from "@/lib/utils/currency";
+import { formatCurrency, toNumber } from "@/lib/utils/currency";
 import { cn } from "@/lib/utils/cn";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
@@ -39,6 +41,7 @@ import {
   MdLogout,
   MdLock,
   MdPayments,
+  MdPersonAdd,
   MdPrint,
   MdQrCodeScanner,
   MdReceiptLong,
@@ -79,13 +82,12 @@ export function PosScreen({ storeId, mode }: { storeId: string; mode: PosMode })
   const [amountReceivedTouched, setAmountReceivedTouched] = useState(false);
   const [customerId, setCustomerId] = useState<string>("");
   const [cartOpen, setCartOpen] = useState(false);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [invoiceDialog, setInvoiceDialog] = useState<InvoiceA4Data | null>(null);
   const [receiptDialog, setReceiptDialog] = useState<ReceiptTicketData | null>(null);
   const [quickAutoPrint, setQuickAutoPrint] = useState(false);
   const [quickSettingsOpen, setQuickSettingsOpen] = useState(false);
   const [barcodeScannerOpen, setBarcodeScannerOpen] = useState(false);
+  const [customerCreateOpen, setCustomerCreateOpen] = useState(false);
   const router = useRouter();
   const [clock, setClock] = useState(() =>
     new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }),
@@ -185,15 +187,36 @@ export function PosScreen({ storeId, mode }: { storeId: string; mode: PosMode })
       ? amountReceivedValue - total
       : Math.max(0, amountReceivedValue - total);
 
+  /** Aligné `PosQuickPage._handlePayment` / `PosPage._handlePayment` (Flutter) — validations + toasts. */
+  function getPosPayValidationError(): string | null {
+    if (cart.some((c) => c.quantity <= 0)) {
+      return "Indiquez une quantité supérieure à 0 pour chaque ligne du panier.";
+    }
+    const stockWarnings = cart.filter(
+      (c) => (stockByProductId.get(c.productId) ?? 0) < c.quantity,
+    );
+    if (stockWarnings.length > 0) {
+      return "Stock insuffisant pour certains articles.";
+    }
+    if (mode === "a4" && paymentMethod === "other" && !customerId) {
+      return "Associez un client pour une vente à crédit.";
+    }
+    if (
+      mode === "quick" &&
+      quickPayment === "cash" &&
+      amountReceivedTouched &&
+      amountReceivedValue < total
+    ) {
+      return "Montant reçu insuffisant.";
+    }
+    return null;
+  }
+
   const createMut = useMutation({
     mutationFn: async () => {
       if (cart.length === 0) throw new Error("Panier vide.");
-      if (mode === "a4" && paymentMethod === "other" && !customerId) {
-        throw new Error("Associez un client pour une vente a credit.");
-      }
-      if (mode === "quick" && quickPayment === "cash" && amountReceivedTouched && amountReceivedValue < total) {
-        throw new Error("Montant recu insuffisant.");
-      }
+      const pre = getPosPayValidationError();
+      if (pre) throw new Error(pre);
       const payments =
         mode === "quick"
           ? [{ method: quickPayment, amount: total }]
@@ -248,17 +271,22 @@ export function PosScreen({ storeId, mode }: { storeId: string; mode: PosMode })
       return { ...res, invoiceSnap, receiptSnap };
     },
     onSuccess: async (res) => {
+      const recordedTotal = total;
+      const saleNumber = res.saleNumber;
       setCart([]);
       setDiscount("0");
       setAmountReceived("");
       setAmountReceivedTouched(false);
       setCustomerId("");
-      setErrorMsg(null);
-      const msg = res.saleId.startsWith("offline:")
-        ? "Vente enregistrée hors ligne — synchronisation automatique."
-        : `Vente ${res.saleNumber} enregistrée.`;
-      setSuccessMsg(msg);
-      toast.success(msg);
+      if (res.saleId.startsWith("offline:")) {
+        toast.success(
+          "Vente enregistrée localement. Synchronisation à la reconnexion.",
+        );
+      } else {
+        toast.success(
+          `Vente #${saleNumber} enregistrée. Total: ${formatCurrency(recordedTotal)}`,
+        );
+      }
       setCartOpen(false);
       await Promise.all([
         qc.invalidateQueries({ queryKey: ["pos", mode, companyId, storeId] }),
@@ -392,22 +420,12 @@ export function PosScreen({ storeId, mode }: { storeId: string; mode: PosMode })
       (x) => x.is_active && x.barcode && x.barcode.trim() === trimmed,
     );
     if (!p) {
-      const msg = "Aucun produit avec ce code-barres.";
-      if (mode === "quick") {
-        toast.error(msg);
-      } else {
-        setErrorMsg(msg);
-      }
+      toast.error("Aucun produit avec ce code-barres.");
       return;
     }
     const stock = stockByProductId.get(p.id) ?? 0;
     if (stock <= 0) {
-      const msg = "Produit indisponible (stock épuisé).";
-      if (mode === "quick") {
-        toast.error(msg);
-      } else {
-        setErrorMsg(msg);
-      }
+      toast.error("Produit indisponible (stock épuisé).");
       return;
     }
     addToCart(
@@ -418,7 +436,6 @@ export function PosScreen({ storeId, mode }: { storeId: string; mode: PosMode })
       p.product_images?.[0]?.url ?? null,
     );
     setSearch("");
-    setErrorMsg(null);
   }
 
   function updateQty(productId: string, delta: number) {
@@ -457,8 +474,8 @@ export function PosScreen({ storeId, mode }: { storeId: string; mode: PosMode })
   }
 
   const posCartQ = useQuery({
-    queryKey: queryKeys.posCartSettings,
-    queryFn: readPosCartQtyUiFromStorage,
+    queryKey: queryKeys.posCartSettingsMode(mode),
+    queryFn: () => readPosCartQtyUiForMode(mode),
     staleTime: 0,
   });
   const posCartUi = posCartQ.data ?? {
@@ -472,13 +489,12 @@ export function PosScreen({ storeId, mode }: { storeId: string; mode: PosMode })
 
   const cartCount = cart.reduce((n, c) => n + c.quantity, 0);
 
-  /** Comme Flutter `PosQuickPage` : `context.go(stores)` sans confirmation. */
+  /** Comme Flutter `PosQuickPage._leavePosToSalesScreen` : Ventes + boutique courante. */
   function exitPos() {
-    router.push("/stores");
+    router.push(`${ROUTES.sales}?store=${encodeURIComponent(storeId)}`);
   }
 
   async function handleRefreshPos() {
-    setErrorMsg(null);
     const r = await posQ.refetch();
     if (r.isError) {
       toast.error(messageFromUnknownError(r.error as Error, "Actualisation impossible."));
@@ -541,8 +557,6 @@ export function PosScreen({ storeId, mode }: { storeId: string; mode: PosMode })
       customerId={customerId}
       setCustomerId={setCustomerId}
       customers={customers}
-      errorMsg={errorMsg}
-      successMsg={successMsg}
       createMut={createMut}
       onUpdateQty={updateQty}
       onSetQty={setQty}
@@ -552,16 +566,14 @@ export function PosScreen({ storeId, mode }: { storeId: string; mode: PosMode })
         setDiscount("0");
         setAmountReceived("");
         setAmountReceivedTouched(false);
-        setErrorMsg(null);
       }}
-      onPay={async () => {
-        setErrorMsg(null);
-        setSuccessMsg(null);
-        try {
-          await createMut.mutateAsync();
-        } catch (e) {
-          setErrorMsg(e instanceof Error ? e.message : "Operation impossible.");
+      onPay={() => {
+        const pre = getPosPayValidationError();
+        if (pre) {
+          toast.error(pre);
+          return;
         }
+        void createMut.mutateAsync();
       }}
       hideCartTitle={!isWide}
       currencyLabel={currencyLabel}
@@ -684,63 +696,108 @@ export function PosScreen({ storeId, mode }: { storeId: string; mode: PosMode })
         <div className="flex min-h-0 flex-1 flex-col min-[900px]:flex-row min-[900px]:overflow-hidden">
           {/* Zone gauche — fond blanc */}
           <main className="flex min-h-0 min-w-0 flex-1 flex-col bg-white min-[900px]:flex-[65]">
-            <div className="px-4 pb-1.5 pt-2">
-              <div
-                className={cn(
-                  "relative",
-                  mode === "quick" ? "h-[55px]" : "h-[48px]",
-                )}
-              >
-                {mode === "quick" ? (
+            <div className="px-4 pb-1.5 pt-1.5">
+              {mode === "quick" ? (
+                <div className="relative h-10">
                   <button
                     type="button"
-                    className="absolute left-1.5 top-1/2 z-[1] -translate-y-1/2 rounded-full p-1.5 text-[#F97316] hover:bg-black/5"
+                    className="absolute left-0.5 top-1/2 z-[1] -translate-y-1/2 rounded-full p-0.5 text-[#F97316] hover:bg-black/5"
                     title="Ouvrir le scan caméra"
                     aria-label="Ouvrir le scan caméra"
                     onClick={() => {
-                      setErrorMsg(null);
                       setBarcodeScannerOpen(true);
                     }}
                   >
-                    <MdQrCodeScanner className="h-[26px] w-[26px]" aria-hidden />
+                    <MdQrCodeScanner className="h-[22px] w-[22px]" aria-hidden />
                   </button>
-                ) : null}
-                <MdSearch className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-[#F97316]" aria-hidden />
-                <input
-                  className={cn(
-                    fsInputClass(
-                      cn(
-                        "rounded-xl border-[#E5E7EB] bg-white py-0 pr-10 text-sm leading-normal text-[#1F2937] placeholder:text-[#1F2937]/50",
-                        mode === "quick" ? "h-[55px] pl-12" : "h-[48px] pl-4",
-                      ),
-                    ),
-                  )}
-                  value={search}
-                  onChange={(e) => {
-                    setSearch(e.target.value);
-                    setErrorMsg(null);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      const v = (e.currentTarget as HTMLInputElement).value;
-                      addByBarcode(v);
-                    }
-                  }}
-                  placeholder={
-                    mode === "quick"
-                      ? "Scanner ou rechercher un produit..."
-                      : "Rechercher un produit..."
-                  }
-                  autoComplete="off"
-                  spellCheck={false}
-                  enterKeyHint="done"
-                  autoFocus={mode === "quick"}
-                />
-              </div>
+                  <MdSearch
+                    className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-[#F97316]"
+                    aria-hidden
+                  />
+                  <input
+                    className={fsInputClass(
+                      "h-10 w-full rounded-lg border-[#E5E7EB] bg-white py-1 pl-10 pr-8 text-[13px] leading-snug text-[#1F2937] placeholder:text-[#1F2937]/50",
+                    )}
+                    value={search}
+                    onChange={(e) => {
+                      setSearch(e.target.value);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        const v = (e.currentTarget as HTMLInputElement).value;
+                        addByBarcode(v);
+                      }
+                    }}
+                    placeholder="Scanner ou rechercher un produit..."
+                    autoComplete="off"
+                    spellCheck={false}
+                    enterKeyHint="done"
+                    autoFocus
+                  />
+                </div>
+              ) : (
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch sm:gap-2.5">
+                  <div className="relative min-h-10 min-w-0 flex-1">
+                    <MdSearch
+                      className="pointer-events-none absolute left-2 top-1/2 z-[1] h-4 w-4 -translate-y-1/2 text-[#F97316]"
+                      aria-hidden
+                    />
+                    <input
+                      className={fsInputClass(
+                        "h-10 w-full rounded-lg border-[#E5E7EB] bg-white py-1 pl-8 pr-2.5 text-[13px] leading-snug text-[#1F2937] placeholder:text-[#1F2937]/50",
+                      )}
+                      value={search}
+                      onChange={(e) => {
+                        setSearch(e.target.value);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          const v = (e.currentTarget as HTMLInputElement).value;
+                          addByBarcode(v);
+                        }
+                      }}
+                      placeholder="Rechercher produit (nom, SKU, code-barres)..."
+                      autoComplete="off"
+                      spellCheck={false}
+                      enterKeyHint="search"
+                    />
+                  </div>
+                  <div className="flex shrink-0 gap-2 sm:gap-2.5">
+                    <select
+                      className={fsInputClass(
+                        "h-12 min-w-0 flex-1 rounded-xl border-[#E5E7EB] bg-white px-2 py-1.5 text-sm text-[#1F2937] sm:min-w-[140px] md:min-w-[180px]",
+                      )}
+                      value={
+                        customerId && customers.some((c) => c.id === customerId)
+                          ? customerId
+                          : ""
+                      }
+                      onChange={(e) => setCustomerId(e.target.value)}
+                      aria-label="Client"
+                    >
+                      <option value="">—</option>
+                      {customers.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      title="Créer un client"
+                      aria-label="Créer un client"
+                      onClick={() => setCustomerCreateOpen(true)}
+                      className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#F97316] text-white shadow-sm transition hover:opacity-95"
+                    >
+                      <MdPersonAdd className="h-[22px] w-[22px]" aria-hidden />
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
-            <div className="h-11 shrink-0 overflow-x-auto overflow-y-hidden px-4 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              <div className="flex w-max gap-2 pb-1">
+            <div className="shrink-0 overflow-x-auto overflow-y-hidden px-4 py-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <div className="flex w-max items-center gap-1.5">
                 <CategoryChip
                   label="Tous"
                   selected={categoryId === null}
@@ -757,25 +814,31 @@ export function PosScreen({ storeId, mode }: { storeId: string; mode: PosMode })
               </div>
             </div>
 
-            <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-28 min-[900px]:pb-4">
+            <div className="@container min-h-0 flex-1 overflow-y-auto px-4 pb-28 min-[900px]:pb-4">
               {filtered.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16">
-                  <MdInventory2 className="h-16 w-16 text-[#1F2937]/40" aria-hidden />
-                  <p className="mt-4 text-[15px] text-[#1F2937]/60">Aucun produit</p>
+                  <MdInventory2
+                    className="h-16 w-16 text-[#1F2937]/50"
+                    aria-hidden
+                  />
+                  <p className="mt-4 text-[15px] text-[#1F2937]/80">
+                    {search.trim() !== ""
+                      ? "Aucun résultat"
+                      : mode === "quick"
+                        ? "Aucun produit"
+                        : "Aucun produit actif"}
+                  </p>
                 </div>
               ) : (
-                <div
-                  className={cn(
-                    "grid pb-4",
-                    /* Caisse rapide : 2/3 colonnes mobile & tablette, 4 colonnes à partir du layout desktop (min-[900px]) */
-                    mode === "quick"
-                      ? "gap-2.5 grid-cols-2 min-[480px]:grid-cols-3 min-[900px]:grid-cols-4"
-                      : "gap-2 min-[380px]:gap-2.5 grid-cols-2 min-[480px]:grid-cols-3 min-[900px]:grid-cols-4 min-[1280px]:grid-cols-5",
-                  )}
-                >
+                <div className="grid grid-cols-2 gap-3 pb-4 @[600px]:grid-cols-4">
                   {filtered.map((p) => {
                     const stock = stockByProductId.get(p.id) ?? 0;
                     const thumb = p.product_images?.[0]?.url ?? null;
+                    const price = Number(p.sale_price ?? 0);
+                    const priceLine =
+                      stock >= 0
+                        ? `${formatCurrency(price)} · ${stock}`
+                        : formatCurrency(price);
                     return (
                       <button
                         key={p.id}
@@ -784,76 +847,39 @@ export function PosScreen({ storeId, mode }: { storeId: string; mode: PosMode })
                           addToCart(
                             p.id,
                             p.name,
-                            Number(p.sale_price ?? 0),
+                            price,
                             p.unit,
                             thumb,
                           )
                         }
                         className={cn(
-                          "flex min-w-0 flex-col items-stretch overflow-hidden rounded-xl border border-[#E5E7EB] bg-white px-1.5 py-2 text-center transition active:scale-[0.98] min-[380px]:px-2.5 min-[380px]:py-2.5",
-                          stock <= 0 && "cursor-not-allowed opacity-50",
+                          "flex min-h-0 w-full min-w-0 flex-col items-center overflow-hidden rounded-[14px] bg-white px-2.5 py-2 text-center transition active:scale-[0.98]",
+                          "aspect-[0.76] @[400px]:aspect-[0.84] @[600px]:aspect-[0.90]",
+                          "border-[1.5px] border-[#F97316]/35 shadow-[0_2px_8px_rgba(249,115,22,0.1)]",
                         )}
-                        disabled={stock <= 0}
                       >
-                        <div
-                          className={cn(
-                            "mx-auto flex shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[#F8F9FA]",
-                            mode === "quick"
-                              ? "h-12 w-12"
-                              : "h-11 w-11 min-[380px]:h-12 min-[380px]:w-12",
-                          )}
-                        >
+                        <div className="mx-auto flex h-[98px] w-[98px] shrink-0 items-center justify-center overflow-hidden rounded-[10px] bg-[#F8F9FA]">
                           {thumb ? (
                             <img src={thumb} alt="" className="h-full w-full object-cover" />
                           ) : (
                             <MdInventory2
-                              className={cn(
-                                "text-[#F97316]/80",
-                                mode === "quick"
-                                  ? "h-7 w-7"
-                                  : "h-6 w-6 min-[380px]:h-7 min-[380px]:w-7",
-                              )}
+                              className="h-[49px] w-[49px] text-[#F97316]/70"
                               aria-hidden
                             />
                           )}
                         </div>
-                        <div className="mt-1.5 flex min-h-0 min-w-0 flex-1 flex-col justify-between gap-1">
+                        <div className="mt-1 flex min-h-0 w-full min-w-0 flex-1 flex-col items-center justify-center">
                           <p
-                            className={cn(
-                              "line-clamp-2 min-h-0 w-full min-w-0 wrap-anywhere font-semibold leading-snug text-[#1F2937]",
-                              "text-[10px] min-[380px]:text-[11px] min-[480px]:text-xs min-[600px]:max-[899px]:text-[13px]",
-                              "min-[900px]:text-[11px]",
-                            )}
+                            className="line-clamp-2 w-full text-center text-[13px] font-semibold leading-snug text-[#1F2937]"
                             title={p.name}
                           >
                             {p.name}
                           </p>
                           <p
-                            className={cn(
-                              "w-full min-w-0 max-w-full shrink-0 font-bold tabular-nums leading-none text-[#F97316]",
-                              "whitespace-nowrap text-center overflow-hidden text-ellipsis",
-                              "text-[9px] min-[380px]:text-[10px] min-[480px]:text-[11px] min-[600px]:max-[899px]:text-sm",
-                              "min-[900px]:text-[11px]",
-                            )}
-                            title={
-                              mode === "a4"
-                                ? `${stock} · ${formatCurrency(Number(p.sale_price ?? 0))}`
-                                : formatCurrency(Number(p.sale_price ?? 0))
-                            }
+                            className="mt-0.5 w-full truncate text-center text-[11px] font-bold text-[#F97316]"
+                            title={priceLine}
                           >
-                            {mode === "a4" ? (
-                              <>
-                                <span className="font-bold text-[#1F2937]/85">{stock}</span>
-                                <span className="mx-0.5 font-bold text-[#1F2937]/35" aria-hidden>
-                                  ·
-                                </span>
-                                <span className="text-[#F97316]">
-                                  {formatCurrencyWrappable(Number(p.sale_price ?? 0))}
-                                </span>
-                              </>
-                            ) : (
-                              formatCurrencyWrappable(Number(p.sale_price ?? 0))
-                            )}
+                            {priceLine}
                           </p>
                         </div>
                       </button>
@@ -959,6 +985,34 @@ export function PosScreen({ storeId, mode }: { storeId: string; mode: PosMode })
         />
       ) : null}
 
+      {mode === "a4" && companyId ? (
+        <CustomerFormDialog
+          open={customerCreateOpen}
+          onClose={() => setCustomerCreateOpen(false)}
+          variant="create"
+          onSubmit={async (v) => {
+            const id = await createCustomer(companyId, {
+              name: v.name,
+              type: v.type,
+              phone: v.phone,
+              email: v.email,
+              address: v.address,
+              notes: v.notes,
+            });
+            setCustomerCreateOpen(false);
+            await qc.invalidateQueries({
+              queryKey: ["pos", mode, companyId, storeId],
+            });
+            if (id) setCustomerId(id);
+            toast.success(
+              id
+                ? "Client créé"
+                : "Client en file d’attente (hors ligne).",
+            );
+          }}
+        />
+      ) : null}
+
       {mode === "quick" && quickSettingsOpen && store ? (
         <div
           className="fixed inset-0 z-[200] flex items-end justify-center bg-black/45 p-0 sm:items-center sm:p-4"
@@ -1049,7 +1103,7 @@ export function PosScreen({ storeId, mode }: { storeId: string; mode: PosMode })
  * Aligné sur Flutter `FilterChip` dans `pos_quick_left_zone.dart` / `pos_main_area.dart` :
  * `ChipTheme.shape` = `RoundedRectangleBorder` (pas Stadium) — `AppTheme.radiusSmM` (8) mobile,
  * `radiusSm` (10) ≥ 600px comme `AppTheme.light()` vs `lightMobile()`.
- * Padding widget : `horizontal: 14, vertical: 10` — bordure sélectionnée 2px, sinon 1px.
+ * Padding compact web (moins que Flutter par défaut).
  */
 function CategoryChip({
   label,
@@ -1065,7 +1119,7 @@ function CategoryChip({
       type="button"
       onClick={onClick}
       className={cn(
-        "shrink-0 px-[14px] py-[10px] text-sm font-semibold transition-colors",
+        "shrink-0 px-2.5 py-1 text-xs font-semibold transition-colors min-[600px]:px-3 min-[600px]:text-sm",
         /* Même rayon que ChipTheme (mobile 8px, desktop 10px) */
         "rounded-[8px] min-[600px]:rounded-[10px]",
         selected
@@ -1075,6 +1129,140 @@ function CategoryChip({
     >
       {label}
     </button>
+  );
+}
+
+/** Comme `PosCartQtyField` + `_setQty` Flutter : brouillon local, debounce, stock → toast + reset sans commit. */
+const POS_CART_QTY_DEBOUNCE_MS = 730;
+
+function PosCartQtyInput({
+  productId,
+  quantity,
+  stock,
+  onCommit,
+}: {
+  productId: string;
+  quantity: number;
+  stock: number;
+  onCommit: (productId: string, value: number) => void;
+}) {
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const draftRef = useRef(quantity === 0 ? "" : String(quantity));
+  const focusedRef = useRef(false);
+  const quantityRef = useRef(quantity);
+  quantityRef.current = quantity;
+  const lastStockToastAt = useRef(0);
+
+  const [display, setDisplay] = useState(() =>
+    quantity === 0 ? "" : String(quantity),
+  );
+
+  useEffect(() => {
+    if (focusedRef.current) return;
+    const want = quantity === 0 ? "" : String(quantity);
+    setDisplay(want);
+    draftRef.current = want;
+  }, [quantity]);
+
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, []);
+
+  const resetToCommitted = () => {
+    const q = quantityRef.current;
+    const want = q === 0 ? "" : String(q);
+    setDisplay(want);
+    draftRef.current = want;
+  };
+
+  const tryCommitParsed = (nRaw: number) => {
+    const n = Math.floor(nRaw);
+    if (Number.isNaN(n) || n < 0) {
+      resetToCommitted();
+      return;
+    }
+    if (stock >= 0 && n > stock) {
+      const now = Date.now();
+      if (now - lastStockToastAt.current > 2000) {
+        lastStockToastAt.current = now;
+        queueMicrotask(() =>
+          toast.info("Quantité ajustée au stock disponible."),
+        );
+      }
+      resetToCommitted();
+      return;
+    }
+    if (n !== quantityRef.current) {
+      onCommit(productId, n);
+    }
+  };
+
+  const scheduleCommit = () => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      debounceRef.current = null;
+      const t = draftRef.current.trim();
+      if (t === "") return;
+      const n = parseInt(t, 10);
+      if (Number.isNaN(n)) return;
+      tryCommitParsed(n);
+    }, POS_CART_QTY_DEBOUNCE_MS);
+  };
+
+  return (
+    <input
+      type="text"
+      inputMode="numeric"
+      autoComplete="off"
+      aria-label="Quantité"
+      className="h-8 w-[68px] rounded-lg border border-[#E5E7EB] bg-white px-1.5 text-center text-[15px] font-bold text-[#1F2937] outline-none focus:border-[#F97316]"
+      value={display}
+      onChange={(e) => {
+        const v = e.target.value;
+        draftRef.current = v;
+        setDisplay(v);
+        scheduleCommit();
+      }}
+      onFocus={(e) => {
+        focusedRef.current = true;
+        e.target.select();
+      }}
+      onBlur={() => {
+        focusedRef.current = false;
+        if (debounceRef.current) {
+          clearTimeout(debounceRef.current);
+          debounceRef.current = null;
+        }
+        const t = draftRef.current.trim();
+        if (t === "") {
+          resetToCommitted();
+          return;
+        }
+        const n = parseInt(t, 10);
+        if (Number.isNaN(n)) {
+          resetToCommitted();
+          return;
+        }
+        tryCommitParsed(n);
+      }}
+      onKeyDown={(e) => {
+        if (e.key !== "Enter") return;
+        e.preventDefault();
+        if (debounceRef.current) {
+          clearTimeout(debounceRef.current);
+          debounceRef.current = null;
+        }
+        const t = draftRef.current.trim();
+        const n = parseInt(t, 10);
+        if (Number.isNaN(n)) {
+          resetToCommitted();
+          return;
+        }
+        tryCommitParsed(n);
+      }}
+    />
   );
 }
 
@@ -1104,8 +1292,6 @@ function PosCartPanel({
   customerId,
   setCustomerId,
   customers,
-  errorMsg,
-  successMsg,
   createMut,
   onUpdateQty,
   onSetQty,
@@ -1140,8 +1326,6 @@ function PosCartPanel({
   customerId: string;
   setCustomerId: (v: string) => void;
   customers: Array<{ id: string; name: string }>;
-  errorMsg: string | null;
-  successMsg: string | null;
   createMut: { isPending: boolean };
   onUpdateQty: (id: string, d: number) => void;
   onSetQty: (id: string, q: number) => void;
@@ -1172,7 +1356,7 @@ function PosCartPanel({
               return (
                 <li
                   key={c.productId}
-                  className="flex gap-3 rounded-[10px] border border-[#E5E7EB] bg-white px-3 py-2.5"
+                  className="flex gap-2.5 rounded-[10px] border border-[#E5E7EB] bg-white px-2.5 py-2"
                 >
                   <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[#F8F9FA]">
                     {c.imageUrl ? (
@@ -1188,32 +1372,18 @@ function PosCartPanel({
                         <button
                           type="button"
                           onClick={() => onUpdateQty(c.productId, -1)}
-                          className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#F8F9FA] text-[#1F2937]"
+                          className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#F8F9FA] text-[#1F2937]"
                           aria-label="Moins"
                         >
                           <span className="text-lg leading-none">−</span>
                         </button>
                       ) : null}
                       {showQuantityInput ? (
-                        <input
-                          type="text"
-                          inputMode="numeric"
-                          autoComplete="off"
-                          aria-label="Quantité"
-                          className="h-9 w-[72px] rounded-lg border border-[#E5E7EB] bg-white px-2 text-center text-[15px] font-bold text-[#1F2937] outline-none focus:border-[#F97316]"
-                          value={String(c.quantity)}
-                          onChange={(e) => {
-                            const t = e.target.value.trim();
-                            if (t === "") return;
-                            const n = parseInt(t, 10);
-                            if (!Number.isNaN(n) && n >= 0) onSetQty(c.productId, n);
-                          }}
-                          onBlur={(e) => {
-                            const t = e.target.value.trim();
-                            const n = parseInt(t, 10);
-                            if (Number.isNaN(n) || n < 0) onSetQty(c.productId, c.quantity);
-                          }}
-                          onFocus={(e) => e.target.select()}
+                        <PosCartQtyInput
+                          productId={c.productId}
+                          quantity={c.quantity}
+                          stock={stock}
+                          onCommit={onSetQty}
                         />
                       ) : (
                         <span className="min-w-[28px] text-center text-[15px] font-bold text-[#1F2937]">
@@ -1224,7 +1394,7 @@ function PosCartPanel({
                         <button
                           type="button"
                           onClick={() => onUpdateQty(c.productId, 1)}
-                          className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#F97316] text-white"
+                          className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#F97316] text-white"
                           aria-label="Plus"
                         >
                           <MdAdd className="h-5 w-5" aria-hidden />
@@ -1288,7 +1458,7 @@ function PosCartPanel({
                 type="button"
                 onClick={() => setQuickPayment(key)}
                 className={cn(
-                  "rounded-lg py-3 text-xs font-semibold transition-colors",
+                  "rounded-lg py-2 text-xs font-semibold transition-colors",
                   quickPayment === key
                     ? "bg-[#F97316] text-white"
                     : "bg-[#F8F9FA] text-[#1F2937]",
@@ -1332,7 +1502,9 @@ function PosCartPanel({
           <div className="mt-3 px-0 min-[900px]:px-3">
             <label className="mb-1 block text-[11px] font-medium text-[#6B7280]">Client</label>
             <select
-              className={fsInputClass("bg-white")}
+              className={fsInputClass(
+                "bg-white px-2.5 py-1.5 sm:px-2.5 sm:py-1.5",
+              )}
               value={customerId}
               onChange={(e) => setCustomerId(e.target.value)}
             >
@@ -1352,7 +1524,9 @@ function PosCartPanel({
               Remise {mode === "quick" ? `(${currencyLabel})` : ""}
             </label>
             <input
-              className={fsInputClass("bg-white")}
+              className={fsInputClass(
+                "bg-white px-2.5 py-1.5 sm:px-2.5 sm:py-1.5",
+              )}
               value={discount}
               onChange={(e) => setDiscount(e.target.value)}
               inputMode="decimal"
@@ -1365,7 +1539,9 @@ function PosCartPanel({
           <div className="mt-3 px-0 min-[900px]:px-3">
             <label className="mb-1 block text-xs font-semibold text-[#1F2937]">Montant reçu</label>
             <input
-              className={fsInputClass("bg-white")}
+              className={fsInputClass(
+                "bg-white px-2.5 py-1.5 sm:px-2.5 sm:py-1.5",
+              )}
               value={amountReceived}
               onChange={(e) => {
                 setAmountReceivedTouched(true);
@@ -1394,7 +1570,9 @@ function PosCartPanel({
           <div className="mt-3 px-0 min-[900px]:px-3">
             <label className="mb-1 block text-xs text-[#6B7280]">Acompte (montant payé maintenant)</label>
             <input
-              className={fsInputClass("bg-white")}
+              className={fsInputClass(
+                "bg-white px-2.5 py-1.5 sm:px-2.5 sm:py-1.5",
+              )}
               value={amountReceived}
               onChange={(e) => setAmountReceived(e.target.value)}
               inputMode="decimal"
@@ -1403,14 +1581,11 @@ function PosCartPanel({
           </div>
         ) : null}
 
-        {errorMsg ? <p className="mt-2 px-3 text-xs font-semibold text-red-600">{errorMsg}</p> : null}
-        {successMsg ? <p className="mt-2 px-3 text-xs font-semibold text-emerald-700">{successMsg}</p> : null}
-
         <div className="mt-4 flex gap-3 px-0 min-[900px]:px-3">
           <button
             type="button"
             onClick={onClear}
-            className="flex-1 rounded-xl border border-[#E5E7EB] bg-[#F8F9FA] py-3.5 text-sm font-semibold text-[#1F2937]"
+            className="flex-1 rounded-xl border border-[#E5E7EB] bg-[#F8F9FA] py-2.5 text-sm font-semibold text-[#1F2937]"
           >
             {mode === "quick" ? "Annuler vente" : "Vider panier"}
           </button>
@@ -1418,7 +1593,7 @@ function PosCartPanel({
             type="button"
             disabled={createMut.isPending || cart.length === 0 || total <= 0}
             onClick={() => void onPay()}
-            className="flex-[2] inline-flex items-center justify-center gap-2 rounded-xl bg-[#F97316] py-3.5 text-sm font-bold text-white disabled:opacity-50"
+            className="flex-[2] inline-flex items-center justify-center gap-2 rounded-xl bg-[#F97316] py-2.5 text-sm font-bold text-white disabled:opacity-50"
           >
             {mode === "quick" ? (
               <>

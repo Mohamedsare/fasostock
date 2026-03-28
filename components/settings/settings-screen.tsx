@@ -11,13 +11,17 @@ import { ROUTES } from "@/lib/config/routes";
 import { P } from "@/lib/constants/permissions";
 import { useAppContext } from "@/lib/features/common/app-context";
 import { usePermissions } from "@/lib/features/permissions/use-permissions";
+import {
+  updateCompanyLogoUrl,
+  uploadCompanyLogo,
+} from "@/lib/features/companies/company-logo";
 import { queryKeys } from "@/lib/query/query-keys";
 import { messageFromUnknownError, toast, toastMutationError } from "@/lib/toast";
 import { createClient } from "@/lib/supabase/client";
 import {
   applySetShowQuantityButtons,
   applySetShowQuantityInput,
-  readPosCartQtyUiFromStorage,
+  readPosCartQtyUiForMode,
 } from "@/lib/utils/pos-cart-settings";
 import {
   getStoredFsThemePref,
@@ -29,14 +33,22 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
 import {
+  useEffect,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type ReactNode,
+} from "react";
+import {
+  MdAddPhotoAlternate,
   MdBrightness4,
   MdBrightness7,
   MdBrightnessAuto,
   MdBusiness,
   MdCardMembership,
   MdDeleteSweep,
+  MdExpandMore,
   MdErrorOutline,
   MdHistory,
   MdKey,
@@ -71,6 +83,37 @@ function SettingsCardTitle({
   );
 }
 
+/** Liste déroulante type `DropdownButtonFormField` + fond gris (écran Paramètres Flutter — carte Entreprise). */
+function settingsCompanySelectClassName(extra?: string) {
+  return cn(
+    "w-full cursor-pointer appearance-none rounded-xl border-0 bg-neutral-100 py-3 pl-4 pr-11 text-sm font-medium text-fs-text shadow-none outline-none transition",
+    "focus-visible:ring-2 focus-visible:ring-fs-accent/25 dark:bg-neutral-800/90",
+    extra,
+  );
+}
+
+function SettingsGreySelect({
+  value,
+  onChange,
+  children,
+}: {
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
+  children: ReactNode;
+}) {
+  return (
+    <div className="relative">
+      <select className={settingsCompanySelectClassName()} value={value} onChange={onChange}>
+        {children}
+      </select>
+      <MdExpandMore
+        className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-neutral-400"
+        aria-hidden
+      />
+    </div>
+  );
+}
+
 function formatSubscriptionStatus(status: string): string {
   if (status === "active") return "Actif";
   if (status === "past_due") return "Paiement en attente";
@@ -96,6 +139,7 @@ export function SettingsScreen() {
 
   const companyId = ctxQ.data?.companyId ?? "";
   const companyName = ctxQ.data?.companyName ?? "";
+  const companyLogoUrl = ctxQ.data?.companyLogoUrl ?? null;
   const stores = ctxQ.data?.stores ?? [];
   const ctxStoreId = ctxQ.data?.storeId ?? null;
   const isOwner = ctxQ.data?.roleSlug === "owner";
@@ -104,8 +148,15 @@ export function SettingsScreen() {
   const [themePref, setThemePref] = useState<FsThemePref>(() =>
     typeof window !== "undefined" ? getStoredFsThemePref() : "system",
   );
-  const [posUi, setPosUi] = useState(() =>
-    typeof window !== "undefined" ? readPosCartQtyUiFromStorage() : { showQuantityInput: true, showQuantityButtons: false },
+  const [posQuickUi, setPosQuickUi] = useState(() =>
+    typeof window !== "undefined"
+      ? readPosCartQtyUiForMode("quick")
+      : { showQuantityInput: true, showQuantityButtons: false },
+  );
+  const [posInvoiceUi, setPosInvoiceUi] = useState(() =>
+    typeof window !== "undefined"
+      ? readPosCartQtyUiForMode("a4")
+      : { showQuantityInput: true, showQuantityButtons: false },
   );
 
   const [profileName, setProfileName] = useState("");
@@ -116,6 +167,10 @@ export function SettingsScreen() {
   const [pwdErr, setPwdErr] = useState<string | null>(null);
   const [dangerErr, setDangerErr] = useState<string | null>(null);
   const [twoFaOpen, setTwoFaOpen] = useState(false);
+
+  const logoFileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingCompanyLogo, setUploadingCompanyLogo] = useState(false);
+  const [companyLogoImgError, setCompanyLogoImgError] = useState(false);
 
   const [clearingSales, setClearingSales] = useState(false);
   const [clearingPurchases, setClearingPurchases] = useState(false);
@@ -151,8 +206,48 @@ export function SettingsScreen() {
   }, [themePref]);
 
   useEffect(() => {
-    setPosUi(readPosCartQtyUiFromStorage());
+    setPosQuickUi(readPosCartQtyUiForMode("quick"));
+    setPosInvoiceUi(readPosCartQtyUiForMode("a4"));
   }, []);
+
+  useEffect(() => {
+    setCompanyLogoImgError(false);
+  }, [companyLogoUrl]);
+
+  async function handleCompanyLogoFileChange(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || !companyId) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Choisissez une image (PNG, JPG…).");
+      return;
+    }
+    setUploadingCompanyLogo(true);
+    try {
+      const url = await uploadCompanyLogo(companyId, file);
+      await updateCompanyLogoUrl(companyId, url);
+      await qc.invalidateQueries({ queryKey: queryKeys.appContext });
+      toast.success("Logo mis à jour");
+    } catch (err) {
+      toast.error(messageFromUnknownError(err));
+    } finally {
+      setUploadingCompanyLogo(false);
+    }
+  }
+
+  async function handleRemoveCompanyLogo() {
+    if (!companyId) return;
+    setUploadingCompanyLogo(true);
+    try {
+      await updateCompanyLogoUrl(companyId, null);
+      await qc.invalidateQueries({ queryKey: queryKeys.appContext });
+      toast.success("Logo retiré");
+    } catch (err) {
+      toast.error(messageFromUnknownError(err));
+    } finally {
+      setUploadingCompanyLogo(false);
+    }
+  }
 
   const meQ = useQuery({
     queryKey: ["me-profile"] as const,
@@ -407,12 +502,11 @@ export function SettingsScreen() {
         </div>
       </FsCard>
 
-      {/* Caisse POS */}
+      {/* Caisse POS rapide — aligné `SettingsPage._buildPosCartCard(quick)` Flutter */}
       <FsCard className="mt-5" padding="p-5">
-        <SettingsCardTitle icon={MdShoppingCart} title="Caisse (POS)" />
+        <SettingsCardTitle icon={MdShoppingCart} title="Caisse POS rapide" />
         <p className="mt-2 text-xs leading-relaxed text-neutral-600 sm:text-sm">
-          Un seul mode à la fois (indépendant de l&apos;entreprise ou de la boutique). Le panier se met à jour automatiquement à la
-          saisie.
+          Un seul mode à la fois pour la caisse rapide. Le panier se met à jour automatiquement à la saisie.
         </p>
         <p className="mt-1 text-xs leading-relaxed text-neutral-600 sm:text-sm">
           Toujours un mode actif : si vous désactivez le mode courant, l&apos;autre est activé automatiquement.
@@ -427,10 +521,10 @@ export function SettingsScreen() {
               type="checkbox"
               role="switch"
               className="mt-1 h-5 w-9 shrink-0 cursor-pointer accent-fs-accent"
-              checked={posUi.showQuantityInput}
+              checked={posQuickUi.showQuantityInput}
               onChange={(e) => {
-                const n = applySetShowQuantityInput(e.target.checked);
-                setPosUi(n);
+                const n = applySetShowQuantityInput("quick", e.target.checked);
+                setPosQuickUi(n);
                 void qc.invalidateQueries({ queryKey: queryKeys.posCartSettings });
               }}
             />
@@ -444,10 +538,57 @@ export function SettingsScreen() {
               type="checkbox"
               role="switch"
               className="mt-1 h-5 w-9 shrink-0 cursor-pointer accent-fs-accent"
-              checked={posUi.showQuantityButtons}
+              checked={posQuickUi.showQuantityButtons}
               onChange={(e) => {
-                const n = applySetShowQuantityButtons(e.target.checked);
-                setPosUi(n);
+                const n = applySetShowQuantityButtons("quick", e.target.checked);
+                setPosQuickUi(n);
+                void qc.invalidateQueries({ queryKey: queryKeys.posCartSettings });
+              }}
+            />
+          </label>
+        </div>
+      </FsCard>
+
+      {/* Caisse Facture A4 */}
+      <FsCard className="mt-5" padding="p-5">
+        <SettingsCardTitle icon={MdShoppingCart} title="Caisse Facture A4" />
+        <p className="mt-2 text-xs leading-relaxed text-neutral-600 sm:text-sm">
+          Un seul mode à la fois pour la facture A4. Le panier se met à jour automatiquement à la saisie.
+        </p>
+        <p className="mt-1 text-xs leading-relaxed text-neutral-600 sm:text-sm">
+          Toujours un mode actif : si vous désactivez le mode courant, l&apos;autre est activé automatiquement.
+        </p>
+        <div className="mt-4 space-y-0 divide-y divide-black/[0.06] rounded-[10px] border border-black/[0.08]">
+          <label className="flex cursor-pointer items-start justify-between gap-3 px-3 py-3 sm:px-4">
+            <span className="min-w-0">
+              <span className="block text-sm font-medium text-fs-text">Champ de saisie pour la quantité</span>
+              <span className="mt-0.5 block text-xs text-neutral-600">Saisir le nombre : le total se met à jour automatiquement</span>
+            </span>
+            <input
+              type="checkbox"
+              role="switch"
+              className="mt-1 h-5 w-9 shrink-0 cursor-pointer accent-fs-accent"
+              checked={posInvoiceUi.showQuantityInput}
+              onChange={(e) => {
+                const n = applySetShowQuantityInput("a4", e.target.checked);
+                setPosInvoiceUi(n);
+                void qc.invalidateQueries({ queryKey: queryKeys.posCartSettings });
+              }}
+            />
+          </label>
+          <label className="flex cursor-pointer items-start justify-between gap-3 px-3 py-3 sm:px-4">
+            <span className="min-w-0">
+              <span className="block text-sm font-medium text-fs-text">Boutons (-) et (+)</span>
+              <span className="mt-0.5 block text-xs text-neutral-600">Incrémenter ou décrémenter la quantité</span>
+            </span>
+            <input
+              type="checkbox"
+              role="switch"
+              className="mt-1 h-5 w-9 shrink-0 cursor-pointer accent-fs-accent"
+              checked={posInvoiceUi.showQuantityButtons}
+              onChange={(e) => {
+                const n = applySetShowQuantityButtons("a4", e.target.checked);
+                setPosInvoiceUi(n);
                 void qc.invalidateQueries({ queryKey: queryKeys.posCartSettings });
               }}
             />
@@ -575,15 +716,69 @@ export function SettingsScreen() {
         </button>
       </FsCard>
 
-      {/* Entreprise — aligné Flutter (sélection périmètre, pas édition boutique ici) */}
+      {/* Entreprise — même carte que Flutter (`_buildCompanyCard`) : fond gris listes, labels gris, lien orange */}
       {companyId ? (
-        <FsCard className="mt-5" padding="p-5">
+        <FsCard
+          className="mt-5 rounded-[12px] border border-neutral-200/90 bg-fs-card shadow-none dark:border-white/10"
+          padding="p-5"
+        >
           <SettingsCardTitle icon={MdBusiness} title="Entreprise" />
+          {isOwner ? (
+            <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-start">
+              <input
+                ref={logoFileInputRef}
+                type="file"
+                accept="image/*"
+                className="sr-only"
+                aria-hidden
+                onChange={handleCompanyLogoFileChange}
+              />
+              <button
+                type="button"
+                disabled={uploadingCompanyLogo}
+                onClick={() => logoFileInputRef.current?.click()}
+                className={cn(
+                  "relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-neutral-300/60 bg-neutral-100 transition hover:bg-neutral-200/80 disabled:opacity-60 dark:border-white/20 dark:bg-neutral-800",
+                )}
+                aria-label="Choisir le logo entreprise"
+              >
+                {uploadingCompanyLogo ? (
+                  <span className="h-7 w-7 animate-spin rounded-full border-2 border-fs-accent border-t-transparent" />
+                ) : companyLogoUrl && !companyLogoImgError ? (
+                  <img
+                    src={companyLogoUrl}
+                    alt=""
+                    className="h-full w-full object-cover"
+                    onError={() => setCompanyLogoImgError(true)}
+                  />
+                ) : (
+                  <MdAddPhotoAlternate className="h-9 w-9 text-neutral-400" aria-hidden />
+                )}
+              </button>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-fs-text">Logo entreprise</p>
+                <p className="mt-1 text-xs leading-relaxed text-neutral-500 dark:text-neutral-400">
+                  Affiché en haut du menu. Cliquez pour choisir une image (PNG, JPG…).
+                </p>
+                {companyLogoUrl ? (
+                  <button
+                    type="button"
+                    disabled={uploadingCompanyLogo}
+                    onClick={() => void handleRemoveCompanyLogo()}
+                    className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-red-600 hover:underline disabled:opacity-60"
+                  >
+                    Retirer le logo
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
           {multiCompany ? (
-            <div className="mt-5">
-              <label className="mb-1 block text-xs font-medium text-neutral-600">Entreprise</label>
-              <select
-                className={fsInputClass()}
+            <div className={cn(isOwner ? "mt-4" : "mt-5")}>
+              <label className="mb-1 block text-xs font-medium text-neutral-500 dark:text-neutral-400">
+                Entreprise
+              </label>
+              <SettingsGreySelect
                 value={companyId}
                 onChange={(e) => {
                   try {
@@ -600,19 +795,22 @@ export function SettingsScreen() {
                     {c.name}
                   </option>
                 ))}
-              </select>
+              </SettingsGreySelect>
             </div>
           ) : (
-            <div className="mt-5">
-              <p className="text-xs font-medium text-neutral-600">Entreprise</p>
-              <p className="mt-1 text-sm font-medium text-fs-text">{companyName || "—"}</p>
+            <div className={cn(isOwner ? "mt-4" : "mt-5")}>
+              <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400">Entreprise</p>
+              <p className="mt-1 text-base font-semibold leading-snug text-fs-text">
+                {companyName || "—"}
+              </p>
             </div>
           )}
           {stores.length > 0 ? (
             <div className="mt-4">
-              <label className="mb-1 block text-xs font-medium text-neutral-600">Boutique</label>
-              <select
-                className={fsInputClass()}
+              <label className="mb-1 block text-xs font-medium text-neutral-500 dark:text-neutral-400">
+                Boutique
+              </label>
+              <SettingsGreySelect
                 value={ctxStoreId === null ? "__all__" : ctxStoreId}
                 onChange={(e) => {
                   const v = e.target.value;
@@ -630,14 +828,19 @@ export function SettingsScreen() {
                     {s.name}
                   </option>
                 ))}
-              </select>
+              </SettingsGreySelect>
             </div>
           ) : (
-            <p className="mt-4 text-xs text-neutral-600">Aucune boutique configurée</p>
+            <p className="mt-4 text-xs text-neutral-500 dark:text-neutral-400">
+              Aucune boutique configurée
+            </p>
           )}
-          <p className="mt-4 text-xs text-neutral-600">
+          <p className="mt-4 text-xs leading-relaxed text-neutral-500 dark:text-neutral-400">
             Pour modifier le détail d&apos;une boutique (adresse, facturation…), ouvrez{" "}
-            <Link href={ROUTES.stores} className="font-semibold text-fs-accent underline-offset-2 hover:underline">
+            <Link
+              href={ROUTES.stores}
+              className="font-semibold text-fs-accent hover:underline hover:underline-offset-2"
+            >
               Boutiques
             </Link>
             .

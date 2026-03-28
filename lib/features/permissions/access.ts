@@ -13,6 +13,8 @@ export const CASHIER_FALLBACK_HREFS = [
 export type AppContextData = {
   companyId: string;
   companyName: string;
+  /** `companies.logo_url` — menu, factures, paramètres (aligné Flutter). */
+  companyLogoUrl: string | null;
   storeId: string | null;
   stores: { id: string; name: string; isPrimary?: boolean }[];
   isSuperAdmin: boolean;

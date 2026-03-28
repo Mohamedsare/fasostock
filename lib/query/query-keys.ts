@@ -34,7 +34,10 @@ export const queryKeys = {
     from: string;
     to: string;
   }) => ["sales", params] as const,
+  /** Liste boutiques (`listStores`) — ne pas confondre avec `storesPage`. */
   stores: (companyId: string) => ["stores", companyId] as const,
+  /** Page Boutiques : `fetchStoresPageData` (liste + quota). */
+  storesPage: (companyId: string) => ["stores", companyId, "page"] as const,
   dashboard: (params: {
     companyId: string;
     storeId: string | null;
@@ -53,8 +56,10 @@ export const queryKeys = {
   /** Liste complète par entreprise — filtres appliqués côté client (aligné `TransfersPage` Flutter). */
   stockTransfers: (companyId: string) => ["stock-transfers", companyId] as const,
   stockTransferDetail: (id: string) => ["stock-transfer", id] as const,
-  /** Préférences panier POS (aligné `PosCartSettingsProvider` Flutter). */
+  /** Préférences panier POS — préfixe `['pos-cart-settings']` pour invalider tous les modes. */
   posCartSettings: ["pos-cart-settings"] as const,
+  posCartSettingsMode: (mode: "quick" | "a4") =>
+    ["pos-cart-settings", mode] as const,
   /** Dépôt central (`WarehousePage` Flutter) — invalider le préfixe `['warehouse', companyId]`. */
   warehouseInventory: (companyId: string) => ["warehouse", companyId, "inventory"] as const,
   warehouseMovements: (companyId: string) => ["warehouse", companyId, "movements"] as const,

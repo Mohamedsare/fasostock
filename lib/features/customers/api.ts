@@ -18,10 +18,11 @@ export async function listCustomers(companyId: string): Promise<Customer[]> {
   return (data ?? []) as Customer[];
 }
 
+/** Retourne l’`id` du client créé (en ligne) ; `null` si file d’attente hors ligne. */
 export async function createCustomer(
   companyId: string,
   input: CustomerFormInput,
-): Promise<void> {
+): Promise<string | null> {
   const payload = {
     company_id: companyId,
     name: input.name.trim(),
@@ -34,10 +35,15 @@ export async function createCustomer(
   const supabase = createClient();
   if (!navigator.onLine) {
     await enqueueOutbox("customer_create", payload);
-    return;
+    return null;
   }
-  const { error } = await supabase.from("customers").insert(payload);
+  const { data, error } = await supabase
+    .from("customers")
+    .insert(payload)
+    .select("id")
+    .single();
   if (error) throw error;
+  return (data as { id?: string } | null)?.id ?? null;
 }
 
 export async function updateCustomer(
