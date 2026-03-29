@@ -1228,32 +1228,41 @@ function StockDepotTab({
       {filtered.length === 0 ? (
         <p className="text-sm text-neutral-600">Aucun produit ne correspond au filtre.</p>
       ) : (
-        slice.map((l) => {
+        <div className="space-y-1.5">
+        {slice.map((l) => {
           const th = l.stockMinWarehouse > 0 ? l.stockMinWarehouse : l.stockMin;
           const thLabel =
             l.stockMinWarehouse > 0 ? `Seuil magasin ${l.stockMinWarehouse}` : `Seuil produit ${l.stockMin}`;
           const low = l.quantity <= (l.stockMinWarehouse > 0 ? l.stockMinWarehouse : l.stockMin);
+          const threshold = th < 0 ? 0 : th;
+          const valueAtCost = l.quantity * (l.avgUnitCost ?? l.purchasePrice);
+          const valueAtSale = l.quantity * l.salePrice;
           return (
-            <FsCard key={l.productId} padding="px-2.5 py-2.5 sm:p-3" className="border border-black/[0.06] shadow-sm">
-              <div className="flex items-start justify-between gap-1">
-                <div className="flex min-w-0 flex-1 items-start gap-2.5 pr-1">
-                  <ProductListThumbnail
-                    imageUrl={l.imageUrl}
-                    className="h-12 w-12 shrink-0 rounded-xl"
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[17px] font-bold leading-tight text-fs-text">{l.productName}</p>
-                    <p className="mt-1 text-xs text-neutral-600">
-                      {l.quantity} {l.unit}
-                      {l.sku ? ` · SKU ${l.sku}` : ""} · {thLabel}
-                    </p>
-                  </div>
+            <div
+              key={l.productId}
+              className={cn(
+                "rounded-xl border bg-fs-card pl-[10px] pr-[6px] pt-[10px] pb-[10px]",
+                "border-neutral-200/90 shadow-none dark:border-white/[0.12]",
+              )}
+            >
+              {/* Ligne 1 — aligné `warehouse_page.dart` Card (thumbnail + titre + icônes) */}
+              <div className="flex items-start gap-2.5">
+                <ProductListThumbnail
+                  imageUrl={l.imageUrl}
+                  className="h-12 w-12 shrink-0 rounded-[10px]"
+                />
+                <div className="min-w-0 flex-1 pr-1">
+                  <p className="text-[17px] font-bold leading-tight text-fs-text">{l.productName}</p>
+                  <p className="mt-1 text-[12px] leading-snug text-neutral-600 dark:text-neutral-400">
+                    {l.quantity} {l.unit}
+                    {l.sku ? ` · SKU ${l.sku}` : ""} · {thLabel}
+                  </p>
                 </div>
-                <div className="flex shrink-0 gap-0">
+                <div className="flex shrink-0 items-start">
                   <button
                     type="button"
                     onClick={() => onAdjust(l)}
-                    className="fs-touch-target rounded-lg p-2 text-neutral-700"
+                    className="fs-touch-target -mr-1 rounded-lg p-2 text-neutral-800 dark:text-neutral-200"
                     title="Ajuster le stock"
                   >
                     <MdBalance className="h-5 w-5" />
@@ -1261,29 +1270,58 @@ function StockDepotTab({
                   <button
                     type="button"
                     onClick={() => onThreshold(l)}
-                    className="fs-touch-target rounded-lg p-2 text-neutral-700"
+                    className="fs-touch-target rounded-lg p-2 text-neutral-800 dark:text-neutral-200"
                     title="Seuil magasin"
                   >
                     <MdTune className="h-5 w-5" />
                   </button>
                 </div>
               </div>
-              <div className="mt-2">
-                <span
+              {/* Ligne 2 — badge + PA / PV (comme Flutter) */}
+              <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                <div
                   className={cn(
-                    "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-bold",
+                    "inline-flex max-w-full flex-wrap items-center gap-2 rounded-full border px-2 py-1",
                     low
-                      ? "border-red-200 bg-[#FDECEC] text-red-800"
-                      : "border-emerald-200 bg-[#EAF7EC] text-emerald-800",
+                      ? "border-[#F5B2B2] bg-[#FDECEC]"
+                      : "border-[#A8DBB0] bg-[#EAF7EC]",
                   )}
                 >
-                  {low ? <MdWarningAmber className="h-4 w-4" /> : <MdCheckCircle className="h-4 w-4" />}
-                  {low ? "Alerte stock" : "Stock OK"} · seuil {th}
-                </span>
+                  <span className="inline-flex items-center gap-1.5">
+                    {low ? (
+                      <MdWarningAmber className="h-4 w-4 shrink-0 text-[#B42318]" />
+                    ) : (
+                      <MdCheckCircle className="h-4 w-4 shrink-0 text-[#1E7D34]" />
+                    )}
+                    <span
+                      className={cn(
+                        "text-[11px] font-bold",
+                        low ? "text-[#7A271A]" : "text-[#14532D]",
+                      )}
+                    >
+                      {low ? "Alerte stock" : "Stock OK"}
+                    </span>
+                  </span>
+                  <span
+                    className={cn(
+                      "text-[10px] font-semibold",
+                      low ? "text-[#9A3412]" : "text-[#166534]",
+                    )}
+                  >
+                    {l.quantity} / seuil {threshold}
+                  </span>
+                </div>
+                <div className="min-w-0 shrink text-right">
+                  <p className="text-base font-extrabold leading-tight text-fs-text">{formatCurrency(valueAtCost)}</p>
+                  <p className="mt-0.5 text-[11px] text-neutral-600 dark:text-neutral-400">
+                    PV {formatCurrency(valueAtSale)}
+                  </p>
+                </div>
               </div>
-            </FsCard>
+            </div>
           );
-        })
+        })}
+        </div>
       )}
       {filteredLen > 0 && stockTotalPages > 1 ? (
         <div className="flex flex-wrap items-center justify-center gap-2 py-2">
