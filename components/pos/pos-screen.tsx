@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils/cn";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { InvoicePostSaleDialog } from "@/components/invoices/invoice-post-sale-dialog";
 import { PosBarcodeScannerDialog } from "@/components/pos/pos-barcode-scanner-dialog";
@@ -1148,7 +1148,7 @@ function PosCartQtyInput({
 }) {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const draftRef = useRef(quantity === 0 ? "" : String(quantity));
-  const focusedRef = useRef(false);
+  const inputRef = useRef<HTMLInputElement | null>(null);
   const quantityRef = useRef(quantity);
   quantityRef.current = quantity;
   const lastStockToastAt = useRef(0);
@@ -1157,8 +1157,11 @@ function PosCartQtyInput({
     quantity === 0 ? "" : String(quantity),
   );
 
-  useEffect(() => {
-    if (focusedRef.current) return;
+  /** Ne pas réinjecter `quantity` tant que l’input a le focus (sinon effacer visuellement est impossible). */
+  useLayoutEffect(() => {
+    if (typeof document === "undefined") return;
+    const el = inputRef.current;
+    if (el && document.activeElement === el) return;
     const want = quantity === 0 ? "" : String(quantity);
     setDisplay(want);
     draftRef.current = want;
@@ -1213,6 +1216,7 @@ function PosCartQtyInput({
 
   return (
     <input
+      ref={inputRef}
       type="text"
       inputMode="numeric"
       autoComplete="off"
@@ -1226,11 +1230,9 @@ function PosCartQtyInput({
         scheduleCommit();
       }}
       onFocus={(e) => {
-        focusedRef.current = true;
         e.target.select();
       }}
       onBlur={() => {
-        focusedRef.current = false;
         if (debounceRef.current) {
           clearTimeout(debounceRef.current);
           debounceRef.current = null;
