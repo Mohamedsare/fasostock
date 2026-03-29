@@ -68,7 +68,7 @@ export function MoreSheet({ open, onClose, items }: MoreSheetProps) {
           Autres sections
         </h2>
         <div className="max-h-[min(70dvh,520px)] overflow-y-auto px-3 pb-2 pt-3 sm:px-4 sm:pb-3 sm:pt-4">
-          <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-2.5">
+          <ul className="grid grid-cols-4 gap-1 sm:gap-2.5">
             {items.map((item) => {
               const Icon = item.icon;
               return (
@@ -77,7 +77,7 @@ export function MoreSheet({ open, onClose, items }: MoreSheetProps) {
                     href={item.href}
                     onClick={onClose}
                     className={cn(
-                      "flex min-h-[76px] flex-col items-center justify-center gap-1.5 rounded-2xl border border-black/[0.07] bg-fs-surface-container px-2 py-3 text-center text-[11px] font-semibold leading-tight tracking-tight text-fs-text",
+                      "flex min-h-[60px] flex-col items-center justify-center gap-0.5 rounded-xl border border-black/[0.07] bg-fs-surface-container px-0.5 py-1.5 text-center text-[10px] font-semibold leading-tight tracking-tight text-fs-text sm:rounded-2xl",
                       "shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] transition-[transform,background-color,border-color,box-shadow] duration-200",
                       "hover:border-[color-mix(in_srgb,var(--fs-accent)_38%,transparent)] hover:bg-[color-mix(in_srgb,var(--fs-accent)_11%,transparent)] hover:shadow-[0_1px_3px_rgba(0,0,0,0.06)]",
                       "active:scale-[0.98] dark:border-white/[0.09] dark:bg-fs-surface-low dark:shadow-none",
@@ -87,13 +87,13 @@ export function MoreSheet({ open, onClose, items }: MoreSheetProps) {
                   >
                     <span
                       className={cn(
-                        "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[color-mix(in_srgb,var(--fs-accent)_14%,transparent)] ring-1 ring-[color-mix(in_srgb,var(--fs-accent)_22%,transparent)]",
-                        "sm:h-11 sm:w-11",
+                        "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[color-mix(in_srgb,var(--fs-accent)_14%,transparent)] ring-1 ring-[color-mix(in_srgb,var(--fs-accent)_22%,transparent)]",
+                        "sm:h-11 sm:w-11 sm:rounded-xl",
                       )}
                       aria-hidden
                     >
                       <Icon
-                        className="h-[22px] w-[22px] text-fs-accent sm:h-6 sm:w-6"
+                        className="h-4 w-4 text-fs-accent sm:h-6 sm:w-6"
                         strokeWidth={2}
                       />
                     </span>
