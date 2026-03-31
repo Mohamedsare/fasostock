@@ -7,15 +7,23 @@ import { slugFromName } from "@/lib/auth/slug";
 import { ROUTES } from "@/lib/config/routes";
 import { reportHandledClientError } from "@/lib/monitoring/remote-error-logger";
 import { createClient } from "@/lib/supabase/client";
-import { cn } from "@/lib/utils/cn";
 import { AlertCircle } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
+import {
+  getBusinessTypeBySlug,
+  getFirstStoreNamePlaceholder,
+  isValidBusinessTypeSlug,
+} from "@/lib/config/business-types";
 
 export function RegisterForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const businessTypeSlug = searchParams.get("businessType");
+  const businessType = getBusinessTypeBySlug(businessTypeSlug);
+  const firstStorePlaceholder = getFirstStoreNamePlaceholder(businessType);
   const [companyName, setCompanyName] = useState("");
   const [companySlug, setCompanySlug] = useState("");
   const [firstStorePhone, setFirstStorePhone] = useState("");
@@ -30,27 +38,43 @@ export function RegisterForm() {
     typeof process.env.NEXT_PUBLIC_SUPABASE_URL === "string" &&
     process.env.NEXT_PUBLIC_SUPABASE_URL.length > 0;
 
+  /** Slug dérivé du nom d’entreprise si renseigné, sinon du nom de la boutique. */
   useEffect(() => {
-    const name = companyName.trim();
+    const name = companyName.trim() || firstStoreName.trim();
     if (!name) return;
     const s = slugFromName(name);
     if (s && s !== companySlug) setCompanySlug(s);
-  }, [companyName, companySlug]);
+  }, [companyName, firstStoreName, companySlug]);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
+    const storeName = firstStoreName.trim();
+    const companyRaw = companyName.trim();
+    const effectiveCompanyName = companyRaw || storeName;
+    if (effectiveCompanyName.length < 2) {
+      setError(
+        "Indiquez au moins le nom de l’entreprise ou le nom de votre boutique (2 caractères minimum).",
+      );
+      return;
+    }
     setLoading(true);
     try {
       const supabase = createClient();
+      const effectiveSlug =
+        companySlug.trim() || slugFromName(effectiveCompanyName);
+      const btSlug = isValidBusinessTypeSlug(businessTypeSlug)
+        ? businessTypeSlug!.trim()
+        : null;
       await registerCompany(supabase, {
-        companyName: companyName.trim(),
-        companySlug: companySlug.trim() || slugFromName(companyName.trim()),
+        companyName: effectiveCompanyName,
+        companySlug: effectiveSlug,
         ownerEmail: ownerEmail.trim(),
         ownerPassword,
         ownerFullName: ownerFullName.trim(),
-        firstStoreName: firstStoreName.trim(),
+        firstStoreName: storeName,
         firstStorePhone: firstStorePhone.trim(),
+        businessTypeSlug: btSlug,
       });
       try {
         await supabase.auth.signOut();
@@ -71,14 +95,20 @@ export function RegisterForm() {
   }
 
   return (
-    <div className="w-full">
+    <div className="mx-auto w-full max-w-md">
       <div className="rounded-2xl border border-neutral-200/80 bg-white p-5 shadow-[0_8px_32px_rgba(0,0,0,0.06)] sm:p-6">
-        <div className="mb-3 text-center">
+        <div className="mb-3 flex flex-col items-center gap-2 text-center sm:flex-row sm:flex-wrap sm:justify-center sm:gap-x-5">
           <Link
             href={ROUTES.login}
             className="text-sm font-semibold text-fs-accent underline-offset-4 hover:underline"
           >
             ← Retour à la connexion
+          </Link>
+          <Link
+            href={ROUTES.registerSelectActivity}
+            className="text-xs font-semibold text-neutral-500 underline-offset-4 hover:text-fs-accent hover:underline"
+          >
+            Changer le type d&apos;activité
           </Link>
         </div>
 
@@ -97,6 +127,15 @@ export function RegisterForm() {
           <p className="mt-1 text-sm text-neutral-600 sm:text-[15px]">
             Entreprise, compte propriétaire et première boutique.
           </p>
+          {businessType ? (
+            <div
+              className="mt-3 inline-flex max-w-full flex-wrap items-center justify-center gap-2 rounded-xl border border-fs-accent/25 bg-[color-mix(in_srgb,var(--fs-accent)_10%,transparent)] px-3 py-2 text-center text-sm text-neutral-800 dark:text-neutral-100"
+              role="status"
+            >
+              <span className="font-medium text-neutral-600 dark:text-neutral-400">Activité :</span>
+              <span className="font-semibold text-fs-text">{businessType.label}</span>
+            </div>
+          ) : null}
         </div>
 
         <form onSubmit={onSubmit} className="mt-5 flex flex-col gap-2.5">
@@ -120,36 +159,32 @@ export function RegisterForm() {
 
           <div>
             <label htmlFor="reg-company" className="sr-only">
-              Nom de l&apos;entreprise
+              Nom de l&apos;entreprise (optionnel)
             </label>
             <input
               id="reg-company"
               className={authSimpleFieldClass}
               value={companyName}
               onChange={(e) => setCompanyName(e.target.value)}
-              required
-              minLength={2}
               autoCapitalize="words"
-              placeholder={"Nom de l'entreprise *"}
+              placeholder="Nom de l'entreprise (optionnel)"
+              aria-describedby="reg-company-hint"
             />
+            <p id="reg-company-hint" className="mt-1.5 text-left text-[11px] leading-snug text-neutral-500">
+              Si vous l&apos;omettez, le nom de votre boutique ci-dessous sera utilisé comme nom d&apos;entreprise.
+            </p>
           </div>
 
-          <div>
-            <p className="mb-1 text-left text-xs text-neutral-500">
-              Slug URL (auto)
-            </p>
-            <input
-              className={cn(
-                authSimpleFieldClass,
-                "cursor-default bg-neutral-200/70 text-neutral-700",
-              )}
-              value={companySlug}
-              readOnly
-              tabIndex={-1}
-              aria-readonly
-              title="Généré automatiquement à partir du nom"
-            />
-          </div>
+          {/* Slug entreprise : généré en arrière-plan (non affiché), toujours synchronisé avec le nom. */}
+          <input
+            id="reg-company-slug"
+            name="companySlug"
+            type="hidden"
+            value={companySlug}
+            readOnly
+            tabIndex={-1}
+            aria-hidden
+          />
 
           <div>
             <label htmlFor="reg-phone" className="sr-only">
@@ -229,7 +264,7 @@ export function RegisterForm() {
               required
               minLength={2}
               autoCapitalize="words"
-              placeholder="Nom de la première boutique *"
+              placeholder={firstStorePlaceholder}
             />
           </div>
 

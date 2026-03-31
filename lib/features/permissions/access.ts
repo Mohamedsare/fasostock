@@ -13,6 +13,8 @@ export const CASHIER_FALLBACK_HREFS = [
 export type AppContextData = {
   companyId: string;
   companyName: string;
+  /** `companies.business_type_slug` — onboarding (personnalisation par activité). */
+  businessTypeSlug: string | null;
   /** `companies.logo_url` — menu, factures, paramètres (aligné Flutter). */
   companyLogoUrl: string | null;
   storeId: string | null;
@@ -40,6 +42,8 @@ export type AccessHelpers = {
   canSettings: boolean;
   canTransfers: boolean;
   canAudit: boolean;
+  /** Propriétaire ou permission dépôt central (Magasinier). */
+  canWarehouse: boolean;
 };
 
 /** Construit les helpers à partir du contexte (même logique que `app_shell.dart` Flutter). */
@@ -91,6 +95,7 @@ export function buildAccessHelpers(
   const canSuppliers =
     hasPermission(P.suppliersView) || hasPermission(P.suppliersManage);
   const canAudit = hasPermission(P.auditView) || isOwner;
+  const canWarehouse = isOwner || hasPermission(P.warehouseManage);
 
   return {
     hasPermission,
@@ -110,6 +115,7 @@ export function buildAccessHelpers(
     canSettings,
     canTransfers,
     canAudit,
+    canWarehouse,
   };
 }
 
@@ -142,7 +148,7 @@ export function filterNavItemsForPermissions(
     if (href === ROUTES.stores) return h.canStores;
     if (href === ROUTES.inventory) return h.canInventory && !h.isCashier;
     if (href === ROUTES.purchases) return h.canPurchases;
-    if (href === ROUTES.warehouse) return h.isOwner;
+    if (href === ROUTES.warehouse) return h.canWarehouse;
     if (href === ROUTES.customers) return h.canCustomers;
     if (href === ROUTES.suppliers) return h.canSuppliers;
     if (href === ROUTES.reports) return h.canReports;

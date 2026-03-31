@@ -2,6 +2,7 @@ import type { Store } from "@/lib/features/stores/types";
 import type { SaleItem } from "@/lib/features/sales/types";
 import { buildInvoiceA4Data } from "./build-invoice-a4-data";
 import type { InvoiceA4Data } from "./invoice-a4-types";
+import { paymentLinesFromSalePayments } from "./invoice-a4-payment-lines";
 
 type SaleDetailRow = SaleItem & {
   sale_items: Array<{
@@ -32,7 +33,11 @@ export function buildInvoiceA4FromSaleDetail(
     unit: it.product?.unit ?? "u",
     unitPrice: it.unit_price,
   }));
-  const deposit = (sale.sale_payments ?? []).reduce((s, p) => s + p.amount, 0);
+  const payLines = paymentLinesFromSalePayments(sale.sale_payments ?? []);
+  const depositFallback =
+    payLines.length === 0
+      ? (sale.sale_payments ?? []).reduce((s, p) => s + p.amount, 0)
+      : null;
   return buildInvoiceA4Data({
     store,
     saleNumber: sale.sale_number,
@@ -45,7 +50,8 @@ export function buildInvoiceA4FromSaleDetail(
     customerName: sale.customer?.name,
     customerPhone: sale.customer?.phone,
     customerAddress: null,
-    depositAmount: deposit,
+    depositAmount: depositFallback,
+    paymentLines: payLines.length > 0 ? payLines : null,
     logoBytes,
   });
 }

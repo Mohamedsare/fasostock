@@ -176,6 +176,10 @@ export function ProductsScreen() {
         await qc.invalidateQueries({
           queryKey: queryKeys.productInventory(storeId),
         });
+        await qc.invalidateQueries({ queryKey: ["stock-movements", storeId] });
+        await qc.invalidateQueries({
+          predicate: (q) => Array.isArray(q.queryKey) && q.queryKey[0] === "pos",
+        });
       }
       setShowForm(false);
       setEditing(null);

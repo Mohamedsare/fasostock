@@ -1,4 +1,10 @@
 import { createClient } from "@/lib/supabase/client";
+import {
+  isNetworkErrorPublic,
+  isSessionOrJwtExpiredMessage,
+  UserFriendlyError,
+} from "@/lib/errors/app-error-mapper";
+import { scrubSensitiveData } from "@/lib/utils/sensitive-data-scrubber";
 
 /**
  * Copie locale (sans import `@/lib/utils/format-unknown-error`) pour éviter cycles / résolution
@@ -61,18 +67,27 @@ export function isClientErrorLoggingEnabled(): boolean {
   return process.env.NEXT_PUBLIC_CLIENT_ERROR_LOGS !== "0";
 }
 
-/** Erreurs attendues / non actionnables côté super-admin (bruit). */
+/** Erreurs attendues / non actionnables côté super-admin (bruit). Aligné `_shouldCaptureRemotely` inversé (Flutter). */
 export function shouldSkipRemoteErrorLog(error: unknown): boolean {
   if (error == null) return true;
+  if (error instanceof UserFriendlyError) return true;
+  if (isNetworkErrorPublic(error)) return true;
   const name = error instanceof Error ? error.name : "";
   const msg = formatErrorForRemoteLog(error);
-  const combined = `${name} ${msg}`.toLowerCase();
+  const stackStr = error instanceof Error ? error.stack ?? "" : "";
+  const combined = `${name} ${msg} ${stackStr}`.toLowerCase();
   if (name === "AbortError" || combined.includes("aborterror")) return true;
   if (combined.includes("user aborted")) return true;
   if (combined.includes("cancelled") || combined.includes("canceled")) return true;
   if (combined.includes("load failed") && combined.includes("fetch")) return true;
   /** Session absente / désync — état attendu, écran dédié dans `AppRouteGuard`. */
   if (combined.includes("session utilisateur absente")) return true;
+  if (isSessionOrJwtExpiredMessage(`${msg} ${name}`)) return true;
+  if (combined.includes("stock insuffisant")) return true;
+  if (combined.includes("vente déjà annulée")) return true;
+  if (combined.includes("choisissez la boutique d'origine")) return true;
+  if (combined.includes("authretryablefetchexception")) return true;
+  if (combined.includes("code: 502") || combined.includes(" 502")) return true;
   return false;
 }
 
@@ -106,10 +121,13 @@ export async function captureWebAppError(
   if (!isClientErrorLoggingEnabled()) return;
   if (shouldSkipRemoteErrorLog(error)) return;
 
-  const message = scrub(formatErrorForRemoteLog(error), 4000);
+  const message = scrubSensitiveData(scrub(formatErrorForRemoteLog(error), 4000));
   if (!message.trim()) return;
 
-  const stackStr = options?.stack != null ? scrub(String(options.stack), 16000) : null;
+  const stackStr =
+    options?.stack != null
+      ? scrubSensitiveData(scrub(String(options.stack), 16000))
+      : null;
   const source = options?.source ?? "app_web";
   const level = options?.level ?? "error";
   const fp = dedupeKey(message, stackStr ?? undefined);

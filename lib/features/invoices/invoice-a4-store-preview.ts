@@ -113,7 +113,11 @@ export function buildDemoInvoiceA4Data(
     customerName: "Client test",
     customerPhone: "70 00 00 00",
     customerAddress: null,
-    depositAmount: 0,
+    depositAmount: null,
+    paymentLines: [
+      { label: "Espèces", amount: 8000, isImmediateEncaisse: true },
+      { label: "À crédit", amount: 4500, isImmediateEncaisse: false },
+    ],
     logoBytes,
     amountInWords: "Douze mille cinq cents francs",
   });

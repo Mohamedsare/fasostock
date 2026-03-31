@@ -9,6 +9,8 @@ export type RegisterCompanyInput = {
   ownerFullName: string;
   firstStoreName: string;
   firstStorePhone: string;
+  /** Slug aligné `business-types.ts` — persisté en `companies.business_type_slug`. */
+  businessTypeSlug?: string | null;
 };
 
 /** Aligné sur `AuthService.registerCompany` (Flutter). */
@@ -41,6 +43,10 @@ export async function registerCompany(
   if (profileError) throw profileError;
 
   const phone = input.firstStorePhone.trim();
+  const businessSlug =
+    input.businessTypeSlug != null && String(input.businessTypeSlug).trim() !== ""
+      ? String(input.businessTypeSlug).trim()
+      : null;
   const { data: rpcData, error: rpcError } = await supabase.rpc(
     "create_company_with_owner",
     {
@@ -49,6 +55,7 @@ export async function registerCompany(
       p_store_name: input.firstStoreName.trim(),
       p_store_code: null,
       p_store_phone: phone.length > 0 ? phone : null,
+      p_business_type_slug: businessSlug,
     },
   );
 

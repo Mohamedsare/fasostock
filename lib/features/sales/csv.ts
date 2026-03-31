@@ -1,11 +1,16 @@
 import type { SaleItem } from "./types";
 import { escapeCsv } from "@/lib/utils/csv";
+import { saleSellerLabel, saleStoreLabel } from "./sale-display";
 
-export function salesToCsv(sales: SaleItem[]): string {
+export function salesToCsv(
+  sales: SaleItem[],
+  stores: { id: string; name: string }[] = [],
+): string {
   const headers = [
     "numero",
     "date",
     "boutique",
+    "vente_par",
     "client",
     "statut",
     "sous_total",
@@ -18,7 +23,8 @@ export function salesToCsv(sales: SaleItem[]): string {
     return [
       escapeCsv(s.sale_number ?? ""),
       escapeCsv(date),
-      escapeCsv(s.store?.name ?? ""),
+      escapeCsv(saleStoreLabel(s, stores)),
+      escapeCsv(saleSellerLabel(s)),
       escapeCsv(s.customer?.name ?? ""),
       escapeCsv(s.status ?? ""),
       String(s.subtotal ?? 0),

@@ -199,9 +199,43 @@ function buildTable(data: InvoiceA4Data, currency: string, headerBg: string): st
   </table>`;
 }
 
+/** Aligné `InvoiceA4PdfService._buildTotals` (Flutter) : règlement, encaisse vs crédit, statuts. */
 function totalsBlock(data: InvoiceA4Data, currency: string, primaryCss: string): string {
-  const deposit = data.depositAmount ?? 0;
-  const remaining = Math.max(0, data.total - deposit);
+  const linesList = data.paymentLines;
+  let encaisseImmediate = 0;
+  if (linesList != null) {
+    for (const pl of linesList) {
+      if (pl.isImmediateEncaisse) encaisseImmediate += pl.amount;
+    }
+  }
+  const hasLines = linesList != null && linesList.length > 0;
+
+  let encaisseEffectif: number;
+  if (hasLines) {
+    encaisseEffectif = encaisseImmediate;
+  } else if (data.depositAmount != null) {
+    encaisseEffectif = Math.max(0, data.depositAmount);
+  } else {
+    encaisseEffectif = 0;
+  }
+
+  const resteDu = Math.max(0, data.total - encaisseEffectif);
+  const totalPositive = data.total > 0.001;
+  const dep = data.depositAmount ?? 0;
+  const showReglement =
+    totalPositive && (hasLines || (data.depositAmount != null && dep > 0.001));
+
+  let statutHtml = "";
+  if (showReglement) {
+    if (resteDu < 0.01) {
+      statutHtml = `<div class="pay-stat">${tx("Statut : facture intégralement réglée")}</div>`;
+    } else if (encaisseEffectif < 0.01) {
+      statutHtml = `<div class="pay-stat">${tx("Statut : paiement à crédit — solde à régler")}</div>`;
+    } else {
+      statutHtml = `<div class="pay-stat">${tx("Statut : règlement partiel — solde à régler")}</div>`;
+    }
+  }
+
   const rows: string[] = [];
   if (data.discount > 0) {
     rows.push(
@@ -217,15 +251,36 @@ function totalsBlock(data: InvoiceA4Data, currency: string, primaryCss: string):
     );
   }
   rows.push(`<div class="tot-sp"></div>`);
+  const totalLabel = data.tax > 0 ? "Montant total TTC" : "Montant total";
   rows.push(
-    `<div class="tot-block"><span class="tot-lbl" style="background:${primaryCss}">Total Net</span><span class="tot-val">${escapeHtml(formatCurrencyInvoice(data.total, currency))}</span></div>`,
+    `<div class="tot-block"><span class="tot-lbl" style="background:${primaryCss}">${escapeHtml(totalLabel)}</span><span class="tot-val">${escapeHtml(formatCurrencyInvoice(data.total, currency))}</span></div>`,
   );
-  rows.push(
-    `<div class="tot-block"><span class="tot-lbl" style="background:${primaryCss}">Total Acompte</span><span class="tot-val">${escapeHtml(formatCurrencyInvoice(deposit, currency))}</span></div>`,
-  );
-  rows.push(
-    `<div class="tot-block"><span class="tot-lbl" style="background:${primaryCss}">Reste à payer</span><span class="tot-val">${escapeHtml(formatCurrencyInvoice(remaining, currency))}</span></div>`,
-  );
+
+  if (showReglement) {
+    rows.push(`<div class="tot-pay-sep"></div>`);
+    rows.push(`<div class="pay-title" style="color:${primaryCss}">${tx("Règlement")}</div>`);
+    rows.push(`<div class="tot-sp-sm"></div>`);
+    if (linesList != null && linesList.length > 0) {
+      for (const pl of linesList) {
+        rows.push(
+          `<div class="tot-line"><span>${tx(pl.label)}</span><span>${escapeHtml(formatCurrencyInvoice(pl.amount, currency))}</span></div>`,
+        );
+      }
+    } else if (data.depositAmount != null) {
+      rows.push(
+        `<div class="tot-line"><span>Montant encaissé</span><span>${escapeHtml(formatCurrencyInvoice(encaisseEffectif, currency))}</span></div>`,
+      );
+    }
+    rows.push(`<div class="tot-sp-sm"></div>`);
+    rows.push(
+      `<div class="tot-block"><span class="tot-lbl" style="background:${primaryCss}">Total encaissé</span><span class="tot-val">${escapeHtml(formatCurrencyInvoice(encaisseEffectif, currency))}</span></div>`,
+    );
+    rows.push(
+      `<div class="tot-block"><span class="tot-lbl" style="background:${primaryCss}">Reste à payer</span><span class="tot-val">${escapeHtml(formatCurrencyInvoice(resteDu, currency))}</span></div>`,
+    );
+    if (statutHtml) rows.push(statutHtml);
+  }
+
   return `<div class="tot-wrap">${rows.join("")}</div>`;
 }
 
@@ -413,9 +468,13 @@ export function renderInvoiceA4Html(data: InvoiceA4Data): string {
   .c-qty { text-align: center; }
   .c-unit { text-align: center; }
   .c-price, .c-tot { text-align: right; }
-  .tot-wrap { width: 240px; margin-left: auto; margin-top: 16px; }
+  .tot-wrap { width: 280px; margin-left: auto; margin-top: 16px; }
   .tot-line { display: flex; justify-content: space-between; padding: 2px 0; font-size: 11px; line-height: 1.25; }
   .tot-sp { height: 8px; }
+  .tot-sp-sm { height: 6px; font-size: 0; line-height: 0; }
+  .tot-pay-sep { height: 10px; }
+  .pay-title { font-size: 11px; font-weight: 700; margin: 0; line-height: 1.2; }
+  .pay-stat { font-size: 10px; font-style: italic; color: #424242; margin-top: 4px; line-height: 1.3; }
   .tot-block { display: flex; margin-bottom: 2px; align-items: stretch; }
   .tot-lbl {
     width: 120px;

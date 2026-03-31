@@ -115,10 +115,12 @@ export function UsersScreen() {
 
   const rightsEligible = useMemo(
     () =>
-      rows.filter(
-        (u) => u.userId !== currentUserId && u.isActive,
-      ),
-    [rows, currentUserId],
+      rows.filter((u) => {
+        if (u.userId === currentUserId || !u.isActive) return false;
+        if (!isOwner && u.roleSlug === "owner") return false;
+        return true;
+      }),
+    [rows, currentUserId, isOwner],
   );
 
   /** Évite un sélecteur de droits pointant vers un membre retiré / désactivé. */
@@ -205,7 +207,7 @@ export function UsersScreen() {
         companyId,
         userId: rightsUserId as string,
       }),
-    enabled: Boolean(companyId) && Boolean(rightsUserId) && isOwner,
+    enabled: Boolean(companyId) && Boolean(rightsUserId) && canManage,
     staleTime: 10_000,
   });
 
@@ -405,15 +407,16 @@ export function UsersScreen() {
         ))}
       </FsCard>
 
-      {isOwner ? (
+      {canManage ? (
         <FsCard className="mt-3" padding="p-3 sm:p-4">
           <div className="flex items-center gap-2">
             <MdManageAccounts className="h-5 w-5 text-fs-accent" aria-hidden />
             <FsSectionLabel>Gestion des droits</FsSectionLabel>
           </div>
           <p className="mt-2 text-xs text-neutral-600">
-            Les droits affichés sont les droits effectifs (rôle + surcharges). Décocher retire la
-            permission (même si le rôle la prévoit) ; cocher l’ajoute si le rôle ne la donne pas.
+            Propriétaire ou utilisateur avec « Gérer les utilisateurs » : vous pouvez affiner chaque
+            permission (magasin, stock, produits, achats…). Décocher retire une permission même si
+            le rôle la donne par défaut. Seul le propriétaire peut modifier un autre propriétaire.
           </p>
           <div className="mt-3">
             <select

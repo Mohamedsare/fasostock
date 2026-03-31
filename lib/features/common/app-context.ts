@@ -26,13 +26,23 @@ function pickActiveCompanyId(orderedIds: string[]): string {
   return orderedIds[0]!;
 }
 
-/** Comme `CompanyProvider._loadStores` / `setCurrentCompanyId` (Flutter) : primaire si présente, sinon première. */
+/**
+ * Comme `defaultSelectedStoreId ` (Flutter) : tri stable nom + id ;
+ * si au moins une boutique `isPrimary`, la première dans cet ordre ; sinon première du tri.
+ */
 function defaultStoreIdFromList(
-  stores: { id: string; isPrimary?: boolean }[],
+  stores: { id: string; name?: string; isPrimary?: boolean }[],
 ): string | null {
   if (stores.length === 0) return null;
-  const primary = stores.find((s) => s.isPrimary === true);
-  return primary?.id ?? stores[0]!.id;
+  const sorted = [...stores].sort((a, b) => {
+    const an = (a.name ?? "").toLowerCase();
+    const bn = (b.name ?? "").toLowerCase();
+    const c = an.localeCompare(bn);
+    if (c !== 0) return c;
+    return a.id.localeCompare(b.id);
+  });
+  const primary = sorted.find((s) => s.isPrimary === true);
+  return primary?.id ?? sorted[0]!.id;
 }
 
 function pickActiveStoreId(
@@ -124,6 +134,7 @@ async function fetchAppContext(): Promise<AppContextData | null> {
     return {
       companyId: "",
       companyName: "",
+      businessTypeSlug: null,
       companyLogoUrl: null,
       storeId: null,
       stores: [],
@@ -136,7 +147,7 @@ async function fetchAppContext(): Promise<AppContextData | null> {
   const primaryCompanyId = pickActiveCompanyId(orderedCompanyIds);
   const { data: companyRow, error: cErr } = await supabase
     .from("companies")
-    .select("id, name, logo_url")
+    .select("id, name, logo_url, business_type_slug")
     .eq("id", primaryCompanyId)
     .maybeSingle();
   if (cErr) throw mapSupabaseError(cErr);
@@ -153,6 +164,7 @@ async function fetchAppContext(): Promise<AppContextData | null> {
     return {
       companyId: "",
       companyName: "",
+      businessTypeSlug: null,
       companyLogoUrl: null,
       storeId: null,
       stores: [],
@@ -164,6 +176,12 @@ async function fetchAppContext(): Promise<AppContextData | null> {
 
   const companyId = companyRow.id as string;
   const companyName = (companyRow.name as string) ?? "Entreprise";
+  const businessTypeSlugRaw = (companyRow as { business_type_slug?: string | null })
+    .business_type_slug;
+  const businessTypeSlug =
+    businessTypeSlugRaw != null && String(businessTypeSlugRaw).trim() !== ""
+      ? String(businessTypeSlugRaw).trim()
+      : null;
   const companyLogoUrl =
     ((companyRow as { logo_url?: string | null }).logo_url ?? null)?.trim() || null;
 
@@ -182,6 +200,7 @@ async function fetchAppContext(): Promise<AppContextData | null> {
     return {
       companyId,
       companyName,
+      businessTypeSlug,
       companyLogoUrl,
       storeId: pickActiveStoreId(mapped),
       stores: mapped,
@@ -226,6 +245,7 @@ async function fetchAppContext(): Promise<AppContextData | null> {
   return {
     companyId,
     companyName,
+    businessTypeSlug,
     companyLogoUrl,
     storeId: pickActiveStoreId(mapped),
     stores: mapped,

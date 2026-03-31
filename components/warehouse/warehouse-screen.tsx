@@ -179,7 +179,7 @@ export function WarehouseScreen() {
   const companyName = ctx?.companyName ?? "";
   const stores = ctx?.stores ?? [];
   const activeStoreId = ctx?.storeId ?? null;
-  const isOwner = helpers?.isOwner ?? false;
+  const canWarehouse = helpers?.canWarehouse ?? false;
   /** Aligné `TransfersScreen` — actions sur le flux transfert. */
   const canApproveTransfer = hasPermission(P.transfersApprove);
   const canOperateTransfers =
@@ -211,22 +211,22 @@ export function WarehouseScreen() {
   const invQ = useQuery({
     queryKey: queryKeys.warehouseInventory(companyId),
     queryFn: () => listWarehouseInventory(companyId),
-    enabled: Boolean(companyId) && isOwner,
+    enabled: Boolean(companyId) && canWarehouse,
   });
   const movQ = useQuery({
     queryKey: queryKeys.warehouseMovements(companyId),
     queryFn: () => listWarehouseMovements(companyId, 500),
-    enabled: Boolean(companyId) && isOwner,
+    enabled: Boolean(companyId) && canWarehouse,
   });
   const dispatchQ = useQuery({
     queryKey: queryKeys.warehouseDispatch(companyId),
     queryFn: () => listWarehouseDispatchInvoices(companyId),
-    enabled: Boolean(companyId) && isOwner,
+    enabled: Boolean(companyId) && canWarehouse,
   });
   const whTransfersQ = useQuery({
     queryKey: queryKeys.warehouseTransfers(companyId),
     queryFn: () => listStockTransfers({ companyId, fromWarehouseOnly: true }),
-    enabled: Boolean(companyId) && isOwner,
+    enabled: Boolean(companyId) && canWarehouse,
   });
 
   const detailTransferQ = useQuery({
@@ -412,7 +412,7 @@ export function WarehouseScreen() {
     );
   }
 
-  if (!isOwner) {
+  if (!canWarehouse) {
     return (
       <FsPage>
         <FsScreenHeader title="Magasin" />
@@ -420,7 +420,7 @@ export function WarehouseScreen() {
           <MdLockOutline className="h-14 w-14 text-neutral-400" aria-hidden />
           <p className="mt-4 text-base font-bold text-fs-text">Accès réservé</p>
           <p className="mt-2 max-w-md text-sm leading-relaxed text-neutral-600">
-            Ce module dépôt central est réservé au propriétaire de l’entreprise.
+            Ce module dépôt central est réservé au propriétaire ou aux utilisateurs avec le rôle Magasinier.
           </p>
         </div>
       </FsPage>

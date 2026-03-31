@@ -2,6 +2,8 @@
 export const ROUTES = {
   login: "/login",
   register: "/register",
+  /** Choix du type d’activité avant inscription (`?businessType=` sur `/register`). */
+  registerSelectActivity: "/register/select-activity",
   forgotPassword: "/forgot-password",
   resetPassword: "/reset-password",
   dashboard: "/dashboard",

@@ -154,7 +154,7 @@ export function LoginForm() {
   }
 
   return (
-    <div className="w-full">
+    <div className="mx-auto w-full max-w-md">
       <div className="rounded-2xl border border-neutral-200/80 bg-white p-5 shadow-[0_8px_32px_rgba(0,0,0,0.06)] sm:p-6">
         <div className="flex flex-col items-center text-center">
           <Image
@@ -265,7 +265,7 @@ export function LoginForm() {
               Mot de passe oublié ?
             </Link>
             <Link
-              href="/register"
+              href={ROUTES.registerSelectActivity}
               className="fs-touch-target py-1 underline-offset-4 hover:underline"
             >
               Créer un compte

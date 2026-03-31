@@ -15,6 +15,7 @@ import { formatCurrency } from "@/lib/utils/currency";
 import { formatDateTime, toIsoDate } from "@/lib/utils/date";
 import { downloadCsv } from "@/lib/utils/csv";
 import { salesToCsv } from "@/lib/features/sales/csv";
+import { saleSellerLabel, saleStoreLabel } from "@/lib/features/sales/sale-display";
 import { ROUTES } from "@/lib/config/routes";
 import { messageFromUnknownError, toast } from "@/lib/toast";
 import { cn } from "@/lib/utils/cn";
@@ -185,6 +186,8 @@ export function SalesScreen() {
     queryKey: queryKeys.sales(salesParams),
     queryFn: () => listSales(salesParams),
     enabled: !!companyId,
+    refetchInterval: 10_000,
+    refetchIntervalInBackground: true,
   });
 
   const cancelMut = useMutation({
@@ -251,7 +254,7 @@ export function SalesScreen() {
 
   const exportCsv = () => {
     const d = new Date().toISOString().slice(0, 10);
-    downloadCsv(`ventes-${d}.csv`, salesToCsv(sales));
+    downloadCsv(`ventes-${d}.csv`, salesToCsv(sales, stores));
     toast.success("CSV enregistré");
   };
 
@@ -478,6 +481,7 @@ export function SalesScreen() {
                     <th className="px-3 py-2.5">Type</th>
                     <th className="px-3 py-2.5">Date</th>
                     <th className="px-3 py-2.5">Boutique</th>
+                    <th className="px-3 py-2.5">Vente par</th>
                     <th className="px-3 py-2.5">Client</th>
                     <th className="px-3 py-2.5 text-right">Total</th>
                     <th className="px-3 py-2.5">Statut</th>
@@ -494,7 +498,8 @@ export function SalesScreen() {
                       <td className="px-3 py-2 whitespace-nowrap">
                         {formatDateTime(s.created_at)}
                       </td>
-                      <td className="px-3 py-2">{s.store?.name ?? "—"}</td>
+                      <td className="px-3 py-2">{saleStoreLabel(s, stores)}</td>
+                      <td className="px-3 py-2">{saleSellerLabel(s)}</td>
                       <td className="px-3 py-2">{s.customer?.name ?? "—"}</td>
                       <td className="px-3 py-2 text-right font-semibold">
                         {formatCurrency(s.total)}
@@ -551,6 +556,7 @@ export function SalesScreen() {
                 <SaleCard
                   key={s.id}
                   sale={s}
+                  stores={stores}
                   canCancel={canCancelSale}
                   onDetail={() => setDetailId(s.id)}
                   onCancel={() => {
@@ -681,11 +687,13 @@ function ActionCard({
 
 function SaleCard({
   sale,
+  stores,
   canCancel,
   onCancel,
   onDetail,
 }: {
   sale: SaleItem;
+  stores: { id: string; name: string }[];
   canCancel: boolean;
   onCancel: () => void;
   onDetail: () => void;
@@ -721,11 +729,15 @@ function SaleCard({
           <p className="mt-2 text-xs text-neutral-500">
             {formatDateTime(sale.created_at)}
           </p>
-          {(sale.store?.name || sale.customer?.name) ? (
-            <p className="mt-1 truncate text-sm text-neutral-800">
-              {[sale.store?.name, sale.customer?.name].filter(Boolean).join(" · ")}
-            </p>
-          ) : null}
+          <p className="mt-1 line-clamp-2 text-sm text-neutral-800">
+            {[
+              saleStoreLabel(sale, stores),
+              sale.created_by_label?.trim() ? `Par ${sale.created_by_label.trim()}` : null,
+              sale.customer?.name?.trim() || null,
+            ]
+              .filter(Boolean)
+              .join(" · ")}
+          </p>
         </div>
       </div>
       <div

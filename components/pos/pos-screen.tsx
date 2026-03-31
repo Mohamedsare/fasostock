@@ -301,14 +301,17 @@ export function PosScreen({ storeId, mode }: { storeId: string; mode: PosMode })
           toast.info("Facture PDF : disponible après synchronisation (vente en file d’attente).");
         } else
         try {
-          const [{ getSaleDetail }, { buildInvoiceA4Data }, { fetchLogoBytes }] =
+          const [{ getSaleDetail }, { buildInvoiceA4Data }, { fetchLogoBytes }, { paymentLinesFromSalePayments }] =
             await Promise.all([
               import("@/lib/features/sales/api"),
               import("@/lib/features/invoices/build-invoice-a4-data"),
               import("@/lib/features/invoices/generate-invoice-pdf"),
+              import("@/lib/features/invoices/invoice-a4-payment-lines"),
             ]);
           const detail = await getSaleDetail(res.saleId);
           const logoBytes = await fetchLogoBytes(store.logo_url);
+          const salePayments = (detail as { sale_payments?: Array<{ method: string; amount: number; reference?: string | null }> } | null)?.sale_payments ?? [];
+          const payLines = paymentLinesFromSalePayments(salePayments);
           const inv = buildInvoiceA4Data({
             store,
             saleNumber: res.saleNumber,
@@ -326,7 +329,8 @@ export function PosScreen({ storeId, mode }: { storeId: string; mode: PosMode })
             customerName: detail?.customer?.name ?? null,
             customerPhone: detail?.customer?.phone ?? null,
             customerAddress: null,
-            depositAmount: res.invoiceSnap.depositAmount,
+            depositAmount: payLines.length > 0 ? null : res.invoiceSnap.depositAmount,
+            paymentLines: payLines.length > 0 ? payLines : null,
             logoBytes,
           });
           setInvoiceDialog(inv);

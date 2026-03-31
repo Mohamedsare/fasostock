@@ -1,4 +1,4 @@
-import { formatUnknownErrorMessage } from "@/lib/utils/format-unknown-error";
+import { toUserMessage } from "@/lib/errors/app-error-mapper";
 import type { ToastPayload } from "./types";
 
 export type { ToastPayload, ToastType } from "./types";
@@ -35,9 +35,12 @@ export function subscribeToToasts(handler: (payload: ToastPayload) => void) {
   return () => window.removeEventListener(EVENT, fn);
 }
 
-/** Message utilisateur depuis une erreur inconnue (mutations, catch). */
-export function messageFromUnknownError(e: unknown, fallback = "Une erreur s’est produite."): string {
-  const m = formatUnknownErrorMessage(e, fallback);
+/** Message utilisateur depuis une erreur inconnue — aligné `ErrorMapper` / `AppErrorHandler` (Flutter). */
+export function messageFromUnknownError(
+  e: unknown,
+  fallback = "Une erreur s’est produite.",
+): string {
+  const m = toUserMessage(e, fallback);
   return m.trim() || fallback;
 }
 

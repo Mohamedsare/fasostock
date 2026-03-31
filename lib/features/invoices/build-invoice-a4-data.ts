@@ -1,5 +1,5 @@
 import type { Store } from "@/lib/features/stores/types";
-import type { InvoiceA4Data, InvoiceLineData } from "./invoice-a4-types";
+import type { InvoiceA4Data, InvoiceLineData, InvoicePaymentLineData } from "./invoice-a4-types";
 
 export function buildInvoiceA4Data(params: {
   store: Store;
@@ -18,7 +18,9 @@ export function buildInvoiceA4Data(params: {
   customerName?: string | null;
   customerPhone?: string | null;
   customerAddress?: string | null;
-  depositAmount: number;
+  /** Montant encaissé si pas de [paymentLines] (rétrocompat). */
+  depositAmount?: number | null;
+  paymentLines?: InvoicePaymentLineData[] | null;
   logoBytes?: Uint8Array | null;
   amountInWords?: string | null;
 }): InvoiceA4Data {
@@ -41,7 +43,8 @@ export function buildInvoiceA4Data(params: {
     customerName: params.customerName,
     customerPhone: params.customerPhone,
     customerAddress: params.customerAddress,
-    depositAmount: params.depositAmount,
+    depositAmount: params.depositAmount ?? null,
+    paymentLines: params.paymentLines ?? null,
     logoBytes: params.logoBytes ?? null,
     amountInWords: params.amountInWords ?? null,
   };

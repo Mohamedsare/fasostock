@@ -7,6 +7,36 @@ import type { SaleItem, SaleStatus } from "./types";
 const saleSelect =
   "id, company_id, store_id, customer_id, sale_number, status, subtotal, discount, tax, total, created_by, created_at, updated_at, sale_mode, document_type, store:stores(id, name), customer:customers(id, name, phone)";
 
+function fallbackCreatorLabel(userId: string): string {
+  if (userId.length >= 8) return `Utilisateur ${userId.slice(0, 8)}…`;
+  return "Utilisateur";
+}
+
+async function fetchCreatorLabels(
+  supabase: ReturnType<typeof createClient>,
+  userIds: string[],
+): Promise<Map<string, string>> {
+  const map = new Map<string, string>();
+  const uniq = [...new Set(userIds)].filter((id) => id && id.length > 0);
+  for (const id of uniq) {
+    map.set(id, fallbackCreatorLabel(id));
+  }
+  if (uniq.length === 0) return map;
+
+  const chunkSize = 120;
+  for (let i = 0; i < uniq.length; i += chunkSize) {
+    const chunk = uniq.slice(i, i + chunkSize);
+    const { data, error } = await supabase.from("profiles").select("id, full_name").in("id", chunk);
+    if (error) throw error;
+    for (const row of data ?? []) {
+      const r = row as { id: string; full_name: string | null };
+      const fn = r.full_name?.trim();
+      map.set(r.id, fn && fn.length > 0 ? fn : fallbackCreatorLabel(r.id));
+    }
+  }
+  return map;
+}
+
 export async function listSales(params: {
   companyId: string;
   storeId: string | null;
@@ -26,7 +56,7 @@ export async function listSales(params: {
   if (params.to) q = q.lte("created_at", `${params.to}T23:59:59.999Z`);
   const { data, error } = await q;
   if (error) throw error;
-  return ((data ?? []) as Array<Record<string, unknown>>).map((row) => {
+  const rows = ((data ?? []) as Array<Record<string, unknown>>).map((row) => {
     const storeRaw = row.store;
     const customerRaw = row.customer;
     const store = Array.isArray(storeRaw)
@@ -41,6 +71,22 @@ export async function listSales(params: {
       customer,
     };
   });
+
+  const creatorIds = rows.map((r) => r.created_by).filter(Boolean) as string[];
+  let labelByUser: Map<string, string>;
+  try {
+    labelByUser = await fetchCreatorLabels(supabase, creatorIds);
+  } catch {
+    labelByUser = new Map();
+    for (const id of new Set(creatorIds)) {
+      labelByUser.set(id, fallbackCreatorLabel(id));
+    }
+  }
+
+  return rows.map((r) => ({
+    ...r,
+    created_by_label: labelByUser.get(r.created_by) ?? fallbackCreatorLabel(r.created_by),
+  }));
 }
 
 export async function cancelSale(saleId: string): Promise<void> {

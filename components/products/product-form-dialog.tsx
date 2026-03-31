@@ -189,8 +189,13 @@ export function ProductFormDialog({
   function validate(): string | null {
     const nm = name.trim();
     if (nm.length < 2) return "Nom requis (2 caractères minimum).";
+    const pp = toNumber(purchasePrice);
+    if (pp < 0) return "Prix d'achat doit être ≥ 0.";
     const sp = toNumber(salePrice);
     if (sp < 0) return "Prix de vente doit être ≥ 0.";
+    if (pp > sp) {
+      return "Le prix d'achat ne peut pas dépasser le prix de vente. Réduisez le prix d'achat ou augmentez le prix de vente.";
+    }
     return null;
   }
 

@@ -12,6 +12,8 @@ export type SaleItem = {
   tax: number;
   total: number;
   created_by: string;
+  /** Libellé affichable (profil) — renseigné par [listSales]. */
+  created_by_label?: string | null;
   created_at: string;
   updated_at: string;
   sale_mode: "quick_pos" | "invoice_pos" | null;
