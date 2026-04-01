@@ -63,7 +63,9 @@ export function AppShell({ children, userEmail }: AppShellProps) {
   const { filterNavItems } = usePermissions();
   const isDesktop = useDesktopNav();
   // Route POS (Flutter-like: écran "figé", scroll interne sur zones prévues).
-  const isPosRoute = /^\/stores\/[^/]+\/pos(-quick)?\/?$/.test(pathname);
+  const isPosRoute = /^\/stores\/[^/]+\/(pos(-quick)?|facture-tab)\/?$/.test(
+    pathname,
+  );
   const [moreOpen, setMoreOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileBrandLogoErr, setMobileBrandLogoErr] = useState(false);

@@ -1,4 +1,7 @@
-/** Aligné sur `app/lib/core/config/routes.dart` (Flutter). */
+/**
+ * Aligné sur `app/lib/core/config/routes.dart` (Flutter).
+ * Chemins Flutter sans page web équivalente pour l’instant : `/create-super-admin`, `/cash`.
+ */
 export const ROUTES = {
   login: "/login",
   register: "/register",
@@ -37,6 +40,11 @@ export const ROUTES = {
   adminReports: "/admin/reports",
   adminSettings: "/admin/settings",
 } as const;
+
+/** Aligné `AppRoutes.factureTab` (Flutter) — POS facture A4 vue tableau. */
+export function storeFactureTabPath(storeId: string): string {
+  return `${ROUTES.stores}/${storeId}/facture-tab`;
+}
 
 /** Barre du bas mobile — 3 raccourcis + « Plus » (comme Flutter `AppShell`). */
 export const MOBILE_BOTTOM_PRIMARY = [

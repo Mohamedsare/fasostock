@@ -6,6 +6,7 @@ import { createCustomer } from "@/lib/features/customers/api";
 import { P } from "@/lib/constants/permissions";
 import { usePermissions } from "@/lib/features/permissions/use-permissions";
 import { createPosSale, fetchPosData } from "@/lib/features/pos/api";
+import { fetchInvoiceTablePosEnabled } from "@/lib/features/settings/invoice-table-pos";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { ROUTES } from "@/lib/config/routes";
 import { queryKeys } from "@/lib/query/query-keys";
@@ -49,9 +50,10 @@ import {
   MdSearch,
   MdSettings,
   MdStore,
+  MdTableChart,
 } from "react-icons/md";
 
-type PosMode = "quick" | "a4";
+export type PosMode = "quick" | "a4" | "a4-table";
 type CartRow = {
   productId: string;
   name: string;
@@ -132,7 +134,18 @@ export function PosScreen({ storeId, mode }: { storeId: string; mode: PosMode })
 
   const canQuick = hasPermission(P.salesCreate);
   const canA4 = hasPermission(P.salesInvoiceA4) || hasPermission(P.salesCreate);
-  const canAccess = mode === "quick" ? canQuick : canA4;
+  const canAccessA4Table =
+    hasPermission(P.salesInvoiceA4Table) && canA4;
+  const canAccess =
+    mode === "quick" ? canQuick : mode === "a4" ? canA4 : canAccessA4Table;
+  const isA4Like = mode === "a4" || mode === "a4-table";
+
+  const invoiceTableCompanyQ = useQuery({
+    queryKey: queryKeys.invoiceTablePosEnabled(companyId),
+    queryFn: () => fetchInvoiceTablePosEnabled(companyId),
+    enabled: Boolean(companyId && mode === "a4-table" && canAccessA4Table),
+    staleTime: 60_000,
+  });
 
   const posQ = useQuery({
     queryKey: ["pos", mode, companyId, storeId] as const,
@@ -140,12 +153,21 @@ export function PosScreen({ storeId, mode }: { storeId: string; mode: PosMode })
       fetchPosData({
         companyId,
         storeId,
-        withCustomers: mode === "a4",
+        withCustomers: isA4Like,
       }),
-    enabled: Boolean(companyId && storeId && canAccess),
+    enabled: Boolean(
+      companyId &&
+        storeId &&
+        canAccess &&
+        (mode !== "a4-table" || invoiceTableCompanyQ.data === true),
+    ),
     staleTime: 20_000,
     refetchInterval: mode === "quick" ? 15_000 : false,
   });
+
+  const stripCol1900 = useMediaQuery("(min-width: 1900px)");
+  const stripCol1400 = useMediaQuery("(min-width: 1400px)");
+  const stripMainExtent = stripCol1900 ? 172 : stripCol1400 ? 152 : 132;
 
   const store = posQ.data?.store ?? null;
   const products = posQ.data?.products ?? [];
@@ -198,7 +220,7 @@ export function PosScreen({ storeId, mode }: { storeId: string; mode: PosMode })
     if (stockWarnings.length > 0) {
       return "Stock insuffisant pour certains articles.";
     }
-    if (mode === "a4" && paymentMethod === "other" && !customerId) {
+    if (isA4Like && paymentMethod === "other" && !customerId) {
       return "Associez un client pour une vente à crédit.";
     }
     if (
@@ -229,7 +251,7 @@ export function PosScreen({ storeId, mode }: { storeId: string; mode: PosMode })
                 return [{ method: paymentMethod, amount: normalized }];
               })();
       const invoiceSnap =
-        mode === "a4" && store
+        isA4Like && store
           ? {
               cart: cart.map((c) => ({ ...c })),
               subtotal,
@@ -257,7 +279,7 @@ export function PosScreen({ storeId, mode }: { storeId: string; mode: PosMode })
       const res = await createPosSale({
         companyId,
         storeId,
-        customerId: mode === "a4" ? customerId || null : null,
+        customerId: isA4Like ? customerId || null : null,
         items: cart.map((c) => ({
           productId: c.productId,
           quantity: c.quantity,
@@ -296,7 +318,7 @@ export function PosScreen({ storeId, mode }: { storeId: string; mode: PosMode })
         qc.invalidateQueries({ queryKey: queryKeys.productInventory(storeId) }),
       ]);
 
-      if (mode === "a4" && store && res.invoiceSnap) {
+      if (isA4Like && store && res.invoiceSnap) {
         if (res.saleId.startsWith("offline:")) {
           toast.info("Facture PDF : disponible après synchronisation (vente en file d’attente).");
         } else
@@ -521,7 +543,11 @@ export function PosScreen({ storeId, mode }: { storeId: string; mode: PosMode })
         <MdLock className="h-16 w-16 text-red-600" aria-hidden />
         <p className="mt-4 max-w-sm text-center text-sm font-semibold text-[#1F2937]">
           Vous n&apos;avez pas l&apos;autorisation pour{" "}
-          {mode === "quick" ? "la caisse rapide" : "la facture A4"}.
+          {mode === "quick"
+            ? "la caisse rapide."
+            : mode === "a4-table"
+              ? "la facture A4 (tableau)."
+              : "la facture A4."}
         </p>
         <Link
           href="/stores"
@@ -534,9 +560,45 @@ export function PosScreen({ storeId, mode }: { storeId: string; mode: PosMode })
     );
   }
 
+  if (mode === "a4-table" && canAccessA4Table) {
+    if (invoiceTableCompanyQ.isPending) {
+      return (
+        <div className="box-border flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center bg-[#F8F9FA] px-[20px] py-10">
+          <div className="h-9 w-9 animate-spin rounded-full border-2 border-[#F97316] border-t-transparent" />
+          <p className="mt-4 text-sm text-neutral-600">Chargement…</p>
+        </div>
+      );
+    }
+    if (invoiceTableCompanyQ.data === false) {
+      return (
+        <div className="box-border flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center overflow-y-auto bg-[#F8F9FA] px-[20px] py-10">
+          <MdTableChart className="h-16 w-16 text-[#6B7280]" aria-hidden />
+          <p className="mt-4 max-w-md text-center text-sm font-semibold text-[#1F2937]">
+            L&apos;interface facture en tableau est désactivée pour votre entreprise. Le
+            propriétaire peut l&apos;activer dans Paramètres (&quot;Facture A4 — vue
+            tableau&quot;).
+          </p>
+          <Link
+            href={ROUTES.settings}
+            className="mt-6 inline-flex items-center gap-2 rounded-[10px] bg-[#F97316] px-4 py-3 text-sm font-semibold text-white"
+          >
+            Ouvrir les paramètres
+          </Link>
+          <Link
+            href={ROUTES.stores}
+            className="mt-3 text-sm font-semibold text-[#F97316] underline-offset-2 hover:underline"
+          >
+            Retour aux boutiques
+          </Link>
+        </div>
+      );
+    }
+  }
+
   const cartPanel = (
     <PosCartPanel
       mode={mode}
+      cartLayout={mode === "a4-table" ? "table" : "cards"}
       cart={cart}
       cartCount={cartCount}
       stockByProductId={stockByProductId}
@@ -590,12 +652,18 @@ export function PosScreen({ storeId, mode }: { storeId: string; mode: PosMode })
       <header className="z-30 flex h-[60px] shrink-0 items-center gap-2 bg-[#f97316] px-3 text-white sm:px-4">
         {mode === "quick" ? (
           <MdStore className="h-6 w-6 shrink-0 sm:h-7 sm:w-7" aria-hidden />
+        ) : mode === "a4-table" ? (
+          <MdTableChart className="h-6 w-6 shrink-0 sm:h-7 sm:w-7" aria-hidden />
         ) : (
           <MdDescription className="h-6 w-6 shrink-0 sm:h-7 sm:w-7" aria-hidden />
         )}
         <div className="min-w-0 flex-1">
           <p className="truncate text-[15px] font-bold leading-tight sm:text-lg">
-            {mode === "quick" ? "POS Caisse Rapide" : "POS Facture A4"}
+            {mode === "quick"
+              ? "POS Caisse Rapide"
+              : mode === "a4-table"
+                ? "Facture (tableau)"
+                : "POS Facture A4"}
           </p>
           <p className="truncate text-[11px] text-white/90">
             {store?.name ?? "Boutique"}
@@ -674,7 +742,11 @@ export function PosScreen({ storeId, mode }: { storeId: string; mode: PosMode })
           <div className="flex flex-col items-center gap-4">
             <div className="h-9 w-9 animate-spin rounded-full border-2 border-[#F97316] border-t-transparent" />
             <p className="text-sm text-neutral-600">
-              {mode === "a4" ? "Chargement Facture A4..." : "Chargement..."}
+              {mode === "a4-table"
+                ? "Chargement facture (tableau)..."
+                : mode === "a4"
+                  ? "Chargement Facture A4..."
+                  : "Chargement..."}
             </p>
           </div>
         </div>
@@ -697,9 +769,21 @@ export function PosScreen({ storeId, mode }: { storeId: string; mode: PosMode })
           </Link>
         </div>
       ) : (
-        <div className="flex min-h-0 flex-1 flex-col min-[900px]:flex-row min-[900px]:overflow-hidden">
-          {/* Zone gauche — fond blanc */}
-          <main className="flex min-h-0 min-w-0 flex-1 flex-col bg-white min-[900px]:flex-[65]">
+        <div
+          className={cn(
+            "flex min-h-0 flex-1",
+            mode === "a4-table"
+              ? "flex-col overflow-hidden"
+              : "flex-col min-[900px]:flex-row min-[900px]:overflow-hidden",
+          )}
+        >
+          {/* Zone produits — aligné Flutter : facture-tab = moitié hauteur + moitié panier tableau */}
+          <main
+            className={cn(
+              "flex min-h-0 min-w-0 flex-1 flex-col bg-white",
+              mode === "a4-table" ? "min-h-0 overflow-hidden" : "min-[900px]:flex-[65]",
+            )}
+          >
             <div className="px-4 pb-1.5 pt-1.5">
               {mode === "quick" ? (
                 <div className="relative h-10">
@@ -741,7 +825,12 @@ export function PosScreen({ storeId, mode }: { storeId: string; mode: PosMode })
                 </div>
               ) : (
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch sm:gap-2.5">
-                  <div className="relative min-h-10 min-w-0 flex-1">
+                  <div
+                    className={cn(
+                      "relative min-h-10 min-w-0 flex-1",
+                      mode === "a4-table" && "sm:max-w-xl lg:max-w-2xl",
+                    )}
+                  >
                     <MdSearch
                       className="pointer-events-none absolute left-2 top-1/2 z-[1] h-4 w-4 -translate-y-1/2 text-[#F97316]"
                       aria-hidden
@@ -818,7 +907,14 @@ export function PosScreen({ storeId, mode }: { storeId: string; mode: PosMode })
               </div>
             </div>
 
-            <div className="@container min-h-0 flex-1 overflow-y-auto px-4 pb-28 min-[900px]:pb-4">
+            <div
+              className={cn(
+                "min-h-0 flex-1 px-4",
+                mode === "a4-table"
+                  ? "flex flex-col overflow-hidden pb-4"
+                  : "pb-28 min-[900px]:pb-4 @container overflow-y-auto",
+              )}
+            >
               {filtered.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16">
                   <MdInventory2
@@ -832,6 +928,66 @@ export function PosScreen({ storeId, mode }: { storeId: string; mode: PosMode })
                         ? "Aucun produit"
                         : "Aucun produit actif"}
                   </p>
+                </div>
+              ) : mode === "a4-table" ? (
+                <div
+                  className="min-h-0 flex-1 overflow-x-auto overflow-y-hidden [-ms-overflow-style:auto] [scrollbar-width:thin]"
+                >
+                  <div
+                    className="grid h-full min-h-[220px] grid-flow-col grid-rows-2 gap-2.5 py-1 content-start"
+                    style={{ gridAutoColumns: stripMainExtent }}
+                  >
+                    {filtered.map((p) => {
+                      const stock = stockByProductId.get(p.id) ?? 0;
+                      const thumb = p.product_images?.[0]?.url ?? null;
+                      const price = Number(p.sale_price ?? 0);
+                      const priceLine =
+                        stock >= 0
+                          ? `${formatCurrency(price)} · ${stock}`
+                          : formatCurrency(price);
+                      const noStock = stock <= 0;
+                      return (
+                        <button
+                          key={p.id}
+                          type="button"
+                          disabled={noStock}
+                          onClick={() => {
+                            if (!noStock)
+                              addToCart(p.id, p.name, price, p.unit, thumb);
+                          }}
+                          className={cn(
+                            "flex min-h-0 w-full flex-col items-center rounded-[14px] border bg-white px-1.5 py-1.5 text-center transition active:scale-[0.98]",
+                            noStock
+                              ? "border-[#E5E7EB] opacity-45"
+                              : "border-[1.5px] border-[#F97316]/35 shadow-[0_2px_8px_rgba(249,115,22,0.08)]",
+                          )}
+                        >
+                          <div className="mx-auto flex h-[52px] w-full max-w-[4.75rem] shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[#F8F9FA]">
+                            {thumb ? (
+                              <img src={thumb} alt="" className="h-full w-full object-cover" />
+                            ) : (
+                              <MdInventory2
+                                className="h-6 w-6 text-[#F97316]/70"
+                                aria-hidden
+                              />
+                            )}
+                          </div>
+                          <p
+                            className="mt-1 line-clamp-2 w-full flex-1 px-0.5 text-center text-[10px] font-semibold leading-tight text-[#1F2937] sm:text-[11px]"
+                            title={p.name}
+                          >
+                            {p.name}
+                          </p>
+                          <p
+                            className="mt-0.5 w-full truncate px-0.5 text-center text-[10px] font-bold text-[#F97316]"
+                            title={priceLine}
+                          >
+                            {priceLine}
+                          </p>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               ) : (
                 <div className="grid grid-cols-2 gap-3 pb-4 @[600px]:grid-cols-4">
@@ -894,15 +1050,20 @@ export function PosScreen({ storeId, mode }: { storeId: string; mode: PosMode })
             </div>
           </main>
 
-          {/* Zone droite desktop — 380px, fond secondaire Flutter */}
-          <aside className="hidden h-full min-h-0 w-[380px] shrink-0 flex-col border-l border-[#E5E7EB] bg-[#F8F9FA] min-[900px]:flex">
-            {cartPanel}
-          </aside>
+          {mode === "a4-table" ? (
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border-t border-[#E5E7EB] bg-[#F8F9FA]">
+              {cartPanel}
+            </div>
+          ) : (
+            <aside className="hidden h-full min-h-0 w-[380px] shrink-0 flex-col border-l border-[#E5E7EB] bg-[#F8F9FA] min-[900px]:flex">
+              {cartPanel}
+            </aside>
+          )}
         </div>
       )}
 
       {/* Barre mobile — Flutter _buildMobileBottomBar */}
-      {!isWide && store && !posQ.isLoading && !posQ.isError ? (
+      {!isWide && store && !posQ.isLoading && !posQ.isError && mode !== "a4-table" ? (
         <div
           className="fixed bottom-0 left-[20px] right-[20px] z-20 border-t border-[#E5E7EB] bg-white px-4 py-3 shadow-[0_-2px_12px_rgba(0,0,0,0.08)] min-[900px]:hidden"
           style={{ paddingBottom: "max(12px, env(safe-area-inset-bottom))" }}
@@ -935,7 +1096,7 @@ export function PosScreen({ storeId, mode }: { storeId: string; mode: PosMode })
       ) : null}
 
       {/* Bottom sheet mobile panier */}
-      {!isWide && cartOpen ? (
+      {!isWide && cartOpen && mode !== "a4-table" ? (
         <div
           className="fixed inset-0 z-40 bg-black/35 min-[900px]:hidden"
           role="presentation"
@@ -989,7 +1150,7 @@ export function PosScreen({ storeId, mode }: { storeId: string; mode: PosMode })
         />
       ) : null}
 
-      {mode === "a4" && companyId ? (
+      {isA4Like && companyId ? (
         <CustomerFormDialog
           open={customerCreateOpen}
           onClose={() => setCustomerCreateOpen(false)}
@@ -1274,6 +1435,7 @@ function PosCartQtyInput({
 
 function PosCartPanel({
   mode,
+  cartLayout = "cards",
   cart,
   cartCount,
   stockByProductId,
@@ -1308,6 +1470,7 @@ function PosCartPanel({
   currencyLabel,
 }: {
   mode: PosMode;
+  cartLayout?: "cards" | "table";
   cart: CartRow[];
   cartCount: number;
   stockByProductId: Map<string, number>;
@@ -1341,6 +1504,7 @@ function PosCartPanel({
   hideCartTitle?: boolean;
   currencyLabel: string;
 }) {
+  const isA4Cart = mode !== "quick";
   return (
     <div className="flex h-full min-h-0 flex-col">
       {hideCartTitle ? null : (
@@ -1354,6 +1518,108 @@ function PosCartPanel({
       <div className="min-h-0 flex-1 overflow-y-auto px-3 min-[900px]:px-3">
         {cart.length === 0 ? (
           <div className="flex flex-1 items-center justify-center py-12 text-[#1F2937]">Panier vide</div>
+        ) : cartLayout === "table" ? (
+          <div className="overflow-x-auto pb-2">
+            <table className="w-full min-w-[500px] border-collapse text-left text-[13px]">
+              <thead>
+                <tr className="border-b border-[#E5E7EB] bg-[#F8F9FA] text-[11px] font-semibold uppercase tracking-wide text-[#6B7280]">
+                  <th className="py-2 pl-1 pr-2">Article</th>
+                  <th className="w-[88px] py-2 px-1">Qté</th>
+                  <th className="w-[92px] py-2 px-1">P.U.</th>
+                  <th className="w-[100px] py-2 px-1 text-right">Total</th>
+                  <th className="w-10 py-2 pr-1" />
+                </tr>
+              </thead>
+              <tbody>
+                {cart.map((c) => {
+                  const stock = stockByProductId.get(c.productId) ?? 0;
+                  const low = stock >= 0 && c.quantity > stock;
+                  return (
+                    <tr
+                      key={c.productId}
+                      className={cn(
+                        "border-b border-[#E5E7EB] bg-white",
+                        low && "bg-red-50/90",
+                      )}
+                    >
+                      <td className="max-w-[160px] py-2 pl-1 pr-2 align-middle">
+                        <div className="flex items-center gap-2">
+                          <div className="flex h-9 w-9 shrink-0 overflow-hidden rounded-lg bg-[#F8F9FA]">
+                            {c.imageUrl ? (
+                              <img src={c.imageUrl} alt="" className="h-full w-full object-cover" />
+                            ) : (
+                              <MdInventory2 className="m-auto h-5 w-5 text-[#F97316]/70" aria-hidden />
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="truncate font-semibold text-[#1F2937]">{c.name}</p>
+                            {c.unit ? (
+                              <p className="truncate text-[11px] text-[#6B7280]">{c.unit}</p>
+                            ) : null}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-2 align-middle">
+                        <div className="flex flex-wrap items-center gap-1">
+                          {showQuantityButtons ? (
+                            <button
+                              type="button"
+                              onClick={() => onUpdateQty(c.productId, -1)}
+                              className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#F8F9FA] text-[#1F2937]"
+                              aria-label="Moins"
+                            >
+                              <span className="text-base leading-none">−</span>
+                            </button>
+                          ) : null}
+                          {showQuantityInput ? (
+                            <PosCartQtyInput
+                              productId={c.productId}
+                              quantity={c.quantity}
+                              stock={stock}
+                              onCommit={onSetQty}
+                            />
+                          ) : (
+                            <span className="min-w-[28px] text-center text-[14px] font-bold text-[#1F2937]">
+                              {c.quantity}
+                            </span>
+                          )}
+                          {showQuantityButtons ? (
+                            <button
+                              type="button"
+                              onClick={() => onUpdateQty(c.productId, 1)}
+                              className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#F97316] text-white"
+                              aria-label="Plus"
+                            >
+                              <MdAdd className="h-4 w-4" aria-hidden />
+                            </button>
+                          ) : null}
+                        </div>
+                        {low ? (
+                          <p className="mt-1 text-[11px] text-red-600">Stock : {stock}</p>
+                        ) : null}
+                      </td>
+                      <td className="py-2 align-middle tabular-nums text-[#1F2937]">
+                        {formatCurrency(c.unitPrice)}
+                      </td>
+                      <td className="py-2 align-middle text-right font-bold text-[#F97316]">
+                        {formatCurrency(c.quantity * c.unitPrice)}
+                      </td>
+                      <td className="py-2 align-middle pr-1">
+                        <button
+                          type="button"
+                          onClick={() => onRemove(c.productId)}
+                          className="p-1 text-red-600"
+                          aria-label="Supprimer"
+                        >
+                          <MdDeleteOutline className="h-5 w-5" aria-hidden />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         ) : (
           <ul className="space-y-2 pb-2">
             {cart.map((c) => {
@@ -1504,7 +1770,7 @@ function PosCartPanel({
           </div>
         )}
 
-        {mode === "a4" ? (
+        {isA4Cart ? (
           <div className="mt-3 px-0 min-[900px]:px-3">
             <label className="mb-1 block text-[11px] font-medium text-[#6B7280]">Client</label>
             <select
@@ -1572,7 +1838,7 @@ function PosCartPanel({
           </div>
         ) : null}
 
-        {mode === "a4" ? (
+        {isA4Cart ? (
           <div className="mt-3 px-0 min-[900px]:px-3">
             <label className="mb-1 block text-xs text-[#6B7280]">Acompte (montant payé maintenant)</label>
             <input

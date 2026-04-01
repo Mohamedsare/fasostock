@@ -11,12 +11,16 @@ import type { AccessHelpers } from "@/lib/features/permissions/access";
 import { cancelSale, listSales } from "@/lib/features/sales/api";
 import type { SaleItem, SaleStatus } from "@/lib/features/sales/types";
 import { queryKeys } from "@/lib/query/query-keys";
+import {
+  fetchInvoiceTablePosEnabled,
+  peekInvoiceTablePosEnabled,
+} from "@/lib/features/settings/invoice-table-pos";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDateTime, toIsoDate } from "@/lib/utils/date";
 import { downloadCsv } from "@/lib/utils/csv";
 import { salesToCsv } from "@/lib/features/sales/csv";
 import { saleSellerLabel, saleStoreLabel } from "@/lib/features/sales/sale-display";
-import { ROUTES } from "@/lib/config/routes";
+import { ROUTES, storeFactureTabPath } from "@/lib/config/routes";
 import { messageFromUnknownError, toast } from "@/lib/toast";
 import { cn } from "@/lib/utils/cn";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
@@ -37,6 +41,7 @@ import {
   MdReceiptLong,
   MdRefresh,
   MdShoppingCart,
+  MdTableChart,
   MdVisibility,
 } from "react-icons/md";
 
@@ -118,6 +123,8 @@ export function SalesScreen() {
   const { hasPermission, helpers, isLoading: permLoading } = usePermissions();
   const canCreateSale = hasPermission(P.salesCreate);
   const canInvoiceA4 = hasPermission(P.salesInvoiceA4);
+  const canPosInvoiceA4 =
+    hasPermission(P.salesInvoiceA4) || hasPermission(P.salesCreate);
   const canCancelSale = hasPermission(P.salesCancel);
 
   const [status, setStatus] = useState<SaleStatus | "">("");
@@ -133,6 +140,22 @@ export function SalesScreen() {
   const companyId = ctx.data?.companyId ?? "";
   const stores = ctx.data?.stores ?? [];
   const currentStoreId = ctx.data?.storeId ?? null;
+
+  const peekInvoiceTable =
+    companyId.length > 0 ? peekInvoiceTablePosEnabled(companyId) : undefined;
+  const invoiceTableQ = useQuery({
+    queryKey: queryKeys.invoiceTablePosEnabled(companyId),
+    queryFn: () => fetchInvoiceTablePosEnabled(companyId),
+    enabled: !!companyId,
+    staleTime: 60_000,
+    ...(peekInvoiceTable !== undefined ? { initialData: peekInvoiceTable } : {}),
+  });
+  const invoiceTablePosEnabled = invoiceTableQ.data ?? false;
+  const canFactureTab =
+    hasPermission(P.salesInvoiceA4Table) &&
+    canPosInvoiceA4 &&
+    invoiceTablePosEnabled;
+
   const searchParams = useSearchParams();
   /** Appliquer une seule fois `?store=` (ex. lien depuis la caisse rapide). */
   const storeFromUrlAppliedRef = useRef(false);
@@ -284,6 +307,18 @@ export function SalesScreen() {
           }
         />
       ) : null}
+      {canFactureTab ? (
+        <ActionCard
+          title="Facture A4 (tableau)"
+          subtitle="Bandeau + tableau"
+          icon={MdTableChart}
+          accent
+          enabled={!!currentStoreId}
+          href={
+            currentStoreId ? storeFactureTabPath(currentStoreId) : null
+          }
+        />
+      ) : null}
       <ActionCard
         title="Historique des ventes"
         subtitle={`${sales.length} vente(s)`}
@@ -348,9 +383,11 @@ export function SalesScreen() {
       <section
         className={cn(
           "grid gap-3 min-[600px]:gap-5",
-          canInvoiceA4
-            ? "grid-cols-1 min-[600px]:grid-cols-3"
-            : "grid-cols-1 min-[600px]:grid-cols-2",
+          canInvoiceA4 && canFactureTab
+            ? "grid-cols-1 min-[600px]:grid-cols-2 min-[1100px]:grid-cols-4"
+            : canInvoiceA4 || canFactureTab
+              ? "grid-cols-1 min-[600px]:grid-cols-3"
+              : "grid-cols-1 min-[600px]:grid-cols-2",
         )}
       >
         {actionCards}

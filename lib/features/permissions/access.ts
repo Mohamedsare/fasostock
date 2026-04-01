@@ -223,6 +223,11 @@ export function canAccessPathname(pathname: string, h: AccessHelpers | null): bo
   if (p.startsWith("/stores/") && p.endsWith("/pos") && !p.endsWith("/pos-quick")) {
     return h.hasPermission(P.salesInvoiceA4);
   }
+  if (p.startsWith("/stores/") && p.endsWith("/facture-tab")) {
+    const canA4 =
+      h.hasPermission(P.salesInvoiceA4) || h.hasPermission(P.salesCreate);
+    return h.hasPermission(P.salesInvoiceA4Table) && canA4;
+  }
 
   const route = normalizeAppRoute(pathname);
   return isAppShellRoute(route);

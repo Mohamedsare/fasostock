@@ -58,8 +58,11 @@ export const queryKeys = {
   stockTransferDetail: (id: string) => ["stock-transfer", id] as const,
   /** Préférences panier POS — préfixe `['pos-cart-settings']` pour invalider tous les modes. */
   posCartSettings: ["pos-cart-settings"] as const,
-  posCartSettingsMode: (mode: "quick" | "a4") =>
-    ["pos-cart-settings", mode] as const,
+  /** `a4-table` partage les mêmes clés localStorage que `a4` (quantités panier). */
+  posCartSettingsMode: (mode: "quick" | "a4" | "a4-table") =>
+    ["pos-cart-settings", mode === "quick" ? "quick" : "a4"] as const,
+  invoiceTablePosEnabled: (companyId: string) =>
+    ["invoice-table-pos", companyId] as const,
   /** Dépôt central (`WarehousePage` Flutter) — invalider le préfixe `['warehouse', companyId]`. */
   warehouseInventory: (companyId: string) => ["warehouse", companyId, "inventory"] as const,
   warehouseMovements: (companyId: string) => ["warehouse", companyId, "movements"] as const,

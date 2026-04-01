@@ -14,6 +14,7 @@ import {
   MdReceiptLong,
   MdRefresh,
   MdStore,
+  MdTableChart,
 } from "react-icons/md";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -21,13 +22,17 @@ import { useState } from "react";
 import { CreateStoreModal, EditStoreModal } from "@/components/stores/store-dialogs";
 import { FsCard, FsFab, FsPage } from "@/components/ui/fs-screen-primitives";
 import { P } from "@/lib/constants/permissions";
-import { ROUTES } from "@/lib/config/routes";
+import { ROUTES, storeFactureTabPath } from "@/lib/config/routes";
 import type { AccessHelpers } from "@/lib/features/permissions/access";
 import { useAppContext } from "@/lib/features/common/app-context";
 import { fetchStoresPageData } from "@/lib/features/stores/api";
 import type { Store } from "@/lib/features/stores/types";
 import { usePermissions } from "@/lib/features/permissions/use-permissions";
 import { queryKeys } from "@/lib/query/query-keys";
+import {
+  fetchInvoiceTablePosEnabled,
+  peekInvoiceTablePosEnabled,
+} from "@/lib/features/settings/invoice-table-pos";
 import { cn } from "@/lib/utils/cn";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
 
@@ -62,6 +67,23 @@ export function StoresScreen() {
     queryFn: () => fetchStoresPageData(companyId),
     enabled: !!companyId && canViewOrCreate,
   });
+
+  const peekInvoiceTable =
+    companyId.length > 0 ? peekInvoiceTablePosEnabled(companyId) : undefined;
+  const invoiceTableQ = useQuery({
+    queryKey: queryKeys.invoiceTablePosEnabled(companyId),
+    queryFn: () => fetchInvoiceTablePosEnabled(companyId),
+    enabled: !!companyId && canViewOrCreate,
+    staleTime: 60_000,
+    ...(peekInvoiceTable !== undefined ? { initialData: peekInvoiceTable } : {}),
+  });
+  const invoiceTablePosEnabled = invoiceTableQ.data ?? false;
+  const canPosInvoiceA4 =
+    hasPermission(P.salesInvoiceA4) || hasPermission(P.salesCreate);
+  const canFactureTab =
+    hasPermission(P.salesInvoiceA4Table) &&
+    canPosInvoiceA4 &&
+    invoiceTablePosEnabled;
 
   const stores = storesQ.data?.stores ?? [];
   const quota = storesQ.data?.storeQuota ?? 1;
@@ -220,10 +242,8 @@ export function StoresScreen() {
                 key={s.id}
                 store={s}
                 canPosQuick={hasPermission(P.salesCreate)}
-                canPosInvoice={
-                  hasPermission(P.salesInvoiceA4) ||
-                  hasPermission(P.salesCreate)
-                }
+                canPosInvoice={canPosInvoiceA4}
+                canFactureTab={canFactureTab}
                 onEdit={() => setEditStore(s)}
               />
             ))}
@@ -300,15 +320,18 @@ function StoreCard({
   store,
   canPosQuick,
   canPosInvoice,
+  canFactureTab,
   onEdit,
 }: {
   store: Store;
   canPosQuick: boolean;
   canPosInvoice: boolean;
+  canFactureTab: boolean;
   onEdit: () => void;
 }) {
   const posQuickHref = `${ROUTES.stores}/${store.id}/pos-quick`;
   const posInvoiceHref = `${ROUTES.stores}/${store.id}/pos`;
+  const factureTabHref = storeFactureTabPath(store.id);
 
   return (
     <article className="flex touch-manipulation flex-col overflow-hidden rounded-xl border border-black/[0.06] bg-fs-card shadow-sm">
@@ -389,6 +412,18 @@ function StoreCard({
             >
               <MdDescription className="h-5 w-5 shrink-0" aria-hidden />
               <span className="px-1 text-[11px] font-semibold leading-tight">Facture A4</span>
+            </Link>
+            <div className="w-px shrink-0 self-stretch bg-black/[0.08]" />
+          </>
+        ) : null}
+        {canFactureTab ? (
+          <>
+            <Link
+              href={factureTabHref}
+              className="flex min-h-12 min-w-0 flex-1 flex-col items-center justify-center gap-1 py-2.5 text-center text-[var(--fs-accent)] active:bg-neutral-50/80"
+            >
+              <MdTableChart className="h-5 w-5 shrink-0" aria-hidden />
+              <span className="px-1 text-[11px] font-semibold leading-tight">Facture tab.</span>
             </Link>
             <div className="w-px shrink-0 self-stretch bg-black/[0.08]" />
           </>

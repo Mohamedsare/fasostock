@@ -19,6 +19,7 @@ import {
   MdShowChart,
   MdShoppingCart,
   MdStore,
+  MdTableChart,
   MdTrendingUp,
   MdWarehouse,
   MdWarningAmber,
@@ -40,7 +41,11 @@ import type { AccessHelpers } from "@/lib/features/permissions/access";
 import { usePermissions } from "@/lib/features/permissions/use-permissions";
 import { P } from "@/lib/constants/permissions";
 import { queryKeys } from "@/lib/query/query-keys";
-import { ROUTES } from "@/lib/config/routes";
+import { ROUTES, storeFactureTabPath } from "@/lib/config/routes";
+import {
+  fetchInvoiceTablePosEnabled,
+  peekInvoiceTablePosEnabled,
+} from "@/lib/features/settings/invoice-table-pos";
 import { formatCurrency } from "@/lib/utils/currency";
 import { cn } from "@/lib/utils/cn";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
@@ -121,6 +126,20 @@ export function DashboardScreen() {
   const canPosQuick = hasPermission(P.salesCreate);
   const canInvoiceA4 =
     hasPermission(P.salesInvoiceA4) || hasPermission(P.salesCreate);
+
+  const peekFactureTab =
+    companyId.length > 0 ? peekInvoiceTablePosEnabled(companyId) : undefined;
+  const invoiceTableDashQ = useQuery({
+    queryKey: queryKeys.invoiceTablePosEnabled(companyId),
+    queryFn: () => fetchInvoiceTablePosEnabled(companyId),
+    enabled: !!companyId,
+    staleTime: 60_000,
+    ...(peekFactureTab !== undefined ? { initialData: peekFactureTab } : {}),
+  });
+  const canFactureTab =
+    hasPermission(P.salesInvoiceA4Table) &&
+    canInvoiceA4 &&
+    (invoiceTableDashQ.data ?? false);
 
   useEffect(() => {
     if (scope === "store" && stores.length === 0) setScope("company");
@@ -513,6 +532,7 @@ export function DashboardScreen() {
                 className="mt-6"
                 canPosQuick={canPosQuick}
                 canInvoiceA4={canInvoiceA4}
+                canFactureTab={canFactureTab}
                 storeId={effectiveStoreId ?? ctxStoreId}
               />
               <div className="mt-7 grid grid-cols-2 gap-9">
@@ -546,6 +566,7 @@ export function DashboardScreen() {
                 className="mt-6"
                 canPosQuick={canPosQuick}
                 canInvoiceA4={canInvoiceA4}
+                canFactureTab={canFactureTab}
                 storeId={effectiveStoreId ?? ctxStoreId}
               />
             </>
@@ -753,11 +774,13 @@ function Shortcuts({
   className,
   canPosQuick,
   canInvoiceA4,
+  canFactureTab,
   storeId,
 }: {
   className?: string;
   canPosQuick: boolean;
   canInvoiceA4: boolean;
+  canFactureTab: boolean;
   storeId: string | null;
 }) {
   const tiles: {
@@ -780,6 +803,14 @@ function Shortcuts({
       href: storeId ? `${ROUTES.stores}/${storeId}/pos` : ROUTES.stores,
       icon: MdDescription,
       color: "#059669",
+    });
+  }
+  if (canFactureTab) {
+    tiles.push({
+      label: "Facture (tableau)",
+      href: storeId ? storeFactureTabPath(storeId) : ROUTES.stores,
+      icon: MdTableChart,
+      color: "#EA580C",
     });
   }
   tiles.push(

@@ -23,7 +23,7 @@ export type PosCartQtyUi = {
   showQuantityButtons: boolean;
 };
 
-export type PosCartQtyMode = "quick" | "a4";
+export type PosCartQtyMode = "quick" | "a4" | "a4-table";
 
 function keysForMode(mode: PosCartQtyMode) {
   return mode === "quick" ? POS_QUICK_LS : POS_INVOICE_A4_LS;
