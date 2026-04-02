@@ -13,7 +13,7 @@ import type {
 import { cn } from "@/lib/utils/cn";
 import { toNumber } from "@/lib/utils/currency";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { MdAddPhotoAlternate, MdClose } from "react-icons/md";
+import { MdAdd, MdAddPhotoAlternate, MdClose } from "react-icons/md";
 
 const UNIT_OPTIONS: string[] = [
   "pce",
@@ -484,10 +484,14 @@ export function ProductFormDialog({
                     type="button"
                     onClick={() => void handleAddCategory()}
                     disabled={inlineBusy || !newCategory.trim()}
-                    className="fs-touch-target shrink-0 rounded-[10px] border border-black/[0.1] px-3 text-sm font-semibold text-fs-text hover:bg-fs-surface-container disabled:opacity-50"
+                    className={cn(
+                      "fs-touch-target inline-flex shrink-0 items-center justify-center rounded-[10px] border-0",
+                      "bg-[var(--fs-pos-orange)] text-white shadow-sm outline-none",
+                      "transition hover:opacity-95 active:scale-[0.99] disabled:opacity-50",
+                    )}
                     aria-label="Ajouter catégorie"
                   >
-                    +
+                    <MdAdd className="h-6 w-6" aria-hidden />
                   </button>
                 </div>
               </div>
@@ -522,10 +526,14 @@ export function ProductFormDialog({
                     type="button"
                     onClick={() => void handleAddBrand()}
                     disabled={inlineBusy || !newBrand.trim()}
-                    className="fs-touch-target shrink-0 rounded-[10px] border border-black/[0.1] px-3 text-sm font-semibold text-fs-text hover:bg-fs-surface-container disabled:opacity-50"
+                    className={cn(
+                      "fs-touch-target inline-flex shrink-0 items-center justify-center rounded-[10px] border-0",
+                      "bg-[var(--fs-pos-orange)] text-white shadow-sm outline-none",
+                      "transition hover:opacity-95 active:scale-[0.99] disabled:opacity-50",
+                    )}
                     aria-label="Ajouter marque"
                   >
-                    +
+                    <MdAdd className="h-6 w-6" aria-hidden />
                   </button>
                 </div>
               </div>
