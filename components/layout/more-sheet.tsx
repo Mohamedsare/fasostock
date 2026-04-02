@@ -2,12 +2,8 @@
 
 import { cn } from "@/lib/utils/cn";
 import type { NavItem } from "@/lib/config/navigation";
-import { signOutAndRedirect } from "@/lib/auth/sign-out-client";
-import { useQueryClient } from "@tanstack/react-query";
-import { LogOut } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 
 type MoreSheetProps = {
   open: boolean;
@@ -16,10 +12,6 @@ type MoreSheetProps = {
 };
 
 export function MoreSheet({ open, onClose, items }: MoreSheetProps) {
-  const router = useRouter();
-  const queryClient = useQueryClient();
-  const [loggingOut, setLoggingOut] = useState(false);
-
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -28,16 +20,6 @@ export function MoreSheet({ open, onClose, items }: MoreSheetProps) {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
-
-  async function logout() {
-    setLoggingOut(true);
-    try {
-      onClose();
-      await signOutAndRedirect(router, { queryClient });
-    } finally {
-      setLoggingOut(false);
-    }
-  }
 
   if (!open) return null;
 
@@ -67,8 +49,8 @@ export function MoreSheet({ open, onClose, items }: MoreSheetProps) {
         <h2 id="more-sheet-title" className="sr-only">
           Autres sections
         </h2>
-        <div className="max-h-[min(70dvh,520px)] overflow-y-auto px-3 pb-2 pt-3 sm:px-4 sm:pb-3 sm:pt-4">
-          <ul className="grid grid-cols-4 gap-1 sm:gap-2.5">
+        <div className="max-h-[min(70dvh,520px)] overflow-y-auto px-3 pb-[max(12px,var(--fs-safe-bottom))] pt-3 sm:px-4 sm:pb-4 sm:pt-4">
+          <ul className="grid grid-cols-3 gap-1 sm:gap-2.5">
             {items.map((item) => {
               const Icon = item.icon;
               return (
@@ -103,20 +85,6 @@ export function MoreSheet({ open, onClose, items }: MoreSheetProps) {
               );
             })}
           </ul>
-        </div>
-        <div className="border-t border-black/[0.06] bg-fs-surface-low/90 px-3 pb-[max(12px,var(--fs-safe-bottom))] pt-3 dark:border-white/[0.08] dark:bg-fs-surface-low/50 sm:px-4 sm:pb-4">
-          <button
-            type="button"
-            onClick={() => void logout()}
-            disabled={loggingOut}
-            className={cn(
-              "flex w-full items-center justify-center gap-2 rounded-2xl bg-red-600 py-3.5 text-sm font-semibold text-white shadow-sm",
-              "transition-[transform,opacity,box-shadow] hover:bg-red-700 hover:shadow-md active:scale-[0.99] disabled:opacity-60",
-            )}
-          >
-            <LogOut className="h-5 w-5 shrink-0" strokeWidth={2.25} />
-            {loggingOut ? "Déconnexion…" : "Déconnexion"}
-          </button>
         </div>
       </div>
     </div>

@@ -109,3 +109,47 @@ export async function createPosSale(params: {
     saleNumber: String((saleRow as { sale_number?: string } | null)?.sale_number ?? id),
   };
 }
+
+/** RPC `update_completed_sale_with_stock` — aligné `SalesRepository.updateCompleted` (Flutter). */
+export async function updateCompletedPosSale(params: {
+  saleId: string;
+  customerId: string | null;
+  items: Array<{
+    productId: string;
+    quantity: number;
+    unitPrice: number;
+    discount: number;
+  }>;
+  discount: number;
+  payments: Array<{
+    method: "cash" | "mobile_money" | "card" | "other";
+    amount: number;
+    reference?: string | null;
+  }>;
+  saleMode: "quick_pos" | "invoice_pos";
+  documentType: "thermal_receipt" | "a4_invoice";
+}): Promise<void> {
+  if (!navigator.onLine) {
+    throw new Error("La modification nécessite une connexion internet.");
+  }
+  const supabase = createClient();
+  const { error } = await supabase.rpc("update_completed_sale_with_stock", {
+    p_sale_id: params.saleId,
+    p_customer_id: params.customerId,
+    p_items: params.items.map((i) => ({
+      product_id: i.productId,
+      quantity: Math.trunc(i.quantity),
+      unit_price: i.unitPrice,
+      discount: i.discount,
+    })),
+    p_payments: params.payments.map((p) => ({
+      method: p.method,
+      amount: p.amount,
+      reference: p.reference ?? null,
+    })),
+    p_discount: params.discount,
+    p_sale_mode: params.saleMode,
+    p_document_type: params.documentType,
+  });
+  if (error) throw error;
+}

@@ -1,7 +1,12 @@
 import { PosScreen } from "@/components/pos/pos-screen";
-type Params = { params: Promise<{ storeId: string }> };
 
-export default async function StorePosPage({ params }: Params) {
+type Params = {
+  params: Promise<{ storeId: string }>;
+  searchParams: Promise<{ editSale?: string }>;
+};
+
+export default async function StorePosPage({ params, searchParams }: Params) {
   const { storeId } = await params;
-  return <PosScreen storeId={storeId} mode="a4" />;
+  const sp = await searchParams;
+  return <PosScreen storeId={storeId} mode="a4" editSaleId={sp.editSale} />;
 }

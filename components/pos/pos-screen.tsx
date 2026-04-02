@@ -5,10 +5,15 @@ import { fsInputClass } from "@/components/ui/fs-screen-primitives";
 import { createCustomer } from "@/lib/features/customers/api";
 import { P } from "@/lib/constants/permissions";
 import { usePermissions } from "@/lib/features/permissions/use-permissions";
-import { createPosSale, fetchPosData } from "@/lib/features/pos/api";
+import type { SaleItem } from "@/lib/features/sales/types";
+import {
+  createPosSale,
+  fetchPosData,
+  updateCompletedPosSale,
+} from "@/lib/features/pos/api";
 import { fetchInvoiceTablePosEnabled } from "@/lib/features/settings/invoice-table-pos";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
-import { ROUTES } from "@/lib/config/routes";
+import { ROUTES, storeFactureTabPath } from "@/lib/config/routes";
 import { queryKeys } from "@/lib/query/query-keys";
 import { readPosCartQtyUiForMode } from "@/lib/utils/pos-cart-settings";
 import { ensureStringNumberMap } from "@/lib/utils/string-number-map";
@@ -37,6 +42,7 @@ import {
   MdClose,
   MdDeleteOutline,
   MdDescription,
+  MdEditNote,
   MdHistory,
   MdInventory2,
   MdLogout,
@@ -61,7 +67,18 @@ type CartRow = {
   unitPrice: number;
   unit: string;
   imageUrl?: string | null;
+  /** Ligne depuis `sale_items.total` — remises ligne pour RPC update (Flutter). */
+  lineTotal?: number;
 };
+
+/** Aligné `sale_pos_edit.dart` / liste ventes. */
+function isA4InvoiceFromSaleItem(s: SaleItem): boolean {
+  if (s.document_type === "a4_invoice") return true;
+  if (s.document_type === "thermal_receipt") return false;
+  if (s.sale_mode === "invoice_pos") return true;
+  if (s.sale_mode === "quick_pos") return false;
+  return false;
+}
 
 function isBoutiqueScope(scope: string | null | undefined): boolean {
   const s = scope ?? "both";
@@ -70,7 +87,16 @@ function isBoutiqueScope(scope: string | null | undefined): boolean {
 type PaymentMethod = "cash" | "mobile_money" | "card" | "other";
 type QuickPayment = "cash" | "mobile_money" | "card";
 
-export function PosScreen({ storeId, mode }: { storeId: string; mode: PosMode }) {
+export function PosScreen({
+  storeId,
+  mode,
+  editSaleId: editSaleIdProp,
+}: {
+  storeId: string;
+  mode: PosMode;
+  /** `?editSale=` — modification vente complétée (Flutter). */
+  editSaleId?: string;
+}) {
   const qc = useQueryClient();
   const { data: ctx, hasPermission, isLoading: permLoading } = usePermissions();
   const companyId = ctx?.companyId ?? "";
@@ -90,6 +116,16 @@ export function PosScreen({ storeId, mode }: { storeId: string; mode: PosMode })
   const [quickSettingsOpen, setQuickSettingsOpen] = useState(false);
   const [barcodeScannerOpen, setBarcodeScannerOpen] = useState(false);
   const [customerCreateOpen, setCustomerCreateOpen] = useState(false);
+  const [saleEditBootstrapping, setSaleEditBootstrapping] = useState(() =>
+    Boolean(editSaleIdProp?.trim()),
+  );
+  const [saleEditBarrierError, setSaleEditBarrierError] = useState<string | null>(null);
+  const [activeEditSaleId, setActiveEditSaleId] = useState<string | null>(null);
+  const [editStockRelease, setEditStockRelease] = useState<Map<string, number>>(
+    () => new Map(),
+  );
+  const saleEditBootstrapKey = useRef<string | null>(null);
+  const activeEditSaleIdRef = useRef<string | null>(null);
   const router = useRouter();
   const [clock, setClock] = useState(() =>
     new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }),
@@ -132,12 +168,22 @@ export function PosScreen({ storeId, mode }: { storeId: string; mode: PosMode })
     }
   }, []);
 
+  useLayoutEffect(() => {
+    activeEditSaleIdRef.current = activeEditSaleId;
+  }, [activeEditSaleId]);
+
   const canQuick = hasPermission(P.salesCreate);
   const canA4 = hasPermission(P.salesInvoiceA4) || hasPermission(P.salesCreate);
   const canAccessA4Table =
     hasPermission(P.salesInvoiceA4Table) && canA4;
-  const canAccess =
-    mode === "quick" ? canQuick : mode === "a4" ? canA4 : canAccessA4Table;
+  const isSaleEditEntry = Boolean(editSaleIdProp?.trim());
+  const canAccess = isSaleEditEntry
+    ? hasPermission(P.salesUpdate)
+    : mode === "quick"
+      ? canQuick
+      : mode === "a4"
+        ? canA4
+        : canAccessA4Table;
   const isA4Like = mode === "a4" || mode === "a4-table";
 
   const invoiceTableCompanyQ = useQuery({
@@ -159,10 +205,10 @@ export function PosScreen({ storeId, mode }: { storeId: string; mode: PosMode })
       companyId &&
         storeId &&
         canAccess &&
-        (mode !== "a4-table" || invoiceTableCompanyQ.data === true),
+        (mode !== "a4-table" || isSaleEditEntry || invoiceTableCompanyQ.data === true),
     ),
     staleTime: 20_000,
-    refetchInterval: mode === "quick" ? 15_000 : false,
+    refetchInterval: mode === "quick" && !isSaleEditEntry ? 15_000 : false,
   });
 
   const stripCol1900 = useMediaQuery("(min-width: 1900px)");
@@ -171,10 +217,18 @@ export function PosScreen({ storeId, mode }: { storeId: string; mode: PosMode })
 
   const store = posQ.data?.store ?? null;
   const products = posQ.data?.products ?? [];
-  const stockByProductId = useMemo(
+  const rawStockByProductId = useMemo(
     () => ensureStringNumberMap(posQ.data?.stockByProductId),
     [posQ.data?.stockByProductId],
   );
+  const stockByProductId = useMemo(() => {
+    if (editStockRelease.size === 0) return rawStockByProductId;
+    const m = new Map(rawStockByProductId);
+    editStockRelease.forEach((add, id) => {
+      m.set(id, (m.get(id) ?? 0) + add);
+    });
+    return m;
+  }, [rawStockByProductId, editStockRelease]);
   const categories = posQ.data?.categories ?? [];
   const customers = posQ.data?.customers ?? [];
   const showDiscountField = store?.pos_discount_enabled === true;
@@ -198,7 +252,11 @@ export function PosScreen({ storeId, mode }: { storeId: string; mode: PosMode })
   }, [products, stockByProductId, categoryId, search]);
 
   const subtotal = useMemo(
-    () => cart.reduce((sum, r) => sum + r.quantity * r.unitPrice, 0),
+    () =>
+      cart.reduce(
+        (sum, r) => sum + (r.lineTotal ?? r.quantity * r.unitPrice),
+        0,
+      ),
     [cart],
   );
   const discountValue = Math.max(0, toNumber(discount));
@@ -234,11 +292,189 @@ export function PosScreen({ storeId, mode }: { storeId: string; mode: PosMode })
     return null;
   }
 
+  const canUpdateSales = hasPermission(P.salesUpdate);
+
+  useEffect(() => {
+    const raw = editSaleIdProp?.trim() ?? "";
+    if (!raw) {
+      saleEditBootstrapKey.current = null;
+      setActiveEditSaleId(null);
+      setEditStockRelease(new Map());
+      setSaleEditBarrierError(null);
+      setSaleEditBootstrapping(false);
+      return;
+    }
+    if (!canUpdateSales) {
+      setSaleEditBarrierError(
+        "Vous n'avez pas la permission de modifier des ventes.",
+      );
+      setSaleEditBootstrapping(false);
+      return;
+    }
+    let cancelled = false;
+    async function bootstrap() {
+      setSaleEditBootstrapping(true);
+      setSaleEditBarrierError(null);
+      try {
+        const { getSaleDetail } = await import("@/lib/features/sales/api");
+        const sale = await getSaleDetail(raw);
+        if (cancelled) return;
+        if (!sale) {
+          setSaleEditBarrierError("Vente introuvable.");
+          setSaleEditBootstrapping(false);
+          return;
+        }
+        if (sale.store_id !== storeId) {
+          setSaleEditBarrierError(
+            "Cette vente appartient à une autre boutique.",
+          );
+          setSaleEditBootstrapping(false);
+          return;
+        }
+        if (sale.status !== "completed") {
+          setSaleEditBarrierError(
+            "Seules les ventes complétées peuvent être modifiées.",
+          );
+          setSaleEditBootstrapping(false);
+          return;
+        }
+        const a4 = isA4InvoiceFromSaleItem(sale);
+        if (a4 && mode === "quick") {
+          router.replace(
+            `${ROUTES.stores}/${storeId}/pos?editSale=${encodeURIComponent(raw)}`,
+          );
+          return;
+        }
+        if (!a4 && (mode === "a4" || mode === "a4-table")) {
+          router.replace(
+            `${ROUTES.stores}/${storeId}/pos-quick?editSale=${encodeURIComponent(raw)}`,
+          );
+          return;
+        }
+        if (!posQ.data) return;
+        if (saleEditBootstrapKey.current === raw) {
+          setSaleEditBootstrapping(false);
+          return;
+        }
+        const release = new Map<string, number>();
+        const rows: CartRow[] = [];
+        const items = sale.sale_items ?? [];
+        const productById = new Map(posQ.data.products.map((p) => [p.id, p]));
+        for (const it of items) {
+          const pid = it.product_id;
+          release.set(pid, (release.get(pid) ?? 0) + it.quantity);
+          const p = productById.get(pid);
+          const img = p?.product_images?.[0]?.url ?? null;
+          rows.push({
+            productId: pid,
+            name: it.product?.name ?? p?.name ?? "Produit",
+            quantity: it.quantity,
+            unitPrice: it.unit_price,
+            unit: it.product?.unit ?? p?.unit ?? "pce",
+            imageUrl: img,
+            lineTotal: it.total,
+          });
+        }
+        setEditStockRelease(release);
+        setCart(rows);
+        setDiscount(sale.discount > 0 ? String(sale.discount) : "0");
+        const pays = sale.sale_payments ?? [];
+        if (pays.length > 0) {
+          const pm = pays[0].method;
+          if (pm === "cash" || pm === "mobile_money" || pm === "card") {
+            if (mode === "quick") setQuickPayment(pm as QuickPayment);
+            else setPaymentMethod(pm as PaymentMethod);
+          } else if (pm === "other" && mode !== "quick") {
+            setPaymentMethod("other");
+          } else if (pm === "other" && mode === "quick") {
+            setQuickPayment("cash");
+          }
+          const sum = pays.reduce((s, x) => s + x.amount, 0);
+          setAmountReceivedTouched(true);
+          setAmountReceived(sum > 0 ? String(sum) : "");
+        }
+        if (isA4Like) {
+          setCustomerId(sale.customer_id ?? "");
+        }
+        setActiveEditSaleId(sale.id);
+        saleEditBootstrapKey.current = raw;
+        setSaleEditBootstrapping(false);
+      } catch (e) {
+        if (cancelled) return;
+        setSaleEditBarrierError(messageFromUnknownError(e));
+        setSaleEditBootstrapping(false);
+      }
+    }
+    void bootstrap();
+    return () => {
+      cancelled = true;
+    };
+  }, [editSaleIdProp, storeId, mode, canUpdateSales, posQ.data, router, isA4Like]);
+
+  type CreatePayResult = {
+    kind: "create";
+    saleId: string;
+    saleNumber: string;
+    invoiceSnap?: {
+      cart: CartRow[];
+      subtotal: number;
+      discount: number;
+      total: number;
+      depositAmount: number;
+    };
+    receiptSnap?: PosReceiptSnap;
+  };
+  type UpdatePayResult = { kind: "update"; saleNumber: string };
+
   const createMut = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (): Promise<CreatePayResult | UpdatePayResult> => {
       if (cart.length === 0) throw new Error("Panier vide.");
       const pre = getPosPayValidationError();
       if (pre) throw new Error(pre);
+      const editingId = activeEditSaleIdRef.current;
+      if (editingId) {
+        const payments =
+          mode === "quick"
+            ? [{ method: quickPayment, amount: total }]
+            : paymentMethod === "other"
+              ? [
+                  {
+                    method: "other" as const,
+                    amount: total,
+                    reference: "À crédit",
+                  },
+                ]
+              : (() => {
+                  const acompte = amountReceivedValue;
+                  const normalized =
+                    acompte <= 0 ? total : Math.min(Math.max(acompte, 0.01), total);
+                  return [{ method: paymentMethod, amount: normalized }];
+                })();
+        await updateCompletedPosSale({
+          saleId: editingId,
+          customerId: isA4Like ? customerId || null : null,
+          items: cart.map((c) => ({
+            productId: c.productId,
+            quantity: c.quantity,
+            unitPrice: c.unitPrice,
+            discount: Math.max(
+              0,
+              c.quantity * c.unitPrice -
+                (c.lineTotal ?? c.quantity * c.unitPrice),
+            ),
+          })),
+          discount: discountValue,
+          payments,
+          saleMode: mode === "quick" ? "quick_pos" : "invoice_pos",
+          documentType: mode === "quick" ? "thermal_receipt" : "a4_invoice",
+        });
+        const { getSaleDetail } = await import("@/lib/features/sales/api");
+        const updated = await getSaleDetail(editingId);
+        return {
+          kind: "update" as const,
+          saleNumber: String(updated?.sale_number ?? ""),
+        };
+      }
       const payments =
         mode === "quick"
           ? [{ method: quickPayment, amount: total }]
@@ -290,9 +526,35 @@ export function PosScreen({ storeId, mode }: { storeId: string; mode: PosMode })
         saleMode: mode === "quick" ? "quick_pos" : "invoice_pos",
         documentType: mode === "quick" ? "thermal_receipt" : "a4_invoice",
       });
-      return { ...res, invoiceSnap, receiptSnap };
+      return {
+        kind: "create" as const,
+        saleId: res.saleId,
+        saleNumber: res.saleNumber,
+        invoiceSnap,
+        receiptSnap,
+      };
     },
     onSuccess: async (res) => {
+      if (res.kind === "update") {
+        toast.success(`Vente #${res.saleNumber} mise à jour.`);
+        setCart([]);
+        setDiscount("0");
+        setAmountReceived("");
+        setAmountReceivedTouched(false);
+        setCustomerId("");
+        setActiveEditSaleId(null);
+        saleEditBootstrapKey.current = null;
+        setEditStockRelease(new Map());
+        setCartOpen(false);
+        await Promise.all([
+          qc.invalidateQueries({ queryKey: ["pos", mode, companyId, storeId] }),
+          qc.invalidateQueries({ queryKey: ["sales"] }),
+          qc.invalidateQueries({ queryKey: queryKeys.productInventory(storeId) }),
+        ]);
+        router.push(`${ROUTES.sales}?store=${encodeURIComponent(storeId)}`);
+        return;
+      }
+
       const recordedTotal = total;
       const saleNumber = res.saleNumber;
       setCart([]);
@@ -420,6 +682,7 @@ export function PosScreen({ storeId, mode }: { storeId: string; mode: PosMode })
             unitPrice,
             unit: unit || "u",
             imageUrl: imageUrl ?? null,
+            lineTotal: undefined,
           },
         ];
       }
@@ -433,7 +696,7 @@ export function PosScreen({ storeId, mode }: { storeId: string; mode: PosMode })
         return prev;
       }
       const next = [...prev];
-      next[idx] = { ...row, quantity: row.quantity + 1 };
+      next[idx] = { ...row, quantity: row.quantity + 1, lineTotal: undefined };
       return next;
     });
   }
@@ -481,7 +744,7 @@ export function PosScreen({ storeId, mode }: { storeId: string; mode: PosMode })
         .map((r) => {
           if (r.productId !== productId) return r;
           const q = Math.max(0, Math.min(stock, r.quantity + delta));
-          return { ...r, quantity: q };
+          return { ...r, quantity: q, lineTotal: undefined };
         })
         .filter((r) => r.quantity > 0);
     });
@@ -494,7 +757,9 @@ export function PosScreen({ storeId, mode }: { storeId: string; mode: PosMode })
       if (!row) return prev;
       const q = Math.max(0, Math.min(stock, Math.floor(quantity)));
       return prev
-        .map((r) => (r.productId === productId ? { ...r, quantity: q } : r))
+        .map((r) =>
+          r.productId === productId ? { ...r, quantity: q, lineTotal: undefined } : r,
+        )
         .filter((r) => r.quantity > 0);
     });
   }
@@ -543,11 +808,13 @@ export function PosScreen({ storeId, mode }: { storeId: string; mode: PosMode })
         <MdLock className="h-16 w-16 text-red-600" aria-hidden />
         <p className="mt-4 max-w-sm text-center text-sm font-semibold text-[#1F2937]">
           Vous n&apos;avez pas l&apos;autorisation pour{" "}
-          {mode === "quick"
-            ? "la caisse rapide."
-            : mode === "a4-table"
-              ? "la facture A4 (tableau)."
-              : "la facture A4."}
+          {isSaleEditEntry
+            ? "la modification de ventes complétées."
+            : mode === "quick"
+              ? "la caisse rapide."
+              : mode === "a4-table"
+                ? "la facture A4 (tableau)."
+                : "la facture A4."}
         </p>
         <Link
           href="/stores"
@@ -560,7 +827,26 @@ export function PosScreen({ storeId, mode }: { storeId: string; mode: PosMode })
     );
   }
 
-  if (mode === "a4-table" && canAccessA4Table) {
+  if (saleEditBarrierError && isSaleEditEntry) {
+    return (
+      <div className="box-border flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center overflow-y-auto bg-[#F8F9FA] px-[20px] py-10">
+        <MdLock className="h-16 w-16 text-amber-600" aria-hidden />
+        <p className="mt-4 max-w-sm text-center text-sm font-semibold text-[#1F2937]">
+          {saleEditBarrierError}
+        </p>
+        <button
+          type="button"
+          onClick={() => router.push(`${ROUTES.sales}?store=${encodeURIComponent(storeId)}`)}
+          className="mt-6 inline-flex items-center gap-2 rounded-[10px] bg-[#F97316] px-4 py-3 text-sm font-semibold text-white"
+        >
+          <MdArrowBack className="h-4 w-4" aria-hidden />
+          Retour aux ventes
+        </button>
+      </div>
+    );
+  }
+
+  if (mode === "a4-table" && canAccessA4Table && !isSaleEditEntry) {
     if (invoiceTableCompanyQ.isPending) {
       return (
         <div className="box-border flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center bg-[#F8F9FA] px-[20px] py-10">
@@ -595,6 +881,39 @@ export function PosScreen({ storeId, mode }: { storeId: string; mode: PosMode })
     }
   }
 
+  if (
+    isSaleEditEntry &&
+    saleEditBootstrapping &&
+    !saleEditBarrierError &&
+    !activeEditSaleId
+  ) {
+    return (
+      <div className="box-border flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-[#F8F9FA] px-[20px]">
+        <header className="flex h-[60px] shrink-0 items-center bg-[#f97316] px-3 text-white sm:px-4">
+          {mode === "quick" ? (
+            <MdStore className="h-6 w-6 shrink-0 sm:h-7 sm:w-7" aria-hidden />
+          ) : mode === "a4-table" ? (
+            <MdTableChart className="h-6 w-6 shrink-0 sm:h-7 sm:w-7" aria-hidden />
+          ) : (
+            <MdDescription className="h-6 w-6 shrink-0 sm:h-7 sm:w-7" aria-hidden />
+          )}
+          <span className="ml-2 truncate text-[15px] font-bold">Ouverture de la vente…</span>
+        </header>
+        <div className="flex flex-1 flex-col items-center justify-center gap-4 py-16">
+          <div className="h-9 w-9 animate-spin rounded-full border-2 border-[#F97316] border-t-transparent" />
+          <p className="text-sm text-neutral-600">Chargement de la vente à modifier</p>
+        </div>
+      </div>
+    );
+  }
+
+  const quitSaleEditHref =
+    mode === "quick"
+      ? `${ROUTES.stores}/${storeId}/pos-quick`
+      : mode === "a4-table"
+        ? storeFactureTabPath(storeId)
+        : `${ROUTES.stores}/${storeId}/pos`;
+
   const cartPanel = (
     <PosCartPanel
       mode={mode}
@@ -624,6 +943,7 @@ export function PosScreen({ storeId, mode }: { storeId: string; mode: PosMode })
       setCustomerId={setCustomerId}
       customers={customers}
       createMut={createMut}
+      isSaleEdit={Boolean(activeEditSaleId)}
       onUpdateQty={updateQty}
       onSetQty={setQty}
       onRemove={removeLine}
@@ -736,6 +1056,24 @@ export function PosScreen({ storeId, mode }: { storeId: string; mode: PosMode })
           </>
         )}
       </header>
+
+      {activeEditSaleId ? (
+        <div className="flex shrink-0 items-center gap-2 border-b border-black/10 bg-[color-mix(in_srgb,var(--fs-accent)_16%,white)] px-3 py-2 text-[13px] font-semibold text-[#1F2937]">
+          <MdEditNote className="h-5 w-5 shrink-0 text-[var(--fs-accent)]" aria-hidden />
+          <span className="min-w-0 flex-1 leading-snug">
+            {mode === "quick"
+              ? "Modification d'une vente (ticket). Enregistrez pour appliquer — connexion requise."
+              : "Modification d'une vente (facture A4). Enregistrez pour appliquer — connexion requise."}
+          </span>
+          <button
+            type="button"
+            onClick={() => router.replace(quitSaleEditHref)}
+            className="shrink-0 rounded-lg px-2 py-1 text-xs font-bold text-[var(--fs-accent)] underline underline-offset-2"
+          >
+            Quitter
+          </button>
+        </div>
+      ) : null}
 
       {posQ.isLoading ? (
         <div className="flex min-h-0 flex-1 items-center justify-center py-16">
@@ -1461,6 +1799,7 @@ function PosCartPanel({
   setCustomerId,
   customers,
   createMut,
+  isSaleEdit,
   onUpdateQty,
   onSetQty,
   onRemove,
@@ -1496,6 +1835,7 @@ function PosCartPanel({
   setCustomerId: (v: string) => void;
   customers: Array<{ id: string; name: string }>;
   createMut: { isPending: boolean };
+  isSaleEdit: boolean;
   onUpdateQty: (id: string, d: number) => void;
   onSetQty: (id: string, q: number) => void;
   onRemove: (id: string) => void;
@@ -1602,7 +1942,7 @@ function PosCartPanel({
                         {formatCurrency(c.unitPrice)}
                       </td>
                       <td className="py-2 align-middle text-right font-bold text-[#F97316]">
-                        {formatCurrency(c.quantity * c.unitPrice)}
+                        {formatCurrency(c.lineTotal ?? c.quantity * c.unitPrice)}
                       </td>
                       <td className="py-2 align-middle pr-1">
                         <button
@@ -1679,7 +2019,7 @@ function PosCartPanel({
                   </div>
                   <div className="flex shrink-0 flex-col items-end gap-0">
                     <p className="text-sm font-bold text-[#F97316]">
-                      {formatCurrency(c.quantity * c.unitPrice)}
+                      {formatCurrency(c.lineTotal ?? c.quantity * c.unitPrice)}
                     </p>
                     <button
                       type="button"
@@ -1867,7 +2207,16 @@ function PosCartPanel({
             onClick={() => void onPay()}
             className="flex-[2] inline-flex items-center justify-center gap-2 rounded-xl bg-[#F97316] py-2.5 text-sm font-bold text-white disabled:opacity-50"
           >
-            {mode === "quick" ? (
+            {isSaleEdit ? (
+              <>
+                {createMut.isPending ? (
+                  <span className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                ) : (
+                  <MdPayments className="h-5 w-5" aria-hidden />
+                )}
+                {createMut.isPending ? "Enregistrement..." : "Enregistrer la modification"}
+              </>
+            ) : mode === "quick" ? (
               <>
                 {createMut.isPending ? (
                   <span className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />

@@ -218,15 +218,24 @@ export function canAccessPathname(pathname: string, h: AccessHelpers | null): bo
   const p = pathname.split("?")[0] ?? pathname;
 
   if (p.startsWith("/stores/") && p.endsWith("/pos-quick")) {
-    return h.hasPermission(P.salesCreate);
+    return (
+      h.hasPermission(P.salesCreate) || h.hasPermission(P.salesUpdate)
+    );
   }
   if (p.startsWith("/stores/") && p.endsWith("/pos") && !p.endsWith("/pos-quick")) {
-    return h.hasPermission(P.salesInvoiceA4);
+    return (
+      h.hasPermission(P.salesInvoiceA4) ||
+      h.hasPermission(P.salesCreate) ||
+      h.hasPermission(P.salesUpdate)
+    );
   }
   if (p.startsWith("/stores/") && p.endsWith("/facture-tab")) {
     const canA4 =
       h.hasPermission(P.salesInvoiceA4) || h.hasPermission(P.salesCreate);
-    return h.hasPermission(P.salesInvoiceA4Table) && canA4;
+    return (
+      h.hasPermission(P.salesUpdate) ||
+      (h.hasPermission(P.salesInvoiceA4Table) && canA4)
+    );
   }
 
   const route = normalizeAppRoute(pathname);

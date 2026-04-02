@@ -36,7 +36,7 @@ import {
   MdDescription,
   MdDownload,
   MdLockPerson,
-  MdOpenInNew,
+  MdEdit,
   MdPointOfSale,
   MdReceiptLong,
   MdRefresh,
@@ -71,27 +71,24 @@ function isA4Invoice(s: SaleItem): boolean {
   return false;
 }
 
-function statusColorClass(status: SaleStatus): string {
-  switch (status) {
-    case "completed":
-      return "text-emerald-700";
-    case "cancelled":
-    case "refunded":
-      return "text-red-700";
-    default:
-      return "text-neutral-700";
-  }
+/** Aligné sur Flutter `sale_pos_edit.dart` / `AppRoutes.pos` vs `pos-quick`. */
+function saleEditHref(storeId: string, sale: SaleItem): string {
+  const base = isA4Invoice(sale)
+    ? `${ROUTES.stores}/${storeId}/pos`
+    : `${ROUTES.stores}/${storeId}/pos-quick`;
+  return `${base}?editSale=${encodeURIComponent(sale.id)}`;
 }
 
-function statusBgClass(status: SaleStatus): string {
+/** Couleurs statut comme `_statusColor` dans `sales_page.dart` Flutter. */
+function saleStatusPillClass(status: SaleStatus): string {
   switch (status) {
     case "completed":
-      return "bg-emerald-50";
+      return "bg-[#059669]/[0.12] text-[#059669]";
     case "cancelled":
     case "refunded":
-      return "bg-red-50";
+      return "bg-[#DC2626]/[0.12] text-[#DC2626]";
     default:
-      return "bg-neutral-100";
+      return "bg-neutral-500/10 text-neutral-600";
   }
 }
 
@@ -100,16 +97,16 @@ function DocumentTypeChip({ sale }: { sale: SaleItem }) {
   return (
     <span
       className={cn(
-        "inline-flex shrink-0 items-center gap-1 rounded-[6px] px-2 py-1 text-[11px] font-semibold leading-none",
+        "inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-[11px] font-semibold leading-none",
         a4
           ? "bg-[color-mix(in_srgb,var(--fs-accent)_22%,transparent)] text-[var(--fs-accent)]"
           : "bg-fs-surface-container text-neutral-600",
       )}
     >
       {a4 ? (
-        <MdDescription className="h-3.5 w-3.5 shrink-0" aria-hidden />
+        <MdDescription className="h-[14px] w-[14px] shrink-0" aria-hidden />
       ) : (
-        <MdReceiptLong className="h-3.5 w-3.5 shrink-0" aria-hidden />
+        <MdReceiptLong className="h-[14px] w-[14px] shrink-0" aria-hidden />
       )}
       {a4 ? "A4" : "Thermique"}
     </span>
@@ -126,6 +123,7 @@ export function SalesScreen() {
   const canPosInvoiceA4 =
     hasPermission(P.salesInvoiceA4) || hasPermission(P.salesCreate);
   const canCancelSale = hasPermission(P.salesCancel);
+  const canUpdateSale = hasPermission(P.salesUpdate);
 
   const [status, setStatus] = useState<SaleStatus | "">("");
   const [storeFilter, setStoreFilter] = useState("");
@@ -511,7 +509,7 @@ export function SalesScreen() {
         <>
           {isWide ? (
             <div className="overflow-x-auto rounded-xl border border-black/[0.06] bg-fs-card shadow-sm">
-              <table className="min-w-full text-sm">
+              <table className="min-w-full text-sm [&_th]:whitespace-nowrap [&_td]:whitespace-nowrap">
                 <thead className="bg-neutral-100/80 text-left text-xs font-medium text-neutral-600">
                   <tr>
                     <th className="px-3 py-2.5">Numéro</th>
@@ -532,9 +530,7 @@ export function SalesScreen() {
                       <td className="px-3 py-2">
                         <DocumentTypeChip sale={s} />
                       </td>
-                      <td className="px-3 py-2 whitespace-nowrap">
-                        {formatDateTime(s.created_at)}
-                      </td>
+                      <td className="px-3 py-2">{formatDateTime(s.created_at)}</td>
                       <td className="px-3 py-2">{saleStoreLabel(s, stores)}</td>
                       <td className="px-3 py-2">{saleSellerLabel(s)}</td>
                       <td className="px-3 py-2">{s.customer?.name ?? "—"}</td>
@@ -545,8 +541,7 @@ export function SalesScreen() {
                         <span
                           className={cn(
                             "inline-block rounded-lg px-2.5 py-1 text-xs font-semibold",
-                            statusBgClass(s.status),
-                            statusColorClass(s.status),
+                            saleStatusPillClass(s.status),
                           )}
                         >
                           {statusLabel[s.status]}
@@ -561,6 +556,15 @@ export function SalesScreen() {
                         >
                           <MdVisibility className="h-5 w-5" aria-hidden />
                         </button>
+                        {s.status === "completed" && canUpdateSale ? (
+                          <Link
+                            href={saleEditHref(s.store_id, s)}
+                            className="mr-1 inline-flex min-h-10 min-w-10 items-center justify-center rounded-lg p-2 text-fs-accent"
+                            aria-label="Modifier la vente"
+                          >
+                            <MdEdit className="h-5 w-5" aria-hidden />
+                          </Link>
+                        ) : null}
                         {s.status === "completed" && canCancelSale ? (
                           <button
                             type="button"
@@ -573,7 +577,7 @@ export function SalesScreen() {
                                 cancelMut.mutate(s.id);
                               }
                             }}
-                            className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-lg p-2 text-red-600"
+                            className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-lg p-2 text-[#DC2626]"
                             aria-label="Annuler la vente"
                           >
                             <MdCancel className="h-5 w-5" aria-hidden />
@@ -595,6 +599,7 @@ export function SalesScreen() {
                   sale={s}
                   stores={stores}
                   canCancel={canCancelSale}
+                  canEdit={canUpdateSale}
                   onDetail={() => setDetailId(s.id)}
                   onCancel={() => {
                     if (s.status !== "completed") return;
@@ -726,18 +731,34 @@ function SaleCard({
   sale,
   stores,
   canCancel,
+  canEdit,
   onCancel,
   onDetail,
 }: {
   sale: SaleItem;
   stores: { id: string; name: string }[];
   canCancel: boolean;
+  canEdit: boolean;
   onCancel: () => void;
   onDetail: () => void;
 }) {
+  const subtitle = [
+    saleStoreLabel(sale, stores),
+    sale.created_by_label?.trim() ? `Par ${sale.created_by_label.trim()}` : null,
+    sale.customer?.name?.trim() || null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+  const editHref =
+    sale.status === "completed" && canEdit ? saleEditHref(sale.store_id, sale) : null;
+
+  const iconRowBtn =
+    "inline-flex min-h-10 min-w-10 shrink-0 items-center justify-center rounded-lg p-2";
+
   return (
     <article
-      className="touch-manipulation cursor-pointer rounded-xl border border-black/[0.06] bg-fs-card p-4 shadow-sm transition-colors active:bg-neutral-100/80"
+      className="touch-manipulation cursor-pointer rounded-xl border border-black/[0.06] bg-fs-card p-4 shadow-sm transition-colors active:bg-neutral-100/80 dark:active:bg-white/[0.06]"
       onClick={onDetail}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
@@ -748,60 +769,66 @@ function SaleCard({
       role="button"
       tabIndex={0}
     >
-      <div className="flex items-start gap-2">
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-2">
-            <h3 className="text-base font-bold leading-tight text-fs-text">{sale.sale_number}</h3>
-            <DocumentTypeChip sale={sale} />
-            <span
-              className={cn(
-                "ml-auto shrink-0 rounded-lg px-2.5 py-1 text-xs font-semibold max-[360px]:ml-0",
-                statusBgClass(sale.status),
-                statusColorClass(sale.status),
-              )}
-            >
-              {statusLabel[sale.status]}
-            </span>
-          </div>
-          <p className="mt-2 text-xs text-neutral-500">
-            {formatDateTime(sale.created_at)}
-          </p>
-          <p className="mt-1 line-clamp-2 text-sm text-neutral-800">
-            {[
-              saleStoreLabel(sale, stores),
-              sale.created_by_label?.trim() ? `Par ${sale.created_by_label.trim()}` : null,
-              sale.customer?.name?.trim() || null,
-            ]
-              .filter(Boolean)
-              .join(" · ")}
+      {/* même Row que Flutter : Expanded(numéro) | chip | 8px | statut */}
+      <div className="flex min-w-0 flex-row items-center">
+        <div className="min-w-0 flex-1 pr-2">
+          <p className="text-left text-sm font-bold leading-tight text-fs-text">
+            {sale.sale_number}
           </p>
         </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <DocumentTypeChip sale={sale} />
+          <span
+            className={cn(
+              "rounded-lg px-2.5 py-1 text-xs font-semibold leading-none",
+              saleStatusPillClass(sale.status),
+            )}
+          >
+            {statusLabel[sale.status]}
+          </span>
+        </div>
       </div>
+      <p className="mt-2 text-xs leading-normal text-neutral-600">
+        {formatDateTime(sale.created_at)}
+      </p>
+      <p className="mt-1 line-clamp-2 text-xs leading-normal text-neutral-800">
+        {subtitle}
+      </p>
       <div
-        className="mt-3 flex items-center gap-2"
+        className="mt-3 flex items-center"
         onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.stopPropagation()}
       >
-        <span className="text-lg font-bold text-fs-text">
+        <span className="text-base font-bold text-fs-text">
           {formatCurrency(sale.total)}
         </span>
-        <span className="ml-auto flex items-center gap-0">
+        <span className="ml-auto flex items-center">
           <button
             type="button"
             onClick={onDetail}
-            className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-lg p-2 text-fs-accent"
+            className={cn(iconRowBtn, "text-fs-accent")}
             aria-label="Voir le détail"
           >
-            <MdOpenInNew className="h-5 w-5 shrink-0" aria-hidden />
+            <MdVisibility className="h-5 w-5 shrink-0" aria-hidden />
           </button>
+          {editHref ? (
+            <Link
+              href={editHref}
+              onClick={(e) => e.stopPropagation()}
+              className={cn(iconRowBtn, "text-fs-accent")}
+              aria-label="Modifier la vente"
+            >
+              <MdEdit className="h-5 w-5 shrink-0" aria-hidden />
+            </Link>
+          ) : null}
           {sale.status === "completed" && canCancel ? (
             <button
               type="button"
               onClick={onCancel}
-              className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-lg p-2 text-red-600"
+              className={cn(iconRowBtn, "text-[#DC2626]")}
               aria-label="Annuler la vente"
             >
-              <MdCancel className="h-5 w-5" aria-hidden />
+              <MdCancel className="h-5 w-5 shrink-0" aria-hidden />
             </button>
           ) : null}
         </span>
