@@ -1852,7 +1852,9 @@ function PosCartPanel({
 }) {
   const isA4Cart = mode !== "quick";
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    /* `flex-1 min-h-0` : obligatoire sous un parent flex-col — `h-full` ne se résout pas
+     * toujours et le bloc « tableau » peut se retrouver à hauteur 0 (footer seul visible). */
+    <div className="flex min-h-0 flex-1 flex-col">
       {hideCartTitle ? null : (
         <div className="shrink-0 px-3 pb-1.5 pt-2 min-[900px]:block min-[900px]:px-4 min-[900px]:pb-2 min-[900px]:pt-3">
           <p className="text-sm font-bold text-[#1F2937]">
@@ -1861,11 +1863,16 @@ function PosCartPanel({
         </div>
       )}
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-3 min-[900px]:px-3">
+      <div
+        className={cn(
+          "min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-3 min-[900px]:px-3",
+          cartLayout === "table" && "min-h-[120px]",
+        )}
+      >
         {cart.length === 0 ? (
           <div className="flex flex-1 items-center justify-center py-12 text-[#1F2937]">Panier vide</div>
         ) : cartLayout === "table" ? (
-          <div className="overflow-x-auto pb-2">
+          <div className="min-w-0 overflow-x-auto pb-2">
             <table className="w-full min-w-[500px] border-collapse text-left text-[13px]">
               <thead>
                 <tr className="border-b border-[#E5E7EB] bg-[#F8F9FA] text-[11px] font-semibold uppercase tracking-wide text-[#6B7280]">
@@ -2043,16 +2050,7 @@ function PosCartPanel({
         )}
       </div>
 
-      <div
-        className={cn(
-          "border-t border-[#E5E7EB] bg-[#F8F9FA] p-3 pb-[max(12px,env(safe-area-inset-bottom))] min-[900px]:border-t-0",
-          /* Tableau facture : le bloc paiement / totaux peut être haut — scroll interne pour ne pas
-           * écraser la liste (flex middle avec hauteur nulle). */
-          cartLayout === "table"
-            ? "min-h-0 max-h-[min(360px,50svh)] shrink overflow-y-auto overscroll-contain"
-            : "shrink-0",
-        )}
-      >
+      <div className="shrink-0 border-t border-[#E5E7EB] bg-[#F8F9FA] p-3 pb-[max(12px,env(safe-area-inset-bottom))] min-[900px]:border-t-0">
         {/* Récap encadré — Flutter right zone footer */}
         <div className="mx-0 rounded-xl border border-[#E5E7EB] bg-white p-3 min-[900px]:mx-3 min-[900px]:p-4">
           <div className="flex justify-between text-xs text-[#1F2937] min-[900px]:text-sm">
