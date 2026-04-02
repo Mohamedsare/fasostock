@@ -11,6 +11,7 @@ import {
   fetchPosData,
   updateCompletedPosSale,
 } from "@/lib/features/pos/api";
+import { defaultInvoiceUnitForProduct, INVOICE_UNITS } from "@/lib/features/pos/invoice-units";
 import { fetchInvoiceTablePosEnabled } from "@/lib/features/settings/invoice-table-pos";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { ROUTES, storeFactureTabPath } from "@/lib/config/routes";
@@ -766,6 +767,31 @@ export function PosScreen({
     });
   }
 
+  /** Comme Flutter `PosInvoiceTableCart` `onUnitChange`. */
+  function setLineUnit(productId: string, unit: string) {
+    const u = (INVOICE_UNITS as readonly string[]).includes(unit)
+      ? unit
+      : defaultInvoiceUnitForProduct(unit);
+    setCart((prev) =>
+      prev.map((r) =>
+        r.productId === productId ? { ...r, unit: u, lineTotal: undefined } : r,
+      ),
+    );
+  }
+
+  /** Comme Flutter `PosCartUnitPriceField` / `onSetUnitPrice` (FCFA entiers). */
+  function setLineUnitPrice(productId: string, unitPrice: number) {
+    const p = Math.max(
+      0,
+      Math.min(999_999_999, Math.round(Number.isFinite(unitPrice) ? unitPrice : 0)),
+    );
+    setCart((prev) =>
+      prev.map((r) =>
+        r.productId === productId ? { ...r, unitPrice: p, lineTotal: undefined } : r,
+      ),
+    );
+  }
+
   const posCartQ = useQuery({
     queryKey: queryKeys.posCartSettingsMode(mode),
     queryFn: () => readPosCartQtyUiForMode(mode),
@@ -948,6 +974,8 @@ export function PosScreen({
       isSaleEdit={Boolean(activeEditSaleId)}
       onUpdateQty={updateQty}
       onSetQty={setQty}
+      onLineUnitChange={setLineUnit}
+      onLineUnitPriceCommit={setLineUnitPrice}
       onRemove={removeLine}
       onClear={() => {
         setCart([]);
@@ -1777,6 +1805,116 @@ function PosCartQtyInput({
   );
 }
 
+/** Comme Flutter `PosCartUnitPriceField` : FCFA entiers, debounce ~700 ms. */
+const POS_UNIT_PRICE_DEBOUNCE_MS = 700;
+const MAX_POS_UNIT_PRICE = 999_999_999;
+
+function PosCartUnitPriceInput({
+  productId,
+  unitPrice,
+  onCommit,
+}: {
+  productId: string;
+  unitPrice: number;
+  onCommit: (productId: string, value: number) => void;
+}) {
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const draftRef = useRef(String(Math.round(unitPrice)));
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const unitPriceRef = useRef(unitPrice);
+  unitPriceRef.current = unitPrice;
+  const [display, setDisplay] = useState(() => String(Math.round(unitPrice)));
+
+  useLayoutEffect(() => {
+    if (typeof document === "undefined") return;
+    const el = inputRef.current;
+    if (el && document.activeElement === el) return;
+    const want = String(Math.round(unitPrice));
+    setDisplay(want);
+    draftRef.current = want;
+  }, [unitPrice]);
+
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, []);
+
+  const resetToCommitted = () => {
+    const want = String(Math.round(unitPriceRef.current));
+    setDisplay(want);
+    draftRef.current = want;
+  };
+
+  const tryCommitParsed = (raw: string) => {
+    const digits = raw.replace(/\s/g, "");
+    if (digits === "") {
+      resetToCommitted();
+      return;
+    }
+    const n = parseInt(digits, 10);
+    if (Number.isNaN(n)) {
+      resetToCommitted();
+      return;
+    }
+    const v = Math.max(0, Math.min(MAX_POS_UNIT_PRICE, n));
+    if (v !== Math.round(unitPriceRef.current)) {
+      onCommit(productId, v);
+    }
+    const s = String(v);
+    setDisplay(s);
+    draftRef.current = s;
+  };
+
+  const scheduleCommit = () => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      debounceRef.current = null;
+      const t = draftRef.current.trim();
+      if (t === "") return;
+      tryCommitParsed(t);
+    }, POS_UNIT_PRICE_DEBOUNCE_MS);
+  };
+
+  const flush = () => {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+      debounceRef.current = null;
+    }
+    const t = draftRef.current.trim();
+    if (t === "") {
+      resetToCommitted();
+      return;
+    }
+    tryCommitParsed(t);
+  };
+
+  return (
+    <input
+      ref={inputRef}
+      type="text"
+      inputMode="numeric"
+      autoComplete="off"
+      aria-label="Prix unitaire"
+      className="h-8 w-full min-w-[72px] max-w-[104px] rounded-lg border border-[#E5E7EB] bg-white px-1.5 text-right text-sm font-bold leading-tight text-[#1F2937] outline-none focus:border-[#F97316]"
+      value={display}
+      onChange={(e) => {
+        const raw = e.target.value.replace(/\D/g, "");
+        draftRef.current = raw;
+        setDisplay(raw);
+        scheduleCommit();
+      }}
+      onFocus={(e) => e.target.select()}
+      onBlur={() => flush()}
+      onKeyDown={(e) => {
+        if (e.key !== "Enter") return;
+        e.preventDefault();
+        flush();
+      }}
+    />
+  );
+}
+
 function PosCartPanel({
   mode,
   cartLayout = "cards",
@@ -1808,6 +1946,8 @@ function PosCartPanel({
   isSaleEdit,
   onUpdateQty,
   onSetQty,
+  onLineUnitChange,
+  onLineUnitPriceCommit,
   onRemove,
   onClear,
   onPay,
@@ -1844,6 +1984,8 @@ function PosCartPanel({
   isSaleEdit: boolean;
   onUpdateQty: (id: string, d: number) => void;
   onSetQty: (id: string, q: number) => void;
+  onLineUnitChange: (id: string, unit: string) => void;
+  onLineUnitPriceCommit: (id: string, unitPrice: number) => void;
   onRemove: (id: string) => void;
   onClear: () => void;
   onPay: () => void | Promise<void>;
@@ -1865,74 +2007,96 @@ function PosCartPanel({
 
       <div
         className={cn(
-          "min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-3 min-[900px]:px-3",
-          cartLayout === "table" && "min-h-[120px]",
+          "min-h-0 flex-1 overflow-y-auto px-3 min-[900px]:px-3",
+          cartLayout === "table" ? "min-h-[120px] overflow-x-auto" : "overflow-x-hidden",
         )}
       >
         {cart.length === 0 ? (
           <div className="flex flex-1 items-center justify-center py-12 text-[#1F2937]">Panier vide</div>
         ) : cartLayout === "table" ? (
-          <div className="min-w-0 overflow-x-auto pb-2">
-            <table className="w-full min-w-[500px] border-collapse text-left text-[13px]">
+          <div className="min-w-0 pb-2">
+            {/*
+             * Aligné `pos_invoice_table_cart.dart` : colonnes Flex 3 / 0.85 / 1.1 / 1.25 / 1.0 + 52px,
+             * en-têtes Article · Unité · Qté · P.U. · Total · (suppr), bordures comme TableBorder.all.
+             */}
+            <table className="w-full min-w-[320px] table-auto border-collapse text-left text-[13px] text-[#1F2937]">
               <thead>
-                <tr className="border-b border-[#E5E7EB] bg-[#F8F9FA] text-[11px] font-semibold uppercase tracking-wide text-[#6B7280]">
-                  <th className="py-2 pl-1 pr-2">Article</th>
-                  <th className="w-[88px] py-2 px-1">Qté</th>
-                  <th className="w-[92px] py-2 px-1">P.U.</th>
-                  <th className="w-[100px] py-2 px-1 text-right">Total</th>
-                  <th className="w-10 py-2 pr-1" />
+                <tr className="bg-[#E5E7EB]/55">
+                  <th className="border border-[#E5E7EB] px-2.5 py-3.5 text-left text-sm font-bold text-[#1F2937]">
+                    Article
+                  </th>
+                  <th className="border border-[#E5E7EB] px-2.5 py-3.5 text-left text-sm font-bold text-[#1F2937]">
+                    Unité
+                  </th>
+                  <th className="border border-[#E5E7EB] px-2.5 py-3.5 text-left text-sm font-bold text-[#1F2937]">
+                    Qté
+                  </th>
+                  <th className="border border-[#E5E7EB] px-2.5 py-3.5 text-left text-sm font-bold text-[#1F2937]">
+                    P.U.
+                  </th>
+                  <th className="border border-[#E5E7EB] px-2.5 py-3.5 text-right text-sm font-bold text-[#1F2937]">
+                    Total
+                  </th>
+                  <th className="w-12 min-w-[52px] border border-[#E5E7EB] px-1 py-3.5" aria-hidden />
                 </tr>
               </thead>
               <tbody>
                 {cart.map((c) => {
                   const stock = stockByProductId.get(c.productId) ?? 0;
                   const low = stock >= 0 && c.quantity > stock;
+                  const lineTotal = c.lineTotal ?? c.quantity * c.unitPrice;
                   return (
                     <tr
                       key={c.productId}
-                      className={cn(
-                        "border-b border-[#E5E7EB] bg-white",
-                        low && "bg-red-50/90",
-                      )}
+                      className={cn("bg-white", low && "bg-red-50/[0.35]")}
                     >
-                      <td className="max-w-[160px] py-2 pl-1 pr-2 align-middle">
-                        <div className="flex items-center gap-2">
-                          <div className="flex h-9 w-9 shrink-0 overflow-hidden rounded-lg bg-[#F8F9FA]">
-                            {c.imageUrl ? (
-                              <img src={c.imageUrl} alt="" className="h-full w-full object-cover" />
-                            ) : (
-                              <MdInventory2 className="m-auto h-5 w-5 text-[#F97316]/70" aria-hidden />
-                            )}
-                          </div>
-                          <div className="min-w-0">
-                            <p className="truncate font-semibold text-[#1F2937]">{c.name}</p>
-                            {c.unit ? (
-                              <p className="truncate text-[11px] text-[#6B7280]">{c.unit}</p>
-                            ) : null}
-                          </div>
-                        </div>
+                      <td className="border border-[#E5E7EB] px-1.5 py-2 align-top">
+                        <p className="line-clamp-3 text-[15px] font-semibold leading-snug text-[#1F2937]">
+                          {c.name}
+                        </p>
+                        {low ? (
+                          <p className="mt-1 text-xs text-red-600">Stock: {stock}</p>
+                        ) : null}
                       </td>
-                      <td className="py-2 align-middle">
-                        <div className="flex flex-wrap items-center gap-1">
+                      <td className="truncate border border-[#E5E7EB] px-1.5 py-1.5 align-middle">
+                        <select
+                          className={fsInputClass(
+                            "w-full max-w-full bg-white py-1 pl-1 pr-1 text-[13px] leading-tight text-[#1F2937]",
+                          )}
+                          value={defaultInvoiceUnitForProduct(c.unit)}
+                          onChange={(e) => onLineUnitChange(c.productId, e.target.value)}
+                          aria-label="Unité"
+                        >
+                          {INVOICE_UNITS.map((u) => (
+                            <option key={u} value={u}>
+                              {u}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className="border border-[#E5E7EB] px-1.5 py-2 align-middle">
+                        <div className="flex flex-wrap items-center gap-0.5">
                           {showQuantityButtons ? (
                             <button
                               type="button"
                               onClick={() => onUpdateQty(c.productId, -1)}
-                              className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#F8F9FA] text-[#1F2937]"
+                              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#F8F9FA] text-[#1F2937]"
                               aria-label="Moins"
                             >
-                              <span className="text-base leading-none">−</span>
+                              <span className="text-lg leading-none">−</span>
                             </button>
                           ) : null}
                           {showQuantityInput ? (
-                            <PosCartQtyInput
-                              productId={c.productId}
-                              quantity={c.quantity}
-                              stock={stock}
-                              onCommit={onSetQty}
-                            />
+                            <div className="w-[72px] shrink-0">
+                              <PosCartQtyInput
+                                productId={c.productId}
+                                quantity={c.quantity}
+                                stock={stock}
+                                onCommit={onSetQty}
+                              />
+                            </div>
                           ) : (
-                            <span className="min-w-[28px] text-center text-[14px] font-bold text-[#1F2937]">
+                            <span className="min-w-[28px] px-1.5 text-center text-base font-bold text-[#1F2937]">
                               {c.quantity}
                             </span>
                           )}
@@ -1940,31 +2104,34 @@ function PosCartPanel({
                             <button
                               type="button"
                               onClick={() => onUpdateQty(c.productId, 1)}
-                              className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#F97316] text-white"
+                              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#F97316] text-white"
                               aria-label="Plus"
                             >
-                              <MdAdd className="h-4 w-4" aria-hidden />
+                              <MdAdd className="h-[22px] w-[22px]" aria-hidden />
                             </button>
                           ) : null}
                         </div>
-                        {low ? (
-                          <p className="mt-1 text-[11px] text-red-600">Stock : {stock}</p>
-                        ) : null}
                       </td>
-                      <td className="py-2 align-middle tabular-nums text-[#1F2937]">
-                        {formatCurrency(c.unitPrice)}
+                      <td className="border border-[#E5E7EB] px-1 py-1.5 align-middle">
+                        <PosCartUnitPriceInput
+                          productId={c.productId}
+                          unitPrice={c.unitPrice}
+                          onCommit={onLineUnitPriceCommit}
+                        />
                       </td>
-                      <td className="py-2 align-middle text-right font-bold text-[#F97316]">
-                        {formatCurrency(c.lineTotal ?? c.quantity * c.unitPrice)}
+                      <td className="border border-[#E5E7EB] px-2.5 py-3.5 align-middle text-right">
+                        <span className="inline-block max-w-full truncate text-base font-bold tabular-nums text-[#F97316]">
+                          {formatCurrency(lineTotal)}
+                        </span>
                       </td>
-                      <td className="py-2 align-middle pr-1">
+                      <td className="border border-[#E5E7EB] px-0.5 py-1 align-middle">
                         <button
                           type="button"
                           onClick={() => onRemove(c.productId)}
-                          className="p-1 text-red-600"
+                          className="mx-auto flex h-10 w-10 shrink-0 items-center justify-center text-red-600"
                           aria-label="Supprimer"
                         >
-                          <MdDeleteOutline className="h-5 w-5" aria-hidden />
+                          <MdDeleteOutline className="h-[22px] w-[22px]" aria-hidden />
                         </button>
                       </td>
                     </tr>
