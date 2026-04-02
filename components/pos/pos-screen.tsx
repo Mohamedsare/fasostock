@@ -214,6 +214,8 @@ export function PosScreen({
   const stripCol1900 = useMediaQuery("(min-width: 1900px)");
   const stripCol1400 = useMediaQuery("(min-width: 1400px)");
   const stripMainExtent = stripCol1900 ? 172 : stripCol1400 ? 152 : 132;
+  /** Bande « facture tableau » : colonnes un peu plus étroites pour limiter le zoom visuel. */
+  const stripA4TableExtent = stripCol1900 ? 148 : stripCol1400 ? 130 : 118;
 
   const store = posQ.data?.store ?? null;
   const products = posQ.data?.products ?? [];
@@ -889,15 +891,15 @@ export function PosScreen({
   ) {
     return (
       <div className="box-border flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-[#F8F9FA] px-[20px]">
-        <header className="flex h-[60px] shrink-0 items-center bg-[#f97316] px-3 text-white sm:px-4">
+        <header className="flex h-14 shrink-0 items-center bg-[#f97316] px-3 text-white sm:h-[52px] sm:px-4">
           {mode === "quick" ? (
-            <MdStore className="h-6 w-6 shrink-0 sm:h-7 sm:w-7" aria-hidden />
+            <MdStore className="h-5 w-5 shrink-0 sm:h-6 sm:w-6" aria-hidden />
           ) : mode === "a4-table" ? (
-            <MdTableChart className="h-6 w-6 shrink-0 sm:h-7 sm:w-7" aria-hidden />
+            <MdTableChart className="h-5 w-5 shrink-0 sm:h-6 sm:w-6" aria-hidden />
           ) : (
-            <MdDescription className="h-6 w-6 shrink-0 sm:h-7 sm:w-7" aria-hidden />
+            <MdDescription className="h-5 w-5 shrink-0 sm:h-6 sm:w-6" aria-hidden />
           )}
-          <span className="ml-2 truncate text-[15px] font-bold">Ouverture de la vente…</span>
+          <span className="ml-2 truncate text-sm font-bold sm:text-base">Ouverture de la vente…</span>
         </header>
         <div className="flex flex-1 flex-col items-center justify-center gap-4 py-16">
           <div className="h-9 w-9 animate-spin rounded-full border-2 border-[#F97316] border-t-transparent" />
@@ -967,25 +969,25 @@ export function PosScreen({
   );
 
   return (
-    <div className="box-border flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden overflow-x-hidden bg-[#F8F9FA] px-[20px] overscroll-none">
-      {/* Header 60px — marge horizontale 20px (fond shell visible sur les côtés, comme Flutter) */}
-      <header className="z-30 flex h-[60px] shrink-0 items-center gap-2 bg-[#f97316] px-3 text-white sm:px-4">
+    <div className="box-border flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden overflow-x-hidden bg-[#F8F9FA] px-3 overscroll-none sm:px-[18px]">
+      {/* Header — hauteur réduite pour densité bureau (zoom visuel à 100 % navigateur) */}
+      <header className="z-30 flex h-14 shrink-0 items-center gap-2 bg-[#f97316] px-3 text-white sm:h-[52px] sm:px-4">
         {mode === "quick" ? (
-          <MdStore className="h-6 w-6 shrink-0 sm:h-7 sm:w-7" aria-hidden />
+          <MdStore className="h-5 w-5 shrink-0 sm:h-6 sm:w-6" aria-hidden />
         ) : mode === "a4-table" ? (
-          <MdTableChart className="h-6 w-6 shrink-0 sm:h-7 sm:w-7" aria-hidden />
+          <MdTableChart className="h-5 w-5 shrink-0 sm:h-6 sm:w-6" aria-hidden />
         ) : (
-          <MdDescription className="h-6 w-6 shrink-0 sm:h-7 sm:w-7" aria-hidden />
+          <MdDescription className="h-5 w-5 shrink-0 sm:h-6 sm:w-6" aria-hidden />
         )}
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[15px] font-bold leading-tight sm:text-lg">
+          <p className="truncate text-sm font-bold leading-tight sm:text-base">
             {mode === "quick"
               ? "POS Caisse Rapide"
               : mode === "a4-table"
                 ? "Facture (tableau)"
                 : "POS Facture A4"}
           </p>
-          <p className="truncate text-[11px] text-white/90">
+          <p className="truncate text-[10px] text-white/90 sm:text-[11px]">
             {store?.name ?? "Boutique"}
             {mode === "quick" && isWide && profileNameQ.data
               ? ` • ${profileNameQ.data}`
@@ -1001,7 +1003,7 @@ export function PosScreen({
               className="rounded-full p-2 hover:bg-white/15"
               aria-label="Historique ventes"
             >
-              <MdHistory className="h-6 w-6" aria-hidden />
+              <MdHistory className="h-5 w-5" aria-hidden />
             </Link>
             <button
               type="button"
@@ -1009,7 +1011,7 @@ export function PosScreen({
               className="rounded-full p-2 hover:bg-white/15"
               aria-label="Paramètres"
             >
-              <MdSettings className="h-6 w-6" aria-hidden />
+              <MdSettings className="h-5 w-5" aria-hidden />
             </button>
             <button
               type="button"
@@ -1017,7 +1019,7 @@ export function PosScreen({
               className="rounded-full p-2 hover:bg-white/15"
               aria-label="Quitter POS"
             >
-              <MdLogout className="h-6 w-6" aria-hidden />
+              <MdLogout className="h-5 w-5" aria-hidden />
             </button>
           </>
         ) : (
@@ -1027,14 +1029,14 @@ export function PosScreen({
               className="rounded-full p-2 hover:bg-white/15"
               aria-label="Historique des ventes de cette boutique"
             >
-              <MdHistory className="h-6 w-6" aria-hidden />
+              <MdHistory className="h-5 w-5" aria-hidden />
             </Link>
             <Link
               href={ROUTES.settings}
               className="rounded-full p-2 hover:bg-white/15"
               aria-label="Paramètres application"
             >
-              <MdSettings className="h-6 w-6" aria-hidden />
+              <MdSettings className="h-5 w-5" aria-hidden />
             </Link>
             <button
               type="button"
@@ -1058,7 +1060,7 @@ export function PosScreen({
       </header>
 
       {activeEditSaleId ? (
-        <div className="flex shrink-0 items-center gap-2 border-b border-black/10 bg-[color-mix(in_srgb,var(--fs-accent)_16%,white)] px-3 py-2 text-[13px] font-semibold text-[#1F2937]">
+        <div className="flex shrink-0 items-center gap-2 border-b border-black/10 bg-[color-mix(in_srgb,var(--fs-accent)_16%,white)] px-3 py-1.5 text-xs font-semibold text-[#1F2937] sm:text-[13px]">
           <MdEditNote className="h-5 w-5 shrink-0 text-[var(--fs-accent)]" aria-hidden />
           <span className="min-w-0 flex-1 leading-snug">
             {mode === "quick"
@@ -1118,13 +1120,17 @@ export function PosScreen({
           {/* Zone produits — aligné Flutter : facture-tab = moitié hauteur + moitié panier tableau */}
           <main
             className={cn(
-              "flex min-h-0 min-w-0 flex-1 flex-col bg-white",
-              mode === "a4-table" ? "min-h-0 overflow-hidden" : "min-[900px]:flex-[65]",
+              "flex min-w-0 flex-col bg-white",
+              /* Facture tableau : ne pas prendre 50 % en flex-1 — sinon le bandeau 2× rangées
+               * mange l’écran et le tableau panier n’a plus de hauteur (footer seul visible). */
+              mode === "a4-table"
+                ? "max-h-[min(300px,44svh)] min-h-0 shrink-0 overflow-hidden lg:max-h-[min(340px,38svh)]"
+                : "min-h-0 min-[900px]:flex-[65] flex-1",
             )}
           >
-            <div className="px-4 pb-1.5 pt-1.5">
+            <div className="px-3 pb-1.5 pt-1.5 sm:px-4">
               {mode === "quick" ? (
-                <div className="relative h-10">
+                <div className="relative h-9">
                   <button
                     type="button"
                     className="absolute left-0.5 top-1/2 z-[1] -translate-y-1/2 rounded-full p-0.5 text-[#F97316] hover:bg-black/5"
@@ -1142,7 +1148,7 @@ export function PosScreen({
                   />
                   <input
                     className={fsInputClass(
-                      "h-10 w-full rounded-lg border-[#E5E7EB] bg-white py-1 pl-10 pr-8 text-[13px] leading-snug text-[#1F2937] placeholder:text-[#1F2937]/50",
+                      "h-9 w-full rounded-lg border-[#E5E7EB] bg-white py-1 pl-10 pr-8 text-xs leading-snug text-[#1F2937] placeholder:text-[#1F2937]/50 sm:text-[13px]",
                     )}
                     value={search}
                     onChange={(e) => {
@@ -1162,10 +1168,10 @@ export function PosScreen({
                   />
                 </div>
               ) : (
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch sm:gap-2.5">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch sm:gap-2">
                   <div
                     className={cn(
-                      "relative min-h-10 min-w-0 flex-1",
+                      "relative min-h-9 min-w-0 flex-1",
                       mode === "a4-table" && "sm:max-w-xl lg:max-w-2xl",
                     )}
                   >
@@ -1175,7 +1181,7 @@ export function PosScreen({
                     />
                     <input
                       className={fsInputClass(
-                        "h-10 w-full rounded-lg border-[#E5E7EB] bg-white py-1 pl-8 pr-2.5 text-[13px] leading-snug text-[#1F2937] placeholder:text-[#1F2937]/50",
+                        "h-9 w-full rounded-lg border-[#E5E7EB] bg-white py-1 pl-8 pr-2.5 text-xs leading-snug text-[#1F2937] placeholder:text-[#1F2937]/50 sm:text-[13px]",
                       )}
                       value={search}
                       onChange={(e) => {
@@ -1193,10 +1199,10 @@ export function PosScreen({
                       enterKeyHint="search"
                     />
                   </div>
-                  <div className="flex shrink-0 gap-2 sm:gap-2.5">
+                  <div className="flex shrink-0 gap-2 sm:gap-2">
                     <select
                       className={fsInputClass(
-                        "h-12 min-w-0 flex-1 rounded-xl border-[#E5E7EB] bg-white px-2 py-1.5 text-sm text-[#1F2937] sm:min-w-[140px] md:min-w-[180px]",
+                        "h-10 min-w-0 flex-1 rounded-xl border-[#E5E7EB] bg-white px-2 py-1.5 text-xs text-[#1F2937] sm:min-w-[140px] sm:text-sm md:min-w-[180px]",
                       )}
                       value={
                         customerId && customers.some((c) => c.id === customerId)
@@ -1218,16 +1224,16 @@ export function PosScreen({
                       title="Créer un client"
                       aria-label="Créer un client"
                       onClick={() => setCustomerCreateOpen(true)}
-                      className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#F97316] text-white shadow-sm transition hover:opacity-95"
+                      className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#F97316] text-white shadow-sm transition hover:opacity-95"
                     >
-                      <MdPersonAdd className="h-[22px] w-[22px]" aria-hidden />
+                      <MdPersonAdd className="h-5 w-5" aria-hidden />
                     </button>
                   </div>
                 </div>
               )}
             </div>
 
-            <div className="shrink-0 overflow-x-auto overflow-y-hidden px-4 py-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="shrink-0 overflow-x-auto overflow-y-hidden px-3 py-1 [-ms-overflow-style:none] [scrollbar-width:none] sm:px-4 [&::-webkit-scrollbar]:hidden">
               <div className="flex w-max items-center gap-1.5">
                 <CategoryChip
                   label="Tous"
@@ -1247,9 +1253,9 @@ export function PosScreen({
 
             <div
               className={cn(
-                "min-h-0 flex-1 px-4",
+                "min-h-0 flex-1 px-3 sm:px-4",
                 mode === "a4-table"
-                  ? "flex flex-col overflow-hidden pb-4"
+                  ? "flex min-h-0 flex-col overflow-hidden pb-2"
                   : "pb-28 min-[900px]:pb-4 @container overflow-y-auto",
               )}
             >
@@ -1259,7 +1265,7 @@ export function PosScreen({
                     className="h-16 w-16 text-[#1F2937]/50"
                     aria-hidden
                   />
-                  <p className="mt-4 text-[15px] text-[#1F2937]/80">
+                  <p className="mt-4 text-sm text-[#1F2937]/80">
                     {search.trim() !== ""
                       ? "Aucun résultat"
                       : mode === "quick"
@@ -1272,8 +1278,8 @@ export function PosScreen({
                   className="min-h-0 flex-1 overflow-x-auto overflow-y-hidden [-ms-overflow-style:auto] [scrollbar-width:thin]"
                 >
                   <div
-                    className="grid h-full min-h-[220px] grid-flow-col grid-rows-2 gap-2.5 py-1 content-start"
-                    style={{ gridAutoColumns: stripMainExtent }}
+                    className="grid h-full min-h-0 grid-flow-col grid-rows-1 gap-1.5 py-0.5 content-start"
+                    style={{ gridAutoColumns: stripA4TableExtent }}
                   >
                     {filtered.map((p) => {
                       const stock = stockByProductId.get(p.id) ?? 0;
@@ -1294,30 +1300,30 @@ export function PosScreen({
                               addToCart(p.id, p.name, price, p.unit, thumb);
                           }}
                           className={cn(
-                            "flex min-h-0 w-full flex-col items-center rounded-[14px] border bg-white px-1.5 py-1.5 text-center transition active:scale-[0.98]",
+                            "flex min-h-0 w-full flex-col items-center rounded-lg border bg-white px-1 py-1 text-center transition active:scale-[0.98]",
                             noStock
                               ? "border-[#E5E7EB] opacity-45"
-                              : "border-[1.5px] border-[#F97316]/35 shadow-[0_2px_8px_rgba(249,115,22,0.08)]",
+                              : "border border-[#F97316]/35 shadow-[0_1px_6px_rgba(249,115,22,0.07)]",
                           )}
                         >
-                          <div className="mx-auto flex h-[52px] w-full max-w-[4.75rem] shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[#F8F9FA]">
+                          <div className="mx-auto flex h-9 w-full max-w-[3.5rem] shrink-0 items-center justify-center overflow-hidden rounded-md bg-[#F8F9FA]">
                             {thumb ? (
                               <img src={thumb} alt="" className="h-full w-full object-cover" />
                             ) : (
                               <MdInventory2
-                                className="h-6 w-6 text-[#F97316]/70"
+                                className="h-5 w-5 text-[#F97316]/70"
                                 aria-hidden
                               />
                             )}
                           </div>
                           <p
-                            className="mt-1 line-clamp-2 w-full flex-1 px-0.5 text-center text-[10px] font-semibold leading-tight text-[#1F2937] sm:text-[11px]"
+                            className="mt-0.5 line-clamp-2 w-full flex-1 px-0.5 text-center text-[9px] font-semibold leading-tight text-[#1F2937] sm:text-[10px]"
                             title={p.name}
                           >
                             {p.name}
                           </p>
                           <p
-                            className="mt-0.5 w-full truncate px-0.5 text-center text-[10px] font-bold text-[#F97316]"
+                            className="mt-0.5 w-full truncate px-0.5 text-center text-[9px] font-bold text-[#F97316] sm:text-[10px]"
                             title={priceLine}
                           >
                             {priceLine}
@@ -1328,7 +1334,7 @@ export function PosScreen({
                   </div>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 gap-3 pb-4 @[600px]:grid-cols-4">
+                <div className="grid grid-cols-2 gap-2 pb-3 @[420px]:grid-cols-3 @[560px]:grid-cols-4 @[820px]:grid-cols-5 min-[1200px]:grid-cols-6">
                   {filtered.map((p) => {
                     const stock = stockByProductId.get(p.id) ?? 0;
                     const thumb = p.product_images?.[0]?.url ?? null;
@@ -1351,30 +1357,30 @@ export function PosScreen({
                           )
                         }
                         className={cn(
-                          "flex min-h-0 w-full min-w-0 flex-col items-center overflow-hidden rounded-[14px] bg-white px-2.5 py-2 text-center transition active:scale-[0.98]",
-                          "aspect-[0.76] @[400px]:aspect-[0.84] @[600px]:aspect-[0.90]",
-                          "border-[1.5px] border-[#F97316]/35 shadow-[0_2px_8px_rgba(249,115,22,0.1)]",
+                          "flex min-h-0 w-full min-w-0 flex-col items-center overflow-hidden rounded-xl bg-white px-2 py-1.5 text-center transition active:scale-[0.98]",
+                          "aspect-[0.82] @[400px]:aspect-[0.88] @[600px]:aspect-[0.93]",
+                          "border border-[#F97316]/35 shadow-[0_1px_6px_rgba(249,115,22,0.08)]",
                         )}
                       >
-                        <div className="mx-auto flex h-[98px] w-[98px] shrink-0 items-center justify-center overflow-hidden rounded-[10px] bg-[#F8F9FA]">
+                        <div className="mx-auto flex h-[72px] w-[72px] shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[#F8F9FA] sm:h-[76px] sm:w-[76px]">
                           {thumb ? (
                             <img src={thumb} alt="" className="h-full w-full object-cover" />
                           ) : (
                             <MdInventory2
-                              className="h-[49px] w-[49px] text-[#F97316]/70"
+                              className="h-9 w-9 text-[#F97316]/70"
                               aria-hidden
                             />
                           )}
                         </div>
-                        <div className="mt-1 flex min-h-0 w-full min-w-0 flex-1 flex-col items-center justify-center">
+                        <div className="mt-0.5 flex min-h-0 w-full min-w-0 flex-1 flex-col items-center justify-center">
                           <p
-                            className="line-clamp-2 w-full text-center text-[13px] font-semibold leading-snug text-[#1F2937]"
+                            className="line-clamp-2 w-full text-center text-[11px] font-semibold leading-snug text-[#1F2937] @[400px]:text-xs"
                             title={p.name}
                           >
                             {p.name}
                           </p>
                           <p
-                            className="mt-0.5 w-full truncate text-center text-[11px] font-bold text-[#F97316]"
+                            className="mt-0.5 w-full truncate text-center text-[10px] font-bold text-[#F97316] @[400px]:text-[11px]"
                             title={priceLine}
                           >
                             {priceLine}
@@ -1393,7 +1399,7 @@ export function PosScreen({
               {cartPanel}
             </div>
           ) : (
-            <aside className="hidden h-full min-h-0 w-[380px] shrink-0 flex-col border-l border-[#E5E7EB] bg-[#F8F9FA] min-[900px]:flex">
+            <aside className="hidden h-full min-h-0 w-[340px] shrink-0 flex-col border-l border-[#E5E7EB] bg-[#F8F9FA] min-[900px]:flex">
               {cartPanel}
             </aside>
           )}
@@ -1403,7 +1409,7 @@ export function PosScreen({
       {/* Barre mobile — Flutter _buildMobileBottomBar */}
       {!isWide && store && !posQ.isLoading && !posQ.isError && mode !== "a4-table" ? (
         <div
-          className="fixed bottom-0 left-[20px] right-[20px] z-20 border-t border-[#E5E7EB] bg-white px-4 py-3 shadow-[0_-2px_12px_rgba(0,0,0,0.08)] min-[900px]:hidden"
+          className="fixed bottom-0 left-3 right-3 z-20 border-t border-[#E5E7EB] bg-white px-3 py-2.5 shadow-[0_-2px_12px_rgba(0,0,0,0.08)] min-[900px]:hidden sm:left-[18px] sm:right-[18px]"
           style={{ paddingBottom: "max(12px, env(safe-area-inset-bottom))" }}
         >
           <div className="flex items-center gap-3">
@@ -1622,7 +1628,7 @@ function CategoryChip({
       type="button"
       onClick={onClick}
       className={cn(
-        "shrink-0 px-2.5 py-1 text-xs font-semibold transition-colors min-[600px]:px-3 min-[600px]:text-sm",
+        "shrink-0 px-2 py-0.5 text-[11px] font-semibold transition-colors min-[600px]:px-2.5 min-[600px]:text-xs",
         /* Même rayon que ChipTheme (mobile 8px, desktop 10px) */
         "rounded-[8px] min-[600px]:rounded-[10px]",
         selected
@@ -1724,7 +1730,7 @@ function PosCartQtyInput({
       inputMode="numeric"
       autoComplete="off"
       aria-label="Quantité"
-      className="h-8 w-[68px] rounded-lg border border-[#E5E7EB] bg-white px-1.5 text-center text-[15px] font-bold text-[#1F2937] outline-none focus:border-[#F97316]"
+      className="h-7 w-[56px] rounded-lg border border-[#E5E7EB] bg-white px-1 text-center text-sm font-bold text-[#1F2937] outline-none focus:border-[#F97316]"
       value={display}
       onChange={(e) => {
         const v = e.target.value;
@@ -1848,8 +1854,8 @@ function PosCartPanel({
   return (
     <div className="flex h-full min-h-0 flex-col">
       {hideCartTitle ? null : (
-        <div className="shrink-0 px-4 pb-2 pt-3 min-[900px]:block">
-          <p className="text-base font-bold text-[#1F2937]">
+        <div className="shrink-0 px-3 pb-1.5 pt-2 min-[900px]:block min-[900px]:px-4 min-[900px]:pb-2 min-[900px]:pt-3">
+          <p className="text-sm font-bold text-[#1F2937]">
             Panier · {cartCount} article{cartCount !== 1 ? "s" : ""}
           </p>
         </div>
@@ -1968,26 +1974,26 @@ function PosCartPanel({
               return (
                 <li
                   key={c.productId}
-                  className="flex gap-2.5 rounded-[10px] border border-[#E5E7EB] bg-white px-2.5 py-2"
+                  className="flex gap-2 rounded-[10px] border border-[#E5E7EB] bg-white px-2 py-1.5"
                 >
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[#F8F9FA]">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[#F8F9FA]">
                     {c.imageUrl ? (
                       <img src={c.imageUrl} alt="" className="h-full w-full object-cover" />
                     ) : (
-                      <MdInventory2 className="h-6 w-6 text-[#F97316]/70" aria-hidden />
+                      <MdInventory2 className="h-5 w-5 text-[#F97316]/70" aria-hidden />
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-[13px] font-semibold text-[#1F2937]">{c.name}</p>
-                    <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                    <p className="truncate text-xs font-semibold text-[#1F2937]">{c.name}</p>
+                    <div className="mt-1 flex flex-wrap items-center gap-1.5">
                       {showQuantityButtons ? (
                         <button
                           type="button"
                           onClick={() => onUpdateQty(c.productId, -1)}
-                          className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#F8F9FA] text-[#1F2937]"
+                          className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#F8F9FA] text-[#1F2937]"
                           aria-label="Moins"
                         >
-                          <span className="text-lg leading-none">−</span>
+                          <span className="text-base leading-none">−</span>
                         </button>
                       ) : null}
                       {showQuantityInput ? (
@@ -1998,7 +2004,7 @@ function PosCartPanel({
                           onCommit={onSetQty}
                         />
                       ) : (
-                        <span className="min-w-[28px] text-center text-[15px] font-bold text-[#1F2937]">
+                        <span className="min-w-[26px] text-center text-sm font-bold text-[#1F2937]">
                           {c.quantity}
                         </span>
                       )}
@@ -2006,10 +2012,10 @@ function PosCartPanel({
                         <button
                           type="button"
                           onClick={() => onUpdateQty(c.productId, 1)}
-                          className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#F97316] text-white"
+                          className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#F97316] text-white"
                           aria-label="Plus"
                         >
-                          <MdAdd className="h-5 w-5" aria-hidden />
+                          <MdAdd className="h-4 w-4" aria-hidden />
                         </button>
                       ) : null}
                       {low ? (
@@ -2018,7 +2024,7 @@ function PosCartPanel({
                     </div>
                   </div>
                   <div className="flex shrink-0 flex-col items-end gap-0">
-                    <p className="text-sm font-bold text-[#F97316]">
+                    <p className="text-xs font-bold text-[#F97316]">
                       {formatCurrency(c.lineTotal ?? c.quantity * c.unitPrice)}
                     </p>
                     <button
@@ -2037,22 +2043,33 @@ function PosCartPanel({
         )}
       </div>
 
-      <div className="shrink-0 border-t border-[#E5E7EB] bg-[#F8F9FA] p-3 pb-[max(12px,env(safe-area-inset-bottom))] min-[900px]:border-t-0">
+      <div
+        className={cn(
+          "border-t border-[#E5E7EB] bg-[#F8F9FA] p-3 pb-[max(12px,env(safe-area-inset-bottom))] min-[900px]:border-t-0",
+          /* Tableau facture : le bloc paiement / totaux peut être haut — scroll interne pour ne pas
+           * écraser la liste (flex middle avec hauteur nulle). */
+          cartLayout === "table"
+            ? "min-h-0 max-h-[min(360px,50svh)] shrink overflow-y-auto overscroll-contain"
+            : "shrink-0",
+        )}
+      >
         {/* Récap encadré — Flutter right zone footer */}
-        <div className="mx-0 rounded-xl border border-[#E5E7EB] bg-white p-4 min-[900px]:mx-3">
-          <div className="flex justify-between text-sm text-[#1F2937]">
+        <div className="mx-0 rounded-xl border border-[#E5E7EB] bg-white p-3 min-[900px]:mx-3 min-[900px]:p-4">
+          <div className="flex justify-between text-xs text-[#1F2937] min-[900px]:text-sm">
             <span>Sous-total</span>
             <span>{formatCurrency(subtotal)}</span>
           </div>
           {(showDiscountField || discountValue > 0) ? (
-            <div className="mt-1 flex justify-between text-sm text-[#1F2937]">
+            <div className="mt-1 flex justify-between text-xs text-[#1F2937] min-[900px]:text-sm">
               <span>Remise</span>
               <span>{formatCurrency(discountValue)}</span>
             </div>
           ) : null}
-          <div className="mt-2 flex items-end justify-between border-t border-[#E5E7EB] pt-2">
-            <span className="text-base font-bold text-[#1F2937]">TOTAL</span>
-            <span className="text-[22px] font-extrabold leading-none text-[#F97316]">{formatCurrency(total)}</span>
+          <div className="mt-1.5 flex items-end justify-between border-t border-[#E5E7EB] pt-1.5 min-[900px]:mt-2 min-[900px]:pt-2">
+            <span className="text-sm font-bold text-[#1F2937]">TOTAL</span>
+            <span className="text-lg font-extrabold leading-none text-[#F97316] min-[900px]:text-xl">
+              {formatCurrency(total)}
+            </span>
           </div>
         </div>
 
@@ -2180,7 +2197,9 @@ function PosCartPanel({
 
         {isA4Cart ? (
           <div className="mt-3 px-0 min-[900px]:px-3">
-            <label className="mb-1 block text-xs text-[#6B7280]">Acompte (montant payé maintenant)</label>
+            <label className="mb-1 block text-xs text-[#6B7280]">
+              Acompte (montant payé maintenant)
+            </label>
             <input
               className={fsInputClass(
                 "bg-white px-2.5 py-1.5 sm:px-2.5 sm:py-1.5",

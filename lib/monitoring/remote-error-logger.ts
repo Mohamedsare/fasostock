@@ -160,13 +160,20 @@ export async function captureWebAppError(
     typeof process !== "undefined" && process.env.NODE_ENV === "development";
 
   if (isDev) {
-    // Visibilité locale : la remonte Supabase peut échouer (RLS, hors ligne).
-    console.error("[FasoStock] captureWebAppError", {
+    // Ne pas utiliser `console.error` : Next.js (Turbopack) surface ça comme « Console Error »
+    // plein écran alors que c’est seulement une trace de remontée monitoring.
+    const devExtra =
+      options?.extra && Object.keys(options.extra).length > 0
+        ? options.extra
+        : undefined;
+    const devLine = JSON.stringify({
       source,
       level,
       message: message.slice(0, 500),
       errType,
+      extra: devExtra,
     });
+    console.warn(`[FasoStock] captureWebAppError ${devLine}`);
   }
 
   try {
