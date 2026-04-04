@@ -465,7 +465,7 @@ export function AppShell({ children, userEmail }: AppShellProps) {
                 aria-label="Fermer le menu"
                 onClick={() => setMobileNavOpen(false)}
               />
-              <div className="absolute left-0 top-0 flex h-full w-[min(100%,288px)] flex-col shadow-xl">
+              <div className="absolute left-0 top-0 flex h-full w-[min(100%,260px)] flex-col shadow-xl">
                 <AppSidebar
                   variant="mobileDrawer"
                   collapsed={false}

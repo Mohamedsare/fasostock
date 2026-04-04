@@ -192,13 +192,31 @@ export function AppSidebar({
           <button
             type="button"
             onClick={() => onNavigate?.()}
+            aria-label="Fermer le menu"
             className={cn(
-              "flex w-full items-center justify-center gap-2 rounded-2xl border border-black/[0.07] bg-fs-surface-container/60 px-3 py-2.5 text-sm font-semibold text-fs-text",
-              "shadow-sm transition-[color,background-color,transform] hover:bg-fs-surface-container active:scale-[0.98]",
-              "dark:border-white/[0.1] dark:bg-white/[0.04] dark:hover:bg-white/[0.07]",
+              "group/drawer-close flex w-full items-center justify-between gap-3 rounded-full px-4 py-3",
+              "bg-neutral-100 text-fs-text",
+              "shadow-[0_2px_10px_rgba(0,0,0,0.07)]",
+              "transition-[transform,background-color,box-shadow] duration-200",
+              "hover:bg-neutral-50 hover:shadow-[0_3px_12px_rgba(0,0,0,0.08)] active:scale-[0.98]",
+              "dark:bg-white/[0.09] dark:shadow-[0_2px_14px_rgba(0,0,0,0.35)] dark:hover:bg-white/[0.12]",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--fs-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-fs-card",
             )}
           >
-            Fermer le menu
+            <span className="flex items-center gap-2.5">
+              <Menu
+                className="h-[18px] w-[18px] shrink-0 text-[var(--fs-accent)]"
+                strokeWidth={2.25}
+                aria-hidden
+              />
+              <span className="text-sm font-bold tracking-tight text-neutral-800 dark:text-neutral-100">
+                Menu
+              </span>
+            </span>
+            <ChevronLeft
+              className="h-4 w-4 shrink-0 text-neutral-400 transition-transform duration-300 group-hover/drawer-close:-translate-x-0.5 dark:text-neutral-500"
+              aria-hidden
+            />
           </button>
         ) : (
           <button
