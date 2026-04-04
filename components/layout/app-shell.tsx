@@ -67,6 +67,7 @@ export function AppShell({ children, userEmail }: AppShellProps) {
     pathname,
   );
   const [moreOpen, setMoreOpen] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileBrandLogoErr, setMobileBrandLogoErr] = useState(false);
   /** Heure uniquement côté client — fuseau = celui du navigateur (pays / OS de l’utilisateur). */
@@ -93,6 +94,14 @@ export function AppShell({ children, userEmail }: AppShellProps) {
   useEffect(() => {
     setMobileBrandLogoErr(false);
   }, [data?.companyLogoUrl]);
+
+  useEffect(() => {
+    setMobileNavOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (isDesktop) setMobileNavOpen(false);
+  }, [isDesktop]);
 
   useEffect(() => {
     const tick = () => {
@@ -333,10 +342,10 @@ export function AppShell({ children, userEmail }: AppShellProps) {
                 {!isPosRoute && primaryMobile.length > 0 ? (
                   <button
                     type="button"
-                    onClick={() => setMoreOpen(true)}
+                    onClick={() => setMobileNavOpen(true)}
                     className={shellToolbarIconButtonClass}
-                    aria-label="Menu et autres sections"
-                    aria-expanded={moreOpen}
+                    aria-label="Ouvrir le menu de navigation"
+                    aria-expanded={mobileNavOpen}
                     aria-haspopup="dialog"
                   >
                     <Menu className="h-5 w-5" strokeWidth={2} aria-hidden />
@@ -441,6 +450,34 @@ export function AppShell({ children, userEmail }: AppShellProps) {
                 items={moreSheetItems}
               />
             </>
+          ) : null}
+
+          {!isDesktop && !isPosRoute && mobileNavOpen ? (
+            <div
+              className="fixed inset-0 z-[60] lg:hidden"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Menu de navigation"
+            >
+              <button
+                type="button"
+                className="absolute inset-0 bg-black/50"
+                aria-label="Fermer le menu"
+                onClick={() => setMobileNavOpen(false)}
+              />
+              <div className="absolute left-0 top-0 flex h-full w-[min(100%,288px)] flex-col shadow-xl">
+                <AppSidebar
+                  variant="mobileDrawer"
+                  collapsed={false}
+                  onToggleCollapsed={() => {}}
+                  items={visibleNav}
+                  userEmail={userEmail}
+                  isActive={isActive}
+                  companyLogoUrl={data?.companyLogoUrl ?? null}
+                  onNavigate={() => setMobileNavOpen(false)}
+                />
+              </div>
+            </div>
           ) : null}
         </div>
       </div>
