@@ -18,6 +18,9 @@ export type SaleItem = {
   updated_at: string;
   sale_mode: "quick_pos" | "invoice_pos" | null;
   document_type: "thermal_receipt" | "a4_invoice" | null;
+  /** Après migration Supabase `credit_due_at` (page Crédit). */
+  credit_due_at?: string | null;
+  credit_internal_note?: string | null;
   store?: { id: string; name: string } | null;
-  customer?: { id: string; name: string; phone: string | null } | null;
+  customer?: { id: string; name: string; phone: string | null; address?: string | null } | null;
 };

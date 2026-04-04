@@ -101,6 +101,25 @@ export async function cancelSale(saleId: string): Promise<void> {
   if (error) throw error;
 }
 
+/**
+ * Propriétaire uniquement (RPC `owner_purge_cancelled_sale`) : efface définitivement une vente
+ * déjà **annulée** (ligne retirée de la liste).
+ */
+export async function purgeCancelledSaleAsOwner(params: {
+  companyId: string;
+  saleNumber: string;
+}): Promise<void> {
+  if (!navigator.onLine) {
+    throw new Error("La purge nécessite une connexion internet.");
+  }
+  const supabase = createClient();
+  const { error } = await supabase.rpc("owner_purge_cancelled_sale", {
+    p_company_id: params.companyId,
+    p_sale_number: params.saleNumber.trim(),
+  });
+  if (error) throw error;
+}
+
 export async function getSaleDetail(saleId: string): Promise<
   | (SaleItem & {
       sale_items: Array<{
@@ -117,6 +136,7 @@ export async function getSaleDetail(saleId: string): Promise<
         method: string;
         amount: number;
         reference: string | null;
+        created_at: string;
       }>;
     })
   | null
@@ -125,7 +145,7 @@ export async function getSaleDetail(saleId: string): Promise<
   const { data, error } = await supabase
     .from("sales")
     .select(
-      `${saleSelect},sale_items(id, product_id, quantity, unit_price, discount, total, product:products(id,name,sku,unit)),sale_payments(id, method, amount, reference)`,
+      `${saleSelect},sale_items(id, product_id, quantity, unit_price, discount, total, product:products(id,name,sku,unit)),sale_payments(id, method, amount, reference, created_at)`,
     )
     .eq("id", saleId)
     .maybeSingle();
@@ -158,6 +178,7 @@ export async function getSaleDetail(saleId: string): Promise<
       method: string;
       amount: number;
       reference: string | null;
+      created_at: string;
     }>) ?? [],
   };
 }

@@ -2,9 +2,12 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
+import { CreditQuickPayDialog } from "@/components/credit/credit-quick-pay-dialog";
 import { InvoicePdfPreviewDialog } from "@/components/invoices/invoice-pdf-preview-dialog";
 import { ReceiptTicketDialog } from "@/components/pos/receipt-ticket-dialog";
 import { getSaleDetail } from "@/lib/features/sales/api";
+import type { CreditSaleRow } from "@/lib/features/credit/types";
+import { CREDIT_AMOUNT_EPS, paidTotal, remainingTotal } from "@/lib/features/credit/credit-math";
 import type { SaleItem } from "@/lib/features/sales/types";
 import {
   buildReceiptTicketDataFromSale,
@@ -26,6 +29,8 @@ import {
   printInvoicePdf,
 } from "@/lib/features/invoices/generate-invoice-pdf";
 import { messageFromUnknownError, toast } from "@/lib/toast";
+import { P } from "@/lib/constants/permissions";
+import { usePermissions } from "@/lib/features/permissions/use-permissions";
 import {
   MdDownload,
   MdListAlt,
@@ -65,6 +70,9 @@ export function SaleDetailModal({
   const [receiptDialog, setReceiptDialog] = useState<ReceiptTicketData | null>(
     null,
   );
+  const [creditPayOpen, setCreditPayOpen] = useState(false);
+  const { hasPermission } = usePermissions();
+  const canRecordCreditPayment = hasPermission(P.salesUpdate);
   const [pdfBusy, setPdfBusy] = useState<
     null | "view" | "print" | "download"
   >(null);
@@ -82,6 +90,17 @@ export function SaleDetailModal({
   });
 
   const sale = q.data;
+  const creditSale = sale as CreditSaleRow | null;
+  const creditReste =
+    sale && sale.status === "completed" && sale.customer_id
+      ? remainingTotal(creditSale!)
+      : 0;
+  const showCreditEncaissement =
+    Boolean(sale) &&
+    sale!.status === "completed" &&
+    Boolean(sale!.customer_id) &&
+    creditReste > CREDIT_AMOUNT_EPS &&
+    canRecordCreditPayment;
   const storesList = Array.isArray(storesQ.data) ? storesQ.data : [];
   const storeFull = sale
     ? storesList.find((s) => s.id === sale.store_id) ?? null
@@ -309,6 +328,31 @@ export function SaleDetailModal({
                     </section>
                   ) : null}
 
+                  {showCreditEncaissement ? (
+                    <div className="rounded-2xl border border-[#F97316]/35 bg-orange-50/90 p-3 dark:border-orange-500/40 dark:bg-orange-950/40">
+                      <p className="text-xs font-bold text-neutral-700 dark:text-neutral-200">
+                        Encours à recouvrer
+                      </p>
+                      <div className="mt-2 flex justify-between text-sm">
+                        <span className="text-neutral-600">Encaissé</span>
+                        <span className="font-bold text-emerald-800 dark:text-emerald-300">
+                          {formatCurrency(paidTotal(creditSale!))}
+                        </span>
+                      </div>
+                      <div className="mt-1 flex justify-between text-sm font-extrabold">
+                        <span>Reste dû</span>
+                        <span className="text-[#c2410c]">{formatCurrency(creditReste)}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setCreditPayOpen(true)}
+                        className="mt-3 w-full rounded-xl bg-[#FF7000] py-2.5 text-sm font-bold text-white shadow-sm hover:bg-[#F97316] active:opacity-95"
+                      >
+                        Enregistrer un paiement
+                      </button>
+                    </div>
+                  ) : null}
+
                   <div className="border-t border-black/10 pt-2">
                     {sale.discount > 0 ? (
                       <div className="flex justify-between py-1.5 text-sm">
@@ -417,6 +461,12 @@ export function SaleDetailModal({
           onClose={() => setReceiptDialog(null)}
         />
       ) : null}
+
+      <CreditQuickPayDialog
+        sale={creditSale}
+        open={creditPayOpen}
+        onClose={() => setCreditPayOpen(false)}
+      />
     </>
   );
 }

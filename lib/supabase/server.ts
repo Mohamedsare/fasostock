@@ -1,15 +1,18 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
+import { normalizeSupabaseUrl } from "@/lib/supabase/normalize-url";
+
 export async function createClient() {
   const cookieStore = await cookies();
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const urlRaw = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !key) {
+  if (!urlRaw || !key) {
     throw new Error(
       "Variables NEXT_PUBLIC_SUPABASE_URL et NEXT_PUBLIC_SUPABASE_ANON_KEY manquantes.",
     );
   }
+  const url = normalizeSupabaseUrl(urlRaw);
 
   return createServerClient(url, key, {
     cookies: {

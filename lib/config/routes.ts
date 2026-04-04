@@ -19,6 +19,8 @@ export const ROUTES = {
   warehouse: "/warehouse",
   transfers: "/transfers",
   customers: "/customers",
+  /** Ventes à crédit / créances (placeholder web — compléter selon métier). */
+  credit: "/credit",
   suppliers: "/suppliers",
   reports: "/reports",
   ai: "/ai",

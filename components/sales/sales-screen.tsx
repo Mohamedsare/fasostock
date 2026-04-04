@@ -8,7 +8,7 @@ import { P } from "@/lib/constants/permissions";
 import { useAppContext } from "@/lib/features/common/app-context";
 import { usePermissions } from "@/lib/features/permissions/use-permissions";
 import type { AccessHelpers } from "@/lib/features/permissions/access";
-import { cancelSale, listSales } from "@/lib/features/sales/api";
+import { cancelSale, listSales, purgeCancelledSaleAsOwner } from "@/lib/features/sales/api";
 import type { SaleItem, SaleStatus } from "@/lib/features/sales/types";
 import { queryKeys } from "@/lib/query/query-keys";
 import {
@@ -31,6 +31,7 @@ import {
   MdArrowBack,
   MdCalendarToday,
   MdCancel,
+  MdDeleteOutline,
   MdChevronLeft,
   MdChevronRight,
   MdDescription,
@@ -118,6 +119,7 @@ export function SalesScreen() {
   const qc = useQueryClient();
   const ctx = useAppContext();
   const { hasPermission, helpers, isLoading: permLoading } = usePermissions();
+  const isOwner = helpers?.isOwner ?? false;
   const canCreateSale = hasPermission(P.salesCreate);
   const canInvoiceA4 = hasPermission(P.salesInvoiceA4);
   const canPosInvoiceA4 =
@@ -218,6 +220,16 @@ export function SalesScreen() {
       toast.success("Vente annulée");
     },
     onError: (e) => toast.error(messageFromUnknownError(e)),
+  });
+
+  const purgeCancelledMut = useMutation({
+    mutationFn: (p: { companyId: string; saleNumber: string }) => purgeCancelledSaleAsOwner(p),
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: ["sales"] });
+      await qc.invalidateQueries({ queryKey: ["credit-sales"] });
+      toast.success("Vente retirée de l'historique.");
+    },
+    onError: (e) => toast.error(messageFromUnknownError(e, "Impossible de supprimer cette vente.")),
   });
 
   const sales = salesQ.data ?? [];
@@ -583,6 +595,29 @@ export function SalesScreen() {
                             <MdCancel className="h-5 w-5" aria-hidden />
                           </button>
                         ) : null}
+                        {s.status === "cancelled" && isOwner ? (
+                          <button
+                            type="button"
+                            disabled={purgeCancelledMut.isPending}
+                            onClick={() => {
+                              if (
+                                confirm(
+                                  `Retirer définitivement ${s.sale_number} de l'historique ? Vente déjà annulée — suppression irréversible.`,
+                                )
+                              ) {
+                                purgeCancelledMut.mutate({
+                                  companyId,
+                                  saleNumber: s.sale_number,
+                                });
+                              }
+                            }}
+                            className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-lg p-2 text-neutral-600 hover:text-red-600 disabled:opacity-50"
+                            aria-label="Purger la vente annulée"
+                            title="Purger (propriétaire)"
+                          >
+                            <MdDeleteOutline className="h-5 w-5" aria-hidden />
+                          </button>
+                        ) : null}
                       </td>
                     </tr>
                   ))}
@@ -600,6 +635,9 @@ export function SalesScreen() {
                   stores={stores}
                   canCancel={canCancelSale}
                   canEdit={canUpdateSale}
+                  isOwner={isOwner}
+                  companyId={companyId}
+                  purgeBusy={purgeCancelledMut.isPending}
                   onDetail={() => setDetailId(s.id)}
                   onCancel={() => {
                     if (s.status !== "completed") return;
@@ -609,6 +647,18 @@ export function SalesScreen() {
                       )
                     ) {
                       cancelMut.mutate(s.id);
+                    }
+                  }}
+                  onPurgeCancelled={() => {
+                    if (
+                      confirm(
+                        `Retirer définitivement ${s.sale_number} de l'historique ? Vente déjà annulée — suppression irréversible.`,
+                      )
+                    ) {
+                      purgeCancelledMut.mutate({
+                        companyId,
+                        saleNumber: s.sale_number,
+                      });
                     }
                   }}
                 />
@@ -732,15 +782,23 @@ function SaleCard({
   stores,
   canCancel,
   canEdit,
+  isOwner,
+  companyId,
+  purgeBusy,
   onCancel,
   onDetail,
+  onPurgeCancelled,
 }: {
   sale: SaleItem;
   stores: { id: string; name: string }[];
   canCancel: boolean;
   canEdit: boolean;
+  isOwner: boolean;
+  companyId: string;
+  purgeBusy: boolean;
   onCancel: () => void;
   onDetail: () => void;
+  onPurgeCancelled: () => void;
 }) {
   const subtitle = [
     saleStoreLabel(sale, stores),
@@ -829,6 +887,18 @@ function SaleCard({
               aria-label="Annuler la vente"
             >
               <MdCancel className="h-5 w-5 shrink-0" aria-hidden />
+            </button>
+          ) : null}
+          {sale.status === "cancelled" && isOwner && companyId ? (
+            <button
+              type="button"
+              disabled={purgeBusy}
+              onClick={onPurgeCancelled}
+              className={cn(iconRowBtn, "text-neutral-600 hover:text-red-600 disabled:opacity-50")}
+              aria-label="Purger la vente annulée"
+              title="Purger (propriétaire)"
+            >
+              <MdDeleteOutline className="h-5 w-5 shrink-0" aria-hidden />
             </button>
           ) : null}
         </span>
