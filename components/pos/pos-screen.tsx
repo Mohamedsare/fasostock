@@ -12,6 +12,7 @@ import {
   updateCompletedPosSale,
 } from "@/lib/features/pos/api";
 import { defaultInvoiceUnitForProduct, INVOICE_UNITS } from "@/lib/features/pos/invoice-units";
+import { factureTabStripHeightPx } from "@/lib/utils/facture-tab-layout";
 import { fetchInvoiceTablePosEnabled } from "@/lib/features/settings/invoice-table-pos";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { ROUTES, storeFactureTabPath } from "@/lib/config/routes";
@@ -212,13 +213,36 @@ export function PosScreen({
     refetchInterval: mode === "quick" && !isSaleEditEntry ? 15_000 : false,
   });
 
+  const store = posQ.data?.store ?? null;
+
   const stripCol1900 = useMediaQuery("(min-width: 1900px)");
   const stripCol1400 = useMediaQuery("(min-width: 1400px)");
   const stripMainExtent = stripCol1900 ? 172 : stripCol1400 ? 152 : 132;
-  /** Bande « facture tableau » : colonnes un peu plus étroites pour limiter le zoom visuel. */
-  const stripA4TableExtent = stripCol1900 ? 148 : stripCol1400 ? 130 : 118;
+  /** Hauteur grille 2 rangées — `PosProductTwoRowHorizontalStrip` Flutter. */
+  const factureStripGridH = stripCol1900 ? 332 : stripCol1400 ? 304 : 282;
 
-  const store = posQ.data?.store ?? null;
+  const factureTabBodyRef = useRef<HTMLDivElement>(null);
+  const [factureTabStripH, setFactureTabStripH] = useState(250);
+
+  useLayoutEffect(() => {
+    if (mode !== "a4-table" || !store || posQ.isLoading || posQ.isError) return;
+    const el = factureTabBodyRef.current;
+    if (!el) return;
+    const update = () => {
+      const h = el.getBoundingClientRect().height;
+      const w = typeof window !== "undefined" ? window.innerWidth : 1200;
+      setFactureTabStripH(factureTabStripHeightPx(h, w));
+    };
+    update();
+    const ro = new ResizeObserver(() => update());
+    ro.observe(el);
+    window.addEventListener("resize", update);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", update);
+    };
+  }, [mode, store, posQ.isLoading, posQ.isError]);
+
   const products = posQ.data?.products ?? [];
   const rawStockByProductId = useMemo(
     () => ensureStringNumberMap(posQ.data?.stockByProductId),
@@ -1138,6 +1162,7 @@ export function PosScreen({
         </div>
       ) : (
         <div
+          ref={mode === "a4-table" ? factureTabBodyRef : undefined}
           className={cn(
             "flex min-h-0 flex-1",
             mode === "a4-table"
@@ -1145,18 +1170,48 @@ export function PosScreen({
               : "flex-col min-[900px]:flex-row min-[900px]:overflow-hidden",
           )}
         >
-          {/* Zone produits — aligné Flutter : facture-tab = moitié hauteur + moitié panier tableau */}
+          {/*
+           * Facture (tableau) : même structure que Flutter `pos_page.dart` — `SizedBox(height: stripH)` +
+           * scroll vertical du bandeau, Card `PosMainArea` strip (2 rangées), puis `PosCartPanel` scroll fusionné.
+           */}
           <main
             className={cn(
               "flex min-w-0 flex-col bg-white",
-              /* Facture tableau : ne pas prendre 50 % en flex-1 — sinon le bandeau 2× rangées
-               * mange l’écran et le tableau panier n’a plus de hauteur (footer seul visible). */
               mode === "a4-table"
-                ? "max-h-[min(300px,44svh)] min-h-0 shrink-0 overflow-hidden lg:max-h-[min(340px,38svh)]"
+                ? "min-h-0 shrink-0 overflow-hidden"
                 : "min-h-0 min-[900px]:flex-[65] flex-1",
             )}
+            style={mode === "a4-table" ? { height: factureTabStripH } : undefined}
           >
-            <div className="px-3 pb-1.5 pt-1.5 sm:px-4">
+            <div
+              className={cn(
+                mode === "a4-table" ? "flex h-full min-h-0 flex-col" : "contents",
+              )}
+            >
+              <div
+                className={cn(
+                  mode === "a4-table"
+                    ? "min-h-0 flex-1 overflow-x-hidden overflow-y-auto [scrollbar-width:thin]"
+                    : "contents",
+                )}
+              >
+                <div
+                  className={cn(mode === "a4-table" ? "px-3 pb-0 pt-2" : "contents")}
+                >
+                  <div
+                    className={cn(
+                      mode === "a4-table"
+                        ? "overflow-hidden rounded-[14px] border border-[#E5E7EB]/80 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.06)]"
+                        : "contents",
+                    )}
+                  >
+            <div
+              className={cn(
+                mode === "a4-table"
+                  ? "px-3 pb-2 pt-2.5"
+                  : "px-3 pb-1.5 pt-1.5 sm:px-4",
+              )}
+            >
               {mode === "quick" ? (
                 <div className="relative h-9">
                   <button
@@ -1195,14 +1250,86 @@ export function PosScreen({
                     autoFocus
                   />
                 </div>
+              ) : mode === "a4-table" ? (
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+                  <Link
+                    href={`${ROUTES.sales}?store=${encodeURIComponent(storeId)}`}
+                    className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#F97316] text-white shadow-sm transition hover:opacity-95"
+                    aria-label="Retour aux ventes"
+                  >
+                    <MdArrowBack className="h-5 w-5" aria-hidden />
+                  </Link>
+                  <div className="relative min-h-[55px] min-w-0 flex-1">
+                    <MdSearch
+                      className="pointer-events-none absolute left-3 top-1/2 z-[1] h-6 w-6 -translate-y-1/2 text-[#F97316]"
+                      aria-hidden
+                    />
+                    <input
+                      className={fsInputClass(
+                        "h-[55px] w-full rounded-xl border-[#E5E7EB] bg-white py-2 pl-11 pr-3 text-sm leading-snug text-[#1F2937] placeholder:text-[#1F2937]/50",
+                      )}
+                      value={search}
+                      onChange={(e) => {
+                        setSearch(e.target.value);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          const v = (e.currentTarget as HTMLInputElement).value;
+                          addByBarcode(v);
+                        }
+                      }}
+                      placeholder="Rechercher…"
+                      autoComplete="off"
+                      spellCheck={false}
+                      enterKeyHint="search"
+                    />
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <select
+                      className={fsInputClass(
+                        "h-12 w-[140px] min-w-0 shrink-0 rounded-xl border-[#E5E7EB] bg-white px-2 py-1.5 text-sm text-[#1F2937] min-[600px]:w-[180px]",
+                      )}
+                      value={
+                        customerId && customers.some((c) => c.id === customerId)
+                          ? customerId
+                          : ""
+                      }
+                      onChange={(e) => setCustomerId(e.target.value)}
+                      aria-label="Client"
+                    >
+                      <option value="">—</option>
+                      {customers.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      title="Créer un client"
+                      aria-label="Créer un client"
+                      onClick={() => setCustomerCreateOpen(true)}
+                      className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#F97316] text-white shadow-sm transition hover:opacity-95"
+                    >
+                      <MdPersonAdd className="h-[22px] w-[22px]" aria-hidden />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void handleRefreshPos()}
+                      disabled={posQ.isFetching}
+                      className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-[#1F2937]/70 transition hover:bg-black/5 disabled:opacity-50"
+                      aria-label="Actualiser catalogue et stock"
+                    >
+                      <MdRefresh
+                        className={cn("h-6 w-6", posQ.isFetching && "animate-spin")}
+                        aria-hidden
+                      />
+                    </button>
+                  </div>
+                </div>
               ) : (
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch sm:gap-2">
-                  <div
-                    className={cn(
-                      "relative min-h-9 min-w-0 flex-1",
-                      mode === "a4-table" && "sm:max-w-xl lg:max-w-2xl",
-                    )}
-                  >
+                  <div className="relative min-h-9 min-w-0 flex-1">
                     <MdSearch
                       className="pointer-events-none absolute left-2 top-1/2 z-[1] h-4 w-4 -translate-y-1/2 text-[#F97316]"
                       aria-hidden
@@ -1261,12 +1388,20 @@ export function PosScreen({
               )}
             </div>
 
-            <div className="shrink-0 overflow-x-auto overflow-y-hidden px-3 py-1 [-ms-overflow-style:none] [scrollbar-width:none] sm:px-4 [&::-webkit-scrollbar]:hidden">
-              <div className="flex w-max items-center gap-1.5">
+            <div
+              className={cn(
+                "shrink-0 overflow-x-auto overflow-y-hidden [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+                mode === "a4-table"
+                  ? "h-12 px-3 py-0"
+                  : "px-3 py-1 sm:px-4",
+              )}
+            >
+              <div className={cn("flex w-max items-center", mode === "a4-table" ? "gap-2" : "gap-1.5")}>
                 <CategoryChip
                   label="Tous"
                   selected={categoryId === null}
                   onClick={() => setCategoryId(null)}
+                  variant={mode === "a4-table" ? "factureTab" : "default"}
                 />
                 {categories.map((c) => (
                   <CategoryChip
@@ -1274,18 +1409,21 @@ export function PosScreen({
                     label={c.name}
                     selected={categoryId === c.id}
                     onClick={() => setCategoryId(c.id)}
+                    variant={mode === "a4-table" ? "factureTab" : "default"}
                   />
                 ))}
               </div>
             </div>
 
+            {mode === "a4-table" ? <div className="h-1.5 shrink-0" aria-hidden /> : null}
+
             <div
               className={cn(
-                "min-h-0 flex-1 px-3 sm:px-4",
                 mode === "a4-table"
-                  ? "flex min-h-0 flex-col overflow-hidden pb-2"
-                  : "pb-28 min-[900px]:pb-4 @container overflow-y-auto",
+                  ? "flex min-h-0 shrink-0 flex-col overflow-hidden px-3 pb-3 pt-1"
+                  : "min-h-0 flex-1 px-3 sm:px-4 pb-28 min-[900px]:pb-4 @container overflow-y-auto",
               )}
+              style={mode === "a4-table" ? { height: factureStripGridH } : undefined}
             >
               {filtered.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16">
@@ -1302,12 +1440,10 @@ export function PosScreen({
                   </p>
                 </div>
               ) : mode === "a4-table" ? (
-                <div
-                  className="min-h-0 flex-1 overflow-x-auto overflow-y-hidden [-ms-overflow-style:auto] [scrollbar-width:thin]"
-                >
+                <div className="min-h-0 flex-1 overflow-x-auto overflow-y-hidden [-ms-overflow-style:auto] [scrollbar-width:thin]">
                   <div
-                    className="grid h-full min-h-0 grid-flow-col grid-rows-1 gap-1.5 py-0.5 content-start"
-                    style={{ gridAutoColumns: stripA4TableExtent }}
+                    className="grid h-full min-h-0 grid-flow-col grid-rows-2 content-start gap-2.5 px-3 py-1"
+                    style={{ gridAutoColumns: stripMainExtent }}
                   >
                     {filtered.map((p) => {
                       const stock = stockByProductId.get(p.id) ?? 0;
@@ -1328,30 +1464,30 @@ export function PosScreen({
                               addToCart(p.id, p.name, price, p.unit, thumb);
                           }}
                           className={cn(
-                            "flex min-h-0 w-full flex-col items-center rounded-lg border bg-white px-1 py-1 text-center transition active:scale-[0.98]",
+                            "flex min-h-0 w-full min-w-0 flex-col items-center justify-center rounded-[14px] border bg-white px-2 py-1.5 text-center transition active:scale-[0.98]",
                             noStock
                               ? "border-[#E5E7EB] opacity-45"
-                              : "border border-[#F97316]/35 shadow-[0_1px_6px_rgba(249,115,22,0.07)]",
+                              : "border-[1.5px] border-[#F97316]/35 shadow-[0_2px_8px_rgba(249,115,22,0.1)]",
                           )}
                         >
-                          <div className="mx-auto flex h-9 w-full max-w-[3.5rem] shrink-0 items-center justify-center overflow-hidden rounded-md bg-[#F8F9FA]">
+                          <div className="mx-auto flex size-[clamp(3rem,52%,4.5rem)] max-h-[72px] max-w-[72px] shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[#F8F9FA]">
                             {thumb ? (
                               <img src={thumb} alt="" className="h-full w-full object-cover" />
                             ) : (
                               <MdInventory2
-                                className="h-5 w-5 text-[#F97316]/70"
+                                className="h-8 w-8 text-[#F97316]/70"
                                 aria-hidden
                               />
                             )}
                           </div>
                           <p
-                            className="mt-0.5 line-clamp-2 w-full flex-1 px-0.5 text-center text-[9px] font-semibold leading-tight text-[#1F2937] sm:text-[10px]"
+                            className="mt-1 line-clamp-2 w-full min-w-0 flex-1 px-0.5 text-center text-[10px] font-semibold leading-[1.15] text-[#1F2937] min-[1400px]:text-[11px]"
                             title={p.name}
                           >
                             {p.name}
                           </p>
                           <p
-                            className="mt-0.5 w-full truncate px-0.5 text-center text-[9px] font-bold text-[#F97316] sm:text-[10px]"
+                            className="mt-0.5 w-full min-w-0 truncate px-0.5 text-center text-[10px] font-extrabold text-[#F97316]"
                             title={priceLine}
                           >
                             {priceLine}
@@ -1420,10 +1556,20 @@ export function PosScreen({
                 </div>
               )}
             </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </main>
 
           {mode === "a4-table" ? (
-            <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border-t border-[#E5E7EB] bg-[#F8F9FA]">
+            <div
+              className={cn(
+                "flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border-t border-[#E5E7EB]",
+                "bg-[#F3F4F6]",
+                "px-3 pt-2.5 pb-3 min-[900px]:px-4 min-[900px]:pt-3 min-[900px]:pb-4",
+              )}
+            >
               {cartPanel}
             </div>
           ) : (
@@ -1646,22 +1792,27 @@ function CategoryChip({
   label,
   selected,
   onClick,
+  variant = "default",
 }: {
   label: string;
   selected: boolean;
   onClick: () => void;
+  /** `pos_main_area.dart` strip : FilterChip padding horizontal 14, vertical 10, texte 14px. */
+  variant?: "default" | "factureTab";
 }) {
+  const tab = variant === "factureTab";
   return (
     <button
       type="button"
       onClick={onClick}
       className={cn(
-        "shrink-0 px-2 py-0.5 text-[11px] font-semibold transition-colors min-[600px]:px-2.5 min-[600px]:text-xs",
-        /* Même rayon que ChipTheme (mobile 8px, desktop 10px) */
-        "rounded-[8px] min-[600px]:rounded-[10px]",
+        "shrink-0 font-semibold transition-colors",
+        tab
+          ? "rounded-[10px] px-3.5 py-2.5 text-sm"
+          : "rounded-[8px] px-2 py-0.5 text-[11px] min-[600px]:rounded-[10px] min-[600px]:px-2.5 min-[600px]:text-xs",
         selected
           ? "border-2 border-[#F97316] bg-[#F97316] text-white"
-          : "border border-[#E5E7EB] bg-[#F8F9FA] text-[#1F2937]",
+          : "border border-[#E5E7EB] bg-[#F3F4F6] text-[#1F2937]",
       )}
     >
       {label}
@@ -1993,13 +2144,242 @@ function PosCartPanel({
   currencyLabel: string;
 }) {
   const isA4Cart = mode !== "quick";
+  /** Aligné `PosCartPanel` Flutter : `scrollBodyWithFooter` + `cartListBody` (vue tableau). */
+  const mergeScroll = cartLayout === "table";
+
+  const footerBlock = (
+    <div
+      className={cn(
+        mergeScroll
+          ? "border-0 bg-transparent p-0 pb-[max(12px,env(safe-area-inset-bottom))]"
+          : "shrink-0 border-t border-[#E5E7EB] bg-[#F8F9FA] p-3 pb-[max(12px,env(safe-area-inset-bottom))] min-[900px]:border-t-0",
+      )}
+    >
+      {/* Récap encadré — Flutter right zone footer */}
+      <div className="mx-0 rounded-xl border border-[#E5E7EB] bg-white p-3 min-[900px]:mx-3 min-[900px]:p-4">
+        <div className="flex justify-between text-xs text-[#1F2937] min-[900px]:text-sm">
+          <span>Sous-total</span>
+          <span>{formatCurrency(subtotal)}</span>
+        </div>
+        {(showDiscountField || discountValue > 0) ? (
+          <div className="mt-1 flex justify-between text-xs text-[#1F2937] min-[900px]:text-sm">
+            <span>Remise</span>
+            <span>{formatCurrency(discountValue)}</span>
+          </div>
+        ) : null}
+        <div className="mt-1.5 flex items-end justify-between border-t border-[#E5E7EB] pt-1.5 min-[900px]:mt-2 min-[900px]:pt-2">
+          <span className="text-sm font-bold text-[#1F2937]">TOTAL</span>
+          <span className="text-lg font-extrabold leading-none text-[#F97316] min-[900px]:text-xl">
+            {formatCurrency(total)}
+          </span>
+        </div>
+      </div>
+
+      {mode === "quick" ? (
+        <div className="mt-3 grid grid-cols-3 gap-2 px-0 min-[900px]:px-3">
+          {(
+            [
+              ["cash", "CASH"],
+              ["card", "CARTE"],
+              ["mobile_money", "MOBILE"],
+            ] as const
+          ).map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setQuickPayment(key)}
+              className={cn(
+                "rounded-lg py-2 text-xs font-semibold transition-colors",
+                quickPayment === key
+                  ? "bg-[#F97316] text-white"
+                  : "bg-[#F8F9FA] text-[#1F2937]",
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      ) : (
+        <div className="mt-3 flex flex-wrap gap-1.5 px-0 min-[900px]:px-3">
+          {(
+            [
+              ["cash", "Espèces"],
+              ["mobile_money", "Mobile money"],
+              ["card", "Carte"],
+              ["other", "À crédit"],
+            ] as const
+          ).map(([key, label]) => {
+            const sel = paymentMethod === key;
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setPaymentMethod(key)}
+                className={cn(
+                  "rounded-full border px-2 py-1.5 text-[10px] font-semibold",
+                  sel
+                    ? "border-[#F97316] bg-[color-mix(in_srgb,#F97316_18%,transparent)] text-[#1F2937]"
+                    : "border-[#E5E7EB] bg-[#F8F9FA] text-[#1F2937]",
+                )}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {isA4Cart ? (
+        <div className="mt-3 px-0 min-[900px]:px-3">
+          <label className="mb-1 block text-[11px] font-medium text-[#6B7280]">Client</label>
+          <select
+            className={fsInputClass(
+              "bg-white px-2.5 py-1.5 sm:px-2.5 sm:py-1.5",
+            )}
+            value={customerId}
+            onChange={(e) => setCustomerId(e.target.value)}
+          >
+            <option value="">Aucun client</option>
+            {customers.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      ) : null}
+
+      {showDiscountField ? (
+        <div className="mt-3 px-0 min-[900px]:px-3">
+          <label className="mb-1 block text-xs font-semibold text-[#6B7280]">
+            Remise {mode === "quick" ? `(${currencyLabel})` : ""}
+          </label>
+          <input
+            className={fsInputClass(
+              "bg-white px-2.5 py-1.5 sm:px-2.5 sm:py-1.5",
+            )}
+            value={discount}
+            onChange={(e) => setDiscount(e.target.value)}
+            inputMode="decimal"
+            placeholder="0"
+          />
+        </div>
+      ) : null}
+
+      {mode === "quick" && quickPayment === "cash" ? (
+        <div className="mt-3 px-0 min-[900px]:px-3">
+          <label className="mb-1 block text-xs font-semibold text-[#1F2937]">Montant reçu</label>
+          <input
+            className={fsInputClass(
+              "bg-white px-2.5 py-1.5 sm:px-2.5 sm:py-1.5",
+            )}
+            value={amountReceived}
+            onChange={(e) => {
+              setAmountReceivedTouched(true);
+              setAmountReceived(e.target.value);
+            }}
+            inputMode="decimal"
+            placeholder={total > 0 ? formatCurrency(total) : "0"}
+          />
+          {amountReceivedTouched && amountReceivedValue > 0 ? (
+            <div className="mt-1.5 flex justify-between text-sm">
+              <span className="text-[#1F2937]">Monnaie à rendre</span>
+              <span
+                className={cn(
+                  "font-bold",
+                  amountReceivedValue >= total ? "text-[#F97316]" : "text-red-600",
+                )}
+              >
+                {amountReceivedValue >= total ? formatCurrency(change) : "—"}
+              </span>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      {isA4Cart ? (
+        <div className="mt-3 px-0 min-[900px]:px-3">
+          <label className="mb-1 block text-xs text-[#6B7280]">
+            Acompte (montant payé maintenant)
+          </label>
+          <input
+            className={fsInputClass(
+              "bg-white px-2.5 py-1.5 sm:px-2.5 sm:py-1.5",
+            )}
+            value={amountReceived}
+            onChange={(e) => setAmountReceived(e.target.value)}
+            inputMode="decimal"
+            placeholder={total > 0 ? formatCurrency(total) : "0"}
+          />
+        </div>
+      ) : null}
+
+      <div className="mt-4 flex gap-3 px-0 min-[900px]:px-3">
+        <button
+          type="button"
+          onClick={onClear}
+          className="flex-1 rounded-xl border border-[#E5E7EB] bg-[#F8F9FA] py-2.5 text-sm font-semibold text-[#1F2937]"
+        >
+          {mode === "quick" ? "Annuler vente" : "Vider panier"}
+        </button>
+        <button
+          type="button"
+          disabled={createMut.isPending || cart.length === 0 || total <= 0}
+          onClick={() => void onPay()}
+          className="flex-[2] inline-flex items-center justify-center gap-2 rounded-xl bg-[#F97316] py-2.5 text-sm font-bold text-white disabled:opacity-50"
+        >
+          {isSaleEdit ? (
+            <>
+              {createMut.isPending ? (
+                <span className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+              ) : (
+                <MdPayments className="h-5 w-5" aria-hidden />
+              )}
+              {createMut.isPending ? "Enregistrement..." : "Enregistrer la modification"}
+            </>
+          ) : mode === "quick" ? (
+            <>
+              {createMut.isPending ? (
+                <span className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+              ) : (
+                <MdPrint className="h-5 w-5" aria-hidden />
+              )}
+              {createMut.isPending ? "Enregistrement..." : "VALIDER ET IMPRIMER"}
+            </>
+          ) : (
+            <>
+              {createMut.isPending ? (
+                <span className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+              ) : (
+                <MdPayments className="h-5 w-5" aria-hidden />
+              )}
+              {createMut.isPending ? "Enregistrement..." : "Payer"}
+            </>
+          )}
+        </button>
+      </div>
+    </div>
+  );
+
   return (
     /* `flex-1 min-h-0` : obligatoire sous un parent flex-col — `h-full` ne se résout pas
      * toujours et le bloc « tableau » peut se retrouver à hauteur 0 (footer seul visible). */
     <div className="flex min-h-0 flex-1 flex-col">
       {hideCartTitle ? null : (
-        <div className="shrink-0 px-3 pb-1.5 pt-2 min-[900px]:block min-[900px]:px-4 min-[900px]:pb-2 min-[900px]:pt-3">
-          <p className="text-sm font-bold text-[#1F2937]">
+        <div
+          className={cn(
+            "shrink-0 min-[900px]:block",
+            mergeScroll
+              ? "px-4 pb-2.5 pt-3.5"
+              : "px-3 pb-1.5 pt-2 min-[900px]:px-4 min-[900px]:pb-2 min-[900px]:pt-3",
+          )}
+        >
+          <p
+            className={cn(
+              "font-bold text-[#1F2937]",
+              mergeScroll ? "text-xl" : "text-sm",
+            )}
+          >
             Panier · {cartCount} article{cartCount !== 1 ? "s" : ""}
           </p>
         </div>
@@ -2008,13 +2388,17 @@ function PosCartPanel({
       <div
         className={cn(
           "min-h-0 flex-1 overflow-y-auto px-3 min-[900px]:px-3",
-          cartLayout === "table" ? "min-h-[120px] overflow-x-auto" : "overflow-x-hidden",
+          cartLayout === "table"
+            ? mergeScroll
+              ? "overflow-x-hidden pb-3"
+              : "min-h-[120px] overflow-x-auto"
+            : "overflow-x-hidden",
         )}
       >
         {cart.length === 0 ? (
           <div className="flex flex-1 items-center justify-center py-12 text-[#1F2937]">Panier vide</div>
         ) : cartLayout === "table" ? (
-          <div className="min-w-0 pb-2">
+          <div className="min-w-0 overflow-x-auto pb-2">
             {/*
              * Aligné `pos_invoice_table_cart.dart` : colonnes Flex 3 / 0.85 / 1.1 / 1.25 / 1.0 + 52px,
              * en-têtes Article · Unité · Qté · P.U. · Total · (suppr), bordures comme TableBorder.all.
@@ -2215,213 +2599,10 @@ function PosCartPanel({
             })}
           </ul>
         )}
+        {mergeScroll ? footerBlock : null}
       </div>
 
-      <div className="shrink-0 border-t border-[#E5E7EB] bg-[#F8F9FA] p-3 pb-[max(12px,env(safe-area-inset-bottom))] min-[900px]:border-t-0">
-        {/* Récap encadré — Flutter right zone footer */}
-        <div className="mx-0 rounded-xl border border-[#E5E7EB] bg-white p-3 min-[900px]:mx-3 min-[900px]:p-4">
-          <div className="flex justify-between text-xs text-[#1F2937] min-[900px]:text-sm">
-            <span>Sous-total</span>
-            <span>{formatCurrency(subtotal)}</span>
-          </div>
-          {(showDiscountField || discountValue > 0) ? (
-            <div className="mt-1 flex justify-between text-xs text-[#1F2937] min-[900px]:text-sm">
-              <span>Remise</span>
-              <span>{formatCurrency(discountValue)}</span>
-            </div>
-          ) : null}
-          <div className="mt-1.5 flex items-end justify-between border-t border-[#E5E7EB] pt-1.5 min-[900px]:mt-2 min-[900px]:pt-2">
-            <span className="text-sm font-bold text-[#1F2937]">TOTAL</span>
-            <span className="text-lg font-extrabold leading-none text-[#F97316] min-[900px]:text-xl">
-              {formatCurrency(total)}
-            </span>
-          </div>
-        </div>
-
-        {mode === "quick" ? (
-          <div className="mt-3 grid grid-cols-3 gap-2 px-0 min-[900px]:px-3">
-            {(
-              [
-                ["cash", "CASH"],
-                ["card", "CARTE"],
-                ["mobile_money", "MOBILE"],
-              ] as const
-            ).map(([key, label]) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => setQuickPayment(key)}
-                className={cn(
-                  "rounded-lg py-2 text-xs font-semibold transition-colors",
-                  quickPayment === key
-                    ? "bg-[#F97316] text-white"
-                    : "bg-[#F8F9FA] text-[#1F2937]",
-                )}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        ) : (
-          <div className="mt-3 flex flex-wrap gap-1.5 px-0 min-[900px]:px-3">
-            {(
-              [
-                ["cash", "Espèces"],
-                ["mobile_money", "Mobile money"],
-                ["card", "Carte"],
-                ["other", "À crédit"],
-              ] as const
-            ).map(([key, label]) => {
-              const sel = paymentMethod === key;
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => setPaymentMethod(key)}
-                  className={cn(
-                    "rounded-full border px-2 py-1.5 text-[10px] font-semibold",
-                    sel
-                      ? "border-[#F97316] bg-[color-mix(in_srgb,#F97316_18%,transparent)] text-[#1F2937]"
-                      : "border-[#E5E7EB] bg-[#F8F9FA] text-[#1F2937]",
-                  )}
-                >
-                  {label}
-                </button>
-              );
-            })}
-          </div>
-        )}
-
-        {isA4Cart ? (
-          <div className="mt-3 px-0 min-[900px]:px-3">
-            <label className="mb-1 block text-[11px] font-medium text-[#6B7280]">Client</label>
-            <select
-              className={fsInputClass(
-                "bg-white px-2.5 py-1.5 sm:px-2.5 sm:py-1.5",
-              )}
-              value={customerId}
-              onChange={(e) => setCustomerId(e.target.value)}
-            >
-              <option value="">Aucun client</option>
-              {customers.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        ) : null}
-
-        {showDiscountField ? (
-          <div className="mt-3 px-0 min-[900px]:px-3">
-            <label className="mb-1 block text-xs font-semibold text-[#6B7280]">
-              Remise {mode === "quick" ? `(${currencyLabel})` : ""}
-            </label>
-            <input
-              className={fsInputClass(
-                "bg-white px-2.5 py-1.5 sm:px-2.5 sm:py-1.5",
-              )}
-              value={discount}
-              onChange={(e) => setDiscount(e.target.value)}
-              inputMode="decimal"
-              placeholder="0"
-            />
-          </div>
-        ) : null}
-
-        {mode === "quick" && quickPayment === "cash" ? (
-          <div className="mt-3 px-0 min-[900px]:px-3">
-            <label className="mb-1 block text-xs font-semibold text-[#1F2937]">Montant reçu</label>
-            <input
-              className={fsInputClass(
-                "bg-white px-2.5 py-1.5 sm:px-2.5 sm:py-1.5",
-              )}
-              value={amountReceived}
-              onChange={(e) => {
-                setAmountReceivedTouched(true);
-                setAmountReceived(e.target.value);
-              }}
-              inputMode="decimal"
-              placeholder={total > 0 ? formatCurrency(total) : "0"}
-            />
-            {amountReceivedTouched && amountReceivedValue > 0 ? (
-              <div className="mt-1.5 flex justify-between text-sm">
-                <span className="text-[#1F2937]">Monnaie à rendre</span>
-                <span
-                  className={cn(
-                    "font-bold",
-                    amountReceivedValue >= total ? "text-[#F97316]" : "text-red-600",
-                  )}
-                >
-                  {amountReceivedValue >= total ? formatCurrency(change) : "—"}
-                </span>
-              </div>
-            ) : null}
-          </div>
-        ) : null}
-
-        {isA4Cart ? (
-          <div className="mt-3 px-0 min-[900px]:px-3">
-            <label className="mb-1 block text-xs text-[#6B7280]">
-              Acompte (montant payé maintenant)
-            </label>
-            <input
-              className={fsInputClass(
-                "bg-white px-2.5 py-1.5 sm:px-2.5 sm:py-1.5",
-              )}
-              value={amountReceived}
-              onChange={(e) => setAmountReceived(e.target.value)}
-              inputMode="decimal"
-              placeholder={total > 0 ? formatCurrency(total) : "0"}
-            />
-          </div>
-        ) : null}
-
-        <div className="mt-4 flex gap-3 px-0 min-[900px]:px-3">
-          <button
-            type="button"
-            onClick={onClear}
-            className="flex-1 rounded-xl border border-[#E5E7EB] bg-[#F8F9FA] py-2.5 text-sm font-semibold text-[#1F2937]"
-          >
-            {mode === "quick" ? "Annuler vente" : "Vider panier"}
-          </button>
-          <button
-            type="button"
-            disabled={createMut.isPending || cart.length === 0 || total <= 0}
-            onClick={() => void onPay()}
-            className="flex-[2] inline-flex items-center justify-center gap-2 rounded-xl bg-[#F97316] py-2.5 text-sm font-bold text-white disabled:opacity-50"
-          >
-            {isSaleEdit ? (
-              <>
-                {createMut.isPending ? (
-                  <span className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                ) : (
-                  <MdPayments className="h-5 w-5" aria-hidden />
-                )}
-                {createMut.isPending ? "Enregistrement..." : "Enregistrer la modification"}
-              </>
-            ) : mode === "quick" ? (
-              <>
-                {createMut.isPending ? (
-                  <span className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                ) : (
-                  <MdPrint className="h-5 w-5" aria-hidden />
-                )}
-                {createMut.isPending ? "Enregistrement..." : "VALIDER ET IMPRIMER"}
-              </>
-            ) : (
-              <>
-                {createMut.isPending ? (
-                  <span className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                ) : (
-                  <MdPayments className="h-5 w-5" aria-hidden />
-                )}
-                {createMut.isPending ? "Enregistrement..." : "Payer"}
-              </>
-            )}
-          </button>
-        </div>
-      </div>
+      {!mergeScroll ? footerBlock : null}
     </div>
   );
 }
