@@ -118,9 +118,11 @@ export function AppShell({ children, userEmail }: AppShellProps) {
     return () => clearInterval(t);
   }, []);
 
-  /** POS : empêcher le scroll du document (Flutter = écran figé, scroll interne uniquement). */
+  /**
+   * Pas de scroll sur `html`/`body` : tout le contenu défilable vit dans `<main>` (ou zones POS).
+   * Sans ça, une page très longue (ex. Paramètres) recrée la grande barre de scroll navigateur.
+   */
   useEffect(() => {
-    if (!isPosRoute) return;
     const html = document.documentElement;
     const body = document.body;
     const prev = {
@@ -130,9 +132,11 @@ export function AppShell({ children, userEmail }: AppShellProps) {
       bodyOverscroll: body.style.overscrollBehavior,
     };
     html.style.overflow = "hidden";
-    html.style.overscrollBehavior = "none";
     body.style.overflow = "hidden";
-    body.style.overscrollBehavior = "none";
+    if (isPosRoute) {
+      html.style.overscrollBehavior = "none";
+      body.style.overscrollBehavior = "none";
+    }
     return () => {
       html.style.overflow = prev.htmlOverflow;
       html.style.overscrollBehavior = prev.htmlOverscroll;
@@ -176,7 +180,7 @@ export function AppShell({ children, userEmail }: AppShellProps) {
 
   if (ctx.isLoading) {
     return (
-      <div className="relative min-h-dvh bg-fs-surface">
+      <div className="relative h-dvh max-h-dvh min-h-dvh overflow-hidden bg-fs-surface">
         <AppShellSkeleton />
         <p className="pointer-events-none absolute bottom-6 left-0 right-0 text-center text-xs text-neutral-500">
           Chargement du compte… Si cela dure, vérifiez la connexion ou réessayez.
@@ -215,19 +219,18 @@ export function AppShell({ children, userEmail }: AppShellProps) {
   return (
     <div
       className={cn(
-        "flex min-h-dvh flex-col bg-fs-surface text-fs-text",
-        /* Bureau (et POS) : hauteur viewport + pas de scroll sur body — sidebar fixe, scroll dans main */
-        (isDesktop || isPosRoute) && "h-dvh max-h-dvh overflow-hidden",
+        /*
+         * Hauteur = viewport sur toutes les largeurs (hors POS idem) : le scroll ne doit pas être
+         * sur `html`/`body`. Contenu long (ex. Paramètres) défile dans `<main>`.
+         * Uniquement `min-[1024px]:` cassait les vues 900–1023px / zoom et réintroduisait le « gros »
+         * scrollbar de page.
+         */
+        "flex h-dvh max-h-dvh min-h-dvh flex-col overflow-hidden bg-fs-surface text-fs-text",
         isPosRoute && "overscroll-none",
       )}
     >
       <OfflineStrip />
-      <div
-        className={cn(
-          "flex min-h-0 flex-1",
-          (isDesktop || isPosRoute) && "overflow-hidden",
-        )}
-      >
+      <div className="flex min-h-0 flex-1 overflow-hidden">
         {isDesktop ? (
           <AppSidebar
             collapsed={sidebarCollapsed}
@@ -239,12 +242,7 @@ export function AppShell({ children, userEmail }: AppShellProps) {
           />
         ) : null}
 
-        <div
-          className={cn(
-            "flex min-h-0 min-w-0 flex-1 flex-col",
-            (isDesktop || isPosRoute) && "overflow-hidden",
-          )}
-        >
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           {isDesktop ? (
             <header
               className={cn(
@@ -360,10 +358,8 @@ export function AppShell({ children, userEmail }: AppShellProps) {
             className={cn(
               "flex min-h-0 flex-1 flex-col",
               !isPosRoute &&
-                (              !isDesktop &&
-                  "pb-[calc(0.5rem+3.5rem+max(0.5rem,var(--fs-safe-bottom)))]"),
-              isPosRoute && "overflow-hidden",
-              isDesktop && !isPosRoute && "overflow-y-auto",
+                "max-[1023px]:pb-[calc(0.5rem+3.5rem+max(0.5rem,var(--fs-safe-bottom)))]",
+              isPosRoute ? "overflow-hidden" : "overflow-y-auto overflow-x-hidden",
             )}
           >
             {children}

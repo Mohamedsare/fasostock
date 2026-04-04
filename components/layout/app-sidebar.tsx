@@ -42,7 +42,8 @@ export function AppSidebar({
   return (
     <aside
       className={cn(
-        "relative flex h-full min-h-0 shrink-0 flex-col",
+        /* Même idée que `admin-shell` : si un ancêtre défile (viewport), la nav reste fixe. */
+        "sticky top-0 z-30 flex h-dvh max-h-dvh min-h-0 shrink-0 flex-col self-start",
         "border-r border-black/[0.06] dark:border-white/[0.08]",
         "bg-fs-card shadow-[inset_-1px_0_0_0_rgba(0,0,0,0.03)] dark:shadow-[inset_-1px_0_0_0_rgba(255,255,255,0.04)]",
         "transition-[width] duration-300 ease-[cubic-bezier(0.33,1,0.68,1)]",
