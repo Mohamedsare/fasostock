@@ -32,6 +32,7 @@ export function CreditRecordPaymentDialog({
 
   if (!open || !sale) return null;
 
+  const RPC_EPSILON = 0.0001;
   const rest = remainingTotal(sale);
   const amount = Math.max(0, parseFloat(amountStr.replace(",", ".") || "0") || 0);
 
@@ -77,6 +78,11 @@ export function CreditRecordPaymentDialog({
             />
           </div>
         </div>
+        {amount > rest + RPC_EPSILON ? (
+          <p className="mt-3 text-xs font-medium text-red-600">
+            Montant supérieur au reste à payer ({formatCurrency(rest)}).
+          </p>
+        ) : null}
         <div className="mt-5 flex gap-2">
           <button
             type="button"
@@ -87,7 +93,7 @@ export function CreditRecordPaymentDialog({
           </button>
           <button
             type="button"
-            disabled={busy || amount <= 0 || amount > rest + 0.01}
+            disabled={busy || amount <= 0 || amount > rest + RPC_EPSILON}
             onClick={() =>
               onSubmit({
                 method,
