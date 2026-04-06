@@ -11,6 +11,7 @@ export const ROUTES = {
   resetPassword: "/reset-password",
   dashboard: "/dashboard",
   products: "/products",
+  barcodes: "/barcodes",
   sales: "/sales",
   stores: "/stores",
   inventory: "/inventory",

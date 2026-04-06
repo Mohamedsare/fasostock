@@ -162,6 +162,17 @@ export async function setProductActive(id: string, isActive: boolean) {
   if (error) throw error;
 }
 
+export async function setProductBarcode(id: string, barcode: string) {
+  const normalized = barcode.trim() || null;
+  const supabase = createClient();
+  if (!navigator.onLine) {
+    await enqueueOutbox("product_set_barcode", { id, barcode: normalized });
+    return;
+  }
+  const { error } = await supabase.from("products").update({ barcode: normalized }).eq("id", id);
+  if (error) throw error;
+}
+
 export async function softDeleteProduct(id: string) {
   const now = new Date().toISOString();
   const supabase = createClient();

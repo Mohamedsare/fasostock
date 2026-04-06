@@ -23,6 +23,7 @@
     "dexie": "^4.0.11",
     "html5-qrcode": "^2.3.8",
     "idb-keyval": "^6.2.2",
+    "jsbarcode": "^3.12.3",
     "lucide-react": "^0.483.0",
     "next": "16.2.1",
     "puppeteer-core": "24.40.0",

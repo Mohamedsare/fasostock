@@ -16,6 +16,7 @@ import {
   UserCog,
   ScrollText,
   CreditCard,
+  Barcode,
   HelpCircle,
   Bell,
   KeyRound,
@@ -35,6 +36,7 @@ export type NavItem = {
 export const NAV_ITEMS: NavItem[] = [
   { href: ROUTES.dashboard, label: "Tableau de bord", icon: LayoutDashboard },
   { href: ROUTES.products, label: "Produits", icon: Package },
+  { href: ROUTES.barcodes, label: "Code Barre", icon: Barcode },
   { href: ROUTES.sales, label: "Ventes", icon: ShoppingCart },
   { href: ROUTES.stores, label: "Boutiques", icon: Store },
   { href: ROUTES.inventory, label: "Stock", icon: Warehouse },

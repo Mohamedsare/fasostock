@@ -52,6 +52,8 @@ export type AccessHelpers = {
   canWarehouse: boolean;
   /** Propriétaire ou permission page Crédit / créances. */
   canCredit: boolean;
+  /** Propriétaire ou permission page Code Barre. */
+  canBarcodes: boolean;
 };
 
 /** Construit les helpers à partir du contexte (même logique que `app_shell.dart` Flutter). */
@@ -108,6 +110,7 @@ export function buildAccessHelpers(
     (isOwner || hasPermission(P.warehouseManage)) &&
     data.warehouseFeatureEnabled !== false;
   const canCredit = isOwner || hasPermission(P.creditView);
+  const canBarcodes = isOwner || hasPermission(P.barcodesManage);
 
   return {
     hasPermission,
@@ -129,6 +132,7 @@ export function buildAccessHelpers(
     canAudit,
     canWarehouse,
     canCredit,
+    canBarcodes,
   };
 }
 
@@ -157,6 +161,7 @@ export function filterNavItemsForPermissions(
     }
     if (href === ROUTES.dashboard) return h.canDashboard;
     if (href === ROUTES.products) return h.canProducts;
+    if (href === ROUTES.barcodes) return h.canBarcodes;
     if (href === ROUTES.sales) return h.canSales;
     if (href === ROUTES.stores) return h.canStores;
     if (href === ROUTES.inventory) return h.canInventory && !h.isCashier;
@@ -196,6 +201,7 @@ function normalizeAppRoute(pathname: string): string {
 const APP_SHELL_ROUTE_PREFIXES: readonly string[] = [
   ROUTES.dashboard,
   ROUTES.products,
+  ROUTES.barcodes,
   ROUTES.sales,
   ROUTES.stores,
   ROUTES.inventory,
