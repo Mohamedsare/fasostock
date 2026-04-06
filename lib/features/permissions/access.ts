@@ -44,6 +44,8 @@ export type AccessHelpers = {
   canAudit: boolean;
   /** Propriétaire ou permission dépôt central (Magasinier). */
   canWarehouse: boolean;
+  /** Propriétaire ou permission page Crédit / créances. */
+  canCredit: boolean;
 };
 
 /** Construit les helpers à partir du contexte (même logique que `app_shell.dart` Flutter). */
@@ -96,6 +98,7 @@ export function buildAccessHelpers(
     hasPermission(P.suppliersView) || hasPermission(P.suppliersManage);
   const canAudit = hasPermission(P.auditView) || isOwner;
   const canWarehouse = isOwner || hasPermission(P.warehouseManage);
+  const canCredit = isOwner || hasPermission(P.creditView);
 
   return {
     hasPermission,
@@ -116,6 +119,7 @@ export function buildAccessHelpers(
     canTransfers,
     canAudit,
     canWarehouse,
+    canCredit,
   };
 }
 
@@ -150,7 +154,7 @@ export function filterNavItemsForPermissions(
     if (href === ROUTES.purchases) return h.canPurchases;
     if (href === ROUTES.warehouse) return h.canWarehouse;
     if (href === ROUTES.customers) return h.canCustomers;
-    if (href === ROUTES.credit) return h.canSales && h.canCustomers;
+    if (href === ROUTES.credit) return h.canCredit;
     if (href === ROUTES.suppliers) return h.canSuppliers;
     if (href === ROUTES.reports) return h.canReports;
     /** Même logique que `app_shell.dart` (Flutter) — pas de filtre `isCashier` sur le menu. */

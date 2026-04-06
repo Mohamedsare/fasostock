@@ -40,6 +40,8 @@ export const P = {
   dashboardView: "dashboard.view",
   customersView: "customers.view",
   customersManage: "customers.manage",
+  /** Page Crédit / créances — owner par défaut ; accord explicite aux autres. */
+  creditView: "credit.view",
   suppliersView: "suppliers.view",
   suppliersManage: "suppliers.manage",
   transfersCreate: "transfers.create",
@@ -88,6 +90,7 @@ export const PERMISSION_LABELS_FR: Record<string, string> = {
   [P.dashboardView]: "Voir le tableau de bord",
   [P.customersView]: "Voir les clients",
   [P.customersManage]: "Gerer les clients",
+  [P.creditView]: "Voir la page Credit (creances clients)",
   [P.suppliersView]: "Voir les fournisseurs",
   [P.suppliersManage]: "Gerer les fournisseurs",
   [P.transfersCreate]: "Creer / gerer les transferts",

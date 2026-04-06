@@ -180,7 +180,7 @@ export function CreditScreen() {
   const creditQ = useQuery({
     queryKey: queryKeys.creditSales(creditParams),
     queryFn: () => listCreditSales(creditParams),
-    enabled: !!companyId,
+    enabled: !!companyId && !!h?.canCredit,
     staleTime: 15_000,
   });
 
@@ -326,7 +326,7 @@ export function CreditScreen() {
     );
   }
 
-  if (!h || !h.canSales || !h.canCustomers) {
+  if (!h || !h.canCredit) {
     return (
       <FsPage>
         <FsScreenHeader title="Crédit" subtitle="Ventes à crédit et créances clients" />
