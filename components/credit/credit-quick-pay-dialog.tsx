@@ -67,11 +67,10 @@ export function CreditQuickPayDialog({ sale, open, onClose, onPaid }: Props) {
           }
         }
 
-        // Diagnostic précis : si des lignes `other` existent et que l'API refuse encore
-        // l'encaissement, la base cible utilise probablement l'ancienne version du RPC.
+        // Cas de divergence persistante : message utilisateur neutre.
         if (hasOtherPayments) {
           toast.error(
-            "Encaissement bloqué côté base (migration manquante). Appliquez la migration 00084_append_sale_payment_exclude_credit_placeholder.sql puis réessayez.",
+            "Le paiement ne peut pas être validé pour le moment. Actualisez la page puis réessayez.",
           );
           return;
         }
