@@ -84,6 +84,24 @@ export async function getStoreQuota(companyId: string): Promise<number> {
   return typeof q === "number" && q > 0 ? q : 1;
 }
 
+async function getCompanyQuotaFlags(companyId: string): Promise<{
+  storeQuota: number;
+  storeQuotaIncreaseEnabled: boolean;
+}> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("companies")
+    .select("store_quota, store_quota_increase_enabled")
+    .eq("id", companyId)
+    .maybeSingle();
+  if (error) throw error;
+  const row = data as { store_quota?: number; store_quota_increase_enabled?: boolean } | null;
+  const q = row?.store_quota;
+  const storeQuota = typeof q === "number" && q > 0 ? q : 1;
+  const storeQuotaIncreaseEnabled = row?.store_quota_increase_enabled !== false;
+  return { storeQuota, storeQuotaIncreaseEnabled };
+}
+
 export async function uploadStoreLogo(
   storeId: string,
   file: File,
@@ -161,10 +179,15 @@ export async function updateStore(
 export async function fetchStoresPageData(companyId: string): Promise<{
   stores: Store[];
   storeQuota: number;
+  storeQuotaIncreaseEnabled: boolean;
 }> {
-  const [stores, storeQuota] = await Promise.all([
+  const [stores, flags] = await Promise.all([
     listStores(companyId),
-    getStoreQuota(companyId),
+    getCompanyQuotaFlags(companyId),
   ]);
-  return { stores, storeQuota };
+  return {
+    stores,
+    storeQuota: flags.storeQuota,
+    storeQuotaIncreaseEnabled: flags.storeQuotaIncreaseEnabled,
+  };
 }

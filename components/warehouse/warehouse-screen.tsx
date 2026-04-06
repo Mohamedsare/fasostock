@@ -412,6 +412,23 @@ export function WarehouseScreen() {
     );
   }
 
+  const couldAccessMagasinByRole =
+    ctx?.roleSlug === "owner" || hasPermission(P.warehouseManage);
+  if (couldAccessMagasinByRole && ctx?.warehouseFeatureEnabled === false) {
+    return (
+      <FsPage>
+        <FsScreenHeader title="Magasin" />
+        <div className="flex min-h-[50vh] flex-col items-center justify-center px-4 text-center">
+          <MdLockOutline className="h-14 w-14 text-neutral-400" aria-hidden />
+          <p className="mt-4 text-base font-bold text-fs-text">Module indisponible</p>
+          <p className="mt-2 max-w-md text-sm leading-relaxed text-neutral-600">
+            Le module Magasin a été désactivé pour votre entreprise. Contactez l&apos;administrateur de la plateforme.
+          </p>
+        </div>
+      </FsPage>
+    );
+  }
+
   if (!canWarehouse) {
     return (
       <FsPage>

@@ -141,13 +141,18 @@ async function fetchAppContext(): Promise<AppContextData | null> {
       isSuperAdmin,
       permissionKeys: isSuperAdmin ? [...PERMISSIONS_ALL] : [],
       roleSlug: isSuperAdmin ? "super_admin" : null,
+      warehouseFeatureEnabled: true,
+      storeQuotaIncreaseEnabled: true,
+      aiPredictionsEnabled: true,
     };
   }
 
   const primaryCompanyId = pickActiveCompanyId(orderedCompanyIds);
   const { data: companyRow, error: cErr } = await supabase
     .from("companies")
-    .select("id, name, logo_url, business_type_slug")
+    .select(
+      "id, name, logo_url, business_type_slug, warehouse_feature_enabled, store_quota_increase_enabled, ai_predictions_enabled",
+    )
     .eq("id", primaryCompanyId)
     .maybeSingle();
   if (cErr) throw mapSupabaseError(cErr);
@@ -171,6 +176,9 @@ async function fetchAppContext(): Promise<AppContextData | null> {
       isSuperAdmin,
       permissionKeys: isSuperAdmin ? [...PERMISSIONS_ALL] : [],
       roleSlug: isSuperAdmin ? "super_admin" : null,
+      warehouseFeatureEnabled: true,
+      storeQuotaIncreaseEnabled: true,
+      aiPredictionsEnabled: true,
     };
   }
 
@@ -184,6 +192,14 @@ async function fetchAppContext(): Promise<AppContextData | null> {
       : null;
   const companyLogoUrl =
     ((companyRow as { logo_url?: string | null }).logo_url ?? null)?.trim() || null;
+  const cr = companyRow as {
+    warehouse_feature_enabled?: boolean | null;
+    store_quota_increase_enabled?: boolean | null;
+    ai_predictions_enabled?: boolean | null;
+  };
+  const warehouseFeatureEnabled = cr.warehouse_feature_enabled !== false;
+  const storeQuotaIncreaseEnabled = cr.store_quota_increase_enabled !== false;
+  const aiPredictionsEnabled = cr.ai_predictions_enabled === true;
 
   if (isSuperAdmin) {
     const { data: stores } = await supabase
@@ -207,6 +223,9 @@ async function fetchAppContext(): Promise<AppContextData | null> {
       isSuperAdmin: true,
       permissionKeys: [...PERMISSIONS_ALL],
       roleSlug: "super_admin",
+      warehouseFeatureEnabled,
+      storeQuotaIncreaseEnabled,
+      aiPredictionsEnabled,
     };
   }
 
@@ -252,6 +271,9 @@ async function fetchAppContext(): Promise<AppContextData | null> {
     isSuperAdmin: false,
     permissionKeys,
     roleSlug,
+    warehouseFeatureEnabled,
+    storeQuotaIncreaseEnabled,
+    aiPredictionsEnabled,
   };
 }
 

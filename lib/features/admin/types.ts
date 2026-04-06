@@ -7,6 +7,10 @@ export type AdminCompany = {
   isActive: boolean;
   storeQuota: number;
   aiPredictionsEnabled: boolean;
+  /** Module dépôt Magasin — désactivable par la plateforme. */
+  warehouseFeatureEnabled: boolean;
+  /** Autorise l’augmentation du quota de boutiques (plateforme). */
+  storeQuotaIncreaseEnabled: boolean;
   createdAt: string | null;
 };
 

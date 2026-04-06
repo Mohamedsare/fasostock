@@ -22,6 +22,12 @@ export type AppContextData = {
   isSuperAdmin: boolean;
   permissionKeys: string[];
   roleSlug: string | null;
+  /** Module Magasin (dépôt) — désactivé par la plateforme si false. */
+  warehouseFeatureEnabled: boolean;
+  /** Augmentation du quota de boutiques autorisée (plateforme). */
+  storeQuotaIncreaseEnabled: boolean;
+  /** Prédictions IA — désactivé par la plateforme si false. */
+  aiPredictionsEnabled: boolean;
 };
 
 export type AccessHelpers = {
@@ -62,7 +68,8 @@ export function buildAccessHelpers(
 
   const canReports =
     hasPermission(P.reportsViewGlobal) || hasPermission(P.reportsViewStore);
-  const canAi = hasPermission(P.aiInsightsView);
+  const canAi =
+    hasPermission(P.aiInsightsView) && data.aiPredictionsEnabled !== false;
   const canUsers =
     hasPermission(P.usersManage) || isOwner;
   const canSettings = hasPermission(P.settingsManage);
@@ -97,7 +104,9 @@ export function buildAccessHelpers(
   const canSuppliers =
     hasPermission(P.suppliersView) || hasPermission(P.suppliersManage);
   const canAudit = hasPermission(P.auditView) || isOwner;
-  const canWarehouse = isOwner || hasPermission(P.warehouseManage);
+  const canWarehouse =
+    (isOwner || hasPermission(P.warehouseManage)) &&
+    data.warehouseFeatureEnabled !== false;
   const canCredit = isOwner || hasPermission(P.creditView);
 
   return {

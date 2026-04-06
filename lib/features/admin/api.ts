@@ -24,7 +24,9 @@ export async function adminListCompanies(): Promise<AdminCompany[]> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("companies")
-    .select("id, name, slug, is_active, store_quota, ai_predictions_enabled, created_at")
+    .select(
+      "id, name, slug, is_active, store_quota, ai_predictions_enabled, warehouse_feature_enabled, store_quota_increase_enabled, created_at",
+    )
     .order("created_at", { ascending: false });
   if (error) throw mapSupabaseError(error);
   return (data ?? []).map((row) => {
@@ -36,6 +38,8 @@ export async function adminListCompanies(): Promise<AdminCompany[]> {
       isActive: r.is_active === true,
       storeQuota: toNum(r.store_quota),
       aiPredictionsEnabled: r.ai_predictions_enabled === true,
+      warehouseFeatureEnabled: r.warehouse_feature_enabled !== false,
+      storeQuotaIncreaseEnabled: r.store_quota_increase_enabled !== false,
       createdAt: r.created_at != null ? String(r.created_at) : null,
     };
   });
@@ -66,12 +70,31 @@ export async function adminListStores(companyId?: string | null): Promise<AdminS
 
 export async function adminUpdateCompany(
   id: string,
-  patch: { isActive?: boolean; aiPredictionsEnabled?: boolean },
+  patch: {
+    isActive?: boolean;
+    aiPredictionsEnabled?: boolean;
+    warehouseFeatureEnabled?: boolean;
+    storeQuotaIncreaseEnabled?: boolean;
+    storeQuota?: number;
+  },
 ): Promise<void> {
   const supabase = createClient();
   const row: Record<string, unknown> = {};
   if (patch.isActive !== undefined) row.is_active = patch.isActive;
   if (patch.aiPredictionsEnabled !== undefined) row.ai_predictions_enabled = patch.aiPredictionsEnabled;
+  if (patch.warehouseFeatureEnabled !== undefined) {
+    row.warehouse_feature_enabled = patch.warehouseFeatureEnabled;
+  }
+  if (patch.storeQuotaIncreaseEnabled !== undefined) {
+    row.store_quota_increase_enabled = patch.storeQuotaIncreaseEnabled;
+  }
+  if (patch.storeQuota !== undefined) {
+    const n = Math.floor(Number(patch.storeQuota));
+    if (!Number.isFinite(n) || n < 1) {
+      throw new Error("Quota de boutiques invalide (minimum 1).");
+    }
+    row.store_quota = n;
+  }
   if (Object.keys(row).length === 0) return;
   const { error } = await supabase.from("companies").update(row).eq("id", id);
   if (error) throw mapSupabaseError(error);

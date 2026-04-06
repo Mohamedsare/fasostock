@@ -8,6 +8,7 @@ import {
   MdEdit,
   MdEmail,
   MdErrorOutline,
+  MdInfoOutline,
   MdLocationOn,
   MdLockPerson,
   MdPhone,
@@ -87,6 +88,9 @@ export function StoresScreen() {
 
   const stores = storesQ.data?.stores ?? [];
   const quota = storesQ.data?.storeQuota ?? 1;
+  const storeQuotaIncreaseEnabled = storesQ.data?.storeQuotaIncreaseEnabled ?? true;
+  const atQuota = stores.length >= quota && quota > 0;
+  const quotaIncreaseBlocked = atQuota && !storeQuotaIncreaseEnabled && canCreate;
   const canAdd =
     !!companyId &&
     canCreate &&
@@ -197,6 +201,21 @@ export function StoresScreen() {
             ) : null}
           </div>
         </div>
+
+        {quotaIncreaseBlocked ? (
+          <div
+            className="rounded-xl border border-amber-300/80 bg-amber-50/90 p-4 text-sm text-amber-950"
+            role="status"
+          >
+            <div className="flex gap-3">
+              <MdInfoOutline className="h-5 w-5 shrink-0 text-amber-700" aria-hidden />
+              <p>
+                Quota de boutiques atteint ({quota}). L&apos;augmentation du nombre de boutiques autorisées n&apos;est
+                pas disponible pour votre offre. Contactez l&apos;administrateur de la plateforme.
+              </p>
+            </div>
+          </div>
+        ) : null}
 
         {storesQ.isError ? (
           <div
