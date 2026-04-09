@@ -32,6 +32,10 @@ export type ProductItem = {
   unit: string;
   purchase_price: number;
   sale_price: number;
+  /** Prix unitaire gros (FCFA) — si qté ligne ≥ wholesale_qty. */
+  wholesale_price: number;
+  /** Seuil (≥ 1) pour appliquer wholesale_price ; 0 = désactivé. */
+  wholesale_qty: number;
   stock_min: number;
   description: string | null;
   is_active: boolean;
@@ -52,6 +56,8 @@ export type ProductFormInput = {
   unit: string;
   purchasePrice: number;
   salePrice: number;
+  wholesalePrice: number;
+  wholesaleQty: number;
   stockMin: number;
   description: string;
   categoryId: string;

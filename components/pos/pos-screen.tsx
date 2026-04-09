@@ -11,6 +11,7 @@ import {
   fetchPosData,
   updateCompletedPosSale,
 } from "@/lib/features/pos/api";
+import { posEffectiveUnitPrice } from "@/lib/features/pos/wholesale-unit-price";
 import { defaultInvoiceUnitForProduct, INVOICE_UNITS } from "@/lib/features/pos/invoice-units";
 import { factureTabStripHeightPx } from "@/lib/utils/facture-tab-layout";
 import { fetchInvoiceTablePosEnabled } from "@/lib/features/settings/invoice-table-pos";
@@ -71,6 +72,8 @@ type CartRow = {
   imageUrl?: string | null;
   /** Ligne depuis `sale_items.total` — remises ligne pour RPC update (Flutter). */
   lineTotal?: number;
+  /** Si true, ne pas recalculer détail/gros quand la qté change (ex. PU saisi ou édition vente). */
+  linePriceUserSet?: boolean;
 };
 
 /** Aligné `sale_pos_edit.dart` / liste ventes. */
@@ -400,6 +403,7 @@ export function PosScreen({
             unit: it.product?.unit ?? p?.unit ?? "pce",
             imageUrl: img,
             lineTotal: it.total,
+            linePriceUserSet: true,
           });
         }
         setEditStockRelease(release);
@@ -688,10 +692,20 @@ export function PosScreen({
     onError: (e) => toast.error(messageFromUnknownError(e)),
   });
 
+  function catalogUnitPrice(productId: string, quantity: number): number {
+    const p = products.find((x) => x.id === productId);
+    if (!p) return 0;
+    return posEffectiveUnitPrice(
+      p.sale_price,
+      p.wholesale_price ?? 0,
+      p.wholesale_qty ?? 0,
+      quantity,
+    );
+  }
+
   function addToCart(
     productId: string,
     name: string,
-    unitPrice: number,
     unit: string,
     imageUrl?: string | null,
   ) {
@@ -700,13 +714,14 @@ export function PosScreen({
       const idx = prev.findIndex((p) => p.productId === productId);
       if (idx < 0) {
         if (stock <= 0) return prev;
+        const qty = 1;
         return [
           ...prev,
           {
             productId,
             name,
-            quantity: 1,
-            unitPrice,
+            quantity: qty,
+            unitPrice: catalogUnitPrice(productId, qty),
             unit: unit || "u",
             imageUrl: imageUrl ?? null,
             lineTotal: undefined,
@@ -722,8 +737,12 @@ export function PosScreen({
         }
         return prev;
       }
+      const newQty = row.quantity + 1;
+      const unitPrice = row.linePriceUserSet
+        ? row.unitPrice
+        : catalogUnitPrice(productId, newQty);
       const next = [...prev];
-      next[idx] = { ...row, quantity: row.quantity + 1, lineTotal: undefined };
+      next[idx] = { ...row, quantity: newQty, unitPrice, lineTotal: undefined };
       return next;
     });
   }
@@ -747,7 +766,6 @@ export function PosScreen({
     addToCart(
       p.id,
       p.name,
-      Number(p.sale_price ?? 0),
       p.unit,
       p.product_images?.[0]?.url ?? null,
     );
@@ -771,7 +789,10 @@ export function PosScreen({
         .map((r) => {
           if (r.productId !== productId) return r;
           const q = Math.max(0, Math.min(stock, r.quantity + delta));
-          return { ...r, quantity: q, lineTotal: undefined };
+          const unitPrice = r.linePriceUserSet
+            ? r.unitPrice
+            : catalogUnitPrice(productId, q);
+          return { ...r, quantity: q, unitPrice, lineTotal: undefined };
         })
         .filter((r) => r.quantity > 0);
     });
@@ -785,7 +806,16 @@ export function PosScreen({
       const q = Math.max(0, Math.min(stock, Math.floor(quantity)));
       return prev
         .map((r) =>
-          r.productId === productId ? { ...r, quantity: q, lineTotal: undefined } : r,
+          r.productId === productId
+            ? {
+                ...r,
+                quantity: q,
+                unitPrice: r.linePriceUserSet
+                  ? r.unitPrice
+                  : catalogUnitPrice(productId, q),
+                lineTotal: undefined,
+              }
+            : r,
         )
         .filter((r) => r.quantity > 0);
     });
@@ -811,7 +841,9 @@ export function PosScreen({
     );
     setCart((prev) =>
       prev.map((r) =>
-        r.productId === productId ? { ...r, unitPrice: p, lineTotal: undefined } : r,
+        r.productId === productId
+          ? { ...r, unitPrice: p, lineTotal: undefined, linePriceUserSet: true }
+          : r,
       ),
     );
   }
@@ -1461,7 +1493,7 @@ export function PosScreen({
                           disabled={noStock}
                           onClick={() => {
                             if (!noStock)
-                              addToCart(p.id, p.name, price, p.unit, thumb);
+                              addToCart(p.id, p.name, p.unit, thumb);
                           }}
                           className={cn(
                             "flex min-h-0 w-full min-w-0 flex-col items-center justify-center rounded-[14px] border bg-white px-2 py-1.5 text-center transition active:scale-[0.98]",
@@ -1515,7 +1547,6 @@ export function PosScreen({
                           addToCart(
                             p.id,
                             p.name,
-                            price,
                             p.unit,
                             thumb,
                           )

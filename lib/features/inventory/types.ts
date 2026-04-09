@@ -1,3 +1,5 @@
+import type { ProductCategory } from "@/lib/features/products/types";
+
 export type InventoryStatus = "ok" | "low" | "out";
 
 export type InventoryRow = {
@@ -49,4 +51,6 @@ export type InventoryScreenData = {
   stats: InventoryStats;
   /** Seuil société lu depuis `company_settings` (défaut 5). */
   defaultThreshold: number;
+  /** Même chargement que les lignes — évite une 2ᵉ requête et un décalage filtre / données. */
+  categories: ProductCategory[];
 };

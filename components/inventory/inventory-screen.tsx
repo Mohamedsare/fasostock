@@ -20,7 +20,6 @@ import {
 import { inventoryRowsToCsv } from "@/lib/features/inventory/csv";
 import type { InventoryRow, StockMovementRow } from "@/lib/features/inventory/types";
 import { usePermissions } from "@/lib/features/permissions/use-permissions";
-import { listCategories } from "@/lib/features/products/api";
 import type { ProductCategory } from "@/lib/features/products/types";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { queryKeys } from "@/lib/query/query-keys";
@@ -187,7 +186,14 @@ function InventoryPagination({
 
 export function InventoryScreen() {
   const qc = useQueryClient();
-  const { data: ctx, isLoading: permLoading, hasPermission } = usePermissions();
+  const {
+    data: ctx,
+    isLoading: permLoading,
+    isError: ctxIsError,
+    error: ctxError,
+    refetch: refetchCtx,
+    hasPermission,
+  } = usePermissions();
   const companyId = ctx?.companyId ?? "";
   const storeId = ctx?.storeId ?? null;
   const storeName = ctx?.stores?.find((s) => s.id === storeId)?.name ?? null;
@@ -216,12 +222,6 @@ export function InventoryScreen() {
     queryFn: () => fetchInventoryScreenData({ companyId, storeId }),
     enabled: Boolean(companyId) && Boolean(storeId) && canAccessStock,
     staleTime: 20_000,
-  });
-
-  const categoriesQ = useQuery({
-    queryKey: ["inventory-categories", companyId] as const,
-    queryFn: () => listCategories(companyId),
-    enabled: Boolean(companyId),
   });
 
   const defaultThreshold = dataQ.data?.defaultThreshold ?? 5;
@@ -256,7 +256,7 @@ export function InventoryScreen() {
   });
 
   const rows = dataQ.data?.rows ?? [];
-  const categories: ProductCategory[] = categoriesQ.data ?? [];
+  const categories: ProductCategory[] = dataQ.data?.categories ?? [];
 
   /** Après recherche + catégorie uniquement (KPI Flutter lignes 578–580). */
   const itemsSearchCategory = useMemo(() => {
@@ -363,6 +363,40 @@ export function InventoryScreen() {
         <div className="flex min-h-[40vh] items-center justify-center">
           <div className="h-9 w-9 animate-spin rounded-full border-2 border-fs-accent border-t-transparent" aria-hidden />
         </div>
+      </FsPage>
+    );
+  }
+
+  if (ctxIsError) {
+    return (
+      <FsPage className={cn(isWide && "px-8 pt-7")}>
+        <h1 className="text-[22px] font-bold text-fs-text min-[900px]:text-2xl">Stock</h1>
+        <FsCard className="mt-4" padding="p-4">
+          <FsQueryErrorPanel
+            error={ctxError ?? new Error("Impossible de charger le profil ou l’entreprise.")}
+            onRetry={() => void refetchCtx()}
+          />
+        </FsCard>
+      </FsPage>
+    );
+  }
+
+  if (ctx == null) {
+    return (
+      <FsPage className={cn(isWide && "px-8 pt-7")}>
+        <h1 className="text-[22px] font-bold text-fs-text min-[900px]:text-2xl">Stock</h1>
+        <p className="mt-2 text-sm text-neutral-600">
+          Session indisponible. Reconnectez-vous ou réessayez.
+        </p>
+        <FsCard className="mt-6" padding="p-6">
+          <button
+            type="button"
+            onClick={() => void refetchCtx()}
+            className="rounded-[10px] bg-fs-accent px-4 py-2.5 text-sm font-semibold text-white"
+          >
+            Réessayer
+          </button>
+        </FsCard>
       </FsPage>
     );
   }

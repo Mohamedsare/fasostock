@@ -91,6 +91,12 @@ export function ProductFormDialog({
     String(initial?.purchase_price ?? 0),
   );
   const [salePrice, setSalePrice] = useState(String(initial?.sale_price ?? 0));
+  const [wholesalePrice, setWholesalePrice] = useState(
+    String(initial?.wholesale_price ?? 0),
+  );
+  const [wholesaleQty, setWholesaleQty] = useState(
+    String(initial?.wholesale_qty ?? 0),
+  );
   const [stockMin, setStockMin] = useState(
     String(initial != null ? initial.stock_min ?? 0 : 5),
   );
@@ -193,6 +199,12 @@ export function ProductFormDialog({
     if (pp < 0) return "Prix d'achat doit être ≥ 0.";
     const sp = toNumber(salePrice);
     if (sp < 0) return "Prix de vente doit être ≥ 0.";
+    const wp = toNumber(wholesalePrice);
+    if (wp < 0) return "Prix gros doit être ≥ 0.";
+    const wq = Math.max(0, Math.round(toNumber(wholesaleQty)));
+    if (wq > 0 && wp <= 0) {
+      return "Renseignez un prix gros (> 0) si la quantité seuil est > 0.";
+    }
     if (pp > sp) {
       return "Le prix d'achat ne peut pas dépasser le prix de vente. Réduisez le prix d'achat ou augmentez le prix de vente.";
     }
@@ -207,6 +219,8 @@ export function ProductFormDialog({
       unit: effectiveUnitValue(unit),
       purchasePrice: toNumber(purchasePrice),
       salePrice: toNumber(salePrice),
+      wholesalePrice: Math.max(0, toNumber(wholesalePrice)),
+      wholesaleQty: Math.max(0, Math.round(toNumber(wholesaleQty))),
       stockMin: Math.max(0, Math.round(toNumber(stockMin))),
       description: description.trim(),
       categoryId,
@@ -413,6 +427,37 @@ export function ProductFormDialog({
                   onChange={(e) => setSalePrice(e.target.value)}
                   inputMode="decimal"
                   className={fsInputClass()}
+                />
+              </label>
+            </div>
+
+            <div
+              className={cn(
+                "flex flex-col gap-3 min-[401px]:flex-row min-[401px]:gap-3",
+              )}
+            >
+              <label className="min-w-0 flex-1">
+                <span className="mb-1 block text-xs font-medium text-neutral-600">
+                  Prix gros (optionnel)
+                </span>
+                <input
+                  value={wholesalePrice}
+                  onChange={(e) => setWholesalePrice(e.target.value)}
+                  inputMode="decimal"
+                  className={fsInputClass()}
+                  placeholder="FCFA / unité"
+                />
+              </label>
+              <label className="min-w-0 flex-1">
+                <span className="mb-1 block text-xs font-medium text-neutral-600">
+                  Qté seuil gros
+                </span>
+                <input
+                  value={wholesaleQty}
+                  onChange={(e) => setWholesaleQty(e.target.value)}
+                  inputMode="numeric"
+                  className={fsInputClass()}
+                  placeholder="≥ cette qté → prix gros"
                 />
               </label>
             </div>

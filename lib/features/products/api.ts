@@ -11,7 +11,7 @@ import type {
 } from "./types";
 
 const productSelect =
-  "id, company_id, name, sku, barcode, unit, purchase_price, sale_price, stock_min, description, is_active, category_id, brand_id, product_scope, category:categories(id, name), brand:brands(id, name), product_images(id, product_id, url, position)";
+  "id, company_id, name, sku, barcode, unit, purchase_price, sale_price, wholesale_price, wholesale_qty, stock_min, description, is_active, category_id, brand_id, product_scope, category:categories(id, name), brand:brands(id, name), product_images(id, product_id, url, position)";
 
 export async function listProducts(companyId: string): Promise<ProductItem[]> {
   const supabase = createClient();
@@ -45,8 +45,11 @@ export async function listProducts(companyId: string): Promise<ProductItem[]> {
         }));
     }
 
+    const base = row as unknown as ProductItem;
     return {
-      ...(row as unknown as ProductItem),
+      ...base,
+      wholesale_price: Number(base.wholesale_price ?? 0),
+      wholesale_qty: Math.max(0, Math.floor(Number(base.wholesale_qty ?? 0))),
       category,
       brand,
       product_images,
@@ -105,6 +108,8 @@ export async function createProduct(
     unit: input.unit.trim() || "pce",
     purchase_price: input.purchasePrice,
     sale_price: input.salePrice,
+    wholesale_price: input.wholesalePrice,
+    wholesale_qty: input.wholesaleQty,
     stock_min: input.stockMin,
     description: input.description.trim() || null,
     is_active: input.isActive,
@@ -133,6 +138,8 @@ export async function updateProduct(
     unit: input.unit.trim() || "pce",
     purchase_price: input.purchasePrice,
     sale_price: input.salePrice,
+    wholesale_price: input.wholesalePrice,
+    wholesale_qty: input.wholesaleQty,
     stock_min: input.stockMin,
     description: input.description.trim() || null,
     category_id: input.categoryId || null,

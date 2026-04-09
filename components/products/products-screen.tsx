@@ -131,6 +131,7 @@ export function ProductsScreen() {
   });
 
   const mutateSaveProduct = useMutation({
+    mutationKey: ["products", "save", companyId],
     mutationFn: async ({
       editingId,
       payload,
@@ -188,6 +189,7 @@ export function ProductsScreen() {
     onError: (e) => toast.error(messageFromUnknownError(e)),
   });
   const mutateToggle = useMutation({
+    mutationKey: ["products", "setActive", companyId],
     mutationFn: ({ id, active }: { id: string; active: boolean }) =>
       setProductActive(id, active),
     onSuccess: async (_data, vars) => {
@@ -197,6 +199,7 @@ export function ProductsScreen() {
     onError: (e) => toast.error(messageFromUnknownError(e)),
   });
   const mutateDelete = useMutation({
+    mutationKey: ["products", "softDelete", companyId],
     mutationFn: (id: string) => softDeleteProduct(id),
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: queryKeys.products(companyId) });
@@ -205,6 +208,7 @@ export function ProductsScreen() {
     onError: (e) => toast.error(messageFromUnknownError(e)),
   });
   const mutateCreateCategory = useMutation({
+    mutationKey: ["products", "categoryCreate", companyId],
     mutationFn: (name: string) => createCategory(companyId, name),
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: queryKeys.categories(companyId) });
@@ -214,6 +218,7 @@ export function ProductsScreen() {
     onError: (e) => toast.error(messageFromUnknownError(e)),
   });
   const mutateCreateBrand = useMutation({
+    mutationKey: ["products", "brandCreate", companyId],
     mutationFn: (name: string) => createBrand(companyId, name),
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: queryKeys.brands(companyId) });
@@ -223,6 +228,7 @@ export function ProductsScreen() {
     onError: (e) => toast.error(messageFromUnknownError(e)),
   });
   const mutateUpdateCategory = useMutation({
+    mutationKey: ["products", "categoryUpdate", companyId],
     mutationFn: ({ id, name }: { id: string; name: string }) => updateCategory(id, name),
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: queryKeys.categories(companyId) });
@@ -232,6 +238,7 @@ export function ProductsScreen() {
     onError: (e) => toast.error(messageFromUnknownError(e)),
   });
   const mutateDeleteCategory = useMutation({
+    mutationKey: ["products", "categoryDelete", companyId],
     mutationFn: (id: string) => deleteCategory(id),
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: queryKeys.categories(companyId) });
@@ -241,6 +248,7 @@ export function ProductsScreen() {
     onError: (e) => toast.error(messageFromUnknownError(e)),
   });
   const mutateUpdateBrand = useMutation({
+    mutationKey: ["products", "brandUpdate", companyId],
     mutationFn: ({ id, name }: { id: string; name: string }) => updateBrand(id, name),
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: queryKeys.brands(companyId) });
@@ -250,6 +258,7 @@ export function ProductsScreen() {
     onError: (e) => toast.error(messageFromUnknownError(e)),
   });
   const mutateDeleteBrand = useMutation({
+    mutationKey: ["products", "brandDelete", companyId],
     mutationFn: (id: string) => deleteBrand(id),
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: queryKeys.brands(companyId) });

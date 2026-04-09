@@ -151,7 +151,7 @@ export async function fetchInventoryScreenData(params: {
     stockValueSale,
   };
 
-  return { rows, stats, defaultThreshold };
+  return { rows, stats, defaultThreshold, categories };
 }
 
 /** Met à jour le seuil d'alerte société (clé `default_stock_alert_threshold`). */
