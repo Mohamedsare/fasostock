@@ -274,8 +274,15 @@ export function DashboardScreen() {
         />
       </div>
 
-      <section className="rounded-xl border border-black/[0.06] bg-fs-card p-3 shadow-sm sm:rounded-2xl sm:p-4">
+      <section
+        id="dashboard-vue-periode"
+        className="rounded-xl border border-black/[0.06] bg-fs-card p-3 shadow-sm sm:rounded-2xl sm:p-4"
+      >
         <FsSectionLabel>Vue & période</FsSectionLabel>
+        <p className="mt-1 text-[11px] leading-snug text-neutral-500 sm:text-xs">
+          Ces choix s&apos;appliquent au tableau (KPI, graphiques « Chiffre d&apos;affaires par jour »,
+          « Évolution du CA », etc.).
+        </p>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <button
             type="button"
@@ -324,7 +331,17 @@ export function DashboardScreen() {
               />
               Boutique
             </button>
-          ) : null}
+          ) : (
+            <button
+              type="button"
+              disabled
+              title="Aucune boutique enregistrée. Créez une boutique dans le menu Boutiques."
+              className="inline-flex cursor-not-allowed items-center gap-1.5 rounded-lg border border-black/[0.06] bg-neutral-100 px-3 py-1.5 text-sm font-semibold text-neutral-400"
+            >
+              <MdStore className="h-[18px] w-[18px] text-neutral-400" aria-hidden />
+              Boutique
+            </button>
+          )}
           {scope === "store" && stores.length > 1 ? (
             <label className="flex min-w-0 max-w-[200px] flex-1 items-center gap-2">
               <span className="sr-only">Boutique</span>
