@@ -167,7 +167,7 @@ export function StoresScreen() {
   }
 
   return (
-    <FsPage className="relative flex min-h-0 flex-1 flex-col px-5 pt-4 pb-28 sm:px-5 sm:pb-10 min-[900px]:px-7 min-[900px]:pt-7">
+    <FsPage className="relative flex min-h-0 flex-1 flex-col px-5 pt-4 sm:px-5 min-[900px]:px-7 min-[900px]:pt-7">
       <div className="flex flex-col gap-6">
         {/* En-tête aligné Flutter : headlineSmall + (≥560px) bouton à droite ; mobile = colonne */}
         <div className="flex flex-col gap-4 min-[560px]:flex-row min-[560px]:items-start min-[560px]:justify-between min-[560px]:gap-6">

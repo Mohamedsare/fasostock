@@ -4,7 +4,7 @@ import { formatUnknownErrorMessage } from "@/lib/utils/format-unknown-error";
 import { cn } from "@/lib/utils/cn";
 import type { ComponentType, ReactNode } from "react";
 
-/** Padding horizontal 12px (Flutter dashboard) → 20px sm+ (Produits / Ventes). Bas pour barre navigation. */
+/** Padding horizontal 12px (Flutter dashboard) → 20px sm+ (Produits / Ventes). Bas mobile : léger — le main du shell réserve déjà la bottom nav. Desktop : pb-10. */
 export function FsPage({
   children,
   className,
@@ -15,7 +15,8 @@ export function FsPage({
   return (
     <div
       className={cn(
-        "min-w-0 px-3 pb-28 pt-3 sm:px-5 sm:pb-10 sm:pt-5 min-[900px]:px-7",
+        "min-w-0 px-3 pt-3 sm:px-5 sm:pt-5 min-[900px]:px-7",
+        "max-[1023px]:pb-6 min-[1024px]:pb-10",
         className,
       )}
     >

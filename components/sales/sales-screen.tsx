@@ -346,7 +346,7 @@ export function SalesScreen() {
     "touch-manipulation inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-[10px] bg-fs-accent px-4 text-sm font-semibold text-white shadow-sm active:opacity-95 min-[480px]:min-h-11 min-[480px]:w-auto";
 
   return (
-    <FsPage className="flex min-h-0 flex-1 flex-col px-5 pt-4 pb-28 sm:px-5 sm:pb-10 min-[900px]:px-7 min-[900px]:pt-7">
+    <FsPage className="flex min-h-0 flex-1 flex-col px-5 pt-4 sm:px-5 min-[900px]:px-7 min-[900px]:pt-7">
       <div className="flex flex-col gap-6">
         {/* En-tête type Flutter : headlineSmall + actions ; mobile-first = colonne puis wrap ≥560px */}
         <div className="flex flex-col gap-4 min-[560px]:flex-row min-[560px]:items-start min-[560px]:justify-between min-[560px]:gap-6">

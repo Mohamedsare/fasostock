@@ -224,7 +224,7 @@ export function StockCashierScreen() {
 
   /** Padding écran Flutter `fromLTRB(20,20,20,16)` + mobile first. */
   const pageShell = cn(
-    "!px-5 !pt-5 pb-28 min-[900px]:!px-8 min-[900px]:!pt-7 min-[900px]:pb-10",
+    "!px-5 !pt-5 max-[1023px]:pb-6 min-[900px]:!px-8 min-[900px]:!pt-7 min-[1024px]:pb-10",
   );
 
   if (permLoading) {

@@ -334,7 +334,7 @@ export function CustomersScreen() {
   const showActionsRow = canManage || filtered.length > 0;
 
   return (
-    <FsPage className="pb-28 min-[900px]:pb-10">
+    <FsPage>
       {/* En-tête aligné Flutter : colonne &lt;560px, ligne sinon */}
       {isNarrowHeader ? (
         <div className="mb-6">

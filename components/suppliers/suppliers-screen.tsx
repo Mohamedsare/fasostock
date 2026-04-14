@@ -286,7 +286,7 @@ export function SuppliersScreen() {
 
   if (ctxLoading && !appCtx.data) {
     return (
-      <div className="min-w-0 px-5 pb-28 pt-5 min-[900px]:px-8 min-[900px]:pb-10 min-[900px]:pt-7">
+      <div className="min-w-0 px-5 pt-5 max-[1023px]:pb-6 min-[900px]:px-8 min-[1024px]:pb-10 min-[900px]:pt-7">
         <div className="flex min-h-[40vh] items-center justify-center">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-fs-accent border-t-transparent" />
         </div>
@@ -296,7 +296,7 @@ export function SuppliersScreen() {
 
   if (!canView) {
     return (
-      <div className="min-w-0 px-5 pb-28 pt-5 min-[900px]:px-8 min-[900px]:pb-10 min-[900px]:pt-7">
+      <div className="min-w-0 px-5 pt-5 max-[1023px]:pb-6 min-[900px]:px-8 min-[1024px]:pb-10 min-[900px]:pt-7">
         <div className="flex min-h-[40vh] flex-col items-center justify-center gap-4 px-4 text-center">
           <MdLock className="h-16 w-16 text-red-500" aria-hidden />
           <p className="text-sm font-medium text-fs-text">Vous n&apos;avez pas accès à cette page.</p>
@@ -307,7 +307,7 @@ export function SuppliersScreen() {
 
   if (ctxError) {
     return (
-      <div className="min-w-0 px-5 pb-28 pt-5 min-[900px]:px-8 min-[900px]:pb-10 min-[900px]:pt-7">
+      <div className="min-w-0 px-5 pt-5 max-[1023px]:pb-6 min-[900px]:px-8 min-[1024px]:pb-10 min-[900px]:pt-7">
         <div className="flex min-h-[40vh] flex-col items-center justify-center px-4">
           <FsQueryErrorPanel error={ctxErr} onRetry={() => void appCtx.refetch()} />
         </div>
@@ -317,7 +317,7 @@ export function SuppliersScreen() {
 
   if (!companyId) {
     return (
-      <div className="min-w-0 px-5 pb-28 pt-5 min-[900px]:px-8 min-[900px]:pb-10 min-[900px]:pt-7">
+      <div className="min-w-0 px-5 pt-5 max-[1023px]:pb-6 min-[900px]:px-8 min-[1024px]:pb-10 min-[900px]:pt-7">
         <div className="flex min-h-[40vh] items-center justify-center px-4 text-center">
           <p className="text-sm text-fs-text">
             Aucune entreprise. Contactez l&apos;administrateur.
@@ -333,7 +333,7 @@ export function SuppliersScreen() {
       : null;
 
   return (
-    <div className="min-w-0 px-5 pb-28 pt-5 min-[900px]:px-8 min-[900px]:pb-10 min-[900px]:pt-7">
+    <div className="min-w-0 px-5 pt-5 max-[1023px]:pb-6 min-[900px]:px-8 min-[1024px]:pb-10 min-[900px]:pt-7">
       {isNarrowHeader ? (
         <div className="mb-6">
           <h1 className="text-[22px] font-bold tracking-tight text-fs-text sm:text-2xl">

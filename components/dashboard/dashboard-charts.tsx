@@ -56,6 +56,53 @@ function smoothLinePath(points: { x: number; y: number }[]): string {
   return d;
 }
 
+/** 0° = 12 h, sens horaire (écran). */
+function polarFromTop(cx: number, cy: number, r: number, angleDeg: number) {
+  const rad = ((angleDeg - 90) * Math.PI) / 180;
+  return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+}
+
+function donutFullRing(cx: number, cy: number, rInner: number, rOuter: number): string {
+  const e = 0.02;
+  return [
+    `M ${cx} ${cy - rOuter}`,
+    `A ${rOuter} ${rOuter} 0 1 1 ${cx - e} ${cy - rOuter}`,
+    `A ${rOuter} ${rOuter} 0 1 1 ${cx} ${cy - rOuter}`,
+    `M ${cx} ${cy - rInner}`,
+    `A ${rInner} ${rInner} 0 1 0 ${cx + e} ${cy - rInner}`,
+    `A ${rInner} ${rInner} 0 1 0 ${cx} ${cy - rInner}`,
+  ].join(" ");
+}
+
+function donutSlicePath(
+  cx: number,
+  cy: number,
+  rInner: number,
+  rOuter: number,
+  startPct: number,
+  endPct: number,
+): string {
+  const startDeg = (startPct / 100) * 360;
+  const endDeg = (endPct / 100) * 360;
+  const span = endDeg - startDeg;
+  if (span <= 0.02) return "";
+  if (span >= 359.98) {
+    return donutFullRing(cx, cy, rInner, rOuter);
+  }
+  const p1 = polarFromTop(cx, cy, rOuter, startDeg);
+  const p2 = polarFromTop(cx, cy, rOuter, endDeg);
+  const p3 = polarFromTop(cx, cy, rInner, endDeg);
+  const p4 = polarFromTop(cx, cy, rInner, startDeg);
+  const largeArc = span > 180 ? 1 : 0;
+  return [
+    `M ${p1.x} ${p1.y}`,
+    `A ${rOuter} ${rOuter} 0 ${largeArc} 1 ${p2.x} ${p2.y}`,
+    `L ${p3.x} ${p3.y}`,
+    `A ${rInner} ${rInner} 0 ${largeArc} 0 ${p4.x} ${p4.y}`,
+    "Z",
+  ].join(" ");
+}
+
 const PIE_COLORS = [
   "var(--fs-accent)",
   "#059669",
@@ -64,6 +111,8 @@ const PIE_COLORS = [
   "#7C3AED",
   "#DC2626",
 ];
+
+const PIE_OTHERS_COLOR = "#64748B";
 
 export function DashboardBarChart({ data }: { data: SalesByDay[] }) {
   const [drawPx, setDrawPx] = useState(CHART_DRAW_PX);
@@ -444,50 +493,186 @@ export function DashboardPieChart({
 }: {
   categories: CategorySales[];
   total: number;
-  /** Flutter : 6 en large, 4 sur mobile pour la liste sous le camembert. */
+  /** Nombre de lignes visibles avant scroll dans la légende (mobile vs large). */
   legendMax?: number;
 }) {
-  const slice = categories.slice(0, 6);
-  if (slice.length === 0 || total <= 0) {
+  const [hoverIdx, setHoverIdx] = useState<number | null>(null);
+
+  const model = useMemo(() => {
+    const t = Number.isFinite(total) ? total : 0;
+    if (categories.length === 0 || t <= 0) return null;
+
+    const sorted = [...categories].sort((a, b) => b.revenue - a.revenue);
+    const top6 = sorted.slice(0, 6);
+    const sumTop6 = top6.reduce((s, c) => s + Math.max(0, Number(c.revenue) || 0), 0);
+    const otherRev = Math.max(0, t - sumTop6);
+    const showOthers = sorted.length > 6 && otherRev > 0.5;
+    const rows: CategorySales[] = showOthers
+      ? [
+          ...top6,
+          {
+            categoryId: "__others__",
+            categoryName: "Autres",
+            revenue: otherRev,
+            quantity: 0,
+          },
+        ]
+      : top6;
+
+    let cum = 0;
+    const segments = rows.map((c, i) => {
+      const raw = Math.max(0, Number(c.revenue) || 0);
+      const pct = (raw / t) * 100;
+      const startPct = cum;
+      cum += pct;
+      const color =
+        c.categoryId === "__others__"
+          ? PIE_OTHERS_COLOR
+          : PIE_COLORS[i % PIE_COLORS.length];
+      return {
+        key: `${c.categoryId ?? "cat"}-${i}`,
+        name: c.categoryName,
+        revenue: raw,
+        pct,
+        startPct,
+        endPct: cum,
+        color,
+      };
+    });
+
+    return { segments, sum: t };
+  }, [categories, total]);
+
+  if (!model) {
     return (
-      <div className="flex min-h-[120px] items-center justify-center text-sm text-neutral-500">
+      <div className="flex min-h-[160px] items-center justify-center text-sm text-neutral-500">
         Aucune donnée
       </div>
     );
   }
-  let acc = 0;
-  const stops: string[] = [];
-  slice.forEach((c, i) => {
-    const pct = (c.revenue / total) * 100;
-    const start = acc;
-    acc += pct;
-    const color = PIE_COLORS[i % PIE_COLORS.length];
-    stops.push(`${color} ${start}% ${acc}%`);
-  });
+
+  const { segments, sum } = model;
+  const vb = 200;
+  const cx = 100;
+  const cy = 100;
+  const rOuter = 78;
+  const rInner = 50;
+
   return (
-    <div className="flex flex-col gap-3">
-      <div className="relative mx-auto aspect-square w-[min(100%,200px)] min-[900px]:w-[220px]">
-        <div
-          className="absolute inset-0 rounded-full"
-          style={{ background: `conic-gradient(${stops.join(", ")})` }}
-        />
-        <div
-          className="absolute inset-[28%] rounded-full bg-fs-card"
-          aria-hidden
-        />
+    <div
+      className="flex flex-col gap-4 min-[900px]:gap-5"
+      onMouseLeave={() => setHoverIdx(null)}
+    >
+      <div className="relative mx-auto w-full max-w-[240px] drop-shadow-[0_2px_12px_rgb(0_0_0/_0.06)] dark:drop-shadow-[0_2px_16px_rgb(0_0_0/_0.35)]">
+        <svg
+          viewBox={`0 0 ${vb} ${vb}`}
+          className="h-auto w-full"
+          role="img"
+          aria-label={`Répartition du chiffre d'affaires par catégorie, total ${formatCurrency(sum)}.`}
+        >
+          <title>Ventes par catégorie</title>
+          {segments.map((seg, i) => {
+            const d = donutSlicePath(
+              cx,
+              cy,
+              rInner,
+              rOuter,
+              seg.startPct,
+              seg.endPct,
+            );
+            const isFull = seg.endPct - seg.startPct >= 99.98;
+            const dim =
+              hoverIdx !== null && hoverIdx !== i ? 0.42 : 1;
+            return (
+              <path
+                key={seg.key}
+                d={d}
+                fill={seg.color}
+                fillRule={isFull ? "evenodd" : "nonzero"}
+                stroke="var(--fs-card)"
+                strokeWidth={2}
+                paintOrder="stroke fill"
+                opacity={dim}
+                className="cursor-pointer transition-[opacity,filter] duration-200 ease-out"
+                style={{
+                  filter:
+                    hoverIdx === i
+                      ? "brightness(1.06) saturate(1.05)"
+                      : undefined,
+                }}
+                onMouseEnter={() => setHoverIdx(i)}
+              >
+                <title>
+                  {`${seg.name} — ${formatCurrency(seg.revenue)} (${seg.pct.toFixed(1)}%)`}
+                </title>
+              </path>
+            );
+          })}
+
+          <text
+            x={cx}
+            y={cy - 6}
+            textAnchor="middle"
+            className="fill-fs-on-surface-variant"
+            style={{ fontSize: 10, fontWeight: 500 }}
+          >
+            CA catégories
+          </text>
+          <text
+            x={cx}
+            y={cy + 12}
+            textAnchor="middle"
+            className="fill-fs-text"
+            style={{ fontSize: 15, fontWeight: 700 }}
+          >
+            {formatCurrency(sum)}
+          </text>
+        </svg>
       </div>
-      <ul className="space-y-1.5 min-[900px]:space-y-2">
-        {slice.slice(0, legendMax).map((c, i) => {
-          const pct = (c.revenue / total) * 100;
+
+      <ul
+        className={cn(
+          "space-y-1 rounded-xl border border-black/6 bg-fs-surface-low/60 p-2 min-[900px]:space-y-1.5 dark:border-white/8 dark:bg-white/[0.04]",
+          segments.length > legendMax &&
+            "max-h-[min(200px,42vh)] overflow-y-auto overscroll-contain pr-0.5",
+        )}
+        style={
+          segments.length > legendMax
+            ? { scrollbarGutter: "stable" }
+            : undefined
+        }
+      >
+        {segments.map((seg, i) => {
+          const active = hoverIdx === i;
           return (
-            <li
-              key={c.categoryId ?? `cat-${i}`}
-              className="flex items-start justify-between gap-2 text-xs min-[900px]:text-sm"
-            >
-              <span className="line-clamp-2 text-neutral-800">{c.categoryName}</span>
-              <span className="shrink-0 font-semibold text-neutral-500">
-                {pct.toFixed(1)}%
-              </span>
+            <li key={seg.key}>
+              <div
+                role="presentation"
+                className={cn(
+                  "flex w-full cursor-default items-center gap-2.5 rounded-lg px-2 py-2 text-left text-xs transition-colors min-[900px]:text-sm",
+                  active
+                    ? "bg-fs-accent/12 ring-1 ring-fs-accent/25"
+                    : "hover:bg-black/[0.04] dark:hover:bg-white/[0.06]",
+                )}
+                onMouseEnter={() => setHoverIdx(i)}
+              >
+                <span
+                  className="h-3 w-3 shrink-0 rounded-sm shadow-sm ring-1 ring-black/10 dark:ring-white/15"
+                  style={{ backgroundColor: seg.color }}
+                  aria-hidden
+                />
+                <span className="min-w-0 flex-1 truncate font-medium text-fs-text">
+                  {seg.name}
+                </span>
+                <span className="shrink-0 text-right">
+                  <span className="block tabular-nums font-semibold text-fs-text">
+                    {seg.pct.toFixed(1)}%
+                  </span>
+                  <span className="block text-[10px] tabular-nums text-fs-on-surface-variant min-[900px]:text-[11px]">
+                    {formatCurrency(seg.revenue)}
+                  </span>
+                </span>
+              </div>
             </li>
           );
         })}

@@ -168,3 +168,11 @@ body {
     background-color: color-mix(in oklab, white 6%, transparent);
   }
 }
+
+/* Spinner AppShell : reduced motion en CSS (évite mismatch d’hydratation lié aux variantes `motion-reduce:` sur SSR vs client). */
+@media (prefers-reduced-motion: reduce) {
+  .fs-app-shell-loading-spinner {
+    animation: none !important;
+    border-top-color: color-mix(in srgb, var(--fs-accent) 45%, transparent);
+  }
+}

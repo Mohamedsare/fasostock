@@ -94,7 +94,7 @@ export function NotificationsScreen() {
   }
 
   return (
-    <FsPage className="pb-28 min-[900px]:pb-10">
+    <FsPage>
       <div className="mb-6 flex flex-col gap-3 min-[560px]:flex-row min-[560px]:items-start min-[560px]:justify-between">
         <header className="min-w-0">
           <h1 className="text-[22px] font-bold tracking-tight text-fs-text min-[900px]:text-2xl">

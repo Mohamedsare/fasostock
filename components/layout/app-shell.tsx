@@ -1,6 +1,7 @@
 "use client";
 
 import { OfflineStrip } from "@/components/offline/offline-strip";
+import { AppShellLoadingOverlay } from "@/components/layout/app-shell-loading-overlay";
 import { AppShellSkeleton } from "@/components/layout/app-shell-skeleton";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { MoreSheet } from "@/components/layout/more-sheet";
@@ -191,9 +192,7 @@ export function AppShell({ children, userEmail }: AppShellProps) {
     return (
       <div className="relative h-dvh max-h-dvh min-h-dvh overflow-hidden bg-fs-surface">
         <AppShellSkeleton />
-        <p className="pointer-events-none absolute bottom-6 left-0 right-0 text-center text-xs text-neutral-500">
-          Chargement du compte… Si cela dure, vérifiez la connexion ou réessayez.
-        </p>
+        <AppShellLoadingOverlay />
       </div>
     );
   }
@@ -367,7 +366,7 @@ export function AppShell({ children, userEmail }: AppShellProps) {
             className={cn(
               "flex min-h-0 flex-1 flex-col",
               !isPosRoute &&
-                "max-[1023px]:pb-[calc(0.5rem+3.5rem+max(0.5rem,var(--fs-safe-bottom)))]",
+                "max-[1023px]:pb-[calc(0.75rem+4.75rem+max(0.75rem,var(--fs-safe-bottom)))] max-[1023px]:[scroll-padding-bottom:calc(0.75rem+4.75rem+max(0.75rem,var(--fs-safe-bottom)))]",
               isPosRoute ? "overflow-hidden" : "overflow-y-auto overflow-x-hidden",
             )}
           >

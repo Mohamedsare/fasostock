@@ -445,7 +445,7 @@ export function WarehouseScreen() {
   }
 
   return (
-    <FsPage className="pb-[max(7rem,calc(env(safe-area-inset-bottom,0px)+5.75rem))] min-[900px]:pb-10">
+    <FsPage>
       {/* Aligné AppBar Flutter : toolbarHeight 52, TabBar dessous (label 15px, indicateur #F97316) */}
       <div className="sticky top-0 z-30 -mx-3 border-b border-black/6 bg-fs-surface/98 backdrop-blur-md sm:-mx-5">
         <div className="flex min-h-[52px] items-center justify-between gap-2 px-3 sm:px-0">

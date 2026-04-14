@@ -263,7 +263,7 @@ export function DashboardScreen() {
   }
 
   return (
-    <FsPage className="flex min-h-0 flex-1 flex-col min-[900px]:pt-6">
+    <FsPage className="flex flex-col min-[900px]:pt-6">
       <div className="mb-3 flex items-start gap-3 min-[900px]:mb-5">
         <FsScreenHeader
           title="Tableau de bord"
@@ -854,7 +854,7 @@ function Shortcuts({
   return (
     <section
       className={cn(
-        "rounded-xl border border-black/[0.06] bg-fs-card p-3 shadow-sm min-[900px]:p-4",
+        "shrink-0 rounded-xl border border-black/[0.06] bg-fs-card p-3 shadow-sm min-[900px]:p-4",
         className,
       )}
     >

@@ -74,7 +74,7 @@ export function HelpScreen() {
   }
 
   return (
-    <FsPage className="pb-28 min-[900px]:pb-10">
+    <FsPage>
       <header className="mb-6">
         <h1 className="text-[22px] font-bold tracking-tight text-fs-text min-[900px]:text-2xl">
           Aide
