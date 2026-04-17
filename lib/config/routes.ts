@@ -26,6 +26,8 @@ export const ROUTES = {
   reports: "/reports",
   ai: "/ai",
   settings: "/settings",
+  /** Imprimantes locales (QZ Tray) — association ticket / facture A4. */
+  printers: "/printers",
   users: "/users",
   audit: "/audit",
   help: "/help",

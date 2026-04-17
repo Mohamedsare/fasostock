@@ -20,6 +20,7 @@ import {
   HelpCircle,
   Bell,
   KeyRound,
+  Printer,
   Settings,
 } from "lucide-react";
 import { ROUTES } from "./routes";
@@ -61,6 +62,7 @@ export const NAV_ITEMS: NavItem[] = [
     icon: KeyRound,
     showInSidebar: false,
   },
+  { href: ROUTES.printers, label: "Imprimantes", icon: Printer },
   { href: ROUTES.settings, label: "Paramètres", icon: Settings },
   { href: ROUTES.help, label: "Aide", icon: HelpCircle },
   { href: ROUTES.notifications, label: "Notifications", icon: Bell },

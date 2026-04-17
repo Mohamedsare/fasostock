@@ -28,6 +28,7 @@
     "next": "16.2.1",
     "puppeteer-core": "24.40.0",
     "qrcode": "^1.5.4",
+    "qz-tray": "^2.2.5",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-icons": "^5.5.0",
