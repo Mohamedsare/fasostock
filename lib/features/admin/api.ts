@@ -379,6 +379,12 @@ export async function adminSendNotificationToUser(
     p_type: type,
   });
   if (error) throw mapSupabaseError(error);
+  const { fireAndForgetWebPushDispatch } = await import("@/lib/features/push/dispatch-client");
+  fireAndForgetWebPushDispatch({
+    userId,
+    title,
+    body: body ?? undefined,
+  });
 }
 
 export async function adminSendNotificationToAllOwners(
@@ -393,6 +399,12 @@ export async function adminSendNotificationToAllOwners(
     p_type: type,
   });
   if (error) throw mapSupabaseError(error);
+  const { fireAndForgetWebPushDispatch } = await import("@/lib/features/push/dispatch-client");
+  fireAndForgetWebPushDispatch({
+    allOwners: true,
+    title,
+    body: body ?? undefined,
+  });
   return typeof data === "number" ? data : toNum(data);
 }
 

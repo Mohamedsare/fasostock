@@ -1,6 +1,7 @@
 "use client";
 
 import { LogOutButton } from "@/components/auth/log-out-button";
+import { PushNotificationsSettingsCard } from "@/components/settings/push-notifications-settings";
 import {
   FsCard,
   FsPage,
@@ -715,6 +716,8 @@ export function SettingsScreen() {
           Mettre à jour le mot de passe
         </button>
       </FsCard>
+
+      {isOwner ? <PushNotificationsSettingsCard /> : null}
 
       {/* Entreprise — même carte que Flutter (`_buildCompanyCard`) : fond gris listes, labels gris, lien orange */}
       {companyId ? (

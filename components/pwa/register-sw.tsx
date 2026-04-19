@@ -7,8 +7,9 @@ import { useEffect } from "react";
  */
 export function RegisterServiceWorker() {
   useEffect(() => {
-    if (process.env.NODE_ENV !== "production") return;
     if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
+    const vapid = process.env.NEXT_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY?.trim();
+    if (process.env.NODE_ENV !== "production" && !vapid) return;
     const timer = window.setTimeout(() => {
       void navigator.serviceWorker
         .register("/sw.js", { scope: "/" })
