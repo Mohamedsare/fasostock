@@ -1,6 +1,7 @@
 "use client";
 
 import { enqueueOutbox } from "@/lib/db/dexie-db";
+import { fireAndForgetCompanyOwnersPush } from "@/lib/features/push/company-owners-push-client";
 import { listCategories, listProducts, listStoreInventory } from "@/lib/features/products/api";
 import { firstProductImageUrl } from "@/lib/features/products/product-images";
 import { createClient } from "@/lib/supabase/client";
@@ -252,4 +253,26 @@ export async function adjustStockAtomic(params: {
     p_created_by: user.id,
   });
   if (error) throw error;
+
+  const { data: inv, error: invErr } = await supabase
+    .from("store_inventory")
+    .select("quantity, product:products(name), store:stores(company_id)")
+    .eq("store_id", params.storeId)
+    .eq("product_id", params.productId)
+    .maybeSingle();
+  if (invErr || !inv) return;
+  const qty = Number((inv as { quantity?: unknown }).quantity ?? 0);
+  if (qty > 0) return;
+  const st = (inv as { store?: { company_id?: string } | { company_id?: string }[] }).store;
+  const companyId = Array.isArray(st) ? st[0]?.company_id : st?.company_id;
+  if (!companyId) return;
+  const pr = (inv as { product?: { name?: string } | { name?: string }[] }).product;
+  const nm = Array.isArray(pr) ? pr[0]?.name : pr?.name;
+  const label = String(nm ?? "Produit").trim() || "Produit";
+  fireAndForgetCompanyOwnersPush({
+    companyIds: [companyId],
+    title: "Rupture de stock",
+    body: `${label} est en rupture dans cette boutique.`,
+    url: "/inventory",
+  });
 }

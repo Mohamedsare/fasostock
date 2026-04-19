@@ -104,9 +104,50 @@ export async function createPosSale(params: {
     .maybeSingle();
   if (sErr) throw sErr;
 
+  const saleNumber = String((saleRow as { sale_number?: string } | null)?.sale_number ?? id);
+  const subtotal = params.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
+  const total = Math.max(0, subtotal - params.discount);
+  const { fireAndForgetCompanyOwnersPush } = await import(
+    "@/lib/features/push/company-owners-push-client"
+  );
+  fireAndForgetCompanyOwnersPush({
+    companyIds: [params.companyId],
+    title: "Nouvelle vente",
+    body: `${saleNumber} · total ${total.toLocaleString("fr-FR")} FCFA`,
+    url: "/sales",
+  });
+
+  const stockoutNames: string[] = [];
+  for (const it of params.items) {
+    const { data: inv, error: invErr } = await supabase
+      .from("store_inventory")
+      .select("quantity, product:products(name)")
+      .eq("store_id", params.storeId)
+      .eq("product_id", it.productId)
+      .maybeSingle();
+    if (invErr || !inv) continue;
+    const qty = Number((inv as { quantity?: unknown }).quantity ?? 0);
+    if (qty <= 0) {
+      const pr = (inv as { product?: { name?: string } | { name?: string }[] }).product;
+      const nm = Array.isArray(pr) ? pr[0]?.name : pr?.name;
+      stockoutNames.push(String(nm ?? "Produit").trim() || "Produit");
+    }
+  }
+  if (stockoutNames.length > 0) {
+    fireAndForgetCompanyOwnersPush({
+      companyIds: [params.companyId],
+      title: "Rupture de stock",
+      body:
+        stockoutNames.length === 1
+          ? `${stockoutNames[0]} est en rupture dans cette boutique.`
+          : `Ruptures : ${stockoutNames.join(", ")}.`,
+      url: "/inventory",
+    });
+  }
+
   return {
     saleId: id,
-    saleNumber: String((saleRow as { sale_number?: string } | null)?.sale_number ?? id),
+    saleNumber,
   };
 }
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { enqueueOutbox } from "@/lib/db/dexie-db";
+import { fireAndForgetCompanyOwnersPush } from "@/lib/features/push/company-owners-push-client";
 import { createClient } from "@/lib/supabase/client";
 import type { SaleItem, SaleStatus } from "./types";
 
@@ -95,10 +96,27 @@ export async function cancelSale(saleId: string): Promise<void> {
     await enqueueOutbox("sale_cancel", { saleId });
     return;
   }
+  const { data: snap, error: snapErr } = await supabase
+    .from("sales")
+    .select("company_id, sale_number")
+    .eq("id", saleId)
+    .maybeSingle();
+  if (snapErr) throw snapErr;
+
   const { error } = await supabase.rpc("cancel_sale_restore_stock", {
     p_sale_id: saleId,
   });
   if (error) throw error;
+
+  const row = snap as { company_id?: string; sale_number?: string } | null;
+  if (row?.company_id) {
+    fireAndForgetCompanyOwnersPush({
+      companyIds: [row.company_id],
+      title: "Vente annulée",
+      body: row.sale_number ? `La vente ${row.sale_number} a été annulée.` : "Une vente a été annulée.",
+      url: "/sales",
+    });
+  }
 }
 
 /**

@@ -91,3 +91,23 @@ export async function listOwnerUserIds(): Promise<string[]> {
   const ids = (members ?? []).map((r) => r.user_id as string).filter(Boolean);
   return [...new Set(ids)];
 }
+
+/** Propriétaires actifs pour une liste d’entreprises (push / alertes). */
+export async function listOwnerUserIdsForCompanies(companyIds: string[]): Promise<string[]> {
+  const uniq = [...new Set(companyIds.map((id) => id.trim()).filter(Boolean))];
+  if (uniq.length === 0) return [];
+  const svc = createServiceRoleClient();
+  const { data: roleRow, error: roleErr } = await svc.from("roles").select("id").eq("slug", "owner").maybeSingle();
+  if (roleErr) throw roleErr;
+  const roleId = roleRow?.id as string | undefined;
+  if (!roleId) return [];
+  const { data: members, error: mErr } = await svc
+    .from("user_company_roles")
+    .select("user_id")
+    .in("company_id", uniq)
+    .eq("role_id", roleId)
+    .eq("is_active", true);
+  if (mErr) throw mErr;
+  const ids = (members ?? []).map((r) => r.user_id as string).filter(Boolean);
+  return [...new Set(ids)];
+}

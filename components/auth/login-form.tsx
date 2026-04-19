@@ -9,6 +9,7 @@ import {
   resetLoginAttempts,
 } from "@/lib/auth/lock-status";
 import { ROUTES } from "@/lib/config/routes";
+import { fireAndForgetCompanyOwnersPush } from "@/lib/features/push/company-owners-push-client";
 import { reportHandledClientError } from "@/lib/monitoring/remote-error-logger";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils/cn";
@@ -129,6 +130,22 @@ export function LoginForm() {
       }
 
       await resetLoginAttempts(supabase);
+      try {
+        const { data: companyIds } = await supabase.rpc("staff_login_notify_company_owners");
+        const ids = (Array.isArray(companyIds) ? companyIds : []).filter(
+          (x): x is string => typeof x === "string" && x.length > 0,
+        );
+        if (ids.length > 0) {
+          fireAndForgetCompanyOwnersPush({
+            companyIds: ids,
+            title: "Connexion équipe",
+            body: "Un collaborateur s’est connecté à FasoStock.",
+            url: "/users",
+          });
+        }
+      } catch {
+        /* RPC optionnelle si migration pas encore appliquée */
+      }
       await new Promise((r) => setTimeout(r, 400));
       setLoadingLabel("Préparation de votre espace…");
       router.refresh();

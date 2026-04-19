@@ -226,6 +226,10 @@ export function registerOutboxHandlers(): void {
     }>;
     const clientRequestId = String(p.p_client_request_id ?? crypto.randomUUID());
 
+    const { fireAndForgetCompanyOwnersPush } = await import(
+      "@/lib/features/push/company-owners-push-client"
+    );
+
     const { error } = await supabase.rpc("create_sale_with_stock", {
       p_company_id: String(p.companyId ?? ""),
       p_store_id: String(p.storeId ?? ""),
@@ -248,5 +252,44 @@ export function registerOutboxHandlers(): void {
       p_client_request_id: clientRequestId,
     });
     if (error) throw error;
+
+    fireAndForgetCompanyOwnersPush({
+      companyIds: [String(p.companyId ?? "")],
+      title: "Nouvelle vente",
+      body: "Une vente créée hors ligne a été synchronisée.",
+      url: "/sales",
+    });
+
+    const storeId = String(p.storeId ?? "");
+    const companyId = String(p.companyId ?? "");
+    if (storeId && companyId) {
+      const stockoutNames: string[] = [];
+      for (const it of items) {
+        const { data: inv, error: invErr } = await supabase
+          .from("store_inventory")
+          .select("quantity, product:products(name)")
+          .eq("store_id", storeId)
+          .eq("product_id", it.productId)
+          .maybeSingle();
+        if (invErr || !inv) continue;
+        const qty = Number((inv as { quantity?: unknown }).quantity ?? 0);
+        if (qty <= 0) {
+          const pr = (inv as { product?: { name?: string } | { name?: string }[] }).product;
+          const nm = Array.isArray(pr) ? pr[0]?.name : pr?.name;
+          stockoutNames.push(String(nm ?? "Produit").trim() || "Produit");
+        }
+      }
+      if (stockoutNames.length > 0) {
+        fireAndForgetCompanyOwnersPush({
+          companyIds: [companyId],
+          title: "Rupture de stock",
+          body:
+            stockoutNames.length === 1
+              ? `${stockoutNames[0]} est en rupture dans cette boutique.`
+              : `Ruptures : ${stockoutNames.join(", ")}.`,
+          url: "/inventory",
+        });
+      }
+    }
   });
 }
