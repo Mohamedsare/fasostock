@@ -1,7 +1,9 @@
 "use client";
 
 import { enqueueOutbox } from "@/lib/db/dexie-db";
+import { notifyCompanyOwnersPush } from "@/lib/features/push/company-owners-push-client";
 import { createClient } from "@/lib/supabase/client";
+import { toastInfo } from "@/lib/toast";
 import { listCategories, listProducts, listStoreInventory } from "@/lib/features/products/api";
 import { listCustomers } from "@/lib/features/customers/api";
 import { listStores } from "@/lib/features/stores/api";
@@ -107,15 +109,24 @@ export async function createPosSale(params: {
   const saleNumber = String((saleRow as { sale_number?: string } | null)?.sale_number ?? id);
   const subtotal = params.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
   const total = Math.max(0, subtotal - params.discount);
-  const { fireAndForgetCompanyOwnersPush } = await import(
-    "@/lib/features/push/company-owners-push-client"
-  );
-  fireAndForgetCompanyOwnersPush({
+  const pushSale = await notifyCompanyOwnersPush({
     companyIds: [params.companyId],
     title: "Nouvelle vente",
     body: `${saleNumber} · total ${total.toLocaleString("fr-FR")} FCFA`,
     url: "/sales",
   });
+  if (
+    pushSale.ok &&
+    (pushSale.pushDeviceCount ?? 0) === 0 &&
+    (pushSale.ownerUserCount ?? 0) > 0
+  ) {
+    toastInfo(
+      "Push : aucun appareil enregistré pour les propriétaires. Sur le téléphone du owner : Paramètres → Notifications sur cet appareil → Activer.",
+      10_000,
+    );
+  } else if (!pushSale.ok && pushSale.error) {
+    toastInfo(`Push non envoyé : ${pushSale.error}`, 8000);
+  }
 
   const stockoutNames: string[] = [];
   for (const it of params.items) {
@@ -134,7 +145,7 @@ export async function createPosSale(params: {
     }
   }
   if (stockoutNames.length > 0) {
-    fireAndForgetCompanyOwnersPush({
+    await notifyCompanyOwnersPush({
       companyIds: [params.companyId],
       title: "Rupture de stock",
       body:

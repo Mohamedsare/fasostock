@@ -92,7 +92,15 @@ export async function POST(req: Request) {
   try {
     const ownerIds = await listOwnerUserIdsForCompanies(uniqCompanies);
     if (ownerIds.length === 0) {
-      return NextResponse.json({ ok: true, attempted: 0, failures: 0, owners: 0 });
+      return NextResponse.json({
+        ok: true,
+        attempted: 0,
+        failures: 0,
+        owners: 0,
+        ownerUserCount: 0,
+        pushDeviceCount: 0,
+        hint: "Aucun propriétaire actif trouvé pour ces entreprises (rôles / user_company_roles).",
+      });
     }
     const result = await sendWebPushToUsers(ownerIds, {
       title: body.title.trim(),
@@ -102,7 +110,15 @@ export async function POST(req: Request) {
           ? body.url.trim()
           : "/notifications",
     });
-    return NextResponse.json({ ok: true, ...result, owners: ownerIds.length });
+    return NextResponse.json({
+      ok: true,
+      ...result,
+      /** Nombre d’utilisateurs distincts « owner » ciblés */
+      owners: ownerIds.length,
+      ownerUserCount: ownerIds.length,
+      /** Nombre d’abonnements navigateur en base pour ces utilisateurs (0 = pas d’appareil activé) */
+      pushDeviceCount: result.attempted,
+    });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     if (msg.includes("SUPABASE_SERVICE_ROLE_KEY")) {

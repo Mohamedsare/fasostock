@@ -1,7 +1,7 @@
 "use client";
 
 import { enqueueOutbox } from "@/lib/db/dexie-db";
-import { fireAndForgetCompanyOwnersPush } from "@/lib/features/push/company-owners-push-client";
+import { notifyCompanyOwnersPush } from "@/lib/features/push/company-owners-push-client";
 import { listCategories, listProducts, listStoreInventory } from "@/lib/features/products/api";
 import { firstProductImageUrl } from "@/lib/features/products/product-images";
 import { createClient } from "@/lib/supabase/client";
@@ -269,7 +269,7 @@ export async function adjustStockAtomic(params: {
   const pr = (inv as { product?: { name?: string } | { name?: string }[] }).product;
   const nm = Array.isArray(pr) ? pr[0]?.name : pr?.name;
   const label = String(nm ?? "Produit").trim() || "Produit";
-  fireAndForgetCompanyOwnersPush({
+  void notifyCompanyOwnersPush({
     companyIds: [companyId],
     title: "Rupture de stock",
     body: `${label} est en rupture dans cette boutique.`,

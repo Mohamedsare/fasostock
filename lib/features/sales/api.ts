@@ -1,7 +1,7 @@
 "use client";
 
 import { enqueueOutbox } from "@/lib/db/dexie-db";
-import { fireAndForgetCompanyOwnersPush } from "@/lib/features/push/company-owners-push-client";
+import { notifyCompanyOwnersPush } from "@/lib/features/push/company-owners-push-client";
 import { createClient } from "@/lib/supabase/client";
 import type { SaleItem, SaleStatus } from "./types";
 
@@ -110,7 +110,7 @@ export async function cancelSale(saleId: string): Promise<void> {
 
   const row = snap as { company_id?: string; sale_number?: string } | null;
   if (row?.company_id) {
-    fireAndForgetCompanyOwnersPush({
+    await notifyCompanyOwnersPush({
       companyIds: [row.company_id],
       title: "Vente annulée",
       body: row.sale_number ? `La vente ${row.sale_number} a été annulée.` : "Une vente a été annulée.",

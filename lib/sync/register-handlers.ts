@@ -226,7 +226,7 @@ export function registerOutboxHandlers(): void {
     }>;
     const clientRequestId = String(p.p_client_request_id ?? crypto.randomUUID());
 
-    const { fireAndForgetCompanyOwnersPush } = await import(
+    const { notifyCompanyOwnersPush } = await import(
       "@/lib/features/push/company-owners-push-client"
     );
 
@@ -253,7 +253,7 @@ export function registerOutboxHandlers(): void {
     });
     if (error) throw error;
 
-    fireAndForgetCompanyOwnersPush({
+    await notifyCompanyOwnersPush({
       companyIds: [String(p.companyId ?? "")],
       title: "Nouvelle vente",
       body: "Une vente créée hors ligne a été synchronisée.",
@@ -280,7 +280,7 @@ export function registerOutboxHandlers(): void {
         }
       }
       if (stockoutNames.length > 0) {
-        fireAndForgetCompanyOwnersPush({
+        await notifyCompanyOwnersPush({
           companyIds: [companyId],
           title: "Rupture de stock",
           body:
