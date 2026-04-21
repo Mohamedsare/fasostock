@@ -171,17 +171,22 @@ export async function runPredictionGeneration(params: {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ contextText }),
   });
-  const errText = await res.text();
+  const rawText = await res.text();
   if (!res.ok) {
-    let msg = errText;
+    let msg = rawText;
     try {
-      const j = JSON.parse(errText) as { error?: string };
+      const j = JSON.parse(rawText) as { error?: string };
       if (j.error) msg = j.error;
     } catch {
       /* */
     }
     throw new Error(msg || `Erreur API ${res.status}`);
   }
-  const data = (await res.json()) as { structured: PredictionStructured; text: string };
+  let data: { structured: PredictionStructured; text: string };
+  try {
+    data = JSON.parse(rawText) as { structured: PredictionStructured; text: string };
+  } catch {
+    throw new Error("Réponse IA invalide");
+  }
   return { structured: data.structured, text: data.text, context: ctx };
 }
