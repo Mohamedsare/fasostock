@@ -27,6 +27,21 @@ function trimOrNull(v: string): string | null {
   return t.length ? t : null;
 }
 
+/** Valeur pour `input type="color"` (#rrggbb). Vide ou invalide → `#000000` (affichage seulement ; l’état peut rester vide). */
+function hexForNativeColorInput(raw: string): string {
+  const t = raw.trim();
+  if (/^#[0-9A-Fa-f]{6}$/i.test(t)) {
+    return `#${t.slice(1).toLowerCase()}`;
+  }
+  if (/^#[0-9A-Fa-f]{3}$/i.test(t)) {
+    const r = t[1]!.toLowerCase();
+    const g = t[2]!.toLowerCase();
+    const b = t[3]!.toLowerCase();
+    return `#${r}${r}${g}${g}${b}${b}`;
+  }
+  return "#000000";
+}
+
 export function CreateStoreModal({
   open,
   companyId,
@@ -685,17 +700,21 @@ export function EditStoreModal({
                 <label className="block text-xs font-medium text-neutral-600">
                   Couleur primaire
                   <input
-                    value={primaryColor}
+                    type="color"
+                    value={hexForNativeColorInput(primaryColor)}
                     onChange={(e) => setPrimaryColor(e.target.value)}
-                    className="mt-1 w-full rounded-lg border border-black/[0.12] px-2 py-2 text-sm"
+                    className="mt-1 h-11 w-full min-h-11 cursor-pointer rounded-lg border border-black/[0.12] bg-white p-1"
+                    aria-label="Couleur primaire (facture A4)"
                   />
                 </label>
                 <label className="block text-xs font-medium text-neutral-600">
                   Couleur secondaire
                   <input
-                    value={secondaryColor}
+                    type="color"
+                    value={hexForNativeColorInput(secondaryColor)}
                     onChange={(e) => setSecondaryColor(e.target.value)}
-                    className="mt-1 w-full rounded-lg border border-black/[0.12] px-2 py-2 text-sm"
+                    className="mt-1 h-11 w-full min-h-11 cursor-pointer rounded-lg border border-black/[0.12] bg-white p-1"
+                    aria-label="Couleur secondaire (facture A4)"
                   />
                 </label>
               </div>

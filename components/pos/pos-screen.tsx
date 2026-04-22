@@ -1263,7 +1263,9 @@ export function PosScreen({
                   />
                   <input
                     className={fsInputClass(
-                      "h-9 w-full rounded-lg border-[#E5E7EB] bg-white py-1 pl-10 pr-8 text-xs leading-snug text-[#1F2937] placeholder:text-[#1F2937]/50 sm:text-[13px]",
+                      // fsInputClass inclut `sm:px-3` : sans `sm:pl-*` explicite, le padding gauche
+                      // repasse à ~12px au breakpoint sm et le placeholder chevauche l’icône scanner.
+                      "h-9 w-full rounded-lg border-[#E5E7EB] bg-white py-1 pl-11 pr-9 text-xs leading-snug text-[#1F2937] placeholder:text-[#1F2937]/50 sm:pl-12 sm:pr-10 sm:text-[13px]",
                     )}
                     value={search}
                     onChange={(e) => {
@@ -1298,7 +1300,8 @@ export function PosScreen({
                     />
                     <input
                       className={fsInputClass(
-                        "h-[55px] w-full rounded-xl border-[#E5E7EB] bg-white py-2 pl-11 pr-3 text-sm leading-snug text-[#1F2937] placeholder:text-[#1F2937]/50",
+                        // Même cause que caisse rapide : `fsInputClass` → `sm:px-3` écrase `pl-*` au breakpoint sm.
+                        "h-[55px] w-full rounded-xl border-[#E5E7EB] bg-white py-2 pl-12 pr-3 text-sm leading-snug text-[#1F2937] placeholder:text-[#1F2937]/50 sm:pl-12 sm:pr-3",
                       )}
                       value={search}
                       onChange={(e) => {
@@ -1368,7 +1371,8 @@ export function PosScreen({
                     />
                     <input
                       className={fsInputClass(
-                        "h-9 w-full rounded-lg border-[#E5E7EB] bg-white py-1 pl-8 pr-2.5 text-xs leading-snug text-[#1F2937] placeholder:text-[#1F2937]/50 sm:text-[13px]",
+                        // `sm:px-3` du fsInputClass sans `sm:pl-*` → placeholder sous l’icône loupe.
+                        "h-9 w-full rounded-lg border-[#E5E7EB] bg-white py-1 pl-10 pr-3 text-xs leading-snug text-[#1F2937] placeholder:text-[#1F2937]/50 sm:pl-11 sm:pr-3 sm:text-[13px]",
                       )}
                       value={search}
                       onChange={(e) => {
