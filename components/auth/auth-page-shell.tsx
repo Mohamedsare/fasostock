@@ -69,6 +69,10 @@ export function AuthPageShell({
             className="h-[84px] w-[84px] object-contain sm:h-[100px] sm:w-[100px]"
             priority
           />
+          <p className="text-[2rem] font-extrabold leading-none tracking-tight sm:text-[2.2rem]">
+            <span className="text-[#111827]">Faso</span>
+            <span className="text-[#f97316]">Stock</span>
+          </p>
           {title ? (
             <h1 className="text-[1.65rem] font-bold leading-none tracking-tight text-fs-text sm:text-3xl">
               {title}

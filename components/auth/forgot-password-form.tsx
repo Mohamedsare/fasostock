@@ -68,6 +68,10 @@ export function ForgotPasswordForm() {
               className="h-14 w-14 object-contain sm:h-16 sm:w-16"
               priority
             />
+          <p className="mt-2 text-[2rem] font-extrabold leading-none tracking-tight sm:text-[2.2rem]">
+            <span className="text-[#111827]">Faso</span>
+            <span className="text-[#f97316]">Stock</span>
+          </p>
             <h1 className="mt-2 text-2xl font-bold tracking-tight text-neutral-900 sm:text-[1.65rem]">
               Demande envoyée
             </h1>
@@ -121,6 +125,10 @@ export function ForgotPasswordForm() {
             className="h-14 w-14 object-contain sm:h-16 sm:w-16"
             priority
           />
+          <p className="mt-2 text-[2rem] font-extrabold leading-none tracking-tight sm:text-[2.2rem]">
+            <span className="text-[#111827]">Faso</span>
+            <span className="text-[#f97316]">Stock</span>
+          </p>
           <h1 className="mt-2 text-2xl font-bold tracking-tight text-neutral-900 sm:text-[1.65rem]">
             Mot de passe oublié
           </h1>
