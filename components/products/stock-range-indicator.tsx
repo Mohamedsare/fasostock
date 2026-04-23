@@ -15,10 +15,11 @@ export function StockRangeIndicator({
 }) {
   const t = alertThreshold <= 0 ? 5 : alertThreshold;
   const q = Math.max(0, quantity);
+  const isZero = q === 0;
   const variant = variantFor(q, t);
   const color =
     variant === "danger"
-      ? "bg-red-600"
+      ? "bg-red-700"
       : variant === "warning"
         ? "bg-amber-500"
         : variant === "success"
@@ -26,7 +27,7 @@ export function StockRangeIndicator({
           : "bg-neutral-400";
   const bgTint =
     variant === "danger"
-      ? "bg-red-600/20"
+      ? "bg-red-600/35"
       : variant === "warning"
         ? "bg-amber-500/20"
         : variant === "success"
@@ -34,7 +35,7 @@ export function StockRangeIndicator({
           : "bg-neutral-400/20";
 
   const max = Math.max(q, 2 * t, 10);
-  const percent = max > 0 ? Math.min(1, q / max) : 0;
+  const percent = isZero ? 1 : max > 0 ? Math.min(1, q / max) : 0;
 
   return (
     <div className={cn("flex min-w-0 items-center gap-2", className)}>

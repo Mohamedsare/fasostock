@@ -25,13 +25,12 @@ export const metadata: Metadata = {
     "Gestion de stock, ventes et dépôt — FasoStock Web (offline-first).",
   applicationName: "FasoStock",
   /**
-   * Icônes : copies de `public/logo1.png` dans `app/icon.png` et `app/apple-icon.png`
-   * (convention Next.js — prioritaire sur ce `metadata.icons`).
+   * Icônes globales de l'app (`public/logo2.png`).
    */
   icons: {
-    icon: [{ url: "/logo1.png", type: "image/png" }],
-    apple: "/logo1.png",
-    shortcut: "/logo1.png",
+    icon: [{ url: "/logo2.png", type: "image/png" }],
+    apple: "/logo2.png",
+    shortcut: "/logo2.png",
   },
   appleWebApp: {
     capable: true,

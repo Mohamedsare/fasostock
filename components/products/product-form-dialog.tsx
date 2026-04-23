@@ -251,6 +251,8 @@ export function ProductFormDialog({
     (productScope === "both" || productScope === "boutique_only");
 
   const unitSelectValue = effectiveUnitValue(unit);
+  const canAddCategory = !inlineBusy && newCategory.trim().length > 0;
+  const canAddBrand = !inlineBusy && newBrand.trim().length > 0;
 
   return (
     <div className="fixed inset-0 z-[70] flex items-end justify-center bg-black/45 p-0 sm:items-center sm:p-6">
@@ -528,11 +530,13 @@ export function ProductFormDialog({
                   <button
                     type="button"
                     onClick={() => void handleAddCategory()}
-                    disabled={inlineBusy || !newCategory.trim()}
+                    disabled={!canAddCategory}
                     className={cn(
                       "fs-touch-target inline-flex shrink-0 items-center justify-center rounded-[10px] border-0",
-                      "bg-[var(--fs-pos-orange)] text-white shadow-sm outline-none",
-                      "transition hover:opacity-95 active:scale-[0.99] disabled:opacity-50",
+                      canAddCategory
+                        ? "bg-[var(--fs-pos-orange)] text-white shadow-sm"
+                        : "bg-neutral-200 text-neutral-500",
+                      "outline-none transition active:scale-[0.99] disabled:cursor-not-allowed",
                     )}
                     aria-label="Ajouter catégorie"
                   >
@@ -570,11 +574,13 @@ export function ProductFormDialog({
                   <button
                     type="button"
                     onClick={() => void handleAddBrand()}
-                    disabled={inlineBusy || !newBrand.trim()}
+                    disabled={!canAddBrand}
                     className={cn(
                       "fs-touch-target inline-flex shrink-0 items-center justify-center rounded-[10px] border-0",
-                      "bg-[var(--fs-pos-orange)] text-white shadow-sm outline-none",
-                      "transition hover:opacity-95 active:scale-[0.99] disabled:opacity-50",
+                      canAddBrand
+                        ? "bg-[var(--fs-pos-orange)] text-white shadow-sm"
+                        : "bg-neutral-200 text-neutral-500",
+                      "outline-none transition active:scale-[0.99] disabled:cursor-not-allowed",
                     )}
                     aria-label="Ajouter marque"
                   >

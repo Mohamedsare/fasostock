@@ -114,13 +114,17 @@ export function RegisterForm() {
 
         <div className="flex flex-col items-center text-center">
           <Image
-            src="/logo1.png"
+            src="/logo2.png"
             alt=""
-            width={72}
-            height={72}
-            className="h-14 w-14 object-contain sm:h-16 sm:w-16"
+            width={120}
+            height={120}
+            className="h-20 w-20 object-contain sm:h-24 sm:w-24"
             priority
           />
+          <p className="mt-2 text-[2rem] font-extrabold leading-none tracking-tight sm:text-[2.2rem]">
+            <span className="text-[#111827]">Faso</span>
+            <span className="text-[#f97316]">Stock</span>
+          </p>
           <h1 className="mt-2 text-2xl font-bold tracking-tight text-neutral-900 sm:text-[1.65rem]">
             Créer une entreprise
           </h1>

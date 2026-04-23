@@ -59,14 +59,14 @@ export function AppSidebar({
               "transition-[width] duration-300 ease-[cubic-bezier(0.33,1,0.68,1)]",
               effectiveCollapsed ? "w-[58px]" : "w-[204px]",
             ),
-        "border-r border-black/[0.06] dark:border-white/[0.08]",
-        "bg-fs-card shadow-[inset_-1px_0_0_0_rgba(0,0,0,0.03)] dark:shadow-[inset_-1px_0_0_0_rgba(255,255,255,0.04)]",
+        "border-r border-[color-mix(in_srgb,#f97316_16%,rgba(0,0,0,0.1))] dark:border-white/[0.08]",
+        "bg-[color-mix(in_srgb,#f97316_11%,white)] shadow-[inset_-1px_0_0_0_rgba(0,0,0,0.03)] dark:shadow-[inset_-1px_0_0_0_rgba(255,255,255,0.04)]",
       )}
       aria-label="Navigation"
     >
       {/* Fond décoratif très léger — même famille que la surface principale */}
       <div
-        className="pointer-events-none absolute inset-0 bg-gradient-to-b from-fs-surface-low/80 via-transparent to-fs-surface-container/50 dark:from-white/[0.02] dark:via-transparent dark:to-white/[0.03]"
+        className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[color-mix(in_srgb,#f97316_16%,white)] via-[color-mix(in_srgb,#f97316_7%,transparent)] to-[color-mix(in_srgb,#f97316_12%,white)] dark:from-white/[0.02] dark:via-transparent dark:to-white/[0.03]"
         aria-hidden
       />
 
@@ -169,7 +169,7 @@ export function AppSidebar({
                   "flex shrink-0 items-center justify-center rounded-xl transition-colors duration-200",
                   active
                     ? "bg-[color-mix(in_srgb,var(--fs-accent)_18%,transparent)] text-[var(--fs-accent)]"
-                    : "bg-black/[0.04] text-black group-hover/nav:bg-black/[0.07] group-hover/nav:text-black dark:bg-white/[0.06] dark:text-neutral-100 dark:group-hover/nav:bg-white/[0.1] dark:group-hover/nav:text-white",
+                  : "bg-[color-mix(in_srgb,#f97316_12%,white)] text-black group-hover/nav:bg-[color-mix(in_srgb,#f97316_19%,white)] group-hover/nav:text-black dark:bg-white/[0.06] dark:text-neutral-100 dark:group-hover/nav:bg-white/[0.1] dark:group-hover/nav:text-white",
                   effectiveCollapsed ? "h-9 w-9" : "h-8 w-8",
                 )}
                 aria-hidden
@@ -195,10 +195,10 @@ export function AppSidebar({
             aria-label="Fermer le menu"
             className={cn(
               "group/drawer-close flex w-full items-center justify-between gap-3 rounded-full px-4 py-3",
-              "bg-neutral-100 text-fs-text",
+              "bg-[color-mix(in_srgb,#f97316_14%,white)] text-fs-text",
               "shadow-[0_2px_10px_rgba(0,0,0,0.07)]",
               "transition-[transform,background-color,box-shadow] duration-200",
-              "hover:bg-neutral-50 hover:shadow-[0_3px_12px_rgba(0,0,0,0.08)] active:scale-[0.98]",
+              "hover:bg-[color-mix(in_srgb,#f97316_20%,white)] hover:shadow-[0_3px_12px_rgba(0,0,0,0.08)] active:scale-[0.98]",
               "dark:bg-white/[0.09] dark:shadow-[0_2px_14px_rgba(0,0,0,0.35)] dark:hover:bg-white/[0.12]",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--fs-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-fs-card",
             )}

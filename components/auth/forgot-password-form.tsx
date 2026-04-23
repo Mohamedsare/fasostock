@@ -61,7 +61,7 @@ export function ForgotPasswordForm() {
         <div className="rounded-2xl border border-neutral-200/80 bg-white p-5 shadow-[0_8px_32px_rgba(0,0,0,0.06)] sm:p-6">
           <div className="flex flex-col items-center text-center">
             <Image
-              src="/logo1.png"
+              src="/logo2.png"
               alt=""
               width={72}
               height={72}
@@ -114,7 +114,7 @@ export function ForgotPasswordForm() {
 
         <div className="flex flex-col items-center text-center">
           <Image
-            src="/logo1.png"
+            src="/logo2.png"
             alt=""
             width={72}
             height={72}

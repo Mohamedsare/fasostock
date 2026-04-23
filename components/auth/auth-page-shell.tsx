@@ -62,7 +62,7 @@ export function AuthPageShell({
       <div className="text-center">
         <div className="mx-auto flex flex-col items-center gap-0.5">
           <Image
-            src="/logo1.png"
+            src="/logo2.png"
             alt={title ? "" : "FasoStock"}
             width={112}
             height={112}

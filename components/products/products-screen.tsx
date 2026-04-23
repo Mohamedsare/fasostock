@@ -301,6 +301,10 @@ export function ProductsScreen() {
     (safePage + 1) * PAGE_SIZE,
     filtered.length,
   );
+  const canAddCategoryInline =
+    newCategory.trim().length > 0 && !mutateCreateCategory.isPending;
+  const canAddBrandInline =
+    newBrand.trim().length > 0 && !mutateCreateBrand.isPending;
 
   if (ctx.isLoading || permLoading) return <LoadingState />;
   if (!ctx.data) {
@@ -650,10 +654,16 @@ export function ProductsScreen() {
               <button
                 type="button"
                 onClick={() => {
-                  if (!newCategory.trim()) return;
+                  if (!canAddCategoryInline) return;
                   mutateCreateCategory.mutate(newCategory);
                 }}
-                className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-neutral-200/90 text-neutral-800 active:bg-neutral-300/90"
+                disabled={!canAddCategoryInline}
+                className={cn(
+                  "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition",
+                  canAddCategoryInline
+                    ? "bg-[#f97316] text-white shadow-sm active:scale-[0.99]"
+                    : "bg-neutral-200/90 text-neutral-500 disabled:cursor-not-allowed",
+                )}
                 aria-label="Ajouter la catégorie"
               >
                 <MdAdd className="h-6 w-6" aria-hidden />
@@ -720,10 +730,16 @@ export function ProductsScreen() {
               <button
                 type="button"
                 onClick={() => {
-                  if (!newBrand.trim()) return;
+                  if (!canAddBrandInline) return;
                   mutateCreateBrand.mutate(newBrand);
                 }}
-                className="inline-flex h-11 w-full shrink-0 items-center justify-center rounded-xl bg-neutral-200/90 text-neutral-800 min-[260px]:w-11 active:bg-neutral-300/90"
+                disabled={!canAddBrandInline}
+                className={cn(
+                  "inline-flex h-11 w-full shrink-0 items-center justify-center rounded-xl transition min-[260px]:w-11",
+                  canAddBrandInline
+                    ? "bg-[#f97316] text-white shadow-sm active:scale-[0.99]"
+                    : "bg-neutral-200/90 text-neutral-500 disabled:cursor-not-allowed",
+                )}
                 aria-label="Ajouter la marque"
               >
                 <MdAdd className="h-6 w-6" aria-hidden />

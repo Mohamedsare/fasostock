@@ -35,7 +35,7 @@ export function SelectBusinessTypeScreen() {
 
         <div className="flex flex-col items-center text-center">
           <Image
-            src="/logo1.png"
+            src="/logo2.png"
             alt=""
             width={80}
             height={80}
