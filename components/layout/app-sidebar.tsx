@@ -59,14 +59,14 @@ export function AppSidebar({
               "transition-[width] duration-300 ease-[cubic-bezier(0.33,1,0.68,1)]",
               effectiveCollapsed ? "w-[58px]" : "w-[204px]",
             ),
-        "border-r border-[color-mix(in_srgb,#f97316_16%,rgba(0,0,0,0.1))] dark:border-white/[0.08]",
-        "bg-[color-mix(in_srgb,#f97316_11%,white)] shadow-[inset_-1px_0_0_0_rgba(0,0,0,0.03)] dark:shadow-[inset_-1px_0_0_0_rgba(255,255,255,0.04)]",
+        "border-r border-[color-mix(in_srgb,#f97316_16%,rgba(0,0,0,0.1))] dark:border-[#7c3a12]",
+        "bg-[color-mix(in_srgb,#f97316_11%,white)] shadow-[inset_-1px_0_0_0_rgba(0,0,0,0.03)] dark:bg-[#2a140a] dark:shadow-[inset_-1px_0_0_0_rgba(255,255,255,0.04)]",
       )}
       aria-label="Navigation"
     >
       {/* Fond décoratif très léger — même famille que la surface principale */}
       <div
-        className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[color-mix(in_srgb,#f97316_16%,white)] via-[color-mix(in_srgb,#f97316_7%,transparent)] to-[color-mix(in_srgb,#f97316_12%,white)] dark:from-white/[0.02] dark:via-transparent dark:to-white/[0.03]"
+        className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[color-mix(in_srgb,#f97316_16%,white)] via-[color-mix(in_srgb,#f97316_7%,transparent)] to-[color-mix(in_srgb,#f97316_12%,white)] dark:from-[#3a1d0f] dark:via-[#2f170c] dark:to-[#241108]"
         aria-hidden
       />
 
@@ -148,7 +148,7 @@ export function AppSidebar({
                 effectiveCollapsed ? "justify-center px-2 py-3" : "gap-3 px-3 py-2.5",
                 active
                   ? [
-                      "bg-[color-mix(in_srgb,var(--fs-accent)_13%,transparent)] text-[var(--fs-accent)]",
+                      "bg-[color-mix(in_srgb,var(--fs-accent)_13%,transparent)] text-[var(--fs-accent)] dark:bg-[#f97316]/35 dark:text-white",
                       "shadow-[0_1px_2px_rgba(0,0,0,0.04),inset_0_1px_0_rgba(255,255,255,0.45)]",
                       "dark:shadow-[0_1px_3px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.06)]",
                     ]
@@ -168,7 +168,7 @@ export function AppSidebar({
                 className={cn(
                   "flex shrink-0 items-center justify-center rounded-xl transition-colors duration-200",
                   active
-                    ? "bg-[color-mix(in_srgb,var(--fs-accent)_18%,transparent)] text-[var(--fs-accent)]"
+                    ? "bg-[color-mix(in_srgb,var(--fs-accent)_18%,transparent)] text-[var(--fs-accent)] dark:bg-[#f97316]/28 dark:text-white"
                   : "bg-[color-mix(in_srgb,#f97316_12%,white)] text-black group-hover/nav:bg-[color-mix(in_srgb,#f97316_19%,white)] group-hover/nav:text-black dark:bg-white/[0.06] dark:text-neutral-100 dark:group-hover/nav:bg-white/[0.1] dark:group-hover/nav:text-white",
                   effectiveCollapsed ? "h-9 w-9" : "h-8 w-8",
                 )}
@@ -199,7 +199,7 @@ export function AppSidebar({
               "shadow-[0_2px_10px_rgba(0,0,0,0.07)]",
               "transition-[transform,background-color,box-shadow] duration-200",
               "hover:bg-[color-mix(in_srgb,#f97316_20%,white)] hover:shadow-[0_3px_12px_rgba(0,0,0,0.08)] active:scale-[0.98]",
-              "dark:bg-white/[0.09] dark:shadow-[0_2px_14px_rgba(0,0,0,0.35)] dark:hover:bg-white/[0.12]",
+              "dark:bg-[#4a2413] dark:text-white dark:shadow-[0_2px_14px_rgba(0,0,0,0.35)] dark:hover:bg-[#5a2b16]",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--fs-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-fs-card",
             )}
           >
@@ -226,7 +226,7 @@ export function AppSidebar({
               "group/collapse flex w-full items-center rounded-2xl border border-black/[0.07] bg-fs-surface-container/60 text-fs-on-surface-variant",
               "shadow-sm transition-[color,background-color,transform,border-color] duration-200",
               "hover:border-black/[0.1] hover:bg-fs-surface-container hover:text-fs-text",
-              "active:scale-[0.98] dark:border-white/[0.1] dark:bg-white/[0.04] dark:hover:border-white/[0.14] dark:hover:bg-white/[0.07]",
+              "active:scale-[0.98] dark:border-white/[0.18] dark:bg-white/[0.08] dark:text-white dark:hover:border-white/[0.26] dark:hover:bg-white/[0.13]",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--fs-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-fs-card",
               effectiveCollapsed ? "justify-center p-3" : "justify-between gap-2 px-3 py-2.5",
             )}
@@ -253,6 +253,7 @@ export function AppSidebar({
           <div
             className={cn(
               "rounded-2xl border border-black/[0.05] bg-fs-surface-low/90 px-2.5 py-2 dark:border-white/[0.07] dark:bg-white/[0.04]",
+              "dark:border-white/[0.16] dark:bg-white/[0.07]",
               effectiveCollapsed && "flex justify-center border-0 bg-transparent p-0",
             )}
           >

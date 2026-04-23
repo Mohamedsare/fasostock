@@ -15,6 +15,7 @@ import {
   savePrinterAssociations,
   type PrinterScope,
   type StoredPrinterAssociations,
+  type ThermalPaperWidthMm,
 } from "@/lib/features/printers/printer-config-storage";
 import {
   connectQz,
@@ -69,6 +70,8 @@ export function PrintersScreen() {
   const [userId, setUserId] = useState<string | null>(null);
   const [scope, setScope] = useState<PrinterScope>("user");
   const [thermal, setThermal] = useState<string>("");
+  const [thermalPaperWidthMm, setThermalPaperWidthMm] =
+    useState<ThermalPaperWidthMm>(80);
   const [a4, setA4] = useState<string>("");
   const [dirty, setDirty] = useState(false);
 
@@ -104,11 +107,13 @@ export function PrintersScreen() {
     const s = loadPrinterAssociations(storageKey);
     if (s) {
       setThermal(s.thermalPrinterName ?? "");
+      setThermalPaperWidthMm(s.thermalPaperWidthMm ?? 80);
       setA4(s.a4PrinterName ?? "");
       setScope(s.scope);
       setDirty(false);
     } else {
       setThermal("");
+      setThermalPaperWidthMm(80);
       setA4("");
       setDirty(false);
     }
@@ -176,12 +181,13 @@ export function PrintersScreen() {
     }
     savePrinterAssociations(storageKey, {
       thermalPrinterName: thermal.trim() || null,
+      thermalPaperWidthMm,
       a4PrinterName: a4.trim() || null,
       scope,
     });
     setDirty(false);
     toast.success("Configuration enregistrée sur cet appareil");
-  }, [storageKey, thermal, a4, scope]);
+  }, [storageKey, thermal, thermalPaperWidthMm, a4, scope]);
 
   const testThermal = useCallback(async () => {
     const name = thermal.trim();
@@ -193,14 +199,14 @@ export function PrintersScreen() {
     try {
       const qz = await loadQz();
       await connectQz(qz);
-      await printThermalTest(qz, name);
+      await printThermalTest(qz, name, thermalPaperWidthMm);
       toast.success("Test ticket envoyé");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : String(e));
     } finally {
       setQzBusy(false);
     }
-  }, [thermal]);
+  }, [thermal, thermalPaperWidthMm]);
 
   const testA4 = useCallback(async () => {
     const name = a4.trim();
@@ -230,6 +236,7 @@ export function PrintersScreen() {
     } = {
       v: 2,
       thermalPrinterName: thermal.trim() || null,
+      thermalPaperWidthMm,
       a4PrinterName: a4.trim() || null,
       scope,
       updatedAt: new Date().toISOString(),
@@ -246,7 +253,7 @@ export function PrintersScreen() {
     a.click();
     URL.revokeObjectURL(a.href);
     toast.success("Fichier exporté");
-  }, [userId, companyId, thermal, a4, scope]);
+  }, [userId, companyId, thermal, thermalPaperWidthMm, a4, scope]);
 
   const onImportFile = useCallback(
     (ev: ChangeEvent<HTMLInputElement>) => {
@@ -259,12 +266,14 @@ export function PrintersScreen() {
           const text = String(reader.result ?? "");
           const j = JSON.parse(text) as Partial<StoredPrinterAssociations> & {
             thermalPrinterName?: unknown;
+            thermalPaperWidthMm?: unknown;
             a4PrinterName?: unknown;
           };
           if (j.v !== 2) throw new Error("Version non supportée");
           setThermal(
             typeof j.thermalPrinterName === "string" ? j.thermalPrinterName : "",
           );
+          setThermalPaperWidthMm(j.thermalPaperWidthMm === 58 ? 58 : 80);
           setA4(typeof j.a4PrinterName === "string" ? j.a4PrinterName : "");
           setScope(j.scope === "device" ? "device" : "user");
           setDirty(true);
@@ -497,7 +506,7 @@ export function PrintersScreen() {
           <label className="mt-3 block text-xs font-medium text-neutral-700 dark:text-neutral-300">
             Imprimante
             <select
-              className={cn(fsInputClass, "mt-1.5 w-full")}
+              className={fsInputClass("mt-1.5 w-full")}
               value={thermal}
               onChange={(e) => {
                 setThermal(e.target.value);
@@ -512,6 +521,23 @@ export function PrintersScreen() {
               ))}
             </select>
           </label>
+          <label className="mt-3 block text-xs font-medium text-neutral-700 dark:text-neutral-300">
+            Largeur papier
+            <select
+              className={fsInputClass("mt-1.5 w-full")}
+              value={String(thermalPaperWidthMm)}
+              onChange={(e) => {
+                setThermalPaperWidthMm(e.target.value === "58" ? 58 : 80);
+                setDirty(true);
+              }}
+            >
+              <option value="80">80 mm (recommandé)</option>
+              <option value="58">58 mm</option>
+            </select>
+          </label>
+          <p className="mt-1 text-xs text-neutral-600">
+            Le rendu ticket PDF s&apos;adapte automatiquement (58 mm ou 80 mm).
+          </p>
           <button
             type="button"
             disabled={qzBusy}
@@ -530,7 +556,7 @@ export function PrintersScreen() {
           <label className="mt-3 block text-xs font-medium text-neutral-700 dark:text-neutral-300">
             Imprimante
             <select
-              className={cn(fsInputClass, "mt-1.5 w-full")}
+              className={fsInputClass("mt-1.5 w-full")}
               value={a4}
               onChange={(e) => {
                 setA4(e.target.value);

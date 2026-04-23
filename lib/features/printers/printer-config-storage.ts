@@ -6,10 +6,12 @@
 export const PRINTER_CONFIG_VERSION = 2 as const;
 
 export type PrinterScope = "user" | "device";
+export type ThermalPaperWidthMm = 58 | 80;
 
 export type StoredPrinterAssociations = {
   v: typeof PRINTER_CONFIG_VERSION;
   thermalPrinterName: string | null;
+  thermalPaperWidthMm: ThermalPaperWidthMm;
   a4PrinterName: string | null;
   scope: PrinterScope;
   updatedAt: string;
@@ -61,6 +63,7 @@ export function loadPrinterAssociations(
         typeof parsed.thermalPrinterName === "string"
           ? parsed.thermalPrinterName
           : null,
+      thermalPaperWidthMm: parsed.thermalPaperWidthMm === 58 ? 58 : 80,
       a4PrinterName:
         typeof parsed.a4PrinterName === "string" ? parsed.a4PrinterName : null,
       scope: parsed.scope === "device" ? "device" : "user",
@@ -81,12 +84,18 @@ export function loadPrinterAssociations(
 export function getPrinterSelectionForSession(
   userId: string,
   companyId: string,
-): { thermal: string | null; a4: string | null; scope: PrinterScope } | null {
+): {
+  thermal: string | null;
+  thermalPaperWidthMm: ThermalPaperWidthMm;
+  a4: string | null;
+  scope: PrinterScope;
+} | null {
   const userKey = buildPrinterConfigStorageKey(userId, companyId, "user");
   const u = loadPrinterAssociations(userKey);
   if (u && (u.thermalPrinterName || u.a4PrinterName)) {
     return {
       thermal: u.thermalPrinterName,
+      thermalPaperWidthMm: u.thermalPaperWidthMm,
       a4: u.a4PrinterName,
       scope: "user",
     };
@@ -96,6 +105,7 @@ export function getPrinterSelectionForSession(
   if (d && (d.thermalPrinterName || d.a4PrinterName)) {
     return {
       thermal: d.thermalPrinterName,
+      thermalPaperWidthMm: d.thermalPaperWidthMm,
       a4: d.a4PrinterName,
       scope: "device",
     };
@@ -112,6 +122,7 @@ export function savePrinterAssociations(
   const payload: StoredPrinterAssociations = {
     v: PRINTER_CONFIG_VERSION,
     thermalPrinterName: data.thermalPrinterName,
+    thermalPaperWidthMm: data.thermalPaperWidthMm === 58 ? 58 : 80,
     a4PrinterName: data.a4PrinterName,
     scope: data.scope,
     updatedAt: data.updatedAt ?? new Date().toISOString(),

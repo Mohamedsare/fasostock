@@ -15,6 +15,7 @@ import { posEffectiveUnitPrice } from "@/lib/features/pos/wholesale-unit-price";
 import { defaultInvoiceUnitForProduct, INVOICE_UNITS } from "@/lib/features/pos/invoice-units";
 import { factureTabStripHeightPx } from "@/lib/utils/facture-tab-layout";
 import { fetchInvoiceTablePosEnabled } from "@/lib/features/settings/invoice-table-pos";
+import { getPrinterSelectionForSession } from "@/lib/features/printers/printer-config-storage";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { ROUTES, storeFactureTabPath } from "@/lib/config/routes";
 import { queryKeys } from "@/lib/query/query-keys";
@@ -157,6 +158,28 @@ export function PosScreen({
     },
     staleTime: 5 * 60_000,
   });
+  const authUserIdQ = useQuery({
+    queryKey: ["pos-auth-user-id"] as const,
+    queryFn: async () => {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      return user?.id ?? null;
+    },
+    staleTime: 5 * 60_000,
+  });
+  const thermalPaperWidthMm: 58 | 80 = useMemo(() => {
+    if (!companyId || !authUserIdQ.data) return 80;
+    try {
+      return (
+        getPrinterSelectionForSession(authUserIdQ.data, companyId)
+          ?.thermalPaperWidthMm ?? 80
+      );
+    } catch {
+      return 80;
+    }
+  }, [companyId, authUserIdQ.data]);
 
   useEffect(() => {
     const t = setInterval(() => {
@@ -678,7 +701,9 @@ export function PosScreen({
         }
         if (auto) {
           try {
-            const blob = await generateReceiptThermalPdfBlob(ticketData);
+            const blob = await generateReceiptThermalPdfBlob(ticketData, {
+              paperWidthMm: thermalPaperWidthMm,
+            });
             printInvoicePdf(blob);
           } catch (e) {
             toast.error(messageFromUnknownError(e, "Impression ticket impossible."));
@@ -1689,7 +1714,11 @@ export function PosScreen({
         />
       ) : null}
       {receiptDialog ? (
-        <ReceiptTicketDialog data={receiptDialog} onClose={() => setReceiptDialog(null)} />
+        <ReceiptTicketDialog
+          data={receiptDialog}
+          paperWidthMm={thermalPaperWidthMm}
+          onClose={() => setReceiptDialog(null)}
+        />
       ) : null}
 
       {mode === "quick" ? (

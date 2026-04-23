@@ -10,9 +10,11 @@ import { MdClose, MdPrint } from "react-icons/md";
 
 export function ReceiptTicketDialog({
   data,
+  paperWidthMm = 80,
   onClose,
 }: {
   data: ReceiptTicketData;
+  paperWidthMm?: 58 | 80;
   onClose: () => void;
 }) {
   const [printing, setPrinting] = useState(false);
@@ -21,7 +23,7 @@ export function ReceiptTicketDialog({
     setPrinting(true);
     try {
       toast.info("Impression en cours…");
-      const blob = await generateReceiptThermalPdfBlob(data);
+      const blob = await generateReceiptThermalPdfBlob(data, { paperWidthMm });
       printInvoicePdf(blob);
       window.setTimeout(() => {
         toast.success("Ticket envoyé à l'imprimante.");

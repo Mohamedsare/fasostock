@@ -99,14 +99,15 @@ export async function listPrintersDetailed(
   return [{ name: String(names) }];
 }
 
-function escPosTestTicket(): string {
+function escPosTestTicket(paperWidthMm: 58 | 80): string {
   const ESC = "\x1B";
   const GS = "\x1D";
+  const dash = paperWidthMm === 58 ? "----------------" : "------------------------";
   const lines = [
     ESC + "@",
     ESC + "a" + "\x01",
-    "FasoStock — test ticket\n",
-    "------------------------\n",
+    `FasoStock — test ticket (${paperWidthMm}mm)\n`,
+    `${dash}\n`,
     "Impression thermique OK\n",
     "\n\n",
     GS + "V" + "\x00",
@@ -126,6 +127,7 @@ h1{font-size:16pt;margin:0 0 8px} .muted{color:#555;font-size:10pt}
 export async function printThermalTest(
   qz: QzModule["default"],
   printerName: string,
+  paperWidthMm: 58 | 80 = 80,
 ): Promise<void> {
   const config = qz.configs.create(printerName);
   await qz.print(config, [
@@ -133,7 +135,7 @@ export async function printThermalTest(
       type: "raw",
       format: "command",
       flavor: "plain",
-      data: escPosTestTicket(),
+      data: escPosTestTicket(paperWidthMm),
     },
   ]);
 }

@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { htmlToPdfBufferThermal } from "@/lib/server/pdf/html-to-pdf";
-import { parseReceiptThermalPayload } from "@/lib/server/pdf/parse-pdf-payload";
+import {
+  parseReceiptThermalPaperWidth,
+  parseReceiptThermalPayload,
+} from "@/lib/server/pdf/parse-pdf-payload";
 import { renderReceiptThermalHtml } from "@/lib/server/pdf/receipt-thermal-html";
 
 export const runtime = "nodejs";
@@ -11,8 +14,9 @@ export async function POST(req: Request) {
   try {
     const json: unknown = await req.json();
     const data = parseReceiptThermalPayload(json);
+    const paperWidthMm = parseReceiptThermalPaperWidth(json);
     const html = await renderReceiptThermalHtml(data);
-    const buf = await htmlToPdfBufferThermal(html);
+    const buf = await htmlToPdfBufferThermal(html, paperWidthMm);
     return new NextResponse(new Uint8Array(buf), {
       status: 200,
       headers: {

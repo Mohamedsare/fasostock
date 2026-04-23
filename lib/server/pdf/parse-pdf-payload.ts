@@ -30,6 +30,12 @@ export function parseReceiptThermalPayload(json: unknown): ReceiptTicketData {
   return { ...(rest as Omit<ReceiptTicketData, "date">), date };
 }
 
+export function parseReceiptThermalPaperWidth(json: unknown): 58 | 80 {
+  if (!json || typeof json !== "object") return 80;
+  const o = json as Record<string, unknown>;
+  return o.paperWidthMm === 58 ? 58 : 80;
+}
+
 export function parseReportsPayload(json: unknown): {
   data: ReportsPageData;
   meta: { title: string; subtitle: string };

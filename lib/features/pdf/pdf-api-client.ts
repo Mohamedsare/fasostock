@@ -19,10 +19,14 @@ export function invoicePayloadJson(data: InvoiceA4Data): string {
   });
 }
 
-export function receiptPayloadJson(data: ReceiptTicketData): string {
+export function receiptPayloadJson(
+  data: ReceiptTicketData,
+  opts?: { paperWidthMm?: 58 | 80 },
+): string {
   return JSON.stringify({
     ...data,
     date: data.date instanceof Date ? data.date.toISOString() : data.date,
+    paperWidthMm: opts?.paperWidthMm === 58 ? 58 : 80,
   });
 }
 
@@ -54,8 +58,9 @@ export async function fetchInvoicePdfBlob(data: InvoiceA4Data): Promise<Blob> {
 
 export async function fetchReceiptThermalPdfBlob(
   data: ReceiptTicketData,
+  opts?: { paperWidthMm?: 58 | 80 },
 ): Promise<Blob> {
-  return postPdf("/api/pdf/receipt-thermal", receiptPayloadJson(data));
+  return postPdf("/api/pdf/receipt-thermal", receiptPayloadJson(data, opts));
 }
 
 export async function fetchReportsPdfBlob(
