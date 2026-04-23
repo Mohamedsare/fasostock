@@ -497,7 +497,7 @@ export function BarcodesScreen() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Rechercher nom, SKU, code-barres..."
-          className={fsInputClass("pl-9")}
+          className={fsInputClass("pl-10")}
         />
       </div>
 

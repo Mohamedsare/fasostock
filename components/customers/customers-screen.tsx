@@ -15,12 +15,12 @@ import {
   listCustomers,
   updateCustomer,
 } from "@/lib/features/customers/api";
-import { customersToCsv } from "@/lib/features/customers/csv";
+import { customersToSpreadsheetMatrix } from "@/lib/features/customers/csv";
 import type { Customer } from "@/lib/features/customers/types";
 import { usePermissions } from "@/lib/features/permissions/use-permissions";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { queryKeys } from "@/lib/query/query-keys";
-import { downloadCsv } from "@/lib/utils/csv";
+import { downloadProSpreadsheet } from "@/lib/utils/spreadsheet-export-pro";
 import { cn } from "@/lib/utils/cn";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
@@ -39,7 +39,7 @@ import {
   MdPhone,
   MdSearch,
 } from "react-icons/md";
-import { toast, toastMutationError } from "@/lib/toast";
+import { messageFromUnknownError, toast, toastMutationError } from "@/lib/toast";
 
 const PAGE_SIZE = 20;
 
@@ -302,12 +302,21 @@ export function CustomersScreen() {
     setFormOpen(true);
   }
 
-  function exportCsv() {
+  function exportExcel() {
     if (filtered.length === 0) return;
-    const csv = customersToCsv(filtered);
-    const date = new Date().toISOString().slice(0, 10);
-    downloadCsv(`clients-${date}.csv`, csv);
-    toast.success("CSV enregistré");
+    void (async () => {
+      try {
+        const date = new Date().toISOString().slice(0, 10);
+        const { headers, rows } = customersToSpreadsheetMatrix(filtered);
+        await downloadProSpreadsheet(`clients-${date}.xlsx`, "Clients", headers, rows, {
+          title: "FasoStock — Clients",
+          subtitle: `${filtered.length} client(s) · ${date}`,
+        });
+        toast.success("Excel enregistré");
+      } catch (e) {
+        toast.error(messageFromUnknownError(e, "Export Excel impossible."));
+      }
+    })();
   }
 
   if (permLoading) {
@@ -347,9 +356,9 @@ export function CustomersScreen() {
               {filtered.length > 0 ? (
                 <button
                   type="button"
-                  onClick={exportCsv}
+                  onClick={exportExcel}
                   className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-fs-surface-container text-fs-text shadow-sm ring-1 ring-black/[0.06] active:scale-[0.98]"
-                  aria-label="Enregistrer CSV"
+                  aria-label="Exporter Excel"
                 >
                   <MdDownload className="h-6 w-6" aria-hidden />
                 </button>
@@ -381,9 +390,9 @@ export function CustomersScreen() {
             {filtered.length > 0 ? (
               <button
                 type="button"
-                onClick={exportCsv}
+                onClick={exportExcel}
                 className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-fs-surface-container text-fs-text shadow-sm ring-1 ring-black/[0.06] active:scale-[0.98]"
-                aria-label="Enregistrer CSV"
+                aria-label="Exporter Excel"
               >
                 <MdDownload className="h-6 w-6" aria-hidden />
               </button>

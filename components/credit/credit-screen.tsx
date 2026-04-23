@@ -47,7 +47,9 @@ import { usePermissions } from "@/lib/features/permissions/use-permissions";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { queryKeys } from "@/lib/query/query-keys";
 import { formatCurrency } from "@/lib/utils/currency";
-import { downloadCsv, escapeCsv } from "@/lib/utils/csv";
+import { messageFromUnknownError, toast } from "@/lib/toast";
+import { creditSalesToSpreadsheetMatrix } from "@/lib/features/credit/csv";
+import { downloadProSpreadsheet } from "@/lib/utils/spreadsheet-export-pro";
 import { cn } from "@/lib/utils/cn";
 import { CreditDetailPanel } from "./credit-detail-panel";
 import { CreditQuickPayDialog } from "./credit-quick-pay-dialog";
@@ -288,29 +290,25 @@ export function CreditScreen() {
       String((creditQ.error as Error).message ?? ""),
     );
 
-  function exportSalesCsv() {
-    const head =
-      "reference,client,telephone,date,boutique,total,encaisse,reste,echeance,statut,retard_jours,vendeur";
-    const lines = [head];
-    for (const s of filteredSales) {
-      lines.push(
-        [
-          escapeCsv(s.sale_number),
-          escapeCsv(s.customer?.name ?? ""),
-          escapeCsv(s.customer?.phone ?? ""),
-          escapeCsv(format(new Date(s.created_at), "yyyy-MM-dd")),
-          escapeCsv(s.store?.name ?? ""),
-          escapeCsv(String(s.total)),
-          escapeCsv(String(paidTotal(s))),
-          escapeCsv(String(remainingTotal(s))),
-          escapeCsv(format(effectiveDueDate(s), "yyyy-MM-dd")),
-          escapeCsv(CREDIT_STATUS_LABELS[creditLineStatus(s)]),
-          escapeCsv(String(daysOverdue(s))),
-          escapeCsv(s.created_by_label ?? ""),
-        ].join(","),
-      );
-    }
-    downloadCsv(`credit-ventes-${toIsoDate(new Date())}.csv`, lines.join("\n"));
+  function exportSalesExcel() {
+    void (async () => {
+      try {
+        const { headers, rows } = creditSalesToSpreadsheetMatrix(filteredSales);
+        await downloadProSpreadsheet(
+          `credit-ventes-${toIsoDate(new Date())}.xlsx`,
+          "Ventes à crédit",
+          headers,
+          rows,
+          {
+            title: "FasoStock — Crédit client",
+            subtitle: `${filteredSales.length} vente(s) · ${format(new Date(), "PPP", { locale: fr })}`,
+          },
+        );
+        toast.success("Excel enregistré");
+      } catch (e) {
+        toast.error(messageFromUnknownError(e, "Export Excel impossible."));
+      }
+    })();
   }
 
   if (permLoading || ctx.isLoading) {
@@ -445,11 +443,11 @@ export function CreditScreen() {
             {canExport ? (
               <button
                 type="button"
-                onClick={() => exportSalesCsv()}
+                onClick={() => exportSalesExcel()}
                 className="inline-flex h-8 items-center gap-1 rounded-lg border border-black/10 bg-fs-surface-container px-2.5 text-xs font-semibold dark:border-white/10"
               >
                 <MdDownload className="h-4 w-4 shrink-0" aria-hidden />
-                CSV
+                Excel
               </button>
             ) : null}
           </div>

@@ -1,8 +1,8 @@
 "use client";
 
-import * as XLSX from "xlsx";
 import type { ReportsPageData } from "@/lib/features/dashboard/types";
 import { fetchReportsPdfBlob } from "@/lib/features/pdf/pdf-api-client";
+import { downloadProWorkbook } from "@/lib/utils/spreadsheet-export-pro";
 
 export async function downloadReportsPdfBlob(
   data: ReportsPageData,
@@ -26,59 +26,77 @@ export function downloadReportsPdf(
   });
 }
 
-export function downloadReportsExcel(data: ReportsPageData): void {
-  const wb = XLSX.utils.book_new();
-
-  const summary = [
-    ["Indicateur", "Valeur"],
+export async function downloadReportsExcel(data: ReportsPageData): Promise<void> {
+  const summaryRows = [
     ["CA ventes", data.salesSummary.totalAmount],
     ["Nb ventes", data.salesSummary.count],
-    ["Panier moyen", data.ticketAverage],
+    ["Articles vendus", data.salesSummary.itemsSold],
     ["Marge", data.salesSummary.margin],
     ["Taux marge %", data.marginRatePercent],
+    ["Panier moyen", data.ticketAverage],
     ["Achats", data.purchasesSummary.totalAmount],
+    ["Nb commandes achats", data.purchasesSummary.count],
     ["Valeur stock", data.stockValue.totalValue],
+    ["Nb produits stock", data.stockValue.productCount],
+    ["Alertes stock (périmètre)", data.lowStockCount],
   ];
-  XLSX.utils.book_append_sheet(
-    wb,
-    XLSX.utils.aoa_to_sheet(summary),
-    "Synthèse",
-  );
 
-  const top = [
-    ["Produit", "Qté", "CA", "Marge"],
-    ...data.topProducts.map((p) => [
-      p.productName,
-      p.quantitySold,
-      p.revenue,
-      p.margin,
-    ]),
+  const topRows = data.topProducts.map((p) => [
+    p.productName,
+    p.quantitySold,
+    p.revenue,
+    p.margin,
+  ]);
+
+  const leastRows = data.leastProducts.map((p) => [
+    p.productName,
+    p.quantitySold,
+    p.revenue,
+    p.margin,
+  ]);
+
+  const catRows = data.salesByCategory.map((c) => [c.categoryName, c.revenue, c.quantity]);
+
+  const dayRows = data.salesByDay.map((d) => [d.date, d.total, d.count]);
+
+  const sheets: {
+    name: string;
+    headers: string[];
+    rows: (string | number)[][];
+  }[] = [
+    { name: "Synthèse", headers: ["Indicateur", "Valeur"], rows: summaryRows },
+    { name: "Top produits", headers: ["Produit", "Qté", "CA", "Marge"], rows: topRows },
+    { name: "Moins vendus", headers: ["Produit", "Qté", "CA", "Marge"], rows: leastRows },
+    { name: "Catégories", headers: ["Catégorie", "CA", "Qté"], rows: catRows },
+    { name: "CA par jour", headers: ["Date", "CA", "Nb ventes"], rows: dayRows },
   ];
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(top), "Top produits");
 
-  const cat = [
-    ["Catégorie", "CA", "Qté"],
-    ...data.salesByCategory.map((c) => [
-      c.categoryName,
-      c.revenue,
-      c.quantity,
-    ]),
-  ];
-  XLSX.utils.book_append_sheet(
-    wb,
-    XLSX.utils.aoa_to_sheet(cat),
-    "Catégories",
-  );
+  if (data.stockReport) {
+    const sr = data.stockReport;
+    const stockSummary = [
+      ["Entrées (mouv.)", sr.entries],
+      ["Sorties (mouv.)", sr.exits],
+      ["Net", sr.net],
+      ["Produits en stock", sr.currentStockCount],
+    ];
+    sheets.push({
+      name: "Stock boutique",
+      headers: ["Indicateur", "Valeur"],
+      rows: stockSummary,
+    });
+    const lowRows = sr.lowStock.map((x) => [x.productName, x.quantity, x.threshold]);
+    sheets.push({
+      name: "Alertes stock",
+      headers: ["Produit", "Qté", "Seuil"],
+      rows: lowRows,
+    });
+    const outRows = sr.outOfStock.map((x) => [x.productName, x.quantity, x.threshold]);
+    sheets.push({
+      name: "Ruptures",
+      headers: ["Produit", "Qté", "Seuil"],
+      rows: outRows,
+    });
+  }
 
-  const day = [
-    ["Date", "CA", "Nb ventes"],
-    ...data.salesByDay.map((d) => [d.date, d.total, d.count]),
-  ];
-  XLSX.utils.book_append_sheet(
-    wb,
-    XLSX.utils.aoa_to_sheet(day),
-    "CA par jour",
-  );
-
-  XLSX.writeFile(wb, `rapports_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  await downloadProWorkbook(`rapports_${new Date().toISOString().slice(0, 10)}.xlsx`, sheets);
 }

@@ -7,10 +7,11 @@ import {
   adminUpdateCompany,
 } from "@/lib/features/admin/api";
 import { messageFromUnknownError, toast } from "@/lib/toast";
+import { downloadProSpreadsheet } from "@/lib/utils/spreadsheet-export-pro";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale/fr";
-import { MdPowerSettingsNew } from "react-icons/md";
+import { MdDownload, MdPowerSettingsNew } from "react-icons/md";
 
 export function AdminAiScreen() {
   const qc = useQueryClient();
@@ -49,9 +50,45 @@ export function AdminAiScreen() {
       />
 
       <AdminCard>
-        <p className="text-sm text-slate-700">
-          {enabledCount} entreprise(s) avec prédictions IA activées sur {companies.length}.
-        </p>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-slate-700">
+            {enabledCount} entreprise(s) avec prédictions IA activées sur {companies.length}.
+          </p>
+          {companies.length > 0 ? (
+            <button
+              type="button"
+              onClick={() => {
+                void (async () => {
+                  try {
+                    const headers = ["Entreprise", "Prédictions IA"];
+                    const rows = companies.map((c) => [
+                      c.name,
+                      c.aiPredictionsEnabled ? "Activées" : "Désactivées",
+                    ]);
+                    const d = new Date().toISOString().slice(0, 10);
+                    await downloadProSpreadsheet(
+                      `admin-ia-entreprises-${d}.xlsx`,
+                      "Entreprises",
+                      headers,
+                      rows,
+                      {
+                        title: "FasoStock Admin — IA par entreprise",
+                        subtitle: `${companies.length} ligne(s) · ${d}`,
+                      },
+                    );
+                    toast.success("Excel enregistré");
+                  } catch (e) {
+                    toast.error(messageFromUnknownError(e, "Export impossible."));
+                  }
+                })();
+              }}
+              className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-50"
+            >
+              <MdDownload className="h-5 w-5 shrink-0" aria-hidden />
+              Exporter Excel
+            </button>
+          ) : null}
+        </div>
       </AdminCard>
 
       <AdminCard padding="p-0" className="overflow-x-auto">
@@ -83,10 +120,61 @@ export function AdminAiScreen() {
         </table>
       </AdminCard>
 
-      <h2 className="text-lg font-bold text-slate-900">Questions du chatbot (landing)</h2>
-      <p className="text-sm text-slate-600">
-        {userMsgs.length} question(s) posée(s) par les visiteurs.
-      </p>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-lg font-bold text-slate-900">Questions du chatbot (landing)</h2>
+          <p className="text-sm text-slate-600">
+            {userMsgs.length} question(s) posée(s) par les visiteurs.
+          </p>
+        </div>
+        {msgs.length > 0 ? (
+          <button
+            type="button"
+            onClick={() => {
+              void (async () => {
+                try {
+                  const headers = ["Date", "Session", "Rôle", "Message"];
+                  const rows = msgs.map((m) => {
+                    const created = m.created_at != null ? String(m.created_at) : "";
+                    let dateStr = "—";
+                    if (created) {
+                      try {
+                        dateStr = format(new Date(created), "dd/MM/yyyy HH:mm", { locale: fr });
+                      } catch {
+                        dateStr = created;
+                      }
+                    }
+                    return [
+                      dateStr,
+                      String(m.session_id ?? "").slice(0, 36),
+                      String(m.role ?? ""),
+                      String(m.content ?? "").slice(0, 2000),
+                    ];
+                  });
+                  const d = new Date().toISOString().slice(0, 10);
+                  await downloadProSpreadsheet(
+                    `admin-landing-chat-${d}.xlsx`,
+                    "Messages",
+                    headers,
+                    rows,
+                    {
+                      title: "FasoStock Admin — Chat landing",
+                      subtitle: `${msgs.length} message(s) · ${d}`,
+                    },
+                  );
+                  toast.success("Excel enregistré");
+                } catch (e) {
+                  toast.error(messageFromUnknownError(e, "Export impossible."));
+                }
+              })();
+            }}
+            className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-50"
+          >
+            <MdDownload className="h-5 w-5 shrink-0" aria-hidden />
+            Exporter Excel
+          </button>
+        ) : null}
+      </div>
       <AdminCard padding="p-0" className="max-h-[400px] overflow-auto">
         <table className="min-w-[640px] w-full text-xs">
           <thead className="sticky top-0 border-b border-slate-200 bg-slate-50">

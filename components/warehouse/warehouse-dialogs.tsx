@@ -559,7 +559,7 @@ export function WarehouseAdjustmentDialog({
             Variation (unités)
           </label>
           <input
-            className={fsInputClass + " mt-1"}
+            className={fsInputClass("mt-1")}
             placeholder="ex. -5 ou +12"
             value={delta}
             onChange={(e) => setDelta(e.target.value)}
@@ -574,12 +574,12 @@ export function WarehouseAdjustmentDialog({
                 <label className="mt-3 block text-[11px] font-semibold uppercase text-neutral-500">
                   Prix d’achat unitaire (si ajout)
                 </label>
-                <input className={fsInputClass + " mt-1"} value={cost} onChange={(e) => setCost(e.target.value)} />
+                <input className={fsInputClass("mt-1")} value={cost} onChange={(e) => setCost(e.target.value)} />
               </>
             ) : null;
           })()}
           <label className="mt-3 block text-[11px] font-semibold uppercase text-neutral-500">Motif</label>
-          <textarea className={fsInputClass + " mt-1 min-h-[64px]"} value={reason} onChange={(e) => setReason(e.target.value)} />
+          <textarea className={fsInputClass("mt-1 min-h-[64px]")} value={reason} onChange={(e) => setReason(e.target.value)} />
           <button
             type="button"
             disabled={saving}
@@ -650,7 +650,7 @@ export function WarehouseThresholdDialog({
           0 = utiliser le seuil produit ({row.stockMin}). Sinon seuil dédié au dépôt.
         </p>
         <label className="mt-3 block text-[11px] font-semibold uppercase text-neutral-500">Seuil magasin</label>
-        <input className={fsInputClass + " mt-1"} inputMode="numeric" value={v} onChange={(e) => setV(e.target.value)} />
+        <input className={fsInputClass("mt-1")} inputMode="numeric" value={v} onChange={(e) => setV(e.target.value)} />
         <div className="mt-4 flex justify-end gap-2">
           <button type="button" onClick={onClose} className="rounded-lg px-4 py-2 text-sm font-medium text-neutral-700">
             Annuler
@@ -753,7 +753,7 @@ export function WarehouseExitSaleDialog({
                 Vente complétée
               </label>
               <select
-                className={fsInputClass + " mt-1"}
+                className={fsInputClass("mt-1")}
                 value={saleId}
                 onChange={(e) => setSaleId(e.target.value)}
               >
@@ -901,7 +901,7 @@ export function WarehouseCreateTransferFromDepotDialog({
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
           <label className="text-[11px] font-semibold uppercase text-neutral-500">Boutique destination</label>
-          <select className={fsInputClass + " mt-1"} value={toStoreId} onChange={(e) => setToStoreId(e.target.value)}>
+          <select className={fsInputClass("mt-1")} value={toStoreId} onChange={(e) => setToStoreId(e.target.value)}>
             {stores.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.name}
@@ -927,7 +927,7 @@ export function WarehouseCreateTransferFromDepotDialog({
                   <div className="min-w-0 flex-1">
                     <span className="text-[10px] font-semibold uppercase text-neutral-500">Produit</span>
                     <select
-                      className={fsInputClass + " mt-0.5 w-full text-sm"}
+                      className={fsInputClass("mt-0.5 w-full text-sm")}
                       value={row.productId}
                       onChange={(e) => setLine(i, { productId: e.target.value })}
                     >
@@ -946,7 +946,7 @@ export function WarehouseCreateTransferFromDepotDialog({
                 <div className="w-24">
                   <span className="text-[10px] font-semibold uppercase text-neutral-500">Qté</span>
                   <input
-                    className={fsInputClass + " mt-0.5 w-full"}
+                    className={fsInputClass("mt-0.5 w-full")}
                     inputMode="numeric"
                     value={row.quantityRequested === 0 ? "" : String(row.quantityRequested)}
                     onChange={(e) =>

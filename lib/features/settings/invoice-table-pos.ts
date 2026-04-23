@@ -39,3 +39,31 @@ export async function fetchInvoiceTablePosEnabled(companyId: string): Promise<bo
   cache.set(companyId, result);
   return result;
 }
+
+/** Propriétaire : active ou désactive l’entrée « Facture (tableau) » pour l’entreprise (`company_settings`). */
+export async function setInvoiceTablePosEnabled(companyId: string, enabled: boolean): Promise<void> {
+  const supabase = createClient();
+  const { data: existing, error: selErr } = await supabase
+    .from("company_settings")
+    .select("id")
+    .eq("company_id", companyId)
+    .eq("key", KEY)
+    .maybeSingle();
+  if (selErr) throw selErr;
+  if (existing != null) {
+    const { error } = await supabase
+      .from("company_settings")
+      .update({ value: enabled })
+      .eq("company_id", companyId)
+      .eq("key", KEY);
+    if (error) throw error;
+  } else {
+    const { error } = await supabase.from("company_settings").insert({
+      company_id: companyId,
+      key: KEY,
+      value: enabled,
+    });
+    if (error) throw error;
+  }
+  cache.set(companyId, enabled);
+}

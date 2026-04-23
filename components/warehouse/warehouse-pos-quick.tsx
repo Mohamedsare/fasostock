@@ -82,8 +82,8 @@ export function WarehousePosQuickSearchInput({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         className={cn(
-          "h-full w-full rounded-[10px] border border-[#E5E7EB] bg-white pl-9 pr-2 text-[13px] text-[#1F2937] placeholder:text-[#1F2937]/50",
-          "min-[900px]:rounded-[12px] min-[900px]:pl-11 min-[900px]:pr-3 min-[900px]:text-[15px]",
+          "h-full w-full rounded-[10px] border border-[#E5E7EB] bg-white pl-10 pr-2 text-[13px] text-[#1F2937] placeholder:text-[#1F2937]/50",
+          "min-[900px]:rounded-[12px] min-[900px]:pl-12 min-[900px]:pr-3 min-[900px]:text-[15px]",
           "outline-none focus:border-2 focus:border-[#F97316]",
         )}
         placeholder={hintText}

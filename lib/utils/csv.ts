@@ -6,7 +6,8 @@ export function escapeCsv(value: string): string {
 }
 
 export function downloadCsv(filename: string, csv: string): void {
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  // BOM UTF-8 : Excel ouvre correctement les accents (export « CSV » classique).
+  const blob = new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;

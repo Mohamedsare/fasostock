@@ -17,8 +17,8 @@ import {
 } from "@/lib/features/settings/invoice-table-pos";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDateTime, toIsoDate } from "@/lib/utils/date";
-import { downloadCsv } from "@/lib/utils/csv";
-import { salesToCsv } from "@/lib/features/sales/csv";
+import { salesToSpreadsheetMatrix } from "@/lib/features/sales/csv";
+import { downloadProSpreadsheet } from "@/lib/utils/spreadsheet-export-pro";
 import { saleSellerLabel, saleStoreLabel } from "@/lib/features/sales/sale-display";
 import { ROUTES, storeFactureTabPath } from "@/lib/config/routes";
 import { messageFromUnknownError, toast } from "@/lib/toast";
@@ -285,10 +285,26 @@ export function SalesScreen() {
     );
   }
 
-  const exportCsv = () => {
+  const exportExcel = () => {
     const d = new Date().toISOString().slice(0, 10);
-    downloadCsv(`ventes-${d}.csv`, salesToCsv(sales, stores));
-    toast.success("CSV enregistré");
+    void (async () => {
+      try {
+        const { headers, rows } = salesToSpreadsheetMatrix(sales, stores);
+        await downloadProSpreadsheet(
+          `ventes-${d}.xlsx`,
+          "Ventes",
+          headers,
+          rows,
+          {
+            title: "FasoStock — Ventes",
+            subtitle: `${sales.length} ligne(s) · généré le ${d}`,
+          },
+        );
+        toast.success("Excel enregistré");
+      } catch (e) {
+        toast.error(messageFromUnknownError(e, "Export Excel impossible."));
+      }
+    })();
   };
 
   const actionCards = (
@@ -375,11 +391,11 @@ export function SalesScreen() {
             <button
               type="button"
               disabled={sales.length === 0 || salesQ.isFetching}
-              onClick={exportCsv}
+              onClick={exportExcel}
               className={btnOutline}
             >
               <MdDownload className="h-[18px] w-[18px] shrink-0" aria-hidden />
-              Enregistrer CSV
+              Exporter Excel
             </button>
             {canCreateSale && currentStoreId ? (
               <Link href={`${ROUTES.stores}/${currentStoreId}/pos-quick`} className={btnPrimary}>

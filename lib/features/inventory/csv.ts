@@ -1,36 +1,45 @@
 import { escapeCsv } from "@/lib/utils/csv";
+import type { ProSheetCell } from "@/lib/utils/spreadsheet-export-pro";
 import type { InventoryRow } from "./types";
 
-export function inventoryRowsToCsv(rows: InventoryRow[]): string {
-  const header = [
-    "Produit",
-    "SKU",
-    "Catégorie",
-    "Marque",
-    "Qté",
-    "Unité",
-    "Seuil",
-    "Statut",
-    "Achat",
-    "Vente",
-  ];
+const INVENTORY_HEADERS = [
+  "Produit",
+  "SKU",
+  "Catégorie",
+  "Marque",
+  "Qté",
+  "Unité",
+  "Seuil",
+  "Statut",
+  "Achat",
+  "Vente",
+] as const;
 
-  const lines = rows.map((r) => {
+export function inventoryRowsToSpreadsheetMatrix(rows: InventoryRow[]): {
+  headers: string[];
+  rows: ProSheetCell[][];
+} {
+  const data = rows.map((r) => {
     const statut = r.status === "out" ? "Rupture" : r.status === "low" ? "Alerte" : "OK";
     return [
       r.name,
       r.sku ?? "",
       r.categoryName ?? "",
       r.brandName ?? "",
-      String(r.availableQuantity),
+      Number(r.availableQuantity),
       r.unit,
-      String(r.alertThreshold),
+      Number(r.alertThreshold),
       statut,
-      String(r.purchasePrice),
-      String(r.salePrice),
-    ].map(escapeCsv);
+      Number(r.purchasePrice),
+      Number(r.salePrice),
+    ] as ProSheetCell[];
   });
+  return { headers: [...INVENTORY_HEADERS], rows: data };
+}
 
-  return [header.map(escapeCsv).join(","), ...lines.map((l) => l.join(","))].join("\n");
+export function inventoryRowsToCsv(inventoryRows: InventoryRow[]): string {
+  const { headers, rows: matrix } = inventoryRowsToSpreadsheetMatrix(inventoryRows);
+  const lines = matrix.map((line) => line.map((v) => escapeCsv(String(v ?? ""))).join(","));
+  return [headers.map(escapeCsv).join(","), ...lines].join("\n");
 }
 

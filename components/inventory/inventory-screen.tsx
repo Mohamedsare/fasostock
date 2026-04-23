@@ -17,14 +17,14 @@ import {
   listStockMovements,
   setDefaultStockAlertThreshold,
 } from "@/lib/features/inventory/api";
-import { inventoryRowsToCsv } from "@/lib/features/inventory/csv";
+import { inventoryRowsToSpreadsheetMatrix } from "@/lib/features/inventory/csv";
 import type { InventoryRow, StockMovementRow } from "@/lib/features/inventory/types";
 import { usePermissions } from "@/lib/features/permissions/use-permissions";
 import type { ProductCategory } from "@/lib/features/products/types";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { queryKeys } from "@/lib/query/query-keys";
-import { toast, toastMutationError } from "@/lib/toast";
-import { downloadCsv } from "@/lib/utils/csv";
+import { messageFromUnknownError, toast, toastMutationError } from "@/lib/toast";
+import { downloadProSpreadsheet } from "@/lib/utils/spreadsheet-export-pro";
 import { formatCurrency } from "@/lib/utils/currency";
 import { cn } from "@/lib/utils/cn";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -477,14 +477,25 @@ export function InventoryScreen() {
               type="button"
               onClick={() => {
                 if (filteredForTable.length === 0) return;
-                const csv = inventoryRowsToCsv(filteredForTable);
-                downloadCsv(`stock-${new Date().toISOString().slice(0, 10)}.csv`, csv);
+                const d = new Date().toISOString().slice(0, 10);
+                void (async () => {
+                  try {
+                    const { headers, rows } = inventoryRowsToSpreadsheetMatrix(filteredForTable);
+                    await downloadProSpreadsheet(`stock-${d}.xlsx`, "Stock", headers, rows, {
+                      title: "FasoStock — Stock",
+                      subtitle: `${filteredForTable.length} ligne(s) · ${d}`,
+                    });
+                    toast.success("Excel enregistré");
+                  } catch (e) {
+                    toast.error(messageFromUnknownError(e, "Export Excel impossible."));
+                  }
+                })();
               }}
               disabled={filteredForTable.length === 0}
               className="inline-flex items-center gap-2 rounded-[10px] bg-fs-surface-container px-3.5 py-2.5 text-sm font-semibold text-fs-text shadow-sm ring-1 ring-black/[0.06] disabled:opacity-40"
             >
               <MdDownload className="h-5 w-5" aria-hidden />
-              Enregistrer CSV
+              Exporter Excel
             </button>
           </div>
         </div>

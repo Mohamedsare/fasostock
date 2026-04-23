@@ -32,8 +32,8 @@ import { ROUTES } from "@/lib/config/routes";
 import { queryKeys } from "@/lib/query/query-keys";
 import { formatCurrency } from "@/lib/utils/currency";
 import { cn } from "@/lib/utils/cn";
-import { productsToCsv } from "@/lib/features/products/csv";
-import { downloadCsv } from "@/lib/utils/csv";
+import { productsToSpreadsheetMatrix } from "@/lib/features/products/csv";
+import { downloadProSpreadsheet } from "@/lib/utils/spreadsheet-export-pro";
 import {
   FsCard,
   FsFab,
@@ -398,13 +398,23 @@ export function ProductsScreen() {
                   disabled={filtered.length === 0}
                   onClick={() => {
                     const d = new Date().toISOString().slice(0, 10);
-                    downloadCsv(`produits-${d}.csv`, productsToCsv(filtered));
-                    toast.success("CSV enregistré");
+                    void (async () => {
+                      try {
+                        const { headers, rows } = productsToSpreadsheetMatrix(filtered);
+                        await downloadProSpreadsheet(`produits-${d}.xlsx`, "Produits", headers, rows, {
+                          title: "FasoStock — Produits",
+                          subtitle: `${filtered.length} ligne(s) · ${d}`,
+                        });
+                        toast.success("Excel enregistré");
+                      } catch (e) {
+                        toast.error(messageFromUnknownError(e, "Export Excel impossible."));
+                      }
+                    })();
                   }}
                   className="fs-touch-target inline-flex items-center justify-center gap-2 rounded-[10px] border border-black/[0.1] bg-fs-card px-4 py-3 text-sm font-semibold text-neutral-800 disabled:opacity-40"
                 >
                   <MdDownload className="h-[18px] w-[18px] shrink-0" aria-hidden />
-                  Enregistrer CSV
+                  Exporter Excel
                 </button>
                 {canCreateProduct ? (
                   <button
@@ -430,7 +440,7 @@ export function ProductsScreen() {
                   setPage(0);
                 }}
                 placeholder="Rechercher nom, SKU, code-barres..."
-                className={fsInputClass("pl-9")}
+                className={fsInputClass("pl-10")}
               />
             </div>
             <div className="flex flex-col gap-2 min-[340px]:flex-row min-[340px]:gap-2">
@@ -490,7 +500,7 @@ export function ProductsScreen() {
                   className="rounded-xl border border-black/[0.06] bg-fs-card p-3 shadow-sm sm:rounded-2xl"
                 >
                   <div className="flex items-start gap-3">
-                    <ProductListThumbnail imageUrl={thumbUrl} />
+                    <ProductListThumbnail imageUrl={thumbUrl} previewOnTap />
                     <div className="min-w-0 flex-1">
                       <h3
                         className={cn(
@@ -813,6 +823,23 @@ export function ProductsScreen() {
               editingId: editing?.id ?? null,
               payload,
             });
+          }}
+        />
+      ) : null}
+
+      {showImportCsv && companyId ? (
+        <ImportProductsCsvDialog
+          companyId={companyId}
+          storeId={storeId}
+          onClose={() => setShowImportCsv(false)}
+          onSuccess={() => {
+            void qc.invalidateQueries({ queryKey: queryKeys.products(companyId) });
+            void qc.invalidateQueries({ queryKey: queryKeys.categories(companyId) });
+            void qc.invalidateQueries({ queryKey: queryKeys.brands(companyId) });
+            if (storeId) {
+              void qc.invalidateQueries({ queryKey: queryKeys.productInventory(storeId) });
+              void qc.invalidateQueries({ queryKey: ["stock-movements", storeId] });
+            }
           }}
         />
       ) : null}

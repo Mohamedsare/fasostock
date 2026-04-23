@@ -21,7 +21,6 @@ import { getDefaultDateRange } from "@/lib/features/dashboard/date-range";
 import type { StockMovementByDay } from "@/lib/features/dashboard/types";
 import { usePermissions } from "@/lib/features/permissions/use-permissions";
 import { listCategories, listProducts } from "@/lib/features/products/api";
-import { reportsPageToCsv } from "@/lib/features/reports/csv";
 import {
   downloadReportsExcel,
   downloadReportsPdfBlob,
@@ -31,7 +30,6 @@ import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { queryKeys } from "@/lib/query/query-keys";
 import { messageFromUnknownError, toast } from "@/lib/toast";
 import { formatCurrency } from "@/lib/utils/currency";
-import { downloadCsv } from "@/lib/utils/csv";
 import { cn } from "@/lib/utils/cn";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
@@ -41,7 +39,6 @@ import {
   MdBarChart,
   MdCalendarMonth,
   MdCalendarToday,
-  MdDescription,
   MdInventory2,
   MdLocalShipping,
   MdLockPerson,
@@ -310,25 +307,14 @@ export function ReportsScreen() {
 
   const exportReportsExcelWithToast = useCallback(() => {
     if (!d) return;
-    try {
-      downloadReportsExcel(d);
-      toast.success("Excel enregistré.");
-    } catch (e) {
-      toast.error(messageFromUnknownError(e, "Export Excel impossible."));
-    }
-  }, [d]);
-
-  const exportReportsCsvWithToast = useCallback(() => {
-    if (!d) return;
-    try {
-      downloadCsv(
-        `rapports_${new Date().toISOString().slice(0, 10)}.csv`,
-        reportsPageToCsv(d),
-      );
-      toast.success("CSV enregistré.");
-    } catch (e) {
-      toast.error(messageFromUnknownError(e, "Export CSV impossible."));
-    }
+    void (async () => {
+      try {
+        await downloadReportsExcel(d);
+        toast.success("Excel enregistré.");
+      } catch (e) {
+        toast.error(messageFromUnknownError(e, "Export Excel impossible."));
+      }
+    })();
   }, [d]);
 
   const canView = helpers?.canReports ?? false;
@@ -916,8 +902,8 @@ export function ReportsScreen() {
                 <h2 className="text-base font-semibold text-fs-text">Export</h2>
               </div>
               <p className="mt-2 text-xs text-neutral-600">
-                PDF, Excel, CSV — données affichées (hors connexion : export CSV
-                conseillé).
+                PDF ou Excel : feuilles multiples, en-têtes colorés, filtres et mise
+                en forme type tableau de bord.
               </p>
               <div className="mt-4 flex flex-wrap gap-2.5">
                 <button
@@ -935,14 +921,6 @@ export function ReportsScreen() {
                 >
                   <MdTableChart className="h-5 w-5" aria-hidden />
                   Exporter Excel
-                </button>
-                <button
-                  type="button"
-                  onClick={exportReportsCsvWithToast}
-                  className="inline-flex items-center gap-2 rounded-[10px] border border-black/[0.12] bg-fs-card px-4 py-2.5 text-sm font-semibold text-fs-text"
-                >
-                  <MdDescription className="h-5 w-5" aria-hidden />
-                  Enregistrer CSV
                 </button>
                 <button
                   type="button"

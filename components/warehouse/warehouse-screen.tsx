@@ -1219,7 +1219,7 @@ function StockDepotTab({
       <div className="relative">
         <MdSearch className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-neutral-400" />
         <input
-          className={fsInputClass + " w-full pl-10"}
+          className={fsInputClass("w-full pl-10")}
           placeholder="Rechercher par nom ou SKU"
           value={stockQ}
           onChange={(e) => setStockQ(e.target.value)}

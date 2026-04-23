@@ -1,17 +1,21 @@
 import { escapeCsv } from "@/lib/utils/csv";
+import type { ProSheetCell } from "@/lib/utils/spreadsheet-export-pro";
 import type { AiInsightsData } from "./types";
 
-export function aiInsightsToCsv(data: AiInsightsData): string {
-  const rows: string[][] = [];
-  rows.push(["Section", "Type", "Date", "Résumé", "Tokens"]);
+const AI_HEADERS = ["Section", "Type / ID", "Date", "Résumé / données", "Tokens / total"] as const;
 
+export function aiInsightsToSpreadsheetMatrix(data: AiInsightsData): {
+  headers: string[];
+  rows: ProSheetCell[][];
+} {
+  const rows: ProSheetCell[][] = [];
   for (const r of data.requests) {
     rows.push([
       "Requêtes IA",
       r.type,
       r.createdAt,
       r.outputSummary ?? r.inputSummary ?? "",
-      String(r.tokensUsed ?? 0),
+      r.tokensUsed ?? "",
     ]);
   }
   for (const i of data.insights) {
@@ -32,7 +36,14 @@ export function aiInsightsToCsv(data: AiInsightsData): string {
       "",
     ]);
   }
-
-  return rows.map((r) => r.map((v) => escapeCsv(v)).join(",")).join("\n");
+  rows.push(["Synthèse", "Total tokens (période)", "", "", data.totalTokens]);
+  return { headers: [...AI_HEADERS], rows };
 }
 
+export function aiInsightsToCsv(data: AiInsightsData): string {
+  const { headers, rows: matrix } = aiInsightsToSpreadsheetMatrix(data);
+  const lines = matrix.map((line) =>
+    line.map((v) => (typeof v === "number" ? String(v) : escapeCsv(String(v ?? "")))).join(","),
+  );
+  return [headers.map(escapeCsv).join(","), ...lines].join("\n");
+}

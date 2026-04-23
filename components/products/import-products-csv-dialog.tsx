@@ -3,10 +3,12 @@
 import { useCallback, useState } from "react";
 import {
   getProductsCsvModelTemplate,
+  getProductsImportTemplateMatrix,
   parseProductsCsv,
 } from "@/lib/features/products/csv";
 import { importProductsFromCsv } from "@/lib/features/products/import-from-csv";
 import { downloadCsv } from "@/lib/utils/csv";
+import { downloadProSpreadsheet } from "@/lib/utils/spreadsheet-export-pro";
 import { messageFromUnknownError, toast } from "@/lib/toast";
 import { MdDownload, MdUploadFile } from "react-icons/md";
 
@@ -124,13 +126,41 @@ export function ImportProductsCsvDialog({
         <div className="mt-3 flex flex-col gap-2">
           <button
             type="button"
+            onClick={() => {
+              void (async () => {
+                try {
+                  const { headers, rows } = getProductsImportTemplateMatrix();
+                  await downloadProSpreadsheet(
+                    "modele-import-produits.xlsx",
+                    "Modèle import",
+                    headers,
+                    rows,
+                    {
+                      title: "FasoStock — Modèle import produits",
+                      subtitle:
+                        "Même structure que le CSV : en-têtes + exemples. Enregistrer en CSV depuis Excel pour importer.",
+                    },
+                  );
+                  toast.success("Modèle Excel enregistré");
+                } catch (e) {
+                  toast.error(messageFromUnknownError(e, "Téléchargement impossible."));
+                }
+              })();
+            }}
+            className="fs-touch-target inline-flex items-center justify-center gap-2 rounded-xl border-2 border-fs-accent/40 bg-fs-accent/10 px-4 py-3 text-sm font-semibold text-fs-text"
+          >
+            <MdDownload className="h-5 w-5 shrink-0 text-fs-accent" aria-hidden />
+            Télécharger le modèle Excel (recommandé)
+          </button>
+          <button
+            type="button"
             onClick={() =>
               downloadCsv("modele-import-produits.csv", getProductsCsvModelTemplate())
             }
-            className="fs-touch-target inline-flex items-center justify-center gap-2 rounded-xl border border-black/[0.12] px-4 py-3 text-sm font-semibold text-neutral-800"
+            className="fs-touch-target inline-flex items-center justify-center gap-2 rounded-xl border border-black/[0.12] px-4 py-3 text-sm font-semibold text-neutral-700"
           >
             <MdDownload className="h-5 w-5 shrink-0" aria-hidden />
-            Télécharger le modèle CSV (exemple de remplissage)
+            Télécharger le modèle CSV (import direct)
           </button>
           <button
             type="button"

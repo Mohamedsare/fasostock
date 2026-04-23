@@ -145,8 +145,10 @@ export function FsSectionLabel({
 
 /** Champ rempli type InputDecoration Flutter (surfaceContainer, rayon 10). */
 export function fsInputClass(extra?: string) {
+  // Ne pas utiliser `sm:px-3` ici : il réapplique le padding horizontal au breakpoint `sm`
+  // et écrase un `pl-*` passé dans `extra` (icône loupe à gauche → chevauchement du placeholder).
   return cn(
-    "w-full rounded-[10px] border border-black/[0.06] bg-fs-surface-container px-3 py-2.5 text-xs text-fs-text outline-none placeholder:text-neutral-400 focus:border-fs-accent focus:ring-2 focus:ring-fs-accent/20 sm:px-3 sm:py-3 sm:text-sm",
+    "w-full rounded-[10px] border border-black/[0.06] bg-fs-surface-container px-3 py-2.5 text-xs text-fs-text outline-none placeholder:text-neutral-400 focus:border-fs-accent focus:ring-2 focus:ring-fs-accent/20 sm:py-3 sm:text-sm",
     extra,
   );
 }

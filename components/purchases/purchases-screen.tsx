@@ -16,6 +16,7 @@ import {
   listSuppliers,
   updatePurchaseDraftReference,
 } from "@/lib/features/purchases/api";
+import { purchasesToSpreadsheetMatrix } from "@/lib/features/purchases/csv";
 import type { PurchaseDetail, PurchaseListItem, PurchaseStatus } from "@/lib/features/purchases/types";
 import { usePermissions } from "@/lib/features/permissions/use-permissions";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
@@ -24,8 +25,16 @@ import { formatCurrency } from "@/lib/utils/currency";
 import { cn } from "@/lib/utils/cn";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { MdAdd, MdChevronLeft, MdChevronRight, MdErrorOutline, MdLock } from "react-icons/md";
-import { toast, toastMutationError } from "@/lib/toast";
+import {
+  MdAdd,
+  MdChevronLeft,
+  MdChevronRight,
+  MdDownload,
+  MdErrorOutline,
+  MdLock,
+} from "react-icons/md";
+import { messageFromUnknownError, toast, toastMutationError } from "@/lib/toast";
+import { downloadProSpreadsheet } from "@/lib/utils/spreadsheet-export-pro";
 
 const PURCHASES_PAGE_SIZE = 20;
 
@@ -339,6 +348,23 @@ export function PurchasesScreen() {
     setCreateOpen(true);
   };
 
+  function exportExcel() {
+    if (rows.length === 0) return;
+    void (async () => {
+      try {
+        const d = new Date().toISOString().slice(0, 10);
+        const { headers, rows: matrix } = purchasesToSpreadsheetMatrix(rows);
+        await downloadProSpreadsheet(`achats-${d}.xlsx`, "Achats", headers, matrix, {
+          title: "FasoStock — Achats",
+          subtitle: `${rows.length} ligne(s) · filtres courants · ${d}`,
+        });
+        toast.success("Excel enregistré");
+      } catch (e) {
+        toast.error(messageFromUnknownError(e, "Export Excel impossible."));
+      }
+    })();
+  }
+
   const errMsg = purchasesQ.isError
     ? purchasesQ.error instanceof Error
       ? purchasesQ.error.message
@@ -399,6 +425,16 @@ export function PurchasesScreen() {
         <p className="text-sm leading-relaxed text-neutral-600">
           Voir, modifier, annuler ou supprimer les achats.
         </p>
+        {rows.length > 0 ? (
+          <button
+            type="button"
+            onClick={exportExcel}
+            className="inline-flex min-h-[40px] items-center gap-2 rounded-[10px] border border-black/[0.12] bg-fs-card px-3 py-2 text-sm font-semibold text-neutral-800 shadow-sm active:scale-[0.99]"
+          >
+            <MdDownload className="h-[18px] w-[18px] shrink-0" aria-hidden />
+            Exporter Excel
+          </button>
+        ) : null}
       </div>
 
       <div className="mb-6 flex flex-wrap gap-x-3 gap-y-2">

@@ -16,6 +16,11 @@ import {
   updateCompanyLogoUrl,
   uploadCompanyLogo,
 } from "@/lib/features/companies/company-logo";
+import {
+  fetchInvoiceTablePosEnabled,
+  peekInvoiceTablePosEnabled,
+  setInvoiceTablePosEnabled,
+} from "@/lib/features/settings/invoice-table-pos";
 import { queryKeys } from "@/lib/query/query-keys";
 import { messageFromUnknownError, toast, toastMutationError } from "@/lib/toast";
 import { createClient } from "@/lib/supabase/client";
@@ -61,6 +66,7 @@ import {
   MdSecurity,
   MdShoppingCart,
   MdStore,
+  MdTableChart,
   MdWarningAmber,
 } from "react-icons/md";
 
@@ -326,6 +332,32 @@ export function SettingsScreen() {
     },
     enabled: Boolean(companyId),
     staleTime: 60_000,
+  });
+
+  const peekInvoiceTable =
+    companyId.length > 0 && isOwner ? peekInvoiceTablePosEnabled(companyId) : undefined;
+  const invoiceTablePosQ = useQuery({
+    queryKey: queryKeys.invoiceTablePosEnabled(companyId),
+    queryFn: () => fetchInvoiceTablePosEnabled(companyId),
+    enabled: Boolean(companyId && isOwner),
+    staleTime: 30_000,
+    ...(peekInvoiceTable !== undefined ? { initialData: peekInvoiceTable } : {}),
+  });
+
+  const invoiceTablePosMut = useMutation({
+    mutationFn: async (enabled: boolean) => {
+      if (!companyId) throw new Error("Entreprise introuvable.");
+      await setInvoiceTablePosEnabled(companyId, enabled);
+    },
+    onSuccess: async (_, enabled) => {
+      toast.success(
+        enabled
+          ? "Mode facture (tableau) activé pour l'entreprise. Accordez le droit aux utilisateurs dans Utilisateurs."
+          : "Mode facture (tableau) désactivé.",
+      );
+      await qc.invalidateQueries({ queryKey: queryKeys.invoiceTablePosEnabled(companyId) });
+    },
+    onError: (e) => toastMutationError("settings", e),
   });
 
   const profileMut = useMutation({
@@ -596,6 +628,53 @@ export function SettingsScreen() {
           </label>
         </div>
       </FsCard>
+
+      {/* Facture A4 vue tableau — owner uniquement (`settings_page.dart` Flutter) */}
+      {isOwner && companyId ? (
+        <FsCard className="mt-5" padding="p-5">
+          <SettingsCardTitle icon={MdTableChart} title="Facture A4 — vue tableau" />
+          <p className="mt-2 text-xs leading-relaxed text-neutral-600 sm:text-sm">
+            Deuxième écran de caisse facture : les lignes du panier s&apos;affichent comme sur une facture (tableau).
+            Le PDF A4 généré est identique au mode facture classique. Une fois activé ici, accordez le droit « POS
+            facture A4 (vue tableau) » aux utilisateurs concernés dans Utilisateurs.
+          </p>
+          {invoiceTablePosQ.isPending ? (
+            <div className="mt-4 flex justify-center py-4" role="status" aria-label="Chargement">
+              <div className="h-8 w-8 animate-spin rounded-full border-2 border-fs-accent border-t-transparent" />
+            </div>
+          ) : (
+            <div className="mt-4 space-y-0 rounded-[10px] border border-black/[0.08]">
+              <label
+                className={cn(
+                  "flex cursor-pointer items-start justify-between gap-3 px-3 py-3 sm:px-4",
+                  invoiceTablePosMut.isPending && "pointer-events-none opacity-60",
+                )}
+              >
+                <span className="min-w-0">
+                  <span className="block text-sm font-medium text-fs-text">
+                    Activer l&apos;entrée « Facture tab. » sur les boutiques
+                  </span>
+                  <span className="mt-0.5 block text-xs text-neutral-600">
+                    {invoiceTablePosQ.data
+                      ? "Les utilisateurs autorisés voient le raccourci sur chaque carte boutique."
+                      : "Désactivé : personne n&apos;accède au mode tableau (même avec le droit utilisateur)."}
+                  </span>
+                </span>
+                <input
+                  type="checkbox"
+                  role="switch"
+                  className="mt-1 h-5 w-9 shrink-0 cursor-pointer accent-fs-accent"
+                  checked={Boolean(invoiceTablePosQ.data)}
+                  disabled={invoiceTablePosMut.isPending}
+                  onChange={(e) => {
+                    void invoiceTablePosMut.mutateAsync(e.target.checked);
+                  }}
+                />
+              </label>
+            </div>
+          )}
+        </FsCard>
+      ) : null}
 
       {/* Profil */}
       <FsCard className="mt-5" padding="p-5">

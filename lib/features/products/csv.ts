@@ -1,4 +1,5 @@
 import type { ProductItem } from "./types";
+import type { ProSheetCell } from "@/lib/utils/spreadsheet-export-pro";
 import { escapeCsv } from "@/lib/utils/csv";
 
 const SEP = ",";
@@ -192,34 +193,75 @@ export function getProductsCsvModelTemplate(): string {
   return `${headers}\n${line1}\n${line2}`;
 }
 
-export function productsToCsv(products: ProductItem[]): string {
-  const headers = [
-    "nom",
-    "sku",
-    "code_barres",
-    "unite",
+/** Même contenu que le modèle CSV — pour export Excel stylé (aperçu / édition). */
+export function getProductsImportTemplateMatrix(): {
+  headers: string[];
+  rows: ProSheetCell[][];
+} {
+  const raw = getProductsCsvModelTemplate();
+  const m = parseCsvRaw(raw);
+  if (m.length === 0) return { headers: [], rows: [] };
+  const headers = m[0]!.map((x) => x.trim());
+  const keys = m[0]!.map((x) => x.trim().toLowerCase());
+  const numericKeys = new Set([
     "prix_achat",
     "prix_vente",
     "stock_min",
-    "description",
     "actif",
-    "categorie",
-    "marque",
-  ];
-  const rows = products.map((p) =>
-    [
-      escapeCsv(p.name),
-      escapeCsv(p.sku ?? ""),
-      escapeCsv(p.barcode ?? ""),
-      escapeCsv(p.unit),
-      String(p.purchase_price ?? 0),
-      String(p.sale_price ?? 0),
-      String(p.stock_min ?? 0),
-      escapeCsv(p.description ?? ""),
-      p.is_active ? "1" : "0",
-      escapeCsv(p.category?.name ?? ""),
-      escapeCsv(p.brand?.name ?? ""),
-    ].join(","),
+    "stock_entrant",
+  ]);
+  const rows: ProSheetCell[][] = m.slice(1).map((line) =>
+    keys.map((key, i) => {
+      const cell = (line[i] ?? "").trim();
+      if (cell === "") return "";
+      if (numericKeys.has(key)) {
+        const n = Number(cell.replace(",", "."));
+        return Number.isFinite(n) ? n : cell;
+      }
+      return cell;
+    }),
   );
-  return [headers.join(","), ...rows].join("\n");
+  return { headers, rows };
+}
+
+const PRODUCT_EXPORT_HEADERS = [
+  "nom",
+  "sku",
+  "code_barres",
+  "unite",
+  "prix_achat",
+  "prix_vente",
+  "stock_min",
+  "description",
+  "actif",
+  "categorie",
+  "marque",
+] as const;
+
+export function productsToSpreadsheetMatrix(products: ProductItem[]): {
+  headers: string[];
+  rows: ProSheetCell[][];
+} {
+  const rows: ProSheetCell[][] = products.map((p) => [
+    p.name,
+    p.sku ?? "",
+    p.barcode ?? "",
+    p.unit,
+    Number(p.purchase_price ?? 0),
+    Number(p.sale_price ?? 0),
+    Number(p.stock_min ?? 0),
+    p.description ?? "",
+    p.is_active ? 1 : 0,
+    p.category?.name ?? "",
+    p.brand?.name ?? "",
+  ]);
+  return { headers: [...PRODUCT_EXPORT_HEADERS], rows };
+}
+
+export function productsToCsv(products: ProductItem[]): string {
+  const { headers, rows } = productsToSpreadsheetMatrix(products);
+  const esc = (v: ProSheetCell) =>
+    typeof v === "number" ? String(v) : escapeCsv(String(v ?? ""));
+  const lines = rows.map((r) => r.map(esc).join(","));
+  return [headers.join(","), ...lines].join("\n");
 }

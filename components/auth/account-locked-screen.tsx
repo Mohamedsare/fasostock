@@ -51,13 +51,15 @@ export function AccountLockedScreen({
             className="fs-touch-target flex items-center justify-center gap-2 rounded-xl border-2 px-4 py-3 text-sm font-semibold transition-opacity active:opacity-90"
             style={{ borderColor: "#25D366", color: "#25D366" }}
           >
-            <Image
-              src="/whatsapp.svg"
-              alt=""
-              width={22}
-              height={22}
-              className="shrink-0"
-            />
+            <span className="relative block size-[22px] shrink-0 overflow-hidden" aria-hidden>
+              <Image
+                src="/whatsapplogo.svg"
+                alt=""
+                fill
+                sizes="22px"
+                className="object-contain object-center"
+              />
+            </span>
             WhatsApp : {SUPPORT_PHONE_DISPLAY}
           </a>
           <a
