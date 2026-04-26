@@ -51,10 +51,12 @@ export function MoreSheet({ open, onClose, items }: MoreSheetProps) {
         </h2>
         <div className="max-h-[min(70dvh,520px)] overflow-y-auto px-3 pb-[max(12px,var(--fs-safe-bottom))] pt-3 sm:px-4 sm:pb-4 sm:pt-4">
           <ul className="grid grid-cols-3 gap-1 sm:gap-2.5">
-            {items.map((item) => {
+            {items
+              .filter((item) => item.kind !== "section")
+              .map((item) => {
               const Icon = item.icon;
               return (
-                <li key={item.href}>
+                <li key={`${item.href}-${item.label}`}>
                   <Link
                     href={item.href}
                     onClick={onClose}
@@ -83,7 +85,7 @@ export function MoreSheet({ open, onClose, items }: MoreSheetProps) {
                   </Link>
                 </li>
               );
-            })}
+              })}
           </ul>
         </div>
       </div>

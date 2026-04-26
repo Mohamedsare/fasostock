@@ -1,6 +1,10 @@
 import { P } from "@/lib/constants/permissions";
 import { ROUTES } from "@/lib/config/routes";
 import type { NavItem } from "@/lib/config/navigation";
+import {
+  adaptNavItemsForActivity,
+  isRouteAllowedForActivity,
+} from "@/lib/features/activity/activity-profiles";
 
 /** Chemins affichés en menu restreint pendant le chargement des droits (Flutter `cashierPaths`). */
 export const CASHIER_FALLBACK_HREFS = [
@@ -145,16 +149,24 @@ export function filterNavItemsForPermissions(
   items: NavItem[],
   h: AccessHelpers | null,
   permissionsLoading: boolean,
+  businessTypeSlug?: string | null,
 ): NavItem[] {
   if (permissionsLoading) {
-    return items.filter((i) => cashierFallbackSet.has(i.href));
+    return adaptNavItemsForActivity(
+      items.filter((i) => cashierFallbackSet.has(i.href)),
+      businessTypeSlug,
+    );
   }
 
   if (!h) {
-    return items.filter((i) => cashierFallbackSet.has(i.href));
+    return adaptNavItemsForActivity(
+      items.filter((i) => cashierFallbackSet.has(i.href)),
+      businessTypeSlug,
+    );
   }
 
-  return items.filter((item) => {
+  const filtered = items.filter((item) => {
+    if (item.kind === "section") return true;
     const href = item.href;
     if (href === ROUTES.stockCashier) {
       return h.canInventory && !h.isOwner;
@@ -182,6 +194,11 @@ export function filterNavItemsForPermissions(
     if (href === ROUTES.integrations) return false;
     return true;
   });
+
+  // Navigation hiérarchique dédiée (restaurant) : garder l'ordre défini tel quel.
+  if (filtered.some((item) => item.kind === "section")) return filtered;
+
+  return adaptNavItemsForActivity(filtered, businessTypeSlug);
 }
 
 /** Normalise le chemin (sans query, sans slash final) pour la garde de route. */
@@ -221,6 +238,7 @@ const APP_SHELL_ROUTE_PREFIXES: readonly string[] = [
   ROUTES.help,
   ROUTES.notifications,
   ROUTES.integrations,
+  "/restaurant",
 ];
 
 function isAppShellRoute(route: string): boolean {
@@ -235,7 +253,11 @@ function isAppShellRoute(route: string): boolean {
  * - utilisateur connecté : toutes les routes shell autorisées (les pages gèrent les droits) ;
  * - seules exceptions : caisse rapide (`sales.create`) et POS facture A4 (`sales.invoice_a4`).
  */
-export function canAccessPathname(pathname: string, h: AccessHelpers | null): boolean {
+export function canAccessPathname(
+  pathname: string,
+  h: AccessHelpers | null,
+  businessTypeSlug?: string | null,
+): boolean {
   if (!h) return false;
   const p = pathname.split("?")[0] ?? pathname;
 
@@ -261,5 +283,6 @@ export function canAccessPathname(pathname: string, h: AccessHelpers | null): bo
   }
 
   const route = normalizeAppRoute(pathname);
+  if (!isRouteAllowedForActivity(route, businessTypeSlug)) return false;
   return isAppShellRoute(route);
 }

@@ -23,6 +23,7 @@ import { usePermissions } from "@/lib/features/permissions/use-permissions";
 import type { ProductCategory } from "@/lib/features/products/types";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { queryKeys } from "@/lib/query/query-keys";
+import { activityUiTerms } from "@/lib/features/activity/activity-profiles";
 import { messageFromUnknownError, toast, toastMutationError } from "@/lib/toast";
 import { downloadProSpreadsheet } from "@/lib/utils/spreadsheet-export-pro";
 import { formatCurrency } from "@/lib/utils/currency";
@@ -197,6 +198,7 @@ export function InventoryScreen() {
   const companyId = ctx?.companyId ?? "";
   const storeId = ctx?.storeId ?? null;
   const storeName = ctx?.stores?.find((s) => s.id === storeId)?.name ?? null;
+  const uiTerms = activityUiTerms(ctx?.businessTypeSlug);
 
   const isWide = useMediaQuery("(min-width: 900px)");
   const narrowHeader = useMediaQuery("(max-width: 559px)");
@@ -370,7 +372,7 @@ export function InventoryScreen() {
   if (ctxIsError) {
     return (
       <FsPage className={cn(isWide && "px-8 pt-7")}>
-        <h1 className="text-[22px] font-bold text-fs-text min-[900px]:text-2xl">Stock</h1>
+        <h1 className="text-[22px] font-bold text-fs-text min-[900px]:text-2xl">{uiTerms.inventoryTitle}</h1>
         <FsCard className="mt-4" padding="p-4">
           <FsQueryErrorPanel
             error={ctxError ?? new Error("Impossible de charger le profil ou l’entreprise.")}
@@ -384,7 +386,7 @@ export function InventoryScreen() {
   if (ctx == null) {
     return (
       <FsPage className={cn(isWide && "px-8 pt-7")}>
-        <h1 className="text-[22px] font-bold text-fs-text min-[900px]:text-2xl">Stock</h1>
+        <h1 className="text-[22px] font-bold text-fs-text min-[900px]:text-2xl">{uiTerms.inventoryTitle}</h1>
         <p className="mt-2 text-sm text-neutral-600">
           Session indisponible. Reconnectez-vous ou réessayez.
         </p>
@@ -415,7 +417,7 @@ export function InventoryScreen() {
   if (companyId && !storeId) {
     return (
       <FsPage className={cn(isWide && "px-8 pt-7")}>
-        <h1 className="text-[22px] font-bold text-fs-text min-[900px]:text-2xl">Stock</h1>
+        <h1 className="text-[22px] font-bold text-fs-text min-[900px]:text-2xl">{uiTerms.inventoryTitle}</h1>
         <p className="mt-2 text-sm text-neutral-600">
           Sélectionnez une boutique dans le menu pour voir le stock et les mouvements.
         </p>
@@ -448,7 +450,7 @@ export function InventoryScreen() {
                 Stock
               </h1>
               <p className="mt-0.5 text-sm text-neutral-600 sm:mt-1">
-                {storeName != null ? `Stock — ${storeName}` : "Stock"}
+                {storeName != null ? `${uiTerms.inventoryTitle} — ${storeName}` : uiTerms.inventoryTitle}
               </p>
             </div>
           </div>

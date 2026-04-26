@@ -2,9 +2,9 @@
 
 import { cn } from "@/lib/utils/cn";
 import type { NavItem } from "@/lib/config/navigation";
-import { ChevronLeft, Menu, Package, PanelLeftOpen } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, Menu, Package, PanelLeftOpen } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 function navInitials(email: string): string {
   const local = email.split("@")[0]?.trim() ?? "";
@@ -43,8 +43,27 @@ export function AppSidebar({
   onNavigate,
 }: AppSidebarProps) {
   const [brandLogoErr, setBrandLogoErr] = useState(false);
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
   const isDrawer = variant === "mobileDrawer";
   const effectiveCollapsed = isDrawer ? false : collapsed;
+  const sectionHrefs = useMemo(
+    () => items.filter((item) => item.kind === "section").map((item) => item.href),
+    [items],
+  );
+
+  useEffect(() => {
+    setOpenSections((prev) => {
+      const next: Record<string, boolean> = {};
+      for (const href of sectionHrefs) next[href] = prev[href] ?? false;
+      return next;
+    });
+  }, [sectionHrefs]);
+
+  const sectionExpanded = (href: string) => openSections[href] ?? false;
+  const toggleSection = (href: string) => {
+    setOpenSections((prev) => ({ ...prev, [href]: !(prev[href] ?? false) }));
+  };
+
   useEffect(() => {
     setBrandLogoErr(false);
   }, [companyLogoUrl]);
@@ -132,59 +151,93 @@ export function AppSidebar({
         )}
         aria-label="Sections de l’application"
       >
-        {items.map((item) => {
-          const Icon = item.icon;
-          const active = isActive(item.href);
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              title={effectiveCollapsed ? item.label : undefined}
-              onClick={() => onNavigate?.()}
-              className={cn(
-                "group/nav relative flex items-center rounded-2xl text-[13px] font-semibold leading-tight tracking-tight",
-                "outline-none transition-[color,background-color,transform,box-shadow] duration-200 ease-out",
-                "focus-visible:ring-2 focus-visible:ring-[var(--fs-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-fs-card",
-                effectiveCollapsed ? "justify-center px-2 py-3" : "gap-3 px-3 py-2.5",
-                active
-                  ? [
-                      "bg-[color-mix(in_srgb,var(--fs-accent)_13%,transparent)] text-[var(--fs-accent)] dark:bg-[#f97316]/35 dark:text-white",
-                      "shadow-[0_1px_2px_rgba(0,0,0,0.04),inset_0_1px_0_rgba(255,255,255,0.45)]",
-                      "dark:shadow-[0_1px_3px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.06)]",
-                    ]
-                  : [
-                      "text-black hover:bg-black/[0.035] hover:text-black",
-                      "active:scale-[0.99] dark:text-neutral-100 dark:hover:bg-white/[0.06] dark:hover:text-white",
-                    ],
-              )}
-            >
-              {active ? (
-                <span
-                  className="absolute left-0 top-1/2 h-[60%] w-[3px] -translate-y-1/2 rounded-r-full bg-[var(--fs-accent)] shadow-[2px_0_8px_color-mix(in_srgb,var(--fs-accent)_45%,transparent)]"
-                  aria-hidden
-                />
-              ) : null}
-              <span
+        {(() => {
+          let currentSectionHref: string | null = null;
+          return items.map((item) => {
+            const Icon = item.icon;
+            if (item.kind === "section") {
+              currentSectionHref = item.href;
+              const isOpen = sectionExpanded(item.href);
+              return (
+                <button
+                  type="button"
+                  key={`${item.href}-${item.label}`}
+                  onClick={() => toggleSection(item.href)}
+                  className={cn(
+                    "mt-3 flex w-full items-center justify-between rounded-xl px-2 py-1.5 text-left",
+                    "text-[11px] font-extrabold uppercase tracking-wide text-black/70 transition-colors",
+                    "hover:bg-black/[0.04] dark:text-neutral-200/85 dark:hover:bg-white/[0.06]",
+                    effectiveCollapsed && "sr-only",
+                  )}
+                >
+                  <span className="inline-flex items-center gap-1.5">
+                    <Icon className="h-3.5 w-3.5" aria-hidden />
+                    {item.label}
+                  </span>
+                  {isOpen ? (
+                    <ChevronDown className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                  ) : (
+                    <ChevronRight className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                  )}
+                </button>
+              );
+            }
+
+            if (item.child && currentSectionHref && !sectionExpanded(currentSectionHref)) {
+              return null;
+            }
+
+            const active = isActive(item.href);
+            return (
+              <Link
+                key={`${item.href}-${item.label}`}
+                href={item.href}
+                title={effectiveCollapsed ? item.label : undefined}
+                onClick={() => onNavigate?.()}
                 className={cn(
-                  "flex shrink-0 items-center justify-center rounded-xl transition-colors duration-200",
+                  "group/nav relative flex items-center rounded-2xl text-[13px] font-semibold leading-tight tracking-tight",
+                  "outline-none transition-[color,background-color,transform,box-shadow] duration-200 ease-out",
+                  "focus-visible:ring-2 focus-visible:ring-[var(--fs-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-fs-card",
+                  effectiveCollapsed
+                    ? "justify-center px-2 py-3"
+                    : cn("gap-3 px-3 py-2.5", item.child && "pl-6"),
                   active
-                    ? "bg-[color-mix(in_srgb,var(--fs-accent)_18%,transparent)] text-[var(--fs-accent)] dark:bg-[#f97316]/28 dark:text-white"
-                  : "bg-[color-mix(in_srgb,#f97316_12%,white)] text-black group-hover/nav:bg-[color-mix(in_srgb,#f97316_19%,white)] group-hover/nav:text-black dark:bg-white/[0.06] dark:text-neutral-100 dark:group-hover/nav:bg-white/[0.1] dark:group-hover/nav:text-white",
-                  effectiveCollapsed ? "h-9 w-9" : "h-8 w-8",
+                    ? [
+                        "bg-[color-mix(in_srgb,var(--fs-accent)_13%,transparent)] text-[var(--fs-accent)] dark:bg-[#f97316]/35 dark:text-white",
+                        "shadow-[0_1px_2px_rgba(0,0,0,0.04),inset_0_1px_0_rgba(255,255,255,0.45)]",
+                        "dark:shadow-[0_1px_3px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.06)]",
+                      ]
+                    : [
+                        "text-black hover:bg-black/[0.035] hover:text-black",
+                        "active:scale-[0.99] dark:text-neutral-100 dark:hover:bg-white/[0.06] dark:hover:text-white",
+                      ],
                 )}
-                aria-hidden
               >
-                <Icon
-                  className="h-4 w-4"
-                  strokeWidth={active ? 2.35 : 2}
-                />
-              </span>
-              {!effectiveCollapsed ? (
-                <span className="min-w-0 flex-1 truncate">{item.label}</span>
-              ) : null}
-            </Link>
-          );
-        })}
+                {active ? (
+                  <span
+                    className="absolute left-0 top-1/2 h-[60%] w-[3px] -translate-y-1/2 rounded-r-full bg-[var(--fs-accent)] shadow-[2px_0_8px_color-mix(in_srgb,var(--fs-accent)_45%,transparent)]"
+                    aria-hidden
+                  />
+                ) : null}
+                <span
+                  className={cn(
+                    "flex shrink-0 items-center justify-center rounded-xl transition-colors duration-200",
+                    active
+                      ? "bg-[color-mix(in_srgb,var(--fs-accent)_18%,transparent)] text-[var(--fs-accent)] dark:bg-[#f97316]/28 dark:text-white"
+                      : "bg-[color-mix(in_srgb,#f97316_12%,white)] text-black group-hover/nav:bg-[color-mix(in_srgb,#f97316_19%,white)] group-hover/nav:text-black dark:bg-white/[0.06] dark:text-neutral-100 dark:group-hover/nav:bg-white/[0.1] dark:group-hover/nav:text-white",
+                    effectiveCollapsed ? "h-9 w-9" : "h-8 w-8",
+                  )}
+                  aria-hidden
+                >
+                  <Icon className="h-4 w-4" strokeWidth={active ? 2.35 : 2} />
+                </span>
+                {!effectiveCollapsed ? (
+                  <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                ) : null}
+              </Link>
+            );
+          });
+        })()}
       </nav>
 
       <div className="relative z-[1] mt-auto space-y-2 border-t border-black/[0.06] p-2.5 dark:border-white/[0.08]">

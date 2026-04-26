@@ -40,6 +40,12 @@ export const queryKeys = {
     from: string;
     to: string;
   }) => ["credit-sales", params] as const,
+  legacyCredits: (params: {
+    companyId: string;
+    storeId: string | null;
+    from: string;
+    to: string;
+  }) => ["legacy-credits", params] as const,
   /** Liste boutiques (`listStores`) — ne pas confondre avec `storesPage`. */
   stores: (companyId: string) => ["stores", companyId] as const,
   /** Page Boutiques : `fetchStoresPageData` (liste + quota). */

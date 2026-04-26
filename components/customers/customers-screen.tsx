@@ -20,6 +20,7 @@ import type { Customer } from "@/lib/features/customers/types";
 import { usePermissions } from "@/lib/features/permissions/use-permissions";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { queryKeys } from "@/lib/query/query-keys";
+import { activityUiTerms } from "@/lib/features/activity/activity-profiles";
 import { downloadProSpreadsheet } from "@/lib/utils/spreadsheet-export-pro";
 import { cn } from "@/lib/utils/cn";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -42,8 +43,6 @@ import {
 import { messageFromUnknownError, toast, toastMutationError } from "@/lib/toast";
 
 const PAGE_SIZE = 20;
-
-const DESCRIPTION = "Gérer vos clients (particuliers et entreprises)";
 
 function typeLabel(t: Customer["type"]): string {
   return t === "company" ? "Entreprise" : "Particulier";
@@ -184,6 +183,7 @@ export function CustomersScreen() {
   const qc = useQueryClient();
   const { data: ctx, isLoading: permLoading, hasPermission } = usePermissions();
   const companyId = ctx?.companyId ?? "";
+  const uiTerms = activityUiTerms(ctx?.businessTypeSlug);
 
   const canView = hasPermission(P.customersView) || hasPermission(P.customersManage);
   const canManage = hasPermission(P.customersManage);
@@ -348,9 +348,9 @@ export function CustomersScreen() {
       {isNarrowHeader ? (
         <div className="mb-6">
           <h1 className="text-[22px] font-bold tracking-tight text-fs-text sm:text-2xl">
-            Clients
+            {uiTerms.customersTitle}
           </h1>
-          <p className="mt-1 text-sm text-neutral-600">{DESCRIPTION}</p>
+          <p className="mt-1 text-sm text-neutral-600">{uiTerms.customersDescription}</p>
           {showActionsRow ? (
             <div className="mt-4 flex flex-wrap items-center gap-2">
               {filtered.length > 0 ? (
@@ -382,9 +382,9 @@ export function CustomersScreen() {
         <div className="mb-6 flex flex-row items-start justify-between gap-4">
           <div className="min-w-0">
             <h1 className="text-2xl font-bold tracking-tight text-fs-text min-[900px]:text-[22px]">
-              Clients
+              {uiTerms.customersTitle}
             </h1>
-            <p className="mt-1 text-sm text-neutral-600">{DESCRIPTION}</p>
+            <p className="mt-1 text-sm text-neutral-600">{uiTerms.customersDescription}</p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
             {filtered.length > 0 ? (

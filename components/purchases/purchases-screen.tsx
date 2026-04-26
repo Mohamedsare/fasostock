@@ -18,6 +18,7 @@ import {
 } from "@/lib/features/purchases/api";
 import { purchasesToSpreadsheetMatrix } from "@/lib/features/purchases/csv";
 import type { PurchaseDetail, PurchaseListItem, PurchaseStatus } from "@/lib/features/purchases/types";
+import { activityUiTerms } from "@/lib/features/activity/activity-profiles";
 import { usePermissions } from "@/lib/features/permissions/use-permissions";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { queryKeys } from "@/lib/query/query-keys";
@@ -178,6 +179,7 @@ export function PurchasesScreen() {
   const companyId = ctx?.companyId ?? "";
   const ctxStoreId = ctx?.storeId ?? null;
   const stores = ctx?.stores ?? [];
+  const terms = activityUiTerms(ctx?.businessTypeSlug);
 
   /** Aligné `PurchasesPage` Flutter (l.216–219) — pas de cas super-admin séparé. */
   const canAccess =
@@ -295,7 +297,7 @@ export function PurchasesScreen() {
     },
     onSuccess: async () => {
       await invalidatePurchases();
-      toast.success("Achat créé (brouillon)");
+      toast.success(terms.purchasesCreatedToast);
     },
     onError: (e) => toastMutationError("purchases", e),
   });
@@ -305,7 +307,7 @@ export function PurchasesScreen() {
     onSuccess: async () => {
       await invalidatePurchases();
       if (detailId) await qc.invalidateQueries({ queryKey: ["purchase-detail", detailId] });
-      toast.success("Achat annulé");
+      toast.success(terms.purchasesCancelledToast);
     },
     onError: (e) => toastMutationError("purchases", e),
   });
@@ -315,7 +317,7 @@ export function PurchasesScreen() {
     onSuccess: async () => {
       await invalidatePurchases();
       if (detailId) await qc.invalidateQueries({ queryKey: ["purchase-detail", detailId] });
-      toast.success("Achat supprimé");
+      toast.success(terms.purchasesDeletedToast);
     },
     onError: (e) => toastMutationError("purchases", e),
   });
@@ -338,11 +340,11 @@ export function PurchasesScreen() {
 
   const openCreate = () => {
     if (stores.length === 0) {
-      toast.info("Aucune boutique.");
+      toast.info(`Aucun ${terms.storeSingular.toLowerCase()}.`);
       return;
     }
     if (!canCreate) {
-      toast.info("Vous n'avez pas le droit de créer des achats.");
+      toast.info(terms.purchasesCreateDeniedToast);
       return;
     }
     setCreateOpen(true);
@@ -354,8 +356,8 @@ export function PurchasesScreen() {
       try {
         const d = new Date().toISOString().slice(0, 10);
         const { headers, rows: matrix } = purchasesToSpreadsheetMatrix(rows);
-        await downloadProSpreadsheet(`achats-${d}.xlsx`, "Achats", headers, matrix, {
-          title: "FasoStock — Achats",
+        await downloadProSpreadsheet(`achats-${d}.xlsx`, terms.purchasesTitle, headers, matrix, {
+          title: `FasoStock — ${terms.purchasesTitle}`,
           subtitle: `${rows.length} ligne(s) · filtres courants · ${d}`,
         });
         toast.success("Excel enregistré");
@@ -396,7 +398,7 @@ export function PurchasesScreen() {
     return (
       <FsPage>
         <h1 className="text-[22px] font-bold tracking-[-0.4px] text-fs-text min-[700px]:text-2xl">
-          Achats
+          {terms.purchasesTitle}
         </h1>
         <p className="mt-6 text-center text-base text-neutral-600">Sélectionnez une entreprise.</p>
       </FsPage>
@@ -409,7 +411,7 @@ export function PurchasesScreen() {
       <div className="mb-5 space-y-2">
         <div className="flex flex-col gap-3 min-[420px]:flex-row min-[420px]:items-center min-[420px]:justify-between">
           <h1 className="min-w-0 text-[22px] font-bold tracking-[-0.4px] text-fs-text min-[700px]:text-2xl">
-            Achats
+            {terms.purchasesTitle}
           </h1>
           {canCreate ? (
             <button
@@ -418,12 +420,12 @@ export function PurchasesScreen() {
               className="inline-flex min-h-[44px] w-full shrink-0 items-center justify-center gap-2 rounded-[10px] bg-fs-accent px-4 py-2.5 text-sm font-semibold text-white shadow-sm active:scale-[0.99] min-[420px]:w-auto"
             >
               <MdAdd className="h-[18px] w-[18px]" aria-hidden />
-              Nouveau achat
+              {terms.purchasesCreateActionLabel}
             </button>
           ) : null}
         </div>
         <p className="text-sm leading-relaxed text-neutral-600">
-          Voir, modifier, annuler ou supprimer les achats.
+          {terms.purchasesDescription}
         </p>
         {rows.length > 0 ? (
           <button
@@ -439,10 +441,10 @@ export function PurchasesScreen() {
 
       <div className="mb-6 flex flex-wrap gap-x-3 gap-y-2">
         <div className="w-full min-[480px]:min-w-[11rem] min-[480px]:max-w-[min(100%,14rem)] min-[480px]:flex-1">
-          <label className="mb-1 block text-xs font-medium text-neutral-600">Boutique</label>
+          <label className="mb-1 block text-xs font-medium text-neutral-600">{terms.storeSingular}</label>
           <select
             className={fsInputClass("min-h-[44px] rounded-[10px]")}
-            aria-label="Boutique"
+            aria-label={terms.storeSingular}
             value={filterStoreId ?? ""}
             onChange={(e) => setFilterStoreId(e.target.value === "" ? null : e.target.value)}
           >
@@ -519,7 +521,7 @@ export function PurchasesScreen() {
                     <tr className="border-b border-black/6 bg-fs-surface-container/80">
                       <th className="whitespace-nowrap px-4 py-3 font-semibold">Réf.</th>
                       <th className="whitespace-nowrap px-4 py-3 font-semibold">Date</th>
-                      <th className="whitespace-nowrap px-4 py-3 font-semibold">Boutique</th>
+                      <th className="whitespace-nowrap px-4 py-3 font-semibold">{terms.storeSingular}</th>
                       <th className="whitespace-nowrap px-4 py-3 font-semibold">Fournisseur</th>
                       <th className="whitespace-nowrap px-4 py-3 font-semibold">Total</th>
                       <th className="whitespace-nowrap px-4 py-3 font-semibold">Statut</th>

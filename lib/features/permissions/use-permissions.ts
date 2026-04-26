@@ -35,11 +35,11 @@ export function usePermissions(): {
     if (data.isSuperAdmin) return true;
     const h = buildAccessHelpers(data);
     if (!h) return false;
-    return canAccessPathname(pathname, h);
+    return canAccessPathname(pathname, h, data.businessTypeSlug);
   };
 
   const filterNavItems = (items: NavItem[]) =>
-    filterNavItemsForPermissions(items, helpers, q.isLoading);
+    filterNavItemsForPermissions(items, helpers, q.isLoading, data?.businessTypeSlug);
 
   return {
     data,

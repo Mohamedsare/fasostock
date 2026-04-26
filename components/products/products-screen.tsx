@@ -30,6 +30,7 @@ import type { ProductFormSavePayload, ProductItem } from "@/lib/features/product
 import { ProductFormDialog } from "@/components/products/product-form-dialog";
 import { ROUTES } from "@/lib/config/routes";
 import { queryKeys } from "@/lib/query/query-keys";
+import { activityUiTerms } from "@/lib/features/activity/activity-profiles";
 import { formatCurrency } from "@/lib/utils/currency";
 import { cn } from "@/lib/utils/cn";
 import { productsToSpreadsheetMatrix } from "@/lib/features/products/csv";
@@ -108,6 +109,8 @@ export function ProductsScreen() {
   const readOnlyCategoriesBrands = helpers?.isCashier ?? false;
   const companyId = ctx.data?.companyId ?? "";
   const storeId = ctx.data?.storeId ?? null;
+  const uiTerms = activityUiTerms(ctx.data?.businessTypeSlug);
+  const productEntityLabel = uiTerms.productsTitle === "Menu" ? "Élément du menu" : "Produit";
 
   const productsQ = useQuery({
     queryKey: queryKeys.products(companyId),
@@ -184,7 +187,7 @@ export function ProductsScreen() {
       }
       setShowForm(false);
       setEditing(null);
-      toast.success(vars.editingId ? "Produit mis à jour" : "Produit créé");
+      toast.success(vars.editingId ? `${productEntityLabel} mis à jour` : `${productEntityLabel} créé`);
     },
     onError: (e) => toast.error(messageFromUnknownError(e)),
   });
@@ -194,7 +197,7 @@ export function ProductsScreen() {
       setProductActive(id, active),
     onSuccess: async (_data, vars) => {
       await qc.invalidateQueries({ queryKey: queryKeys.products(companyId) });
-      toast.success(vars.active ? "Produit activé" : "Produit désactivé");
+      toast.success(vars.active ? `${productEntityLabel} activé` : `${productEntityLabel} désactivé`);
     },
     onError: (e) => toast.error(messageFromUnknownError(e)),
   });
@@ -203,7 +206,7 @@ export function ProductsScreen() {
     mutationFn: (id: string) => softDeleteProduct(id),
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: queryKeys.products(companyId) });
-      toast.success("Produit supprimé");
+      toast.success(`${productEntityLabel} supprimé`);
     },
     onError: (e) => toast.error(messageFromUnknownError(e)),
   });
@@ -348,8 +351,8 @@ export function ProductsScreen() {
   return (
     <FsPage className="flex flex-col">
       <FsScreenHeader
-        title="Produits"
-        subtitle="Catalogue, catégories et marques"
+        title={uiTerms.productsTitle}
+        subtitle={uiTerms.productsSubtitle}
         className="mb-0"
         titleClassName="min-[900px]:text-2xl min-[900px]:font-bold min-[900px]:tracking-tight"
         subtitleClassName="text-neutral-600 min-[900px]:text-base"
@@ -374,7 +377,7 @@ export function ProductsScreen() {
       <div className="mb-4 mt-3 flex flex-wrap gap-2 sm:mt-4">
         <FsFilterChip
           icon={MdInventory2}
-          label="Produits"
+          label={uiTerms.productsTitle}
           selected={tab === "products"}
           onClick={() => setTab("products")}
         />
@@ -405,10 +408,16 @@ export function ProductsScreen() {
                     void (async () => {
                       try {
                         const { headers, rows } = productsToSpreadsheetMatrix(filtered);
-                        await downloadProSpreadsheet(`produits-${d}.xlsx`, "Produits", headers, rows, {
-                          title: "FasoStock — Produits",
+                        await downloadProSpreadsheet(
+                          `${uiTerms.productsTitle.toLowerCase().replace(/\s+/g, "-")}-${d}.xlsx`,
+                          uiTerms.productsTitle,
+                          headers,
+                          rows,
+                          {
+                            title: `FasoStock — ${uiTerms.productsTitle}`,
                           subtitle: `${filtered.length} ligne(s) · ${d}`,
-                        });
+                          },
+                        );
                         toast.success("Excel enregistré");
                       } catch (e) {
                         toast.error(messageFromUnknownError(e, "Export Excel impossible."));

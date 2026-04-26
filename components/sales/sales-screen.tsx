@@ -21,6 +21,7 @@ import { salesToSpreadsheetMatrix } from "@/lib/features/sales/csv";
 import { downloadProSpreadsheet } from "@/lib/utils/spreadsheet-export-pro";
 import { saleSellerLabel, saleStoreLabel } from "@/lib/features/sales/sale-display";
 import { ROUTES, storeFactureTabPath } from "@/lib/config/routes";
+import { activityUiTerms } from "@/lib/features/activity/activity-profiles";
 import { messageFromUnknownError, toast } from "@/lib/toast";
 import { cn } from "@/lib/utils/cn";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
@@ -47,6 +48,14 @@ import {
 } from "react-icons/md";
 
 const PAGE_SIZE = 20;
+export type SalesPreset =
+  | "default"
+  | "new_order"
+  | "dine_in"
+  | "takeaway"
+  | "delivery"
+  | "history";
+type RestaurantQuickStatus = "all" | SaleStatus;
 
 const statusLabel: Record<SaleStatus, string> = {
   draft: "Brouillon",
@@ -114,7 +123,7 @@ function DocumentTypeChip({ sale }: { sale: SaleItem }) {
   );
 }
 
-export function SalesScreen() {
+export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
   const router = useRouter();
   const qc = useQueryClient();
   const ctx = useAppContext();
@@ -134,12 +143,16 @@ export function SalesScreen() {
   const lastCompanyId = useRef<string | null>(null);
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
+  const [restaurantQuickStatus, setRestaurantQuickStatus] =
+    useState<RestaurantQuickStatus>("all");
   const [page, setPage] = useState(0);
   const [detailId, setDetailId] = useState<string | null>(null);
 
   const companyId = ctx.data?.companyId ?? "";
   const stores = ctx.data?.stores ?? [];
   const currentStoreId = ctx.data?.storeId ?? null;
+  const uiTerms = activityUiTerms(ctx.data?.businessTypeSlug);
+  const isRestaurant = ctx.data?.businessTypeSlug === "restaurant-fast-food";
 
   const peekInvoiceTable =
     companyId.length > 0 ? peekInvoiceTablePosEnabled(companyId) : undefined;
@@ -233,18 +246,77 @@ export function SalesScreen() {
   });
 
   const sales = salesQ.data ?? [];
-  const pageCount = sales.length === 0 ? 0 : Math.ceil(sales.length / PAGE_SIZE);
+  const scopedSales = useMemo(() => {
+    if (!isRestaurant || preset === "default") return sales;
+    const isDelivery = (s: SaleItem) =>
+      Boolean(s.customer?.address && s.customer.address.trim().length > 0);
+    switch (preset) {
+      case "new_order":
+        return sales.filter((s) => s.status === "draft");
+      case "dine_in":
+        return sales.filter((s) => s.sale_mode === "invoice_pos");
+      case "takeaway":
+        return sales.filter((s) => s.sale_mode === "quick_pos" && !isDelivery(s));
+      case "delivery":
+        return sales.filter((s) => s.sale_mode === "quick_pos" && isDelivery(s));
+      case "history":
+        return sales.filter((s) => s.status !== "draft");
+      default:
+        return sales;
+    }
+  }, [isRestaurant, preset, sales]);
+  const restaurantStatusCounts = useMemo(
+    () => ({
+      all: scopedSales.length,
+      draft: scopedSales.filter((s) => s.status === "draft").length,
+      completed: scopedSales.filter((s) => s.status === "completed").length,
+      cancelled: scopedSales.filter((s) => s.status === "cancelled").length,
+      refunded: scopedSales.filter((s) => s.status === "refunded").length,
+    }),
+    [scopedSales],
+  );
+  const restaurantQuickScopedSales = useMemo(() => {
+    if (!isRestaurant || restaurantQuickStatus === "all") return scopedSales;
+    return scopedSales.filter((s) => s.status === restaurantQuickStatus);
+  }, [isRestaurant, restaurantQuickStatus, scopedSales]);
+  const pageCount =
+    restaurantQuickScopedSales.length === 0
+      ? 0
+      : Math.ceil(restaurantQuickScopedSales.length / PAGE_SIZE);
   const safePage = Math.min(page, Math.max(0, pageCount - 1));
-  const paged = sales.slice(safePage * PAGE_SIZE, safePage * PAGE_SIZE + PAGE_SIZE);
+  const paged = restaurantQuickScopedSales.slice(
+    safePage * PAGE_SIZE,
+    safePage * PAGE_SIZE + PAGE_SIZE,
+  );
 
-  const rangeStart = sales.length === 0 ? 0 : safePage * PAGE_SIZE + 1;
-  const rangeEnd = Math.min((safePage + 1) * PAGE_SIZE, sales.length);
+  const rangeStart =
+    restaurantQuickScopedSales.length === 0 ? 0 : safePage * PAGE_SIZE + 1;
+  const rangeEnd = Math.min((safePage + 1) * PAGE_SIZE, restaurantQuickScopedSales.length);
 
   const headerDescription = useMemo(() => {
-    if (!currentStoreId) return "Sélectionnez une boutique";
+    if (isRestaurant) {
+      if (preset === "new_order") return "Commandes en brouillon a finaliser.";
+      if (preset === "dine_in") return "Suivi des commandes en salle.";
+      if (preset === "takeaway") return "Suivi des commandes a emporter.";
+      if (preset === "delivery") return "Suivi des commandes en livraison.";
+      if (preset === "history") return "Historique complet des commandes.";
+    }
+    if (!currentStoreId) return `Sélectionnez un ${uiTerms.storeSingular.toLowerCase()}`;
     const name = stores.find((s) => s.id === currentStoreId)?.name;
-    return name ? `Ventes — ${name}` : "Sélectionnez une boutique";
-  }, [currentStoreId, stores]);
+    return name
+      ? `${isRestaurant ? "Commandes" : "Ventes"} — ${name}`
+      : `Sélectionnez un ${uiTerms.storeSingular.toLowerCase()}`;
+  }, [currentStoreId, isRestaurant, preset, stores, uiTerms.storeSingular]);
+
+  const pageTitle = useMemo(() => {
+    if (!isRestaurant) return uiTerms.salesHistoryTitle;
+    if (preset === "new_order") return "Nouvelle commande";
+    if (preset === "dine_in") return "Commandes en salle";
+    if (preset === "takeaway") return "A emporter";
+    if (preset === "delivery") return "Livraisons";
+    if (preset === "history") return "Historique des commandes";
+    return "Commandes";
+  }, [isRestaurant, preset, uiTerms.salesHistoryTitle]);
 
   if (ctx.isLoading || permLoading) return <LoadingState />;
   if (!ctx.data) {
@@ -289,15 +361,18 @@ export function SalesScreen() {
     const d = new Date().toISOString().slice(0, 10);
     void (async () => {
       try {
-        const { headers, rows } = salesToSpreadsheetMatrix(sales, stores);
+        const { headers, rows } = salesToSpreadsheetMatrix(
+          restaurantQuickScopedSales,
+          stores,
+        );
         await downloadProSpreadsheet(
-          `ventes-${d}.xlsx`,
-          "Ventes",
+          `${isRestaurant ? "commandes" : "ventes"}-${d}.xlsx`,
+          isRestaurant ? "Commandes" : "Ventes",
           headers,
           rows,
           {
-            title: "FasoStock — Ventes",
-            subtitle: `${sales.length} ligne(s) · généré le ${d}`,
+            title: `FasoStock — ${isRestaurant ? "Commandes" : "Ventes"}`,
+            subtitle: `${restaurantQuickScopedSales.length} ligne(s) · généré le ${d}`,
           },
         );
         toast.success("Excel enregistré");
@@ -324,7 +399,7 @@ export function SalesScreen() {
       {canInvoiceA4 ? (
         <ActionCard
           title="Facture A4"
-          subtitle="Vente détaillée"
+          subtitle={isRestaurant ? "Commande détaillée" : "Vente détaillée"}
           icon={MdDescription}
           accent
           enabled={!!currentStoreId}
@@ -346,8 +421,8 @@ export function SalesScreen() {
         />
       ) : null}
       <ActionCard
-        title="Historique des ventes"
-        subtitle={`${sales.length} vente(s)`}
+        title={uiTerms.salesHistoryTitle}
+        subtitle={`${restaurantQuickScopedSales.length} vente(s)`}
         icon={MdShoppingCart}
         accent={false}
         enabled
@@ -368,7 +443,7 @@ export function SalesScreen() {
         <div className="flex flex-col gap-4 min-[560px]:flex-row min-[560px]:items-start min-[560px]:justify-between min-[560px]:gap-6">
           <div className="min-w-0">
             <h1 className="text-[22px] font-bold leading-tight tracking-[-0.4px] text-fs-text min-[900px]:text-2xl">
-              Ventes
+              {pageTitle}
             </h1>
             <p className="mt-1 text-sm leading-relaxed text-neutral-600 min-[900px]:text-base">
               {headerDescription}
@@ -390,7 +465,7 @@ export function SalesScreen() {
             </button>
             <button
               type="button"
-              disabled={sales.length === 0 || salesQ.isFetching}
+              disabled={restaurantQuickScopedSales.length === 0 || salesQ.isFetching}
               onClick={exportExcel}
               className={btnOutline}
             >
@@ -400,11 +475,51 @@ export function SalesScreen() {
             {canCreateSale && currentStoreId ? (
               <Link href={`${ROUTES.stores}/${currentStoreId}/pos-quick`} className={btnPrimary}>
                 <MdAdd className="h-5 w-5 shrink-0" aria-hidden />
-                Nouvelle vente
+                {isRestaurant ? "Nouvelle commande" : "Nouvelle vente"}
               </Link>
             ) : null}
           </div>
         </div>
+
+      {isRestaurant ? (
+        <>
+          <section className="grid grid-cols-2 gap-2 min-[560px]:grid-cols-5 min-[560px]:gap-3">
+            <StatusMiniCard label="Toutes" value={restaurantStatusCounts.all} tone="neutral" />
+            <StatusMiniCard label="Nouvelles" value={restaurantStatusCounts.draft} tone="accent" />
+            <StatusMiniCard label="Servies" value={restaurantStatusCounts.completed} tone="success" />
+            <StatusMiniCard label="Annulees" value={restaurantStatusCounts.cancelled} tone="danger" />
+            <StatusMiniCard label="Remboursees" value={restaurantStatusCounts.refunded} tone="muted" />
+          </section>
+          <div className="flex flex-wrap gap-2">
+            {(
+              [
+                { id: "all", label: "Tous" },
+                { id: "draft", label: "Nouvelles" },
+                { id: "completed", label: "Servies" },
+                { id: "cancelled", label: "Annulees" },
+                { id: "refunded", label: "Remboursees" },
+              ] as const
+            ).map((chip) => (
+              <button
+                key={chip.id}
+                type="button"
+                onClick={() => {
+                  setRestaurantQuickStatus(chip.id);
+                  setPage(0);
+                }}
+                className={cn(
+                  "inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors",
+                  restaurantQuickStatus === chip.id
+                    ? "border-fs-accent/35 bg-fs-accent/12 text-fs-accent"
+                    : "border-black/10 bg-fs-card text-neutral-700 hover:bg-black/[0.03]",
+                )}
+              >
+                {chip.label}
+              </button>
+            ))}
+          </div>
+        </>
+      ) : null}
 
       <section
         className={cn(
@@ -424,7 +539,7 @@ export function SalesScreen() {
         <div className="flex flex-col gap-4 min-[500px]:flex-row min-[500px]:flex-wrap min-[500px]:items-end min-[500px]:gap-3">
           <div className="w-full min-[500px]:w-[200px] min-[500px]:shrink-0">
             <label className="mb-1.5 block text-xs font-medium text-neutral-600">
-              Boutique
+              {uiTerms.storeSingular}
             </label>
             <select
               value={storeFilter}
@@ -436,7 +551,7 @@ export function SalesScreen() {
               }}
               className={cn(fsInputClass(), "min-h-12 sm:min-h-11")}
             >
-              <option value="">Toutes boutiques</option>
+              <option value="">Tous les {uiTerms.storesPlural.toLowerCase()}</option>
               {stores.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name}
@@ -531,8 +646,8 @@ export function SalesScreen() {
         <div className="py-16">
           <LoadingState />
         </div>
-      ) : sales.length === 0 ? (
-        <EmptyStateCard currentStoreId={currentStoreId} />
+      ) : restaurantQuickScopedSales.length === 0 ? (
+        <EmptyStateCard currentStoreId={currentStoreId} storeLabel={uiTerms.storeSingular} />
       ) : (
         <>
           {isWide ? (
@@ -543,8 +658,8 @@ export function SalesScreen() {
                     <th className="px-3 py-2.5">Numéro</th>
                     <th className="px-3 py-2.5">Type</th>
                     <th className="px-3 py-2.5">Date</th>
-                    <th className="px-3 py-2.5">Boutique</th>
-                    <th className="px-3 py-2.5">Vente par</th>
+                    <th className="px-3 py-2.5">{uiTerms.storeSingular}</th>
+                    <th className="px-3 py-2.5">{isRestaurant ? "Commande par" : "Vente par"}</th>
                     <th className="px-3 py-2.5">Client</th>
                     <th className="px-3 py-2.5 text-right">Total</th>
                     <th className="px-3 py-2.5">Statut</th>
@@ -686,7 +801,7 @@ export function SalesScreen() {
             <div className="mt-2 rounded-xl border border-black/[0.06] bg-fs-card px-3 py-3 shadow-sm sm:px-4">
               <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
                 <span className="order-2 hidden text-sm text-neutral-500 min-[500px]:order-none min-[500px]:inline">
-                  {rangeStart} – {rangeEnd} sur {sales.length}
+                  {rangeStart} – {rangeEnd} sur {restaurantQuickScopedSales.length}
                 </span>
                 <button
                   type="button"
@@ -720,7 +835,7 @@ export function SalesScreen() {
                   <MdChevronRight className="h-[26px] w-[26px]" aria-hidden />
                 </button>
                 <span className="order-3 w-full text-center text-xs text-neutral-500 min-[500px]:hidden">
-                  {rangeStart} – {rangeEnd} / {sales.length}
+                  {rangeStart} – {rangeEnd} / {restaurantQuickScopedSales.length}
                 </span>
               </div>
             </div>
@@ -733,6 +848,35 @@ export function SalesScreen() {
       ) : null}
       </div>
     </FsPage>
+  );
+}
+
+function StatusMiniCard({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: number;
+  tone: "neutral" | "accent" | "success" | "danger" | "muted";
+}) {
+  const toneClass =
+    tone === "accent"
+      ? "bg-fs-accent/10 text-fs-accent"
+      : tone === "success"
+        ? "bg-emerald-500/12 text-emerald-700"
+        : tone === "danger"
+          ? "bg-red-500/12 text-red-700"
+          : tone === "muted"
+            ? "bg-neutral-500/10 text-neutral-600"
+            : "bg-fs-surface-container text-fs-text";
+  return (
+    <div className="rounded-xl border border-black/6 bg-fs-card p-3">
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-neutral-500">
+        {label}
+      </p>
+      <p className={cn("mt-1 text-lg font-bold", toneClass)}>{value}</p>
+    </div>
   );
 }
 
@@ -931,7 +1075,13 @@ function LoadingState() {
   );
 }
 
-function EmptyStateCard({ currentStoreId }: { currentStoreId: string | null }) {
+function EmptyStateCard({
+  currentStoreId,
+  storeLabel,
+}: {
+  currentStoreId: string | null;
+  storeLabel: string;
+}) {
   return (
     <FsCard className="py-14 text-center sm:py-16" padding="px-5 py-14 sm:px-6 sm:py-16">
       <MdShoppingCart
@@ -942,7 +1092,7 @@ function EmptyStateCard({ currentStoreId }: { currentStoreId: string | null }) {
         Aucune vente
       </h3>
       <p className="mt-2 text-sm leading-relaxed text-neutral-600">
-        Créez une vente depuis le POS en sélectionnant une boutique.
+        {`Créez une vente depuis le POS en sélectionnant un ${storeLabel.toLowerCase()}.`}
       </p>
       {currentStoreId ? (
         <Link

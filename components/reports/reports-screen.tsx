@@ -19,6 +19,7 @@ import { P } from "@/lib/constants/permissions";
 import { fetchReportsPageData } from "@/lib/features/dashboard/api";
 import { getDefaultDateRange } from "@/lib/features/dashboard/date-range";
 import type { StockMovementByDay } from "@/lib/features/dashboard/types";
+import { activityUiTerms } from "@/lib/features/activity/activity-profiles";
 import { usePermissions } from "@/lib/features/permissions/use-permissions";
 import { listCategories, listProducts } from "@/lib/features/products/api";
 import {
@@ -281,15 +282,16 @@ export function ReportsScreen() {
 
   const d = q.data;
 
+  const terms = activityUiTerms(ctx?.businessTypeSlug);
   const description = companyName
     ? `Tableau de bord — ${companyName}${storeLabel ? ` · ${storeLabel}` : ""}`
-    : "Rapports";
+    : terms.reportsTitle;
 
   const exportReportsPdf = useCallback(async () => {
     if (!d) return;
     try {
       const blob = await downloadReportsPdfBlob(d, {
-        title: "Rapports",
+        title: terms.reportsTitle,
         subtitle: description,
       });
       const name = `rapports_${new Date().toISOString().slice(0, 10)}.pdf`;
@@ -303,7 +305,7 @@ export function ReportsScreen() {
     } catch (e) {
       toast.error(messageFromUnknownError(e, "Export PDF impossible."));
     }
-  }, [d, description]);
+  }, [d, description, terms.reportsTitle]);
 
   const exportReportsExcelWithToast = useCallback(() => {
     if (!d) return;
@@ -361,7 +363,7 @@ export function ReportsScreen() {
     const needStore = !hasPermission(P.reportsViewStore);
     const parts: string[] = [];
     if (needGlobal) parts.push("Voir les rapports (global)");
-    if (needStore) parts.push("Voir les rapports (boutique)");
+    if (needStore) parts.push(`Voir les rapports (${terms.storeSingular.toLowerCase()})`);
     const requiredText = parts.length ? parts.join(" + ") : "Voir les rapports";
 
     return (
@@ -400,7 +402,7 @@ export function ReportsScreen() {
   return (
     <FsPage>
       <FsScreenHeader
-        title="Rapports"
+        title={terms.reportsTitle}
         subtitle={description}
         titleClassName="min-[900px]:text-2xl min-[900px]:font-bold min-[900px]:tracking-tight"
       />
@@ -473,7 +475,7 @@ export function ReportsScreen() {
           {stores.length > 1 ? (
             <div className="mt-3">
               <label className="sr-only" htmlFor="reports-store">
-                Boutique
+                {terms.storeSingular}
               </label>
               <select
                 id="reports-store"
@@ -487,7 +489,7 @@ export function ReportsScreen() {
                 }
                 onChange={(e) => onStoreSelectChange(e.target.value)}
               >
-                <option value="">Toutes les boutiques</option>
+                <option value="">Tous les {terms.storesPlural.toLowerCase()}</option>
                 {stores.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.name}
@@ -526,7 +528,7 @@ export function ReportsScreen() {
             </div>
             <div>
               <label className="mb-1 block text-[11px] font-medium text-neutral-600">
-                Produit
+                {terms.productsTitle}
               </label>
               <select
                 className={fsInputClass()}
@@ -535,7 +537,7 @@ export function ReportsScreen() {
                   setProductId(e.target.value === "" ? null : e.target.value)
                 }
               >
-                <option value="">Produit (tous)</option>
+                <option value="">{terms.productsTitle} (tous)</option>
                 {(productsQ.data ?? [])
                   .filter((p) => p.is_active !== false)
                   .map((p) => (
@@ -622,7 +624,7 @@ export function ReportsScreen() {
                 colorClass="bg-sky-500/15 text-sky-600"
               />
               <KpiCard
-                label="Produits vendus"
+                label={`${terms.productsTitle} vendus`}
                 value={String(d.salesSummary.itemsSold)}
                 icon={MdInventory2}
                 colorClass="bg-blue-600/15 text-blue-700"
@@ -635,7 +637,7 @@ export function ReportsScreen() {
                 colorClass="bg-emerald-500/15 text-emerald-600"
               />
               <KpiCard
-                label="Achats"
+                label={terms.purchasesTitle}
                 value={formatCurrency(d.purchasesSummary.totalAmount)}
                 subtitle={`${d.purchasesSummary.count} commandes`}
                 icon={MdLocalShipping}
@@ -646,7 +648,7 @@ export function ReportsScreen() {
                 value={formatCurrency(d.stockValue.totalValue)}
                 subtitle={
                   effectiveStoreId
-                    ? `${d.stockValue.productCount} produits`
+                    ? `${d.stockValue.productCount} éléments`
                     : "—"
                 }
                 icon={MdWarehouse}
@@ -684,10 +686,10 @@ export function ReportsScreen() {
               <div className="border-b border-black/[0.06] px-4 py-4 sm:px-5">
                 <div className="flex flex-wrap items-center gap-2">
                   <h2 className="text-base font-semibold text-fs-text">
-                    Top 10 produits vendus
+                    Top 10 {terms.productsTitle.toLowerCase()} vendus
                   </h2>
                   <span className="rounded-md bg-fs-accent/15 px-2 py-0.5 text-[11px] font-bold text-fs-accent">
-                    {d.topProducts.length} produits
+                    {d.topProducts.length} éléments
                   </span>
                 </div>
               </div>
@@ -700,7 +702,7 @@ export function ReportsScreen() {
                   <table className="w-full min-w-[520px] text-left text-xs">
                     <thead>
                       <tr className="bg-fs-surface-container/80 text-[11px] text-neutral-600">
-                        <th className="px-4 py-2 font-semibold">Produit</th>
+                        <th className="px-4 py-2 font-semibold">{terms.productsTitle}</th>
                         <th className="px-2 py-2 text-right font-semibold">
                           Qté vendue
                         </th>
@@ -750,7 +752,7 @@ export function ReportsScreen() {
                 <>
                   <div className="border-t border-black/[0.06] px-4 py-3 sm:px-5">
                     <p className="text-sm font-semibold text-fs-text">
-                      Produits les moins vendus (période)
+                      {terms.productsTitle} les moins vendus (période)
                     </p>
                   </div>
                   <ul className="divide-y divide-black/[0.06] px-2 pb-2">
@@ -789,7 +791,7 @@ export function ReportsScreen() {
               </div>
               {!effectiveStoreId ? (
                 <p className="mt-3 text-sm text-neutral-600">
-                  Sélectionnez une boutique pour voir le stock (filtres).
+                  Sélectionnez un {terms.storeSingular.toLowerCase()} pour voir le stock (filtres).
                 </p>
               ) : d.stockReport ? (
                 <>
@@ -800,7 +802,7 @@ export function ReportsScreen() {
                     )}
                   >
                     <div className="rounded-[10px] bg-fs-surface-container/80 px-3 py-2.5">
-                      <p className="text-[11px] text-neutral-600">Produits en stock</p>
+                      <p className="text-[11px] text-neutral-600">{terms.productsTitle} en stock</p>
                       <p className="mt-1 text-lg font-bold text-blue-700">
                         {d.stockReport.currentStockCount}
                       </p>

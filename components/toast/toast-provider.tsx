@@ -99,7 +99,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const toastLayer =
     active && mounted ? (
       <div
-        className="pointer-events-none fixed inset-x-0 flex justify-center px-4 max-md:bottom-[calc(5rem+var(--fs-safe-bottom))] md:bottom-8"
+        className="pointer-events-none fixed inset-x-0 top-0 flex justify-center px-4 pt-[calc(0.75rem+var(--fs-safe-top))] md:pt-4"
         style={{ zIndex: Z.toast }}
         aria-live={live}
         role={active.type === "error" ? "alert" : "status"}
@@ -107,7 +107,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         <div
           className={cn(
             "pointer-events-auto flex w-full max-w-lg items-start gap-3 rounded-xl px-4 py-3.5 text-white shadow-2xl transition-[opacity,transform] duration-200 ease-out",
-            visible ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0",
+            visible ? "translate-y-0 opacity-100" : "-translate-y-2 opacity-0",
           )}
           style={{ backgroundColor: bg }}
         >

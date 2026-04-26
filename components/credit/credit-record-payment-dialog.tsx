@@ -26,7 +26,14 @@ export function CreditRecordPaymentDialog({
   }) => void;
   busy: boolean;
 }) {
-  const [method, setMethod] = useState<"cash" | "mobile_money" | "card" | "transfer">("cash");
+  type PaymentModeUi =
+    | "cash"
+    | "orange_money"
+    | "moov_money"
+    | "wave"
+    | "card"
+    | "transfer";
+  const [method, setMethod] = useState<PaymentModeUi>("cash");
   const [amountStr, setAmountStr] = useState("");
   const [note, setNote] = useState("");
 
@@ -36,14 +43,36 @@ export function CreditRecordPaymentDialog({
   const rest = remainingTotal(sale);
   const amount = Math.max(0, parseFloat(amountStr.replace(",", ".") || "0") || 0);
 
+  const mobileProviderLabel =
+    method === "orange_money"
+      ? "Orange money"
+      : method === "moov_money"
+        ? "Moov money"
+        : method === "wave"
+          ? "Wave"
+          : null;
+  const backendMethod: "cash" | "mobile_money" | "card" | "transfer" =
+    method === "orange_money" || method === "moov_money" || method === "wave"
+      ? "mobile_money"
+      : method;
+
   return (
     <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/45 p-0 sm:items-center sm:p-4">
       <button type="button" className="absolute inset-0" aria-label="Fermer" onClick={onClose} />
       <div className="relative z-10 w-full max-w-md rounded-t-2xl border border-black/10 bg-fs-card p-4 shadow-2xl sm:rounded-2xl dark:border-white/10">
         <h3 className="text-lg font-bold text-fs-text">Enregistrer un paiement</h3>
-        <p className="mt-1 text-sm text-neutral-600">
-          {sale.sale_number} — reste {formatCurrency(rest)}
-        </p>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <span className="text-sm text-neutral-600">{sale.sale_number}</span>
+          <span
+            className={cn(
+              "inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-extrabold",
+              "border-[#F97316]/35 bg-[#FFEDD5] text-[#C2410C]",
+              "dark:border-orange-400/40 dark:bg-orange-950/40 dark:text-orange-200",
+            )}
+          >
+            Reste: {formatCurrency(rest)}
+          </span>
+        </div>
         <div className="mt-4 space-y-3">
           <div>
             <label className="mb-1 block text-xs font-medium text-neutral-600">Montant</label>
@@ -63,7 +92,9 @@ export function CreditRecordPaymentDialog({
               onChange={(e) => setMethod(e.target.value as typeof method)}
             >
               <option value="cash">Espèces</option>
-              <option value="mobile_money">Mobile money</option>
+              <option value="orange_money">Orange money</option>
+              <option value="moov_money">Moov money</option>
+              <option value="wave">Wave</option>
               <option value="card">Carte</option>
               <option value="transfer">Virement</option>
             </select>
@@ -96,9 +127,11 @@ export function CreditRecordPaymentDialog({
             disabled={busy || amount <= 0 || amount > rest + RPC_EPSILON}
             onClick={() =>
               onSubmit({
-                method,
+                method: backendMethod,
                 amount,
-                reference: note.trim() || null,
+                reference: mobileProviderLabel
+                  ? [mobileProviderLabel, note.trim()].filter(Boolean).join(" — ")
+                  : note.trim() || null,
               })
             }
             className={cn(

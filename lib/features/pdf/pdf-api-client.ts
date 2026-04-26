@@ -1,6 +1,7 @@
 import type { ReportsPageData } from "@/lib/features/dashboard/types";
 import type { InvoiceA4Data } from "@/lib/features/invoices/invoice-a4-types";
 import type { ReceiptTicketData } from "@/lib/features/receipt/receipt-ticket-types";
+import type { CreditRepaymentReceiptData } from "@/lib/features/credit/credit-repayment-receipt-types";
 
 export function uint8ToBase64(bytes: Uint8Array): string {
   let binary = "";
@@ -27,6 +28,16 @@ export function receiptPayloadJson(
     ...data,
     date: data.date instanceof Date ? data.date.toISOString() : data.date,
     paperWidthMm: opts?.paperWidthMm === 58 ? 58 : 80,
+  });
+}
+
+export function creditRepaymentReceiptPayloadJson(
+  data: CreditRepaymentReceiptData,
+): string {
+  return JSON.stringify({
+    ...data,
+    issuedAt: data.issuedAt instanceof Date ? data.issuedAt.toISOString() : data.issuedAt,
+    dueAt: data.dueAt instanceof Date ? data.dueAt.toISOString() : data.dueAt ?? null,
   });
 }
 
@@ -70,5 +81,14 @@ export async function fetchReportsPdfBlob(
   return postPdf(
     "/api/pdf/reports",
     JSON.stringify({ data, meta }),
+  );
+}
+
+export async function fetchCreditRepaymentReceiptPdfBlob(
+  data: CreditRepaymentReceiptData,
+): Promise<Blob> {
+  return postPdf(
+    "/api/pdf/credit-repayment-receipt",
+    creditRepaymentReceiptPayloadJson(data),
   );
 }

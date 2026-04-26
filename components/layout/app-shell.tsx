@@ -15,7 +15,7 @@ import {
 } from "@/components/layout/shell-chrome";
 import { ROUTES } from "@/lib/config/routes";
 import { OwnerNotificationsBell } from "@/components/layout/owner-notifications-bell";
-import { NAV_ITEMS } from "@/lib/config/navigation";
+import { NAV_ITEMS, RESTAURANT_NAV_ITEMS } from "@/lib/config/navigation";
 import { useAppContext } from "@/lib/features/common/app-context";
 import { usePermissions } from "@/lib/features/permissions/use-permissions";
 import { useDesktopNav } from "@/lib/hooks/use-media-query";
@@ -156,8 +156,12 @@ export function AppShell({ children, userEmail }: AppShellProps) {
   }, [isPosRoute]);
 
   const sidebarItems = useMemo(
-    () => NAV_ITEMS.filter((i) => i.showInSidebar !== false),
-    [],
+    () =>
+      (data?.businessTypeSlug === "restaurant-fast-food"
+        ? RESTAURANT_NAV_ITEMS
+        : NAV_ITEMS
+      ).filter((i) => i.showInSidebar !== false),
+    [data?.businessTypeSlug],
   );
 
   const visibleNav = useMemo(
@@ -386,7 +390,11 @@ export function AppShell({ children, userEmail }: AppShellProps) {
                   {primaryMobile.map((item) => {
                     const Icon = MOBILE_ICONS[item.href] ?? item.icon;
                     const active = isActive(item.href);
-                    const label = MOBILE_LABELS[item.href] ?? item.label;
+                    const defaultShort = MOBILE_LABELS[item.href];
+                    const label =
+                      item.label !== (NAV_ITEMS.find((n) => n.href === item.href)?.label ?? item.label)
+                        ? item.label
+                        : (defaultShort ?? item.label);
                     return (
                       <Link
                         key={item.href}

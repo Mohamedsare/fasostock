@@ -46,6 +46,7 @@ import {
   fetchInvoiceTablePosEnabled,
   peekInvoiceTablePosEnabled,
 } from "@/lib/features/settings/invoice-table-pos";
+import { activityUiTerms } from "@/lib/features/activity/activity-profiles";
 import { formatCurrency } from "@/lib/utils/currency";
 import { cn } from "@/lib/utils/cn";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
@@ -169,10 +170,11 @@ export function DashboardScreen() {
   const companyName = ctx.data?.companyName ?? "";
   const storeName =
     stores.find((s) => s.id === dashboardStoreId)?.name ?? "";
+  const terms = activityUiTerms(ctx.data?.businessTypeSlug);
   const description =
     scope === "company"
       ? `Vue Entreprise — ${companyName}`
-      : `Vue Boutique — ${storeName}`;
+      : `Vue ${terms.storeSingular} — ${storeName}`;
 
   const d = dashQ.data;
   const marginRate =
@@ -266,7 +268,7 @@ export function DashboardScreen() {
     <FsPage className="flex flex-col min-[900px]:pt-6">
       <div className="mb-3 flex items-start gap-3 min-[900px]:mb-5">
         <FsScreenHeader
-          title="Tableau de bord"
+          title={terms.dashboardTitle}
           subtitle={description}
           className="mb-0 min-w-0 flex-1"
           titleClassName="min-[900px]:text-2xl min-[900px]:font-bold min-[900px]:tracking-tight"
@@ -329,22 +331,22 @@ export function DashboardScreen() {
                 )}
                 aria-hidden
               />
-              Boutique
+              {terms.storeSingular}
             </button>
           ) : (
             <button
               type="button"
               disabled
-              title="Aucune boutique enregistrée. Créez une boutique dans le menu Boutiques."
+              title={`Aucune ${terms.storeSingular.toLowerCase()} enregistrée. Créez une ${terms.storeSingular.toLowerCase()} dans le menu ${terms.storesPlural}.`}
               className="inline-flex cursor-not-allowed items-center gap-1.5 rounded-lg border border-black/[0.06] bg-neutral-100 px-3 py-1.5 text-sm font-semibold text-neutral-400"
             >
               <MdStore className="h-[18px] w-[18px] text-neutral-400" aria-hidden />
-              Boutique
+              {terms.storeSingular}
             </button>
           )}
           {scope === "store" && stores.length > 1 ? (
             <label className="flex min-w-0 max-w-[200px] flex-1 items-center gap-2">
-              <span className="sr-only">Boutique</span>
+              <span className="sr-only">{terms.storeSingular}</span>
               <select
                 value={dashboardStoreId ?? ""}
                 onChange={(e) => {
@@ -439,7 +441,7 @@ export function DashboardScreen() {
                 highlight
               />
               <DayStat
-                label="Achats du jour"
+                label={`${terms.purchasesTitle} du jour`}
                 value={`${formatCurrency(d.dayPurchasesSummary.totalAmount)}\n${d.dayPurchasesSummary.count} commande(s)`}
               />
             </div>
@@ -467,7 +469,7 @@ export function DashboardScreen() {
               color="#0EA5E9"
             />
             <KpiCard
-              label="Produits vendus"
+              label={`${terms.productsTitle} vendus`}
               value={`${d.salesSummary.itemsSold}`}
               icon={MdInventory2}
               color="#2563EB"
@@ -480,7 +482,7 @@ export function DashboardScreen() {
               subtitle={`${marginRate}%`}
             />
             <KpiCard
-              label="Achats"
+              label={terms.purchasesTitle}
               value={formatCurrency(d.purchasesSummary.totalAmount)}
               icon={MdLocalShipping}
               color="#D97706"
@@ -551,6 +553,7 @@ export function DashboardScreen() {
                 canInvoiceA4={canInvoiceA4}
                 canFactureTab={canFactureTab}
                 storeId={effectiveStoreId ?? ctxStoreId}
+                purchasesLabel={terms.purchasesTitle}
               />
               <div className="mt-7 grid grid-cols-2 gap-9">
                 <ChartCard title="Évolution du CA" icon={MdShowChart}>
@@ -585,6 +588,7 @@ export function DashboardScreen() {
                 canInvoiceA4={canInvoiceA4}
                 canFactureTab={canFactureTab}
                 storeId={effectiveStoreId ?? ctxStoreId}
+                purchasesLabel={terms.purchasesTitle}
               />
             </>
           )}
@@ -793,12 +797,14 @@ function Shortcuts({
   canInvoiceA4,
   canFactureTab,
   storeId,
+  purchasesLabel,
 }: {
   className?: string;
   canPosQuick: boolean;
   canInvoiceA4: boolean;
   canFactureTab: boolean;
   storeId: string | null;
+  purchasesLabel: string;
 }) {
   const tiles: {
     label: string;
@@ -844,7 +850,7 @@ function Shortcuts({
       color: "#2563EB",
     },
     {
-      label: "Achats",
+      label: purchasesLabel,
       href: ROUTES.purchases,
       icon: MdLocalShipping,
       color: "#D97706",

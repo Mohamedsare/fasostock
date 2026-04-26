@@ -2,6 +2,7 @@
 
 import { FsCard, fsInputClass } from "@/components/ui/fs-screen-primitives";
 import type { CustomerType } from "@/lib/features/customers/types";
+import { cn } from "@/lib/utils/cn";
 import { useEffect, useState } from "react";
 import { MdClose, MdErrorOutline } from "react-icons/md";
 
@@ -21,6 +22,7 @@ export function CustomerFormDialog({
   variant,
   initialValue,
   onSubmit,
+  overlayClassName,
 }: {
   open: boolean;
   onClose: () => void;
@@ -28,6 +30,8 @@ export function CustomerFormDialog({
   variant: "create" | "edit";
   initialValue?: Partial<CustomerFormValue> | null;
   onSubmit: (value: CustomerFormValue) => Promise<void> | void;
+  /** Ex. `z-[95]` quand le dialogue s’ouvre par-dessus un autre modal. */
+  overlayClassName?: string;
 }) {
   const [v, setV] = useState<CustomerFormValue>({
     name: "",
@@ -61,7 +65,10 @@ export function CustomerFormDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-3 sm:items-center"
+      className={cn(
+        "fixed inset-0 flex items-end justify-center bg-black/40 p-3 sm:items-center",
+        overlayClassName ?? "z-50",
+      )}
       role="dialog"
       aria-modal="true"
       aria-labelledby="customer-form-title"

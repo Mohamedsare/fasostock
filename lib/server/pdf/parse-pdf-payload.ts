@@ -1,6 +1,7 @@
 import type { InvoiceA4Data } from "@/lib/features/invoices/invoice-a4-types";
 import type { ReportsPageData } from "@/lib/features/dashboard/types";
 import type { ReceiptTicketData } from "@/lib/features/receipt/receipt-ticket-types";
+import type { CreditRepaymentReceiptData } from "@/lib/features/credit/credit-repayment-receipt-types";
 
 export function parseInvoiceA4Payload(json: unknown): InvoiceA4Data {
   if (!json || typeof json !== "object") throw new Error("Corps JSON invalide");
@@ -51,5 +52,29 @@ export function parseReportsPayload(json: unknown): {
       title: String(meta.title ?? ""),
       subtitle: String(meta.subtitle ?? ""),
     },
+  };
+}
+
+export function parseCreditRepaymentReceiptPayload(
+  json: unknown,
+): CreditRepaymentReceiptData {
+  if (!json || typeof json !== "object") {
+    throw new Error("Corps JSON invalide");
+  }
+  const o = json as Record<string, unknown>;
+  const issuedAt = new Date(
+    typeof o.issuedAt === "string" ? o.issuedAt : String(o.issuedAt),
+  );
+  if (Number.isNaN(issuedAt.getTime())) throw new Error("issuedAt invalide");
+  let dueAt: Date | null = null;
+  if (typeof o.dueAt === "string" && o.dueAt.trim()) {
+    const d = new Date(o.dueAt);
+    if (!Number.isNaN(d.getTime())) dueAt = d;
+  }
+  const { issuedAt: _i, dueAt: _d, ...rest } = o;
+  return {
+    ...(rest as Omit<CreditRepaymentReceiptData, "issuedAt" | "dueAt">),
+    issuedAt,
+    dueAt,
   };
 }

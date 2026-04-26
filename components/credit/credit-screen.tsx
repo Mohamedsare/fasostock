@@ -42,7 +42,9 @@ import {
   remainingTotal,
 } from "@/lib/features/credit/credit-math";
 import type { CreditLineStatus, CreditSaleRow } from "@/lib/features/credit/types";
+import { listLegacyCredits } from "@/lib/features/credit/legacy-api";
 import { useAppContext } from "@/lib/features/common/app-context";
+import { activityUiTerms } from "@/lib/features/activity/activity-profiles";
 import { usePermissions } from "@/lib/features/permissions/use-permissions";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { queryKeys } from "@/lib/query/query-keys";
@@ -53,6 +55,7 @@ import { downloadProSpreadsheet } from "@/lib/utils/spreadsheet-export-pro";
 import { cn } from "@/lib/utils/cn";
 import { CreditDetailPanel } from "./credit-detail-panel";
 import { CreditQuickPayDialog } from "./credit-quick-pay-dialog";
+import { LegacyCreditSection } from "./legacy-credit-section";
 
 type QuickChip =
   | "all"
@@ -143,11 +146,13 @@ export function CreditScreen() {
   const { isLoading: permLoading, helpers: h, hasPermission } = usePermissions();
   const canExport = hasPermission(P.salesView);
   const canRecordPayment = hasPermission(P.salesUpdate);
+  const isOwner = h?.isOwner ?? false;
   const isWide = useMediaQuery("(min-width: 900px)");
 
   const companyId = ctx.data?.companyId ?? "";
   const stores = ctx.data?.stores ?? [];
   const currentStoreId = ctx.data?.storeId ?? null;
+  const terms = activityUiTerms(ctx.data?.businessTypeSlug);
 
   const allStoresChosen = useRef(false);
   const [storeFilter, setStoreFilter] = useState<string>(() => currentStoreId ?? "");
@@ -187,6 +192,13 @@ export function CreditScreen() {
   });
 
   const rawRows = creditQ.data ?? [];
+  const legacyQ = useQuery({
+    queryKey: queryKeys.legacyCredits(creditParams),
+    queryFn: () => listLegacyCredits(creditParams),
+    enabled: !!companyId && !!h?.canCredit,
+    staleTime: 15_000,
+  });
+  const legacyRows = legacyQ.data ?? [];
 
   const openRows = useMemo(
     () => rawRows.filter((s) => remainingTotal(s) > CREDIT_AMOUNT_EPS),
@@ -219,6 +231,32 @@ export function CreditScreen() {
       if (isDueToday(s)) dueToday += rem;
       else if (isDueThisWeek(s)) dueWeek += rem;
     }
+
+    const legacyEps = 0.005;
+    const now = new Date();
+    const toStartOfDayMs = (d: Date) => Date.UTC(d.getFullYear(), d.getMonth(), d.getDate());
+    const nowDay = toStartOfDayMs(now);
+    const nowWeekday = (now.getDay() + 6) % 7;
+    const weekStart = nowDay - nowWeekday * 86400000;
+    const weekEnd = weekStart + 6 * 86400000;
+    for (const l of legacyRows) {
+      const paid = (l.payments ?? []).reduce((s, p) => s + Number(p.amount ?? 0), 0);
+      const rem = Math.max(0, Number(l.principal_amount) - paid);
+      if (rem <= legacyEps) continue;
+      totalRem += rem;
+      totalPaidOpen += paid;
+      totalSaleTotal += Number(l.principal_amount);
+      debtors.add(l.customer_id);
+      if (l.due_at) {
+        const due = new Date(l.due_at);
+        if (!Number.isNaN(due.getTime())) {
+          const dueDay = toStartOfDayMs(due);
+          if (nowDay > dueDay) overdue += rem;
+          if (nowDay === dueDay) dueToday += rem;
+          else if (dueDay >= weekStart && dueDay <= weekEnd) dueWeek += rem;
+        }
+      }
+    }
     return {
       totalRem,
       totalPaidOpen,
@@ -229,7 +267,7 @@ export function CreditScreen() {
       dueToday,
       dueWeek,
     };
-  }, [openRows]);
+  }, [openRows, legacyRows]);
 
   /**
    * Filtres rapides : basés sur encaissements réels vs reste (pas uniquement le statut affiché,
@@ -296,11 +334,11 @@ export function CreditScreen() {
         const { headers, rows } = creditSalesToSpreadsheetMatrix(filteredSales);
         await downloadProSpreadsheet(
           `credit-ventes-${toIsoDate(new Date())}.xlsx`,
-          "Ventes à crédit",
+          terms.creditTitle,
           headers,
           rows,
           {
-            title: "FasoStock — Crédit client",
+            title: `FasoStock — ${terms.creditTitle}`,
             subtitle: `${filteredSales.length} vente(s) · ${format(new Date(), "PPP", { locale: fr })}`,
           },
         );
@@ -327,7 +365,7 @@ export function CreditScreen() {
   if (!h || !h.canCredit) {
     return (
       <FsPage>
-        <FsScreenHeader title="Crédit" subtitle="Ventes à crédit et créances clients" />
+        <FsScreenHeader title={terms.creditTitle} subtitle={terms.creditSubtitle} />
         <FsCard padding="p-8">
           <div className="flex flex-col items-center justify-center gap-4 text-center">
             <MdLock className="h-12 w-12 text-neutral-500" aria-hidden />
@@ -343,8 +381,8 @@ export function CreditScreen() {
   return (
     <FsPage>
       <FsScreenHeader
-        title="Crédit client"
-        subtitle="Encours, échéances, paiements partiels — aligné sur vos ventes complétées avec client"
+        title={terms.creditTitle}
+        subtitle={terms.creditSubtitle}
         titleClassName="min-[900px]:text-2xl min-[900px]:font-bold min-[900px]:tracking-tight"
       />
 
@@ -368,7 +406,7 @@ export function CreditScreen() {
               className="shrink-0 text-[10px] font-medium uppercase tracking-wide text-neutral-500 sm:text-[11px]"
               htmlFor="credit-store"
             >
-              Boutique
+              {terms.storeSingular}
             </label>
             <select
               id="credit-store"
@@ -381,7 +419,7 @@ export function CreditScreen() {
                 setStoreFilter(e.target.value);
               }}
             >
-              <option value="">Toutes les boutiques</option>
+              <option value="">Tous les {terms.storesPlural.toLowerCase()}</option>
               {stores.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name}
@@ -608,7 +646,7 @@ export function CreditScreen() {
                 <th className="px-3 py-3 font-bold">Réf.</th>
                 <th className="px-3 py-3 font-bold">Client</th>
                 <th className="px-3 py-3 font-bold">Date</th>
-                <th className="px-3 py-3 font-bold">Boutique</th>
+                <th className="px-3 py-3 font-bold">{terms.storeSingular}</th>
                 <th className="px-3 py-3 text-right font-bold">Total</th>
                 <th className="px-3 py-3 text-right font-bold">Encaissé</th>
                 <th className="px-3 py-3 text-right font-bold">Reste</th>
@@ -786,6 +824,15 @@ export function CreditScreen() {
           </div>
         )}
       </FsCard>
+
+      <LegacyCreditSection
+        companyId={companyId}
+        storeId={effectiveStoreId}
+        from={from}
+        to={to}
+        canRecordPayment={canRecordPayment}
+        isOwner={isOwner}
+      />
 
       <p className="mt-6 text-center text-xs text-neutral-500">
         Reçu après paiement : utilisez le détail vente depuis{" "}
