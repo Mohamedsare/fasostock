@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils/cn";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { toast, toastMutationError } from "@/lib/toast";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   MdAdd,
   MdArrowBack,
@@ -44,6 +44,17 @@ type DispatchCartRow = {
   unit: string;
   imageUrl: string | null;
 };
+
+type DispatchPaymentMode = "cash" | "mobile_money" | "card" | "credit";
+type DispatchMobileProvider = "orange_money" | "moov_money" | "wave";
+const DISPATCH_PAYMENT_NOTE_PREFIX = "__PAYMENT_INFO__:";
+
+function normalizeInvoiceUnit(raw: string): string | null {
+  const v = raw.trim().toLowerCase();
+  if (!v) return null;
+  const hit = INVOICE_UNITS.find((u) => u.toLowerCase() === v);
+  return hit ?? null;
+}
 
 /** Sortie dépôt — aligné `WarehouseDispatchInvoiceDialog` (Flutter) : Dialog sans bandeau orange, Card bandeau + PosMainArea, moitié / moitié, pied fusionné au scroll. */
 export function WarehouseDispatchDialog({
@@ -89,7 +100,9 @@ export function WarehouseDispatchDialog({
   const posCartUi = posCartUiQ.data ?? { showQuantityInput: true, showQuantityButtons: false };
 
   const [customerId, setCustomerId] = useState("");
-  const [notes, setNotes] = useState("");
+  const [paymentMode, setPaymentMode] = useState<DispatchPaymentMode | null>(null);
+  const [cashPaidDraft, setCashPaidDraft] = useState("");
+  const [mobileProvider, setMobileProvider] = useState<DispatchMobileProvider | null>(null);
   const [cart, setCart] = useState<DispatchCartRow[]>([]);
   const [search, setSearch] = useState("");
   const [categoryId, setCategoryId] = useState<string | null>(null);
@@ -103,7 +116,9 @@ export function WarehouseDispatchDialog({
   useEffect(() => {
     if (!open) return;
     setCustomerId("");
-    setNotes("");
+    setPaymentMode(null);
+    setCashPaidDraft("");
+    setMobileProvider(null);
     setCart([]);
     setSearch("");
     setCategoryId(null);
@@ -231,6 +246,7 @@ export function WarehouseDispatchDialog({
     !creatingCustomer &&
     hasCustomers &&
     Boolean(customerId.trim()) &&
+    paymentMode !== null &&
     cart.length > 0 &&
     whProducts.length > 0;
 
@@ -294,6 +310,14 @@ export function WarehouseDispatchDialog({
     }
     const out: WarehouseDispatchLineInput[] = [];
     for (const row of cart) {
+      const validUnit = normalizeInvoiceUnit(row.unit);
+      if (!validUnit) {
+        toast.info(`Unité invalide pour « ${row.name} ».`);
+        return;
+      }
+      if (validUnit !== row.unit) {
+        setUnitRow(row.productId, validUnit);
+      }
       if (row.quantity <= 0) {
         toast.info("Indiquez une quantité correcte pour chaque article.");
         return;
@@ -317,18 +341,54 @@ export function WarehouseDispatchDialog({
       toast.info("Reconnectez-vous pour synchroniser le client créé hors ligne, puis enregistrez le bon.");
       return;
     }
+    if (!paymentMode) {
+      toast.info("Choisissez d'abord un mode de paiement (Espèces, Mobile money, Carte ou À crédit).");
+      return;
+    }
+    let paidAmount = 0;
+    if (paymentMode === "cash") {
+      const raw = cashPaidDraft.trim();
+      if (raw === "") {
+        toast.info("Indiquez le montant reçu en espèces. Vous pouvez saisir un montant partiel ou complet.");
+        return;
+      }
+      const parsed = raw === "" ? 0 : parseFloat(raw.replace(",", "."));
+      if (!Number.isFinite(parsed) || parsed < 0) {
+        toast.info("Montant espèces invalide. Entrez un nombre valide (ex: 5000).");
+        return;
+      }
+      paidAmount = Math.min(parsed, grandTotal);
+      if (parsed > grandTotal) {
+        toast.info("Montant espèces ajusté au total de la facture.");
+      }
+    } else if (paymentMode === "mobile_money" || paymentMode === "card") {
+      if (paymentMode === "mobile_money" && !mobileProvider) {
+        toast.info("Choisissez l'opérateur Mobile money (Orange Money, Moov Money ou Wave).");
+        return;
+      }
+      paidAmount = grandTotal;
+    } else {
+      paidAmount = 0;
+    }
+    const paymentInfo = {
+      mode: paymentMode,
+      paid_amount: Math.round(paidAmount),
+      mobile_provider: paymentMode === "mobile_money" ? mobileProvider : null,
+    };
     setSaving(true);
     try {
       const res = await warehouseCreateDispatchInvoice({
         companyId,
         customerId,
-        notes: notes.trim() || null,
+        notes: `${DISPATCH_PAYMENT_NOTE_PREFIX}${JSON.stringify(paymentInfo)}`,
         lines: out,
       });
       toast.success(`Bon enregistré : ${res.documentNumber}`);
       onSuccess();
       setCustomerId("");
-      setNotes("");
+      setPaymentMode(null);
+      setCashPaidDraft("");
+      setMobileProvider(null);
       setCart([]);
       setSearch("");
       setCategoryId(null);
@@ -589,19 +649,11 @@ export function WarehouseDispatchDialog({
                                       </button>
                                     ) : null}
                                     {posCartUi.showQuantityInput ? (
-                                      <input
-                                        className="w-16 rounded-lg border border-[#E5E7EB] px-1 py-1 text-center text-[13px] tabular-nums"
-                                        inputMode="numeric"
-                                        value={c.quantity === 0 ? "" : String(c.quantity)}
-                                        onChange={(e) => {
-                                          const v = parseInt(e.target.value, 10);
-                                          if (Number.isNaN(v)) setQty(c.productId, 0);
-                                          else setQty(c.productId, v);
-                                        }}
-                                        onBlur={(e) => {
-                                          const v = parseInt(e.target.value, 10);
-                                          if (!Number.isFinite(v) || v < 1) setQty(c.productId, 1);
-                                        }}
+                                      <WhDispatchQtyInput
+                                        productId={c.productId}
+                                        quantity={c.quantity}
+                                        stock={stock}
+                                        onCommit={setQty}
                                       />
                                     ) : (
                                       <span className="min-w-[28px] text-center text-[14px] font-bold">{c.quantity}</span>
@@ -659,15 +711,93 @@ export function WarehouseDispatchDialog({
                   }}
                 >
                   <label className="mb-1 block text-[11px] font-medium text-[#1F2937]">
-                    Note (facultatif)
+                    Mode de paiement
                   </label>
-                  <textarea
-                    className={cn(whPosFormFieldClass, "min-h-[52px] resize-y")}
-                    placeholder="Motif de sortie, précisions…"
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    disabled={saving}
-                  />
+                  <div className="grid grid-cols-2 gap-1.5 min-[520px]:grid-cols-4">
+                    {[
+                      { id: "cash", label: "Espèces" },
+                      { id: "mobile_money", label: "Mobile money" },
+                      { id: "card", label: "Carte" },
+                      { id: "credit", label: "À crédit" },
+                    ].map((opt) => {
+                      const selected = paymentMode === (opt.id as DispatchPaymentMode);
+                      return (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          disabled={saving}
+                          onClick={() => {
+                            setPaymentMode(opt.id as DispatchPaymentMode);
+                            if (opt.id !== "cash") setCashPaidDraft("");
+                            if (opt.id !== "mobile_money") setMobileProvider(null);
+                          }}
+                          className={cn(
+                            "min-h-[30px] rounded-full border px-2 text-[11px] font-semibold transition",
+                            selected
+                              ? "border-[#F97316] bg-[#F97316]/10 text-[#C2410C]"
+                              : "border-[#E5E7EB] bg-[#F3F4F6] text-[#1F2937]",
+                          )}
+                        >
+                          {opt.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {paymentMode === "cash" ? (
+                    <div className="mt-2">
+                      <label className="mb-1 block text-[11px] font-medium text-[#1F2937]">
+                        Montant reçu (espèces)
+                      </label>
+                      <input
+                        className={cn(whPosFormFieldClass, "h-[36px] text-sm")}
+                        inputMode="numeric"
+                        placeholder={`0 à ${Math.round(grandTotal)}`}
+                        value={cashPaidDraft}
+                        onChange={(e) => setCashPaidDraft(e.target.value)}
+                        disabled={saving}
+                      />
+                      <p className="mt-1 text-[11px] text-neutral-600">
+                        Vous pouvez saisir un montant partiel ou complet.
+                      </p>
+                    </div>
+                  ) : null}
+                  {paymentMode === "mobile_money" ? (
+                    <div className="mt-2">
+                      <label className="mb-1 block text-[11px] font-medium text-[#1F2937]">
+                        Opérateur mobile money
+                      </label>
+                      <div className="grid grid-cols-3 gap-1.5">
+                        {[
+                          { id: "orange_money", label: "Orange Money" },
+                          { id: "moov_money", label: "Moov Money" },
+                          { id: "wave", label: "Wave" },
+                        ].map((op) => {
+                          const selected = mobileProvider === (op.id as DispatchMobileProvider);
+                          return (
+                            <button
+                              key={op.id}
+                              type="button"
+                              disabled={saving}
+                              onClick={() => setMobileProvider(op.id as DispatchMobileProvider)}
+                              className={cn(
+                                "min-h-[30px] rounded-full border px-2 text-[11px] font-semibold transition",
+                                selected
+                                  ? "border-[#F97316] bg-[#F97316]/10 text-[#C2410C]"
+                                  : "border-[#E5E7EB] bg-[#F3F4F6] text-[#1F2937]",
+                              )}
+                            >
+                              {op.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : null}
+                  {paymentMode === "card" ? (
+                    <p className="mt-2 text-[11px] text-neutral-600">
+                      Carte = virement bancaire automatique (montant total).
+                    </p>
+                  ) : null}
                   <div className="mt-3 flex items-center justify-between gap-2">
                     <span className="text-[18px] font-bold text-[#1F2937]">Total</span>
                     <span className="text-[22px] font-extrabold tabular-nums text-[#F97316]">
@@ -684,6 +814,8 @@ export function WarehouseDispatchDialog({
                       <span className="inline-block h-[22px] w-[22px] animate-spin rounded-full border-2 border-white border-t-transparent" />
                     ) : !hasCustomers ? (
                       "Ajoutez d’abord un client"
+                    ) : paymentMode === null ? (
+                      "Choisissez le mode de paiement"
                     ) : cart.length === 0 ? (
                       "Ajoutez des articles"
                     ) : !customerId.trim() ? (
@@ -760,5 +892,132 @@ export function WarehouseDispatchDialog({
         </div>
       ) : null}
     </>
+  );
+}
+
+const WH_DISPATCH_QTY_DEBOUNCE_MS = 730;
+
+function WhDispatchQtyInput({
+  productId,
+  quantity,
+  stock,
+  onCommit,
+}: {
+  productId: string;
+  quantity: number;
+  stock: number;
+  onCommit: (productId: string, value: number) => void;
+}) {
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const draftRef = useRef(quantity === 0 ? "" : String(quantity));
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const quantityRef = useRef(quantity);
+  quantityRef.current = quantity;
+  const lastStockToastAt = useRef(0);
+  const [display, setDisplay] = useState(() => (quantity === 0 ? "" : String(quantity)));
+
+  useLayoutEffect(() => {
+    if (typeof document === "undefined") return;
+    const el = inputRef.current;
+    if (el && document.activeElement === el) return;
+    const want = quantity === 0 ? "" : String(quantity);
+    setDisplay(want);
+    draftRef.current = want;
+  }, [quantity]);
+
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, []);
+
+  const resetToCommitted = () => {
+    const q = quantityRef.current;
+    const want = q === 0 ? "" : String(q);
+    setDisplay(want);
+    draftRef.current = want;
+  };
+
+  const tryCommitParsed = (nRaw: number) => {
+    const n = Math.floor(nRaw);
+    if (Number.isNaN(n) || n < 0) {
+      resetToCommitted();
+      return;
+    }
+    if (stock >= 0 && n > stock) {
+      const now = Date.now();
+      if (now - lastStockToastAt.current > 2000) {
+        lastStockToastAt.current = now;
+        queueMicrotask(() => toast.info("Quantité ajustée au stock disponible."));
+      }
+      resetToCommitted();
+      return;
+    }
+    if (n !== quantityRef.current) {
+      onCommit(productId, n);
+    }
+  };
+
+  const scheduleCommit = () => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      debounceRef.current = null;
+      const t = draftRef.current.trim();
+      if (t === "") return;
+      const n = parseInt(t, 10);
+      if (Number.isNaN(n)) return;
+      tryCommitParsed(n);
+    }, WH_DISPATCH_QTY_DEBOUNCE_MS);
+  };
+
+  return (
+    <input
+      ref={inputRef}
+      type="text"
+      inputMode="numeric"
+      autoComplete="off"
+      aria-label="Quantité"
+      className="w-16 rounded-lg border border-[#E5E7EB] px-1 py-1 text-center text-[13px] tabular-nums"
+      value={display}
+      onChange={(e) => {
+        const v = e.target.value;
+        draftRef.current = v;
+        setDisplay(v);
+        scheduleCommit();
+      }}
+      onFocus={(e) => e.target.select()}
+      onBlur={() => {
+        if (debounceRef.current) {
+          clearTimeout(debounceRef.current);
+          debounceRef.current = null;
+        }
+        const t = draftRef.current.trim();
+        if (t === "") {
+          resetToCommitted();
+          return;
+        }
+        const n = parseInt(t, 10);
+        if (Number.isNaN(n)) {
+          resetToCommitted();
+          return;
+        }
+        tryCommitParsed(n);
+      }}
+      onKeyDown={(e) => {
+        if (e.key !== "Enter") return;
+        e.preventDefault();
+        if (debounceRef.current) {
+          clearTimeout(debounceRef.current);
+          debounceRef.current = null;
+        }
+        const t = draftRef.current.trim();
+        const n = parseInt(t, 10);
+        if (Number.isNaN(n)) {
+          resetToCommitted();
+          return;
+        }
+        tryCommitParsed(n);
+      }}
+    />
   );
 }

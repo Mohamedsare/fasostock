@@ -12,7 +12,7 @@ import {
   listWarehouseMovements,
   voidWarehouseDispatchInvoice,
 } from "@/lib/features/warehouse/api";
-import { listProducts, listStoreInventory } from "@/lib/features/products/api";
+import { listProducts } from "@/lib/features/products/api";
 import { listStores as listStoresFull } from "@/lib/features/stores/api";
 import { downloadStoreProductsPdf } from "@/lib/features/stores/generate-store-products-pdf";
 import type { WarehouseDispatchInvoiceSummary, WarehouseMovement, WarehouseStockLine } from "@/lib/features/warehouse/types";
@@ -111,6 +111,15 @@ const ACCENT = {
   violet: "#7C3AED",
 };
 
+const DISPATCH_PAYMENT_NOTE_PREFIX = "__PAYMENT_INFO__:";
+type DispatchPaymentMode = "cash" | "mobile_money" | "card" | "credit";
+type DispatchMobileProvider = "orange_money" | "moov_money" | "wave";
+type DispatchPaymentInfo = {
+  mode: DispatchPaymentMode;
+  paidAmount: number;
+  mobileProvider: DispatchMobileProvider | null;
+};
+
 function refLabel(m: WarehouseMovement): string {
   switch (m.referenceType) {
     case "sale":
@@ -183,6 +192,56 @@ function formatDt(iso: string) {
   } catch {
     return "—";
   }
+}
+
+function parseDispatchPaymentInfo(raw: string | null): DispatchPaymentInfo {
+  const note = (raw ?? "").trim();
+  if (!note.startsWith(DISPATCH_PAYMENT_NOTE_PREFIX)) {
+    return { mode: "credit", paidAmount: 0, mobileProvider: null };
+  }
+  const payloadRaw = note.slice(DISPATCH_PAYMENT_NOTE_PREFIX.length).trim();
+  try {
+    const payload = JSON.parse(payloadRaw) as {
+      mode?: DispatchPaymentMode;
+      paid_amount?: number;
+      mobile_provider?: DispatchMobileProvider | null;
+    };
+    const mode = payload.mode;
+    const paidAmount = Number(payload.paid_amount ?? 0);
+    const mobileProvider = payload.mobile_provider ?? null;
+    if (mode === "cash" || mode === "mobile_money" || mode === "card" || mode === "credit") {
+      return {
+        mode,
+        paidAmount: Number.isFinite(paidAmount) ? Math.max(0, Math.round(paidAmount)) : 0,
+        mobileProvider:
+          mobileProvider === "orange_money" || mobileProvider === "moov_money" || mobileProvider === "wave"
+            ? mobileProvider
+            : null,
+      };
+    }
+  } catch {
+    // Support ancien format "__PAYMENT_MODE__:credit"
+    const legacyMode = payloadRaw as DispatchPaymentMode;
+    if (
+      legacyMode === "cash" ||
+      legacyMode === "mobile_money" ||
+      legacyMode === "card" ||
+      legacyMode === "credit"
+    ) {
+      return {
+        mode: legacyMode,
+        paidAmount: legacyMode === "credit" ? 0 : 0,
+        mobileProvider: null,
+      };
+    }
+  }
+  return { mode: "credit", paidAmount: 0, mobileProvider: null };
+}
+
+function visibleDispatchNote(raw: string | null): string | null {
+  const note = (raw ?? "").trim();
+  if (!note || note.startsWith(DISPATCH_PAYMENT_NOTE_PREFIX)) return null;
+  return note;
 }
 
 export function WarehouseScreen() {
@@ -376,12 +435,12 @@ export function WarehouseScreen() {
     setExportingProductsPdf(true);
     toast.info("Génération du PDF en cours…");
     try {
-      const [products, stockMap] = await Promise.all([
-        listProducts(companyId),
-        listStoreInventory(activeStoreId),
-      ]);
+      const products = await listProducts(companyId);
+      const depotStockByProductId = new Map<string, number>(
+        inventory.map((line) => [line.productId, Math.max(0, Number(line.quantity ?? 0))]),
+      );
       const items = products
-        .filter((p) => (stockMap.get(p.id) ?? 0) > 0)
+        .filter((p) => (depotStockByProductId.get(p.id) ?? 0) > 0)
         .map((p) => ({
           name: p.name,
           imageUrl:
@@ -392,7 +451,7 @@ export function WarehouseScreen() {
       await downloadStoreProductsPdf({
         companyName: companyName || "Entreprise",
         companyLogoUrl,
-        storeName: activeStoreId ? storeName(activeStoreId) : "Magasin",
+        storeName: "Depot Centrale",
         items,
       });
       toast.success("PDF des produits exporté.");
@@ -515,6 +574,25 @@ export function WarehouseScreen() {
     const effectiveStore = storeForA4 ?? defaultStore;
     const logoBytes = await fetchLogoBytes(effectiveStore.logo_url ?? companyLogoUrl);
     const total = params.lines.reduce((sum, line) => sum + line.quantity * line.unitPrice, 0);
+    const paymentInfo = parseDispatchPaymentInfo(params.notes);
+    const paymentLabel =
+      paymentInfo.mode === "cash"
+        ? "Espèces"
+        : paymentInfo.mode === "mobile_money"
+          ? paymentInfo.mobileProvider === "moov_money"
+            ? "Moov Money"
+            : paymentInfo.mobileProvider === "wave"
+              ? "Wave"
+              : "Orange Money"
+          : paymentInfo.mode === "card"
+            ? "Virement bancaire"
+            : "À crédit";
+    const isImmediateEncaisse = paymentInfo.mode !== "credit";
+    const encaisseAmount = isImmediateEncaisse
+      ? (paymentInfo.mode === "cash"
+          ? Math.min(total, Math.max(0, Math.round(paymentInfo.paidAmount)))
+          : total)
+      : 0;
     return generateInvoicePdfBlob({
       store: effectiveStore,
       saleNumber: params.documentNumber,
@@ -533,8 +611,8 @@ export function WarehouseScreen() {
       customerName: params.customerName,
       customerPhone: params.customerPhone,
       customerAddress: null,
-      depositAmount: 0,
-      paymentLines: [{ label: "À crédit", amount: total, isImmediateEncaisse: false }],
+      depositAmount: encaisseAmount,
+      paymentLines: [{ label: paymentLabel, amount: encaisseAmount, isImmediateEncaisse }],
       amountInWords: null,
       logoBytes,
     });
@@ -1269,7 +1347,9 @@ export function WarehouseScreen() {
                         Client : {d.customerName ?? "—"}
                         {d.customerPhone ? ` · ${d.customerPhone}` : ""}
                       </p>
-                      {d.notes ? <p className="mt-2 text-xs text-neutral-600">{d.notes}</p> : null}
+                      {visibleDispatchNote(d.notes) ? (
+                        <p className="mt-2 text-xs text-neutral-600">{visibleDispatchNote(d.notes)}</p>
+                      ) : null}
                       <div className="mt-4 space-y-2">
                         {d.lines.map((l, i) => (
                           <div key={i} className="flex justify-between gap-2 rounded-lg border border-black/6 px-3 py-2 text-sm">
@@ -1967,6 +2047,11 @@ function HistoriquesTab({
       </div>
       {totalPages > 1 ? (
         <div className="flex flex-wrap items-center justify-center gap-2 py-2">
+          <span className="w-full text-center text-xs text-neutral-600">
+            {allRows.length === 0
+              ? "0"
+              : `${page * 20 + 1}–${Math.min((page + 1) * 20, allRows.length)} sur ${allRows.length}`}
+          </span>
           <button
             type="button"
             disabled={page <= 0}

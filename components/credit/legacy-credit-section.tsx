@@ -25,6 +25,8 @@ import { cn } from "@/lib/utils/cn";
 import { formatCurrency } from "@/lib/utils/currency";
 
 const EPS = 0.005;
+const LEGACY_VENDOR_PREFIX = "__VENDEUR__:";
+const LEGACY_DEFAULT_VENDOR_NAME = "OUEDRAOGO BOUBA";
 
 /** Formulaires tactile : 48px mini, texte 16px (évite le zoom iOS au focus). */
 function mobileFieldClass(...extra: (string | false | undefined)[]) {
@@ -63,6 +65,34 @@ function statusLabel(credit: LegacyCreditRow): string {
   if (overdueDays(credit) > 0) return "En retard";
   if (paid <= EPS) return "Non payé";
   return "Partiel";
+}
+
+function parseLegacyVendorAndNote(internalNote: string | null): { vendor: string; note: string | null } {
+  const raw = (internalNote ?? "").trim();
+  if (!raw.startsWith(LEGACY_VENDOR_PREFIX)) {
+    return { vendor: "", note: raw || null };
+  }
+  const payload = raw.slice(LEGACY_VENDOR_PREFIX.length).trim();
+  try {
+    const parsed = JSON.parse(payload) as { vendor?: string; note?: string | null };
+    const vendor = (parsed.vendor ?? "").trim();
+    const note = (parsed.note ?? "").trim();
+    return { vendor, note: note || null };
+  } catch {
+    return { vendor: "", note: raw || null };
+  }
+}
+
+function buildLegacyInternalNote(vendor: string, note: string): string | null {
+  const trimmedVendor = vendor.trim();
+  const trimmedNote = note.trim();
+  if (!trimmedVendor) {
+    return trimmedNote || null;
+  }
+  return `${LEGACY_VENDOR_PREFIX}${JSON.stringify({
+    vendor: trimmedVendor,
+    note: trimmedNote || null,
+  })}`;
 }
 
 function buildCreditRepaymentReceiptData(params: {
@@ -114,13 +144,14 @@ function buildCreditRepaymentReceiptData(params: {
     newBalance,
     currency: params.store?.currency?.trim() || "XOF",
     dueAt: params.credit.due_at ? new Date(params.credit.due_at) : null,
-    note: params.credit.internal_note ?? null,
+    note: parseLegacyVendorAndNote(params.credit.internal_note).note,
     settled: newBalance <= EPS,
   };
 }
 
 export function LegacyCreditSection({
   companyId,
+  companyName,
   storeId,
   from,
   to,
@@ -128,6 +159,7 @@ export function LegacyCreditSection({
   isOwner,
 }: {
   companyId: string;
+  companyName: string;
   storeId: string | null;
   from: string;
   to: string;
@@ -231,12 +263,13 @@ export function LegacyCreditSection({
           <div className="py-5 text-center text-sm text-neutral-500">Aucun crédit libre ouvert.</div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[880px] text-left text-[13px]">
+            <table className="w-full min-w-[1120px] text-left text-[13px] [&_thead_th]:whitespace-nowrap [&_tbody_td]:whitespace-nowrap">
               <thead>
                 <tr className="border-b border-black/10">
                   <th className="px-2 py-2">Client</th>
                   <th className="px-2 py-2">Libellé</th>
-                  <th className="px-2 py-2">Boutique</th>
+                  <th className="px-2 py-2">Vendeur</th>
+                  <th className="px-2 py-2">Entreprise</th>
                   <th className="px-2 py-2 text-right">Montant</th>
                   <th className="px-2 py-2 text-right">Encaissé</th>
                   <th className="px-2 py-2 text-right">Reste</th>
@@ -252,7 +285,10 @@ export function LegacyCreditSection({
                     <td className="max-w-[220px] truncate px-2 py-2" title={r.title}>
                       {r.title}
                     </td>
-                    <td className="px-2 py-2">{r.store?.name ?? "—"}</td>
+                    <td className="min-w-[220px] px-2 py-2">
+                      {parseLegacyVendorAndNote(r.internal_note).vendor || LEGACY_DEFAULT_VENDOR_NAME}
+                    </td>
+                    <td className="px-2 py-2">{companyName || "—"}</td>
                     <td className="px-2 py-2 text-right tabular-nums">{formatCurrency(r.principal_amount)}</td>
                     <td className="px-2 py-2 text-right tabular-nums text-emerald-700">
                       {formatCurrency(sumPaid(r))}
@@ -379,6 +415,7 @@ function LegacyCreateDialog({
     title: string;
     amount: number;
     dueAt: string | null;
+    vendorName: string;
     internalNote?: string | null;
   }) => void;
 }) {
@@ -402,6 +439,7 @@ function LegacyCreateDialog({
   const [title, setTitle] = useState("Crédit libre");
   const [amount, setAmount] = useState("");
   const [dueAt, setDueAt] = useState("");
+  const [vendorName, setVendorName] = useState("");
   const [note, setNote] = useState("");
 
   useEffect(() => {
@@ -414,6 +452,7 @@ function LegacyCreateDialog({
     setTitle("Crédit libre");
     setAmount("");
     setDueAt("");
+    setVendorName("");
     setNote("");
   }, [open]);
 
@@ -509,7 +548,7 @@ function LegacyCreateDialog({
 
   if (!open) return null;
   const parsedAmount = Math.max(0, parseFloat(amount.replace(/\s/g, "").replace(",", ".")) || 0);
-  const canSubmit = !!storeId && !!customerId && parsedAmount > 0;
+  const canSubmit = !!storeId && !!customerId && parsedAmount > 0 && vendorName.trim().length > 0;
 
   return (
     <>
@@ -659,6 +698,15 @@ function LegacyCreateDialog({
                 />
               </div>
               <div>
+                <label className={mobileLabelClass()}>Vendeur *</label>
+                <input
+                  className={mobileFieldClass()}
+                  value={vendorName}
+                  onChange={(e) => setVendorName(e.target.value)}
+                  placeholder="Nom du vendeur"
+                />
+              </div>
+              <div>
                 <label className={mobileLabelClass()}>Note interne (optionnel)</label>
                 <textarea
                   className={mobileFieldClass("min-h-22 resize-y sm:min-h-18")}
@@ -696,7 +744,8 @@ function LegacyCreateDialog({
                     title: title.trim() || "Crédit libre",
                     amount: parsedAmount,
                     dueAt: dueAt ? new Date(`${dueAt}T12:00:00`).toISOString() : null,
-                    internalNote: note.trim() || null,
+                    vendorName: vendorName.trim(),
+                    internalNote: buildLegacyInternalNote(vendorName, note),
                   })
                 }
                 className="touch-manipulation min-h-12 w-full rounded-xl bg-fs-accent py-3 text-base font-bold text-white active:opacity-95 disabled:opacity-50 sm:flex-1 sm:py-2 sm:text-sm"

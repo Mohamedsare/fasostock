@@ -43,6 +43,8 @@ import {
 } from "@/lib/features/credit/credit-math";
 import type { CreditLineStatus, CreditSaleRow } from "@/lib/features/credit/types";
 import { listLegacyCredits } from "@/lib/features/credit/legacy-api";
+import { listWarehouseDispatchInvoices } from "@/lib/features/warehouse/api";
+import type { WarehouseDispatchInvoiceSummary } from "@/lib/features/warehouse/types";
 import { useAppContext } from "@/lib/features/common/app-context";
 import { activityUiTerms } from "@/lib/features/activity/activity-profiles";
 import { usePermissions } from "@/lib/features/permissions/use-permissions";
@@ -64,6 +66,40 @@ type QuickChip =
   | "en_retard"
   | "due_today"
   | "due_week";
+
+const DISPATCH_PAYMENT_NOTE_PREFIX = "__PAYMENT_INFO__:";
+type DispatchPaymentMode = "cash" | "mobile_money" | "card" | "credit";
+
+function parseDispatchPaymentInfo(note: string | null, totalAmount: number): {
+  mode: DispatchPaymentMode;
+  paidAmount: number;
+} {
+  const raw = (note ?? "").trim();
+  if (!raw.startsWith(DISPATCH_PAYMENT_NOTE_PREFIX)) {
+    return { mode: "credit", paidAmount: 0 };
+  }
+  const payloadRaw = raw.slice(DISPATCH_PAYMENT_NOTE_PREFIX.length).trim();
+  try {
+    const payload = JSON.parse(payloadRaw) as { mode?: DispatchPaymentMode; paid_amount?: number };
+    const mode = payload.mode;
+    const paidRaw = Number(payload.paid_amount ?? 0);
+    if (mode === "cash" || mode === "mobile_money" || mode === "card" || mode === "credit") {
+      const paidAmount =
+        mode === "cash"
+          ? Math.min(totalAmount, Math.max(0, Math.round(Number.isFinite(paidRaw) ? paidRaw : 0)))
+          : mode === "credit"
+            ? 0
+            : totalAmount;
+      return { mode, paidAmount };
+    }
+  } catch {
+    const mode = payloadRaw as DispatchPaymentMode;
+    if (mode === "cash" || mode === "mobile_money" || mode === "card" || mode === "credit") {
+      return { mode, paidAmount: mode === "credit" ? 0 : totalAmount };
+    }
+  }
+  return { mode: "credit", paidAmount: 0 };
+}
 
 function toIsoDate(d: Date): string {
   return format(d, "yyyy-MM-dd");
@@ -150,6 +186,7 @@ export function CreditScreen() {
   const isWide = useMediaQuery("(min-width: 900px)");
 
   const companyId = ctx.data?.companyId ?? "";
+  const companyName = ctx.data?.companyName ?? "";
   const stores = ctx.data?.stores ?? [];
   const currentStoreId = ctx.data?.storeId ?? null;
   const terms = activityUiTerms(ctx.data?.businessTypeSlug);
@@ -199,6 +236,28 @@ export function CreditScreen() {
     staleTime: 15_000,
   });
   const legacyRows = legacyQ.data ?? [];
+  const dispatchQ = useQuery({
+    queryKey: ["credit-warehouse-dispatch", companyId, from, to],
+    queryFn: () => listWarehouseDispatchInvoices(companyId, 500),
+    enabled: !!companyId && !!h?.canCredit,
+    staleTime: 15_000,
+  });
+  const dispatchRowsRaw = dispatchQ.data ?? [];
+  const dispatchCreditRows = useMemo(() => {
+    const fromMs = Date.parse(`${from}T00:00:00.000Z`);
+    const toMs = Date.parse(`${to}T23:59:59.999Z`);
+    return dispatchRowsRaw
+      .filter((r) => {
+        const createdMs = Date.parse(r.createdAt);
+        if (!Number.isFinite(createdMs)) return false;
+        return createdMs >= fromMs && createdMs <= toMs;
+      })
+      .map((r) => {
+        const paid = parseDispatchPaymentInfo(r.notes, r.totalAmount).paidAmount;
+        const rem = Math.max(0, r.totalAmount - paid);
+        return { ...r, paidAmount: paid, remainingAmount: rem };
+      });
+  }, [dispatchRowsRaw, from, to]);
 
   const openRows = useMemo(
     () => rawRows.filter((s) => remainingTotal(s) > CREDIT_AMOUNT_EPS),
@@ -262,18 +321,26 @@ export function CreditScreen() {
         }
       }
     }
+    for (const d of dispatchCreditRows) {
+      totalPaidAll += d.paidAmount;
+      totalSaleTotal += d.totalAmount;
+      if (d.remainingAmount <= CREDIT_AMOUNT_EPS) continue;
+      totalRem += d.remainingAmount;
+      totalPaidOpen += d.paidAmount;
+      if (d.customerId) debtors.add(d.customerId);
+    }
     return {
       totalRem,
       totalPaidOpen,
       totalPaidAll,
       totalSaleTotal,
-      countOpen: openRows.length,
+      countOpen: openRows.length + dispatchCreditRows.filter((d) => d.remainingAmount > CREDIT_AMOUNT_EPS).length,
       debtors: debtors.size,
       overdue,
       dueToday,
       dueWeek,
     };
-  }, [rawRows, openRows, legacyRows]);
+  }, [rawRows, openRows, legacyRows, dispatchCreditRows]);
 
   /**
    * Filtres rapides : basés sur encaissements réels vs reste (pas uniquement le statut affiché,
@@ -557,6 +624,34 @@ export function CreditScreen() {
         />
       </div>
 
+      <FsCard className="mt-4" padding="p-4">
+        <div className="mb-2 flex items-center justify-between">
+          <p className="text-sm font-bold text-fs-text">Crédits dépôt (Facture / Sortie)</p>
+          <span className="rounded-full bg-fs-accent/10 px-2 py-0.5 text-xs font-bold text-fs-accent">
+            Traçabilité séparée
+          </span>
+        </div>
+        <div className="grid grid-cols-1 gap-2 text-xs text-neutral-700 min-[900px]:grid-cols-3">
+          <p>
+            Dossiers: <span className="font-bold">{dispatchCreditRows.length}</span>
+          </p>
+          <p>
+            Restant:{" "}
+            <span className="font-bold text-fs-accent">
+              {formatCurrency(
+                dispatchCreditRows.reduce((s, r) => s + (r.remainingAmount > CREDIT_AMOUNT_EPS ? r.remainingAmount : 0), 0),
+              )}
+            </span>
+          </p>
+          <p>
+            Déjà encaissé:{" "}
+            <span className="font-bold text-emerald-700">
+              {formatCurrency(dispatchCreditRows.reduce((s, r) => s + r.paidAmount, 0))}
+            </span>
+          </p>
+        </div>
+      </FsCard>
+
       <FsCard className="mt-6" padding="p-4">
         <div className="flex flex-col gap-3 min-[900px]:flex-row min-[900px]:items-center min-[900px]:justify-between">
           <div className="relative min-w-0 flex-1">
@@ -833,6 +928,7 @@ export function CreditScreen() {
 
       <LegacyCreditSection
         companyId={companyId}
+        companyName={companyName}
         storeId={effectiveStoreId}
         from={from}
         to={to}

@@ -50,6 +50,7 @@ export type WarehouseDispatchInvoiceSummary = {
   customerId: string | null;
   customerName: string | null;
   documentNumber: string;
+  totalAmount: number;
   notes: string | null;
   createdAt: string;
 };

@@ -206,7 +206,7 @@ export async function listWarehouseDispatchInvoices(
   const { data, error } = await supabase
     .from("warehouse_dispatch_invoices")
     .select(
-      "id, company_id, customer_id, document_number, notes, created_at, customer:customers(name)",
+      "id, company_id, customer_id, document_number, notes, created_at, customer:customers(name), items:warehouse_dispatch_items(quantity, unit_price)",
     )
     .eq("company_id", companyId)
     .order("created_at", { ascending: false })
@@ -218,12 +218,19 @@ export async function listWarehouseDispatchInvoices(
     const customer = Array.isArray(custRaw)
       ? (custRaw[0] as { name?: string } | undefined)
       : (custRaw as { name?: string } | null);
+    const itemsRaw = Array.isArray(row.items) ? (row.items as Array<Record<string, unknown>>) : [];
+    const totalAmount = itemsRaw.reduce((sum, item) => {
+      const q = toInt(item.quantity);
+      const pu = toFloat(item.unit_price);
+      return sum + q * pu;
+    }, 0);
     return {
       id: String(row.id),
       companyId: String(row.company_id),
       customerId: row.customer_id != null ? String(row.customer_id) : null,
       customerName: customer?.name != null ? String(customer.name) : null,
       documentNumber: String(row.document_number ?? "—"),
+      totalAmount,
       notes: row.notes != null ? String(row.notes) : null,
       createdAt: String(row.created_at ?? ""),
     };
