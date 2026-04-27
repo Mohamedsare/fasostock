@@ -342,6 +342,63 @@ export function WarehouseScreen() {
     return computeDashboardFromLists(inventory, movements);
   }, [companyId, inventory, movements]);
 
+  const decisionPanel = useMemo(() => {
+    const thresholdOf = (l: WarehouseStockLine) =>
+      Math.max(0, l.stockMinWarehouse > 0 ? l.stockMinWarehouse : l.stockMin);
+    const lowLines = inventory
+      .map((l) => {
+        const threshold = thresholdOf(l);
+        const missingQty = Math.max(0, threshold - l.quantity);
+        const estimatedRefillCost = missingQty * (l.avgUnitCost ?? l.purchasePrice);
+        return { line: l, threshold, missingQty, estimatedRefillCost };
+      })
+      .filter((x) => x.missingQty > 0)
+      .sort((a, b) => b.estimatedRefillCost - a.estimatedRefillCost);
+
+    const now = Date.now();
+    const days30 = 30 * 24 * 60 * 60 * 1000;
+    const recentMovementsByProduct = new Set(
+      movements
+        .filter((m) => {
+          if (!m.createdAt) return false;
+          const dt = Date.parse(m.createdAt);
+          return Number.isFinite(dt) && now - dt <= days30;
+        })
+        .map((m) => m.productId),
+    );
+    const dormantLines = inventory
+      .filter((l) => !recentMovementsByProduct.has(l.productId) && l.quantity > 0)
+      .sort((a, b) => b.quantity * b.salePrice - a.quantity * a.salePrice);
+
+    const healthPct =
+      inventory.length > 0
+        ? Math.round(((inventory.length - lowLines.length) / inventory.length) * 100)
+        : 100;
+    const netFlow30 = (dashboard?.movementsEntries30d ?? 0) - (dashboard?.movementsExits30d ?? 0);
+
+    const pendingTransfersCount = warehouseTransfers.filter((t) =>
+      t.status === "draft" || t.status === "pending" || t.status === "approved" || t.status === "shipped",
+    ).length;
+
+    const from7 = now - 7 * 24 * 60 * 60 * 1000;
+    const dispatch7d = dispatchRows.filter((d) => {
+      const dt = Date.parse(d.createdAt);
+      return Number.isFinite(dt) && dt >= from7;
+    });
+    const dispatchAmount7d = dispatch7d.reduce((s, d) => s + Number(d.totalAmount ?? 0), 0);
+
+    return {
+      topLow: lowLines.slice(0, 5),
+      dormantTop: dormantLines.slice(0, 3),
+      lowCount: lowLines.length,
+      healthPct,
+      netFlow30,
+      pendingTransfersCount,
+      dispatch7dCount: dispatch7d.length,
+      dispatchAmount7d,
+    };
+  }, [inventory, movements, dashboard, warehouseTransfers, dispatchRows]);
+
   const refreshAll = useCallback(async () => {
     await Promise.all([
       qc.invalidateQueries({ queryKey: ["warehouse", companyId] }),
@@ -696,26 +753,26 @@ export function WarehouseScreen() {
   return (
     <FsPage>
       {/* Aligné AppBar Flutter : toolbarHeight 52, TabBar dessous (label 15px, indicateur #F97316) */}
-      <div className="sticky top-0 z-30 -mx-3 border-b border-black/6 bg-fs-surface/98 backdrop-blur-md sm:-mx-5">
-        <div className="flex min-h-[44px] items-center justify-between gap-2 px-3 sm:px-0">
+      <div className="sticky top-0 z-30 -mx-3 border-b border-black/6 bg-fs-surface/95 backdrop-blur-lg sm:-mx-5">
+        <div className="flex min-h-[38px] items-center justify-between gap-1.5 px-3 py-0.5 sm:px-0">
           <FsScreenHeader
             title="Magasin"
             className="mb-0 min-w-0 flex-1"
-            titleClassName="text-[15px] font-semibold tracking-tight text-fs-text sm:text-lg sm:font-bold"
+            titleClassName="text-[13px] font-semibold tracking-tight text-fs-text sm:text-[15px] sm:font-bold"
           />
           <button
             type="button"
             onClick={() => refreshAll()}
             disabled={invQ.isFetching}
-            className="fs-touch-target shrink-0 rounded-full p-2.5 text-neutral-600 active:bg-black/5"
+            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-black/8 bg-fs-surface-container text-neutral-600 transition-colors hover:bg-black/3 active:bg-black/5"
             aria-label="Actualiser"
           >
-            <MdRefresh className={cn("h-6 w-6", invQ.isFetching && "animate-spin")} />
+            <MdRefresh className={cn("h-4.5 w-4.5", invQ.isFetching && "animate-spin")} />
           </button>
         </div>
 
         <div
-          className="warehouse-tabbar-scroll flex gap-0 overflow-x-auto overscroll-x-contain px-3 pb-1.5 pt-1 sm:px-0 sm:pb-2 sm:pt-1.5"
+          className="warehouse-tabbar-scroll flex gap-1 overflow-x-auto overscroll-x-contain px-3 pb-1 pt-0.5 sm:px-0 sm:pb-1.5 sm:pt-1"
           style={{ WebkitOverflowScrolling: "touch" }}
           role="tablist"
           aria-label="Sections Magasin"
@@ -727,12 +784,12 @@ export function WarehouseScreen() {
               role="tab"
               aria-selected={tab === i}
               onClick={() => setTab(i)}
-            className={cn(
-                "shrink-0 snap-start px-2 py-1.5 text-left text-[13px] leading-tight transition-colors sm:px-2.5 sm:py-2 sm:text-[14px]",
-                "min-h-[34px] min-w-0 max-w-[min(100%,11rem)] sm:min-h-[36px] sm:max-w-none",
+              className={cn(
+                "shrink-0 snap-start rounded-lg border px-2.5 py-1 text-left text-[12px] leading-tight transition-all sm:px-3 sm:text-[13px]",
+                "min-h-[30px] min-w-0 max-w-[min(100%,11rem)] sm:min-h-[32px] sm:max-w-none",
                 tab === i
-                  ? "bg-[#F97316] font-bold text-white"
-                  : "bg-transparent font-semibold text-[#4A4643] active:bg-neutral-100",
+                  ? "border-[#F97316] bg-[#F97316] font-bold text-white shadow-[0_2px_8px_rgba(249,115,22,0.28)]"
+                  : "border-transparent bg-transparent font-semibold text-[#4A4643] hover:border-black/8 hover:bg-black/3 active:bg-neutral-100",
               )}
             >
               {label}
@@ -910,6 +967,113 @@ export function WarehouseScreen() {
                       )}
                     </div>
                   </FsCard>
+
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                    <FsCard padding="p-3">
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-neutral-500">Santé stock</p>
+                      <p className="mt-1 text-xl font-extrabold text-fs-text">{decisionPanel.healthPct}%</p>
+                      <p className="mt-1 text-xs text-neutral-600">
+                        {decisionPanel.lowCount > 0
+                          ? `${decisionPanel.lowCount} référence(s) sous seuil`
+                          : "Aucune alerte de seuil"}
+                      </p>
+                    </FsCard>
+                    <FsCard padding="p-3">
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-neutral-500">Pression flux 30 j</p>
+                      <p
+                        className={cn(
+                          "mt-1 text-xl font-extrabold",
+                          decisionPanel.netFlow30 < 0 ? "text-red-600" : "text-emerald-700",
+                        )}
+                      >
+                        {decisionPanel.netFlow30 > 0 ? "+" : ""}
+                        {decisionPanel.netFlow30}
+                      </p>
+                      <p className="mt-1 text-xs text-neutral-600">
+                        {decisionPanel.netFlow30 < 0 ? "Sorties > entrées : risque rupture" : "Couverture stable"}
+                      </p>
+                    </FsCard>
+                    <FsCard padding="p-3">
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-neutral-500">Sorties 7 j</p>
+                      <p className="mt-1 text-xl font-extrabold text-fs-text">{decisionPanel.dispatch7dCount}</p>
+                      <p className="mt-1 text-xs text-neutral-600">{formatCurrency(decisionPanel.dispatchAmount7d)}</p>
+                    </FsCard>
+                  </div>
+
+                  <FsCard padding="p-3.5 sm:p-4">
+                    <div className="mb-2 flex items-center justify-between">
+                      <p className="text-[13px] font-semibold text-fs-text sm:text-sm">Priorités de réapprovisionnement</p>
+                      {decisionPanel.topLow.length > 0 ? (
+                        <button
+                          type="button"
+                          onClick={() => setTab(1)}
+                          className="text-xs font-bold text-fs-accent"
+                        >
+                          Voir stock dépôt
+                        </button>
+                      ) : null}
+                    </div>
+                    {decisionPanel.topLow.length === 0 ? (
+                      <p className="text-xs text-neutral-600">Aucune priorité immédiate. Les seuils sont couverts.</p>
+                    ) : (
+                      <div className="overflow-x-auto rounded-xl border border-black/8">
+                        <table className="w-full min-w-[660px] text-left text-[12px] [&_thead_th]:whitespace-nowrap [&_tbody_td]:whitespace-nowrap">
+                          <thead>
+                            <tr className="border-b border-black/10 bg-fs-surface-low/80 text-[10px] uppercase tracking-wide text-neutral-600">
+                              <th className="px-2.5 py-2">Produit</th>
+                              <th className="px-2.5 py-2 text-right">Qté</th>
+                              <th className="px-2.5 py-2 text-right">Seuil</th>
+                              <th className="px-2.5 py-2 text-right">Manquant</th>
+                              <th className="px-2.5 py-2 text-right">Budget estimé</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {decisionPanel.topLow.map((x) => (
+                              <tr key={x.line.productId} className="border-b border-black/6 last:border-b-0">
+                                <td className="max-w-[240px] truncate px-2.5 py-2 font-semibold text-fs-text">{x.line.productName}</td>
+                                <td className="px-2.5 py-2 text-right tabular-nums">{x.line.quantity}</td>
+                                <td className="px-2.5 py-2 text-right tabular-nums">{x.threshold}</td>
+                                <td className="px-2.5 py-2 text-right font-bold tabular-nums text-red-600">{x.missingQty}</td>
+                                <td className="px-2.5 py-2 text-right font-semibold tabular-nums">{formatCurrency(x.estimatedRefillCost)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </FsCard>
+
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <FsCard padding="p-3.5 sm:p-4">
+                      <p className="text-[13px] font-semibold text-fs-text sm:text-sm">Transferts à traiter</p>
+                      <p className="mt-1 text-2xl font-extrabold text-fs-text">{decisionPanel.pendingTransfersCount}</p>
+                      <p className="mt-1 text-xs text-neutral-600">Brouillons / en attente / approuvés / expédiés.</p>
+                      <button
+                        type="button"
+                        onClick={() => setTab(3)}
+                        className="mt-2 text-xs font-bold text-fs-accent"
+                      >
+                        Ouvrir Transfert
+                      </button>
+                    </FsCard>
+                    <FsCard padding="p-3.5 sm:p-4">
+                      <p className="text-[13px] font-semibold text-fs-text sm:text-sm">Stock dormant (30 j)</p>
+                      {decisionPanel.dormantTop.length === 0 ? (
+                        <p className="mt-2 text-xs text-neutral-600">Aucun article dormant significatif détecté.</p>
+                      ) : (
+                        <div className="mt-2 space-y-1.5">
+                          {decisionPanel.dormantTop.map((l) => (
+                            <div key={l.productId} className="flex items-center justify-between gap-2 rounded-lg bg-fs-surface-container px-2.5 py-1.5">
+                              <span className="truncate text-xs font-semibold text-fs-text">{l.productName}</span>
+                              <span className="shrink-0 text-[11px] font-bold text-neutral-700">
+                                {formatCurrency(l.quantity * l.salePrice)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </FsCard>
+                  </div>
                 </>
               ) : null}
 
@@ -1577,119 +1741,123 @@ function StockDepotTab({
           onChange={(e) => setStockQ(e.target.value)}
         />
       </div>
-      <div className="flex flex-wrap gap-2">
-        <FilterChip sel={stockFilter === "all"} onClick={() => setStockFilter("all")} label="Tous" variant="primary" />
-        <FilterChip sel={stockFilter === "low"} onClick={() => setStockFilter("low")} label="En alerte" variant="error" />
-        <FilterChip sel={stockFilter === "ok"} onClick={() => setStockFilter("ok")} label="Stock OK" variant="tertiary" />
-        {(stockQ || stockFilter !== "all") && (
-          <button
-            type="button"
-            onClick={() => {
-              setStockQ("");
-              setStockFilter("all");
-            }}
-            className="text-xs font-semibold text-fs-accent"
-          >
-            Réinitialiser
-          </button>
-        )}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap gap-2">
+          <FilterChip sel={stockFilter === "all"} onClick={() => setStockFilter("all")} label="Tous" variant="primary" />
+          <FilterChip sel={stockFilter === "low"} onClick={() => setStockFilter("low")} label="En alerte" variant="error" />
+          <FilterChip sel={stockFilter === "ok"} onClick={() => setStockFilter("ok")} label="Stock OK" variant="tertiary" />
+          {(stockQ || stockFilter !== "all") && (
+            <button
+              type="button"
+              onClick={() => {
+                setStockQ("");
+                setStockFilter("all");
+              }}
+              className="text-xs font-semibold text-fs-accent"
+            >
+              Réinitialiser
+            </button>
+          )}
+        </div>
+        <div className="rounded-xl border border-black/8 bg-fs-surface-container px-3 py-2">
+          <p className="text-xs font-semibold text-neutral-700">
+            Produits: <span className="font-extrabold text-fs-text">{lines.length}</span>
+            {filtered.length !== lines.length ? (
+              <span className="ml-2 text-neutral-600">
+                (affichés: <span className="font-bold text-fs-text">{filtered.length}</span>)
+              </span>
+            ) : null}
+          </p>
+        </div>
       </div>
       {filtered.length === 0 ? (
         <p className="text-sm text-neutral-600">Aucun produit ne correspond au filtre.</p>
       ) : (
-        <div className="space-y-1.5">
-        {slice.map((l) => {
-          const th = l.stockMinWarehouse > 0 ? l.stockMinWarehouse : l.stockMin;
-          const thLabel =
-            l.stockMinWarehouse > 0 ? `Seuil magasin ${l.stockMinWarehouse}` : `Seuil produit ${l.stockMin}`;
-          const low = l.quantity <= (l.stockMinWarehouse > 0 ? l.stockMinWarehouse : l.stockMin);
-          const threshold = th < 0 ? 0 : th;
-          const valueAtCost = l.quantity * (l.avgUnitCost ?? l.purchasePrice);
-          const valueAtSale = l.quantity * l.salePrice;
-          return (
-            <div
-              key={l.productId}
-              className={cn(
-                "rounded-xl border bg-fs-card pl-[10px] pr-[6px] pt-[10px] pb-[10px]",
-                "border-neutral-200/90 shadow-none dark:border-white/[0.12]",
-              )}
-            >
-              {/* Ligne 1 — aligné `warehouse_page.dart` Card (thumbnail + titre + icônes) */}
-              <div className="flex items-start gap-2.5">
-                <ProductListThumbnail
-                  imageUrl={l.imageUrl}
-                  className="h-12 w-12 shrink-0 rounded-[10px]"
-                />
-                <div className="min-w-0 flex-1 pr-1">
-                  <p className="text-[17px] font-bold leading-tight text-fs-text">{l.productName}</p>
-                  <p className="mt-1 text-[12px] leading-snug text-neutral-600 dark:text-neutral-400">
-                    {l.quantity} {l.unit}
-                    {l.sku ? ` · SKU ${l.sku}` : ""} · {thLabel}
-                  </p>
-                </div>
-                <div className="flex shrink-0 items-start">
-                  <button
-                    type="button"
-                    onClick={() => onAdjust(l)}
-                    className="fs-touch-target -mr-1 rounded-lg p-2 text-neutral-800 dark:text-neutral-200"
-                    title="Ajuster le stock"
-                  >
-                    <MdBalance className="h-5 w-5" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onThreshold(l)}
-                    className="fs-touch-target rounded-lg p-2 text-neutral-800 dark:text-neutral-200"
-                    title="Seuil magasin"
-                  >
-                    <MdTune className="h-5 w-5" />
-                  </button>
-                </div>
-              </div>
-              {/* Ligne 2 — badge + PA / PV (comme Flutter) */}
-              <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-                <div
-                  className={cn(
-                    "inline-flex max-w-full flex-wrap items-center gap-2 rounded-full border px-2 py-1",
-                    low
-                      ? "border-[#F5B2B2] bg-[#FDECEC]"
-                      : "border-[#A8DBB0] bg-[#EAF7EC]",
-                  )}
-                >
-                  <span className="inline-flex items-center gap-1.5">
-                    {low ? (
-                      <MdWarningAmber className="h-4 w-4 shrink-0 text-[#B42318]" />
-                    ) : (
-                      <MdCheckCircle className="h-4 w-4 shrink-0 text-[#1E7D34]" />
-                    )}
-                    <span
-                      className={cn(
-                        "text-[11px] font-bold",
-                        low ? "text-[#7A271A]" : "text-[#14532D]",
-                      )}
-                    >
-                      {low ? "Alerte stock" : "Stock OK"}
-                    </span>
-                  </span>
-                  <span
-                    className={cn(
-                      "text-[10px] font-semibold",
-                      low ? "text-[#9A3412]" : "text-[#166534]",
-                    )}
-                  >
-                    {l.quantity} / seuil {threshold}
-                  </span>
-                </div>
-                <div className="min-w-0 shrink text-right">
-                  <p className="text-base font-extrabold leading-tight text-fs-text">{formatCurrency(valueAtCost)}</p>
-                  <p className="mt-0.5 text-[11px] text-neutral-600 dark:text-neutral-400">
-                    PV {formatCurrency(valueAtSale)}
-                  </p>
-                </div>
-              </div>
-            </div>
-          );
-        })}
+        <div className="overflow-x-auto rounded-2xl border border-black/8 bg-fs-card">
+          <table className="w-full min-w-[980px] border-collapse text-left text-[13px] [&_thead_th]:whitespace-nowrap [&_tbody_td]:whitespace-nowrap">
+            <thead>
+              <tr className="border-b border-black/10 bg-fs-surface-low/80 text-[11px] uppercase tracking-wide text-neutral-700">
+                <th className="px-3 py-2.5 font-bold">Produit</th>
+                <th className="px-3 py-2.5 font-bold">SKU</th>
+                <th className="px-3 py-2.5 text-right font-bold">Qté</th>
+                <th className="px-3 py-2.5 text-right font-bold">Seuil</th>
+                <th className="px-3 py-2.5 font-bold">Statut</th>
+                <th className="px-3 py-2.5 text-right font-bold">Valeur PA</th>
+                <th className="px-3 py-2.5 text-right font-bold">Valeur PV</th>
+                <th className="px-3 py-2.5 text-center font-bold">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {slice.map((l) => {
+                const th = l.stockMinWarehouse > 0 ? l.stockMinWarehouse : l.stockMin;
+                const low = l.quantity <= (l.stockMinWarehouse > 0 ? l.stockMinWarehouse : l.stockMin);
+                const threshold = th < 0 ? 0 : th;
+                const valueAtCost = l.quantity * (l.avgUnitCost ?? l.purchasePrice);
+                const valueAtSale = l.quantity * l.salePrice;
+                return (
+                  <tr key={l.productId} className="border-b border-black/6 text-[13px] last:border-b-0 hover:bg-black/2">
+                    <td className="px-3 py-2.5">
+                      <div className="flex min-w-0 items-center gap-2.5">
+                        <ProductListThumbnail imageUrl={l.imageUrl} className="h-9 w-9 shrink-0 rounded-lg" previewOnTap />
+                        <div className="min-w-0">
+                          <p className="truncate font-semibold text-fs-text">{l.productName}</p>
+                          <p className="text-xs text-neutral-500">{l.unit}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-3 py-2.5 text-neutral-700">{l.sku || "—"}</td>
+                    <td className="px-3 py-2.5 text-right font-semibold tabular-nums">{l.quantity}</td>
+                    <td className="px-3 py-2.5 text-right tabular-nums">{threshold}</td>
+                    <td className="px-3 py-2.5">
+                      <span
+                        className={cn(
+                          "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold",
+                          low ? "bg-red-500/15 text-red-700" : "bg-emerald-500/15 text-emerald-700",
+                        )}
+                      >
+                        {low ? <MdWarningAmber className="h-3.5 w-3.5" /> : <MdCheckCircle className="h-3.5 w-3.5" />}
+                        {low ? "Alerte" : "OK"}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2.5 text-right font-semibold tabular-nums">{formatCurrency(valueAtCost)}</td>
+                    <td className="px-3 py-2.5 text-right tabular-nums text-neutral-700">{formatCurrency(valueAtSale)}</td>
+                    <td className="px-3 py-2.5">
+                      <div className="flex items-center justify-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => onAdjust(l)}
+                          className={cn(
+                            "inline-flex min-h-[36px] min-w-[36px] items-center justify-center rounded-xl border transition-all duration-150",
+                            "border-[#F97316]/35 bg-[#FFF7ED] text-[#C2410C] shadow-[0_1px_2px_rgba(0,0,0,0.06)]",
+                            "hover:-translate-y-px hover:bg-[#FFEDD5] hover:shadow-[0_4px_10px_rgba(249,115,22,0.2)] active:translate-y-0",
+                            "dark:border-orange-400/40 dark:bg-orange-950/40 dark:text-orange-200",
+                          )}
+                          title="Ajuster le stock"
+                          aria-label="Ajuster le stock"
+                        >
+                          <MdBalance className="h-[18px] w-[18px]" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onThreshold(l)}
+                          className={cn(
+                            "inline-flex min-h-[36px] min-w-[36px] items-center justify-center rounded-xl border transition-all duration-150",
+                            "border-[#0EA5E9]/35 bg-[#F0F9FF] text-[#0369A1] shadow-[0_1px_2px_rgba(0,0,0,0.06)]",
+                            "hover:-translate-y-px hover:bg-[#E0F2FE] hover:shadow-[0_4px_10px_rgba(14,165,233,0.22)] active:translate-y-0",
+                            "dark:border-sky-400/40 dark:bg-sky-950/40 dark:text-sky-200",
+                          )}
+                          title="Seuil magasin"
+                          aria-label="Modifier le seuil magasin"
+                        >
+                          <MdTune className="h-[18px] w-[18px]" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       )}
       {filteredLen > 0 && stockTotalPages > 1 ? (
@@ -1741,7 +1909,7 @@ function FilterChip({
       type="button"
       onClick={onClick}
       className={cn(
-        "min-h-[44px] rounded-full border px-3 py-2 text-xs font-bold",
+        "min-h-[38px] rounded-xl border px-3 py-1.5 text-xs font-bold",
         sel ? ring : "border-black/10 bg-neutral-100 text-neutral-800",
       )}
     >
@@ -1783,54 +1951,73 @@ function MouvementsTab({
 
   return (
     <div className="space-y-2 pb-6">
-      {movSlice.map((m) => {
-        const kind = m.movementKind === "entry";
-        const kindColor = kind ? ACCENT.emerald : ACCENT.orange;
-        const pack = WAREHOUSE_PACKAGING_LABELS[m.packagingType] ?? m.packagingType;
-        const unitExtra =
-          m.unitCost != null
-            ? kind
-              ? ` · PA ${formatCurrency(m.unitCost)}`
-              : m.referenceType === "warehouse_dispatch"
-                ? ` · PU ${formatCurrency(m.unitCost)}`
-                : ""
-            : "";
-        const line2 = `${m.createdAt ? formatDt(m.createdAt) : "—"} · ${kind ? "Entrée" : "Sortie"} · ${m.quantity} u. · ${pack}${m.packsQuantity !== 1 ? ` ×${m.packsQuantity}` : ""}`;
-        const line3 = `${refLabel(m)}${unitExtra}`;
-        const canVoid = m.referenceType === "warehouse_dispatch" && m.referenceId && companyId;
+      <div className="overflow-x-auto rounded-2xl border border-black/6 bg-fs-card">
+        <table className="w-full min-w-[980px] border-collapse text-left text-[13px] [&_thead_th]:whitespace-nowrap [&_tbody_td]:whitespace-nowrap">
+          <thead>
+            <tr className="border-b border-black/10 bg-fs-surface-low/80 text-[11px] uppercase tracking-wide text-neutral-700">
+              <th className="px-3 py-2.5 font-bold">Produit</th>
+              <th className="px-3 py-2.5 font-bold">Date</th>
+              <th className="px-3 py-2.5 font-bold">Type</th>
+              <th className="px-3 py-2.5 text-right font-bold">Qté</th>
+              <th className="px-3 py-2.5 font-bold">Conditionnement</th>
+              <th className="px-3 py-2.5 text-right font-bold">PU</th>
+              <th className="px-3 py-2.5 font-bold">Référence</th>
+              <th className="px-3 py-2.5 text-center font-bold">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {movSlice.map((m) => {
+              const kind = m.movementKind === "entry";
+              const kindColor = kind ? ACCENT.emerald : ACCENT.orange;
+              const pack = WAREHOUSE_PACKAGING_LABELS[m.packagingType] ?? m.packagingType;
+              const unitPriceLabel =
+                m.unitCost != null
+                  ? formatCurrency(m.unitCost)
+                  : "—";
+              const canVoid = m.referenceType === "warehouse_dispatch" && m.referenceId && companyId;
 
-        return (
-          <FsCard key={m.id} padding="p-3" className="border border-black/[0.06] shadow-sm">
-            <div className="flex gap-3">
-              <div
-                className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-full"
-                style={{ backgroundColor: `${kindColor}24` }}
-              >
-                {kind ? (
-                  <MdSouthWest className="h-5 w-5" style={{ color: kindColor }} />
-                ) : (
-                  <MdNorthEast className="h-5 w-5" style={{ color: kindColor }} />
-                )}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-base font-bold leading-snug text-fs-text">{m.productName ?? "Produit"}</p>
-                <p className="mt-1 text-[12px] leading-snug text-neutral-600">{line2}</p>
-                <p className="mt-0.5 text-[12px] text-neutral-700">{line3}</p>
-                {canVoid ? (
-                  <button
-                    type="button"
-                    disabled={voidingId === m.referenceId}
-                    onClick={() => onVoid(m)}
-                    className="mt-2 text-xs font-bold text-red-600"
-                  >
-                    {voidingId === m.referenceId ? "…" : "Annuler le bon"}
-                  </button>
-                ) : null}
-              </div>
-            </div>
-          </FsCard>
-        );
-      })}
+              return (
+                <tr key={m.id} className="border-b border-black/6 text-[13px] last:border-b-0 hover:bg-black/2">
+                  <td className="max-w-[240px] truncate px-3 py-2.5 font-semibold text-fs-text">{m.productName ?? "Produit"}</td>
+                  <td className="px-3 py-2.5 text-neutral-700">{m.createdAt ? formatDt(m.createdAt) : "—"}</td>
+                  <td className="px-3 py-2.5">
+                    <span
+                      className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold"
+                      style={{ backgroundColor: `${kindColor}22`, color: kindColor }}
+                    >
+                      {kind ? <MdSouthWest className="h-3.5 w-3.5" /> : <MdNorthEast className="h-3.5 w-3.5" />}
+                      {kind ? "Entrée" : "Sortie"}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2.5 text-right font-semibold tabular-nums">{m.quantity}</td>
+                  <td className="px-3 py-2.5 text-neutral-700">
+                    {pack}
+                    {m.packsQuantity !== 1 ? ` ×${m.packsQuantity}` : ""}
+                  </td>
+                  <td className="px-3 py-2.5 text-right tabular-nums text-neutral-700">{unitPriceLabel}</td>
+                  <td className="max-w-[260px] truncate px-3 py-2.5 text-neutral-700" title={refLabel(m)}>
+                    {refLabel(m)}
+                  </td>
+                  <td className="px-3 py-2.5 text-center">
+                    {canVoid ? (
+                      <button
+                        type="button"
+                        disabled={voidingId === m.referenceId}
+                        onClick={() => onVoid(m)}
+                        className="inline-flex min-h-[34px] items-center rounded-lg border border-red-200 bg-red-50 px-3 py-1 text-xs font-bold text-red-700 disabled:opacity-50"
+                      >
+                        {voidingId === m.referenceId ? "…" : "Annuler"}
+                      </button>
+                    ) : (
+                      <span className="text-xs text-neutral-400">—</span>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
       {movTotalPages > 1 ? (
         <div className="flex flex-wrap items-center justify-center gap-2 py-2">
           <button
@@ -1904,48 +2091,69 @@ function TransfertTab({
         <MdAdd className="h-5 w-5" />
         Nouveau transfert
       </button>
-      {sorted.map((t) => {
-        const toName = storeName(t.toStoreId);
-        const col = statusColor(t.status);
-        return (
-          <button
-            key={t.id}
-            type="button"
-            onClick={() => onOpen(t)}
-            className="flex w-full min-h-[56px] items-stretch gap-2 rounded-xl border border-black/[0.08] bg-fs-card text-left shadow-sm active:bg-neutral-50"
-          >
-            <div className="flex shrink-0 items-center pl-3">
-              <MdLocalShipping className="h-6 w-6 text-[#F97316]" />
-            </div>
-            <div className="min-w-0 flex-1 py-3 pr-2">
-              <p className="text-sm font-semibold leading-snug">Dépôt magasin → {toName}</p>
-              <p className="mt-0.5 text-xs text-neutral-600">Créé le {formatDt(t.createdAt)}</p>
-            </div>
-            <div className="flex items-center gap-1 pr-2">
-              <span
-                className="rounded-full px-2 py-0.5 text-[11px] font-bold"
-                style={{ background: `${col}20`, color: col }}
-              >
-                {statusLabel(t.status)}
-              </span>
-              {canDeleteTransfer(t) ? (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onDelete(t);
-                  }}
-                  className="p-2 text-red-600"
-                  aria-label="Supprimer"
-                >
-                  <MdDeleteOutline className="h-5 w-5" />
-                </button>
-              ) : null}
-              <MdChevronRight className="h-6 w-6 text-neutral-400" />
-            </div>
-          </button>
-        );
-      })}
+      <div className="overflow-x-auto rounded-2xl border border-black/6 bg-fs-card">
+        <table className="w-full min-w-[940px] border-collapse text-left text-[13px] [&_thead_th]:whitespace-nowrap [&_tbody_td]:whitespace-nowrap">
+          <thead>
+            <tr className="border-b border-black/10 bg-fs-surface-low/80 text-[11px] uppercase tracking-wide text-neutral-700">
+              <th className="px-3 py-2.5 font-bold">N° Transfert</th>
+              <th className="px-3 py-2.5 font-bold">Date</th>
+              <th className="px-3 py-2.5 font-bold">Destination</th>
+              <th className="px-3 py-2.5 font-bold">Statut</th>
+              <th className="px-3 py-2.5 text-center font-bold">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.map((t) => {
+              const toName = storeName(t.toStoreId);
+              const col = statusColor(t.status);
+              return (
+                <tr key={t.id} className="border-b border-black/6 text-[13px] last:border-b-0 hover:bg-black/2">
+                  <td className="px-3 py-2.5 font-semibold text-fs-text">TR-{t.id.slice(0, 8).toUpperCase()}</td>
+                  <td className="px-3 py-2.5 text-neutral-700">{formatDt(t.createdAt)}</td>
+                  <td className="px-3 py-2.5">
+                    <span className="inline-flex items-center gap-1.5 font-medium text-neutral-800">
+                      <MdLocalShipping className="h-4 w-4 text-[#F97316]" />
+                      {toName}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2.5">
+                    <span
+                      className="rounded-full px-2 py-0.5 text-[11px] font-bold"
+                      style={{ background: `${col}20`, color: col }}
+                    >
+                      {statusLabel(t.status)}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2.5">
+                    <div className="flex items-center justify-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => onOpen(t)}
+                        className="inline-flex min-h-[34px] items-center rounded-lg border border-[#F97316]/35 bg-[#FFF7ED] px-3 py-1 text-xs font-bold text-[#C2410C]"
+                      >
+                        Ouvrir
+                      </button>
+                      {canDeleteTransfer(t) ? (
+                        <button
+                          type="button"
+                          onClick={() => onDelete(t)}
+                          className="inline-flex min-h-[34px] min-w-[34px] items-center justify-center rounded-lg border border-red-200 bg-red-50 text-red-700"
+                          aria-label="Supprimer"
+                          title="Supprimer"
+                        >
+                          <MdDeleteOutline className="h-4.5 w-4.5" />
+                        </button>
+                      ) : (
+                        <span className="inline-flex min-h-[34px] items-center px-1 text-xs text-neutral-400">—</span>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
