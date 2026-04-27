@@ -114,11 +114,11 @@ export function RegisterForm() {
 
         <div className="flex flex-col items-center text-center">
           <Image
-            src="/logo2.png"
+            src="/fs.png"
             alt=""
             width={120}
             height={120}
-            className="h-20 w-20 object-contain sm:h-24 sm:w-24"
+            className="h-24 w-24 object-contain sm:h-28 sm:w-28"
             priority
           />
           <p className="mt-2 text-[2rem] font-extrabold leading-none tracking-tight sm:text-[2.2rem]">

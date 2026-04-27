@@ -35,11 +35,11 @@ export function SelectBusinessTypeScreen() {
 
         <div className="flex flex-col items-center text-center">
           <Image
-            src="/logo2.png"
+            src="/fs.png"
             alt=""
             width={80}
             height={80}
-            className="h-[72px] w-[72px] object-contain sm:h-20 sm:w-20"
+            className="h-[96px] w-[96px] object-contain sm:h-28 sm:w-28"
             priority
           />
           <h1 className="mt-3 max-w-md text-[1.45rem] font-bold leading-tight tracking-tight text-fs-text sm:text-[1.65rem]">

@@ -6,9 +6,15 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import { MdDeleteOutline } from "react-icons/md";
 import { FsCard, fsInputClass } from "@/components/ui/fs-screen-primitives";
 import { createCustomer, listCustomers } from "@/lib/features/customers/api";
-import { appendLegacyCreditPayment, createLegacyCredit, listLegacyCredits } from "@/lib/features/credit/legacy-api";
+import {
+  appendLegacyCreditPayment,
+  createLegacyCredit,
+  deleteLegacyCredit,
+  listLegacyCredits,
+} from "@/lib/features/credit/legacy-api";
 import type { CreditRepaymentReceiptData } from "@/lib/features/credit/credit-repayment-receipt-types";
 import type { LegacyCreditRow } from "@/lib/features/credit/types";
 import { listStores } from "@/lib/features/stores/api";
@@ -187,6 +193,15 @@ export function LegacyCreditSection({
     onError: (e) => toast.error(messageFromUnknownError(e)),
   });
 
+  const deleteMut = useMutation({
+    mutationFn: deleteLegacyCredit,
+    onSuccess: async () => {
+      toast.success("Crédit libre supprimé.");
+      await qc.invalidateQueries({ queryKey: ["legacy-credits"] });
+    },
+    onError: (e) => toast.error(messageFromUnknownError(e)),
+  });
+
   return (
     <>
       <FsCard className="mt-6" padding="p-4">
@@ -277,6 +292,23 @@ export function LegacyCreditSection({
                             className="touch-manipulation rounded-lg bg-fs-accent px-3 py-2.5 text-xs font-bold text-white active:opacity-95 sm:py-1"
                           >
                             Encaisser
+                          </button>
+                        ) : null}
+                        {isOwner ? (
+                          <button
+                            type="button"
+                            disabled={deleteMut.isPending}
+                            onClick={() => {
+                              if (!window.confirm("Supprimer ce crédit libre et son historique de paiements ?")) {
+                                return;
+                              }
+                              deleteMut.mutate({ creditId: r.id });
+                            }}
+                            className="touch-manipulation rounded-lg border border-black/8 bg-fs-card px-2 py-1 text-xs font-semibold text-red-600 active:opacity-95 disabled:opacity-60"
+                            aria-label={`Supprimer le crédit libre ${r.title}`}
+                            title="Supprimer"
+                          >
+                            <MdDeleteOutline className="h-4 w-4" aria-hidden />
                           </button>
                         ) : null}
                       </div>

@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
 
-/** Même fichier que le favicon (`public/logo2.png`) — installation PWA. */
-const ICON = "/logo2.png";
+/** Même fichier que le favicon (`public/fs.png`) — installation PWA. */
+const ICON = "/fs.png";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {

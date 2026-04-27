@@ -102,3 +102,15 @@ export async function appendLegacyCreditPayment(params: {
   });
   if (error) throw error;
 }
+
+export async function deleteLegacyCredit(params: { creditId: string }): Promise<void> {
+  if (!navigator.onLine) {
+    throw new Error("Suppression du crédit libre nécessite une connexion internet.");
+  }
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("legacy_customer_credits")
+    .delete()
+    .eq("id", params.creditId);
+  if (error) throw error;
+}
