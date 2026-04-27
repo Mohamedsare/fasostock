@@ -92,3 +92,13 @@ export async function fetchCreditRepaymentReceiptPdfBlob(
     creditRepaymentReceiptPayloadJson(data),
   );
 }
+
+export async function fetchStoreProductsPdfBlob(data: {
+  companyName: string;
+  companyLogoUrl?: string | null;
+  storeName: string;
+  generatedAtIso: string;
+  items: Array<{ name: string; imageUrl: string | null }>;
+}): Promise<Blob> {
+  return postPdf("/api/pdf/store-products", JSON.stringify(data));
+}

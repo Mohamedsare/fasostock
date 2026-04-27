@@ -17,6 +17,7 @@ import {
   MdMenu,
   MdMessage,
   MdPeople,
+  MdPublic,
   MdSettings,
   MdShield,
   MdStore,
@@ -37,6 +38,7 @@ const NAV = [
   { href: "/admin/messages", label: "Messages", icon: MdMessage },
   { href: "/admin/ai", label: "IA", icon: MdAutoAwesome },
   { href: "/admin/reports", label: "Rapports", icon: MdBarChart },
+  { href: "/admin/gpublique", label: "GPublique", icon: MdPublic },
   { href: "/admin/settings", label: "Paramètres", icon: MdSettings },
 ] as const;
 

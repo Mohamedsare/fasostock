@@ -112,6 +112,52 @@ export async function htmlToPdfBufferA4(html: string): Promise<Buffer> {
   }
 }
 
+/**
+ * Variante plus tolérante pour documents avec images distantes (logos/miniatures).
+ * Évite les timeouts "load" quand certaines images répondent lentement.
+ */
+export async function htmlToPdfBufferA4Resilient(html: string): Promise<Buffer> {
+  const browser = await getBrowser();
+  const page = await browser.newPage();
+  try {
+    await page.setViewport(A4_VIEWPORT);
+    await page.setContent(html, { waitUntil: "domcontentloaded", timeout: 20_000 });
+    await page.waitForNetworkIdle({ idleTime: 600, timeout: 4_000 }).catch(() => undefined);
+    const pdf = await page.pdf({
+      format: "a4",
+      printBackground: true,
+      margin: { top: "12mm", right: "12mm", bottom: "12mm", left: "12mm" },
+    });
+    return Buffer.from(pdf);
+  } finally {
+    await page.close();
+  }
+}
+
+export async function htmlToPdfBufferA4ResilientWithPageNumbers(
+  html: string,
+): Promise<Buffer> {
+  const browser = await getBrowser();
+  const page = await browser.newPage();
+  try {
+    await page.setViewport(A4_VIEWPORT);
+    await page.setContent(html, { waitUntil: "domcontentloaded", timeout: 20_000 });
+    await page.waitForNetworkIdle({ idleTime: 600, timeout: 4_000 }).catch(() => undefined);
+    const pdf = await page.pdf({
+      format: "a4",
+      printBackground: true,
+      displayHeaderFooter: true,
+      headerTemplate: "<div></div>",
+      footerTemplate:
+        '<div style="width:100%;padding:0 12mm;font-size:9px;color:#6b7280;font-family:Segoe UI,Arial,sans-serif;text-align:right;"><span class="pageNumber"></span>/<span class="totalPages"></span></div>',
+      margin: { top: "12mm", right: "12mm", bottom: "16mm", left: "12mm" },
+    });
+    return Buffer.from(pdf);
+  } finally {
+    await page.close();
+  }
+}
+
 function thermalPaperConfig(paperWidthMm: 58 | 80): {
   pageWidthMm: number;
   contentWidthMm: number;

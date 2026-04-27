@@ -13,6 +13,7 @@ import type {
   AdminUser,
   AuditLogEntry,
   LockedLogin,
+  AdminPublicPartner,
 } from "./types";
 
 function toNum(v: unknown): number {
@@ -352,6 +353,46 @@ export async function adminSetPlatformSettings(settings: Record<string, string>)
   for (const [k, v] of Object.entries(settings)) {
     await adminSetPlatformSetting(k, v);
   }
+}
+
+export async function adminListPublicPartners(): Promise<AdminPublicPartner[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("public_partners")
+    .select("id, name, logo_url, sort_order, is_active, created_at")
+    .order("sort_order", { ascending: true })
+    .order("created_at", { ascending: false });
+  if (error) throw mapSupabaseError(error);
+  return ((data ?? []) as Record<string, unknown>[]).map((row) => ({
+    id: String(row.id ?? ""),
+    name: String(row.name ?? ""),
+    logoUrl: String(row.logo_url ?? ""),
+    sortOrder: toNum(row.sort_order),
+    isActive: row.is_active !== false,
+    createdAt: row.created_at != null ? String(row.created_at) : null,
+  }));
+}
+
+export async function adminCreatePublicPartner(params: {
+  name: string;
+  logoUrl: string;
+  sortOrder?: number;
+}): Promise<void> {
+  const supabase = createClient();
+  const payload = {
+    name: params.name.trim(),
+    logo_url: params.logoUrl.trim(),
+    sort_order: Math.max(0, Math.floor(Number(params.sortOrder ?? 0))),
+    is_active: true,
+  };
+  const { error } = await supabase.from("public_partners").insert(payload);
+  if (error) throw mapSupabaseError(error);
+}
+
+export async function adminDeletePublicPartner(id: string): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase.from("public_partners").delete().eq("id", id);
+  if (error) throw mapSupabaseError(error);
 }
 
 export async function adminListLandingChatMessages(limit = 500): Promise<Record<string, unknown>[]> {

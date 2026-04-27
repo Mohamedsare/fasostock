@@ -11,6 +11,8 @@ import {
   listWarehouseMovements,
   voidWarehouseDispatchInvoice,
 } from "@/lib/features/warehouse/api";
+import { listProducts, listStoreInventory } from "@/lib/features/products/api";
+import { downloadStoreProductsPdf } from "@/lib/features/stores/generate-store-products-pdf";
 import type { WarehouseDispatchInvoiceSummary, WarehouseMovement, WarehouseStockLine } from "@/lib/features/warehouse/types";
 import { WAREHOUSE_PACKAGING_LABELS } from "@/lib/features/warehouse/types";
 import {
@@ -50,6 +52,7 @@ import {
   MdLockOutline,
   MdNorthEast,
   MdPointOfSale,
+  MdPictureAsPdf,
   MdReceiptLong,
   MdRefresh,
   MdSearch,
@@ -177,6 +180,7 @@ export function WarehouseScreen() {
   const { data: ctx, isLoading: permLoading, helpers, hasPermission } = usePermissions();
   const companyId = ctx?.companyId ?? "";
   const companyName = ctx?.companyName ?? "";
+  const companyLogoUrl = ctx?.companyLogoUrl ?? null;
   const stores = ctx?.stores ?? [];
   const activeStoreId = ctx?.storeId ?? null;
   const canWarehouse = helpers?.canWarehouse ?? false;
@@ -203,6 +207,7 @@ export function WarehouseScreen() {
 
   const [dispatchPage, setDispatchPage] = useState(0);
   const DISPATCH_PAGE = 20;
+  const [exportingProductsPdf, setExportingProductsPdf] = useState(false);
 
   const [transferDetailId, setTransferDetailId] = useState<string | null>(null);
   const [dispatchDetailId, setDispatchDetailId] = useState<string | null>(null);
@@ -345,6 +350,38 @@ export function WarehouseScreen() {
     return stores.find((s) => s.id === id)?.name ?? id.slice(0, 8);
   }
 
+  async function exportWarehouseProductsPdf() {
+    if (exportingProductsPdf || !companyId) return;
+    setExportingProductsPdf(true);
+    toast.info("Génération du PDF en cours…");
+    try {
+      const [products, stockMap] = await Promise.all([
+        listProducts(companyId),
+        listStoreInventory(activeStoreId),
+      ]);
+      const items = products
+        .filter((p) => (stockMap.get(p.id) ?? 0) > 0)
+        .map((p) => ({
+          name: p.name,
+          imageUrl:
+            p.product_images && p.product_images.length > 0
+              ? p.product_images[0]?.url ?? null
+              : null,
+        }));
+      await downloadStoreProductsPdf({
+        companyName: companyName || "Entreprise",
+        companyLogoUrl,
+        storeName: activeStoreId ? storeName(activeStoreId) : "Magasin",
+        items,
+      });
+      toast.success("PDF des produits exporté.");
+    } catch (e) {
+      toastMutationError("warehouse-export-products-pdf", e);
+    } finally {
+      setExportingProductsPdf(false);
+    }
+  }
+
   const sortedStock = useMemo(() => {
     return [...inventory].sort((a, b) => a.productName.localeCompare(b.productName, "fr"));
   }, [inventory]);
@@ -448,11 +485,11 @@ export function WarehouseScreen() {
     <FsPage>
       {/* Aligné AppBar Flutter : toolbarHeight 52, TabBar dessous (label 15px, indicateur #F97316) */}
       <div className="sticky top-0 z-30 -mx-3 border-b border-black/6 bg-fs-surface/98 backdrop-blur-md sm:-mx-5">
-        <div className="flex min-h-[52px] items-center justify-between gap-2 px-3 sm:px-0">
+        <div className="flex min-h-[44px] items-center justify-between gap-2 px-3 sm:px-0">
           <FsScreenHeader
             title="Magasin"
             className="mb-0 min-w-0 flex-1"
-            titleClassName="text-base font-semibold tracking-tight text-fs-text sm:text-xl sm:font-bold"
+            titleClassName="text-[15px] font-semibold tracking-tight text-fs-text sm:text-lg sm:font-bold"
           />
           <button
             type="button"
@@ -478,9 +515,9 @@ export function WarehouseScreen() {
               role="tab"
               aria-selected={tab === i}
               onClick={() => setTab(i)}
-              className={cn(
-                "shrink-0 snap-start px-2 py-2 text-left text-[14px] leading-tight transition-colors sm:px-2.5 sm:py-2.5 sm:text-[15px]",
-                "min-h-[42px] min-w-0 max-w-[min(100%,11rem)] sm:min-h-[44px] sm:max-w-none",
+            className={cn(
+                "shrink-0 snap-start px-2 py-1.5 text-left text-[13px] leading-tight transition-colors sm:px-2.5 sm:py-2 sm:text-[14px]",
+                "min-h-[34px] min-w-0 max-w-[min(100%,11rem)] sm:min-h-[36px] sm:max-w-none",
                 tab === i
                   ? "bg-[#F97316] font-bold text-white"
                   : "bg-transparent font-semibold text-[#4A4643] active:bg-neutral-100",
@@ -526,7 +563,7 @@ export function WarehouseScreen() {
                   <button
                     type="button"
                     onClick={() => setEntryOpen(true)}
-                    className="inline-flex min-h-[44px] min-w-[44px] items-center gap-1.5 rounded-[12px] border-0 bg-[#F97316] px-3 py-2.5 text-[13px] font-bold text-white shadow-sm active:opacity-90 sm:min-h-[48px] sm:gap-2 sm:rounded-[14px] sm:px-4 sm:py-3.5 sm:text-sm"
+                    className="inline-flex min-h-[36px] min-w-[44px] items-center gap-1.5 rounded-[12px] border-0 bg-[#F97316] px-3 py-1.5 text-[13px] font-bold text-white shadow-sm active:opacity-90 sm:min-h-[38px] sm:gap-2 sm:rounded-[14px] sm:px-4 sm:py-2 sm:text-sm"
                   >
                     <MdAddCircleOutline className="h-[18px] w-[18px] shrink-0 sm:h-5 sm:w-5" />
                     Réception
@@ -534,7 +571,7 @@ export function WarehouseScreen() {
                   <button
                     type="button"
                     onClick={() => setDispatchOpen(true)}
-                    className="inline-flex min-h-[44px] min-w-[44px] items-center gap-1.5 rounded-[12px] border-0 bg-[#F97316] px-3 py-2.5 text-[13px] font-bold text-white shadow-sm active:opacity-90 sm:min-h-[48px] sm:gap-2 sm:rounded-[14px] sm:px-4 sm:py-3.5 sm:text-sm"
+                    className="inline-flex min-h-[36px] min-w-[44px] items-center gap-1.5 rounded-[12px] border-0 bg-[#F97316] px-3 py-1.5 text-[13px] font-bold text-white shadow-sm active:opacity-90 sm:min-h-[38px] sm:gap-2 sm:rounded-[14px] sm:px-4 sm:py-2 sm:text-sm"
                   >
                     <MdReceiptLong className="h-[18px] w-[18px] shrink-0 sm:h-5 sm:w-5" />
                     Facture / sortie
@@ -542,7 +579,7 @@ export function WarehouseScreen() {
                   <button
                     type="button"
                     onClick={() => setTab(1)}
-                    className="inline-flex min-h-[44px] min-w-[44px] items-center gap-1.5 rounded-[12px] bg-[#E6DDF6] px-3 py-2.5 text-[13px] font-bold text-[#7C3AED] active:opacity-90 sm:min-h-[48px] sm:gap-2 sm:rounded-[14px] sm:px-4 sm:py-3.5 sm:text-sm"
+                    className="inline-flex min-h-[36px] min-w-[44px] items-center gap-1.5 rounded-[12px] bg-[#E6DDF6] px-3 py-1.5 text-[13px] font-bold text-[#7C3AED] active:opacity-90 sm:min-h-[38px] sm:gap-2 sm:rounded-[14px] sm:px-4 sm:py-2 sm:text-sm"
                   >
                     <MdCategory className="h-[18px] w-[18px] shrink-0 sm:h-5 sm:w-5" />
                     Produits
@@ -550,10 +587,19 @@ export function WarehouseScreen() {
                   <button
                     type="button"
                     onClick={openTransferDialog}
-                    className="inline-flex min-h-[44px] min-w-[44px] items-center gap-1.5 rounded-[12px] bg-[#DCE5F3] px-3 py-2.5 text-[13px] font-bold text-[#2563EB] active:opacity-90 sm:min-h-[48px] sm:gap-2 sm:rounded-[14px] sm:px-4 sm:py-3.5 sm:text-sm"
+                    className="inline-flex min-h-[36px] min-w-[44px] items-center gap-1.5 rounded-[12px] bg-[#DCE5F3] px-3 py-1.5 text-[13px] font-bold text-[#2563EB] active:opacity-90 sm:min-h-[38px] sm:gap-2 sm:rounded-[14px] sm:px-4 sm:py-2 sm:text-sm"
                   >
                     <MdSwapHoriz className="h-[18px] w-[18px] shrink-0 sm:h-5 sm:w-5" />
                     Transferts
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void exportWarehouseProductsPdf()}
+                    disabled={exportingProductsPdf}
+                    className="inline-flex min-h-0 min-w-[38px] items-center gap-1 rounded-[11px] bg-[#FDECEC] px-2 py-0.5 text-[12px] font-bold leading-none text-[#B42318] active:opacity-90 disabled:opacity-60 sm:min-h-0 sm:gap-1.5 sm:rounded-[12px] sm:px-2.5 sm:py-1 sm:text-[13px]"
+                  >
+                    <MdPictureAsPdf className="h-[18px] w-[18px] shrink-0 sm:h-5 sm:w-5" />
+                    {exportingProductsPdf ? "Export…" : "Produits PDF"}
                   </button>
                 </div>
               </FsCard>
@@ -856,6 +902,16 @@ export function WarehouseScreen() {
                 onClick={() => {
                   setActionMenuOpen(false);
                   setTab(4);
+                }}
+              />
+              <ActionRow
+                color="#B42318"
+                icon={<MdPictureAsPdf className="h-6 w-6" />}
+                title="Exporter produits (PDF)"
+                subtitle="Miniature + nom, avec nom de l'entreprise"
+                onClick={() => {
+                  setActionMenuOpen(false);
+                  void exportWarehouseProductsPdf();
                 }}
               />
               <ActionRow

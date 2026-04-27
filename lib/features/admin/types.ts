@@ -93,3 +93,12 @@ export type AuditLogEntry = {
   newData: Record<string, unknown> | null;
   createdAt: string;
 };
+
+export type AdminPublicPartner = {
+  id: string;
+  name: string;
+  logoUrl: string;
+  sortOrder: number;
+  isActive: boolean;
+  createdAt: string | null;
+};

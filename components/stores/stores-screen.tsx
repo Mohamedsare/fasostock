@@ -14,6 +14,7 @@ import {
   MdPhone,
   MdReceiptLong,
   MdRefresh,
+  MdPictureAsPdf,
   MdStore,
   MdTableChart,
 } from "react-icons/md";
@@ -27,6 +28,8 @@ import { ROUTES, storeFactureTabPath } from "@/lib/config/routes";
 import type { AccessHelpers } from "@/lib/features/permissions/access";
 import { useAppContext } from "@/lib/features/common/app-context";
 import { fetchStoresPageData } from "@/lib/features/stores/api";
+import { listProducts, listStoreInventory } from "@/lib/features/products/api";
+import { downloadStoreProductsPdf } from "@/lib/features/stores/generate-store-products-pdf";
 import type { Store } from "@/lib/features/stores/types";
 import { usePermissions } from "@/lib/features/permissions/use-permissions";
 import { queryKeys } from "@/lib/query/query-keys";
@@ -36,6 +39,7 @@ import {
 } from "@/lib/features/settings/invoice-table-pos";
 import { cn } from "@/lib/utils/cn";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
+import { messageFromUnknownError, toast } from "@/lib/toast";
 
 function getStoresFallbackRoute(h: AccessHelpers): string {
   if (h.canDashboard) return ROUTES.dashboard;
@@ -58,6 +62,7 @@ export function StoresScreen() {
 
   const companyId = ctx.data?.companyId ?? "";
   const companyName = ctx.data?.companyName ?? "";
+  const companyLogoUrl = ctx.data?.companyLogoUrl ?? null;
 
   const canViewOrCreate =
     hasPermission(P.storesView) || hasPermission(P.storesCreate);
@@ -260,6 +265,9 @@ export function StoresScreen() {
               <StoreCard
                 key={s.id}
                 store={s}
+                companyId={companyId}
+                companyName={companyName}
+                companyLogoUrl={companyLogoUrl}
                 canPosQuick={hasPermission(P.salesCreate)}
                 canPosInvoice={canPosInvoiceA4}
                 canFactureTab={canFactureTab}
@@ -337,20 +345,58 @@ function EmptyStoresState({
 
 function StoreCard({
   store,
+  companyId,
+  companyName,
+  companyLogoUrl,
   canPosQuick,
   canPosInvoice,
   canFactureTab,
   onEdit,
 }: {
   store: Store;
+  companyId: string;
+  companyName: string;
+  companyLogoUrl: string | null;
   canPosQuick: boolean;
   canPosInvoice: boolean;
   canFactureTab: boolean;
   onEdit: () => void;
 }) {
+  const [exportingPdf, setExportingPdf] = useState(false);
   const posQuickHref = `${ROUTES.stores}/${store.id}/pos-quick`;
   const posInvoiceHref = `${ROUTES.stores}/${store.id}/pos`;
   const factureTabHref = storeFactureTabPath(store.id);
+
+  async function exportProductsPdf() {
+    if (exportingPdf) return;
+    setExportingPdf(true);
+    try {
+      const [products, stockMap] = await Promise.all([
+        listProducts(companyId),
+        listStoreInventory(store.id),
+      ]);
+      const items = products
+        .filter((p) => (stockMap.get(p.id) ?? 0) > 0)
+        .map((p) => ({
+          name: p.name,
+          imageUrl:
+            p.product_images && p.product_images.length > 0
+              ? p.product_images[0]?.url ?? null
+              : null,
+        }));
+      await downloadStoreProductsPdf({
+        companyName: companyName || "Entreprise",
+        companyLogoUrl,
+        storeName: store.name,
+        items,
+      });
+      toast.success("PDF des produits exporté.");
+    } catch (e) {
+      toast.error(messageFromUnknownError(e, "Export PDF impossible."));
+    } finally {
+      setExportingPdf(false);
+    }
+  }
 
   return (
     <article className="flex touch-manipulation flex-col overflow-hidden rounded-xl border border-black/[0.06] bg-fs-card shadow-sm">
@@ -410,6 +456,18 @@ function StoreCard({
           </div>
         </div>
       </div>
+      <div className="px-4 pb-3">
+        <button
+          type="button"
+          onClick={() => void exportProductsPdf()}
+          disabled={exportingPdf}
+          className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-bold text-red-700 active:opacity-95 disabled:opacity-60"
+          title="Exporter la liste des produits du magasin en PDF"
+        >
+          <MdPictureAsPdf className="h-5 w-5 shrink-0" aria-hidden />
+          {exportingPdf ? "Export PDF en cours…" : "Exporter produits (PDF)"}
+        </button>
+      </div>
       <div className="flex border-t border-black/[0.06]">
         {canPosQuick ? (
           <>
@@ -447,6 +505,7 @@ function StoreCard({
             <div className="w-px shrink-0 self-stretch bg-black/[0.08]" />
           </>
         ) : null}
+        <div className="w-px shrink-0 self-stretch bg-black/[0.08]" />
         <button
           type="button"
           onClick={onEdit}

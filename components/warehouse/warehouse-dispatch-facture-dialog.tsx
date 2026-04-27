@@ -368,26 +368,26 @@ export function WarehouseDispatchDialog({
                     "overflow-hidden rounded-[14px] border border-[#E5E7EB]/90 bg-white shadow-sm",
                   )}
                 >
-                  <div className="flex flex-col gap-2 px-3 pb-1 pt-2.5 min-[900px]:px-3 min-[900px]:pt-3">
+                  <div className="flex flex-col gap-1 px-3 pb-0 pt-1 min-[900px]:px-3 min-[900px]:pt-1.5">
                     <div className="flex items-stretch gap-2 min-[900px]:gap-3">
                       <button
                         type="button"
                         title="Fermer"
                         disabled={saving}
                         onClick={onClose}
-                        className="inline-flex h-[55px] w-11 shrink-0 items-center justify-center rounded-xl bg-[#F97316] text-white shadow-sm transition hover:opacity-95 disabled:opacity-40 min-[900px]:w-12"
+                        className="inline-flex h-[42px] w-11 shrink-0 items-center justify-center rounded-xl bg-[#F97316] text-white shadow-sm transition hover:opacity-95 disabled:opacity-40 min-[900px]:w-12"
                         aria-label="Fermer"
                       >
                         <MdArrowBack className="h-6 w-6 text-white" aria-hidden />
                       </button>
-                      <div className="relative min-h-[55px] min-w-0 flex-1">
+                      <div className="relative min-h-[42px] min-w-0 flex-1">
                         <MdSearch
                           className="pointer-events-none absolute left-3 top-1/2 z-[1] h-5 w-5 -translate-y-1/2 text-[#F97316] min-[900px]:left-4 min-[900px]:h-6 min-[900px]:w-6"
                           aria-hidden
                         />
                         <input
                           className={fsInputClass(
-                            "h-[55px] w-full rounded-xl border-[#E5E7EB] bg-[#F3F4F6] py-2 pl-11 pr-3 text-sm leading-snug text-[#1F2937] placeholder:text-[#1F2937]/50 min-[900px]:pl-12 min-[900px]:text-[15px]",
+                            "h-[42px] w-full rounded-xl border-[#E5E7EB] bg-[#F3F4F6] py-0.5 pl-11 pr-3 text-sm leading-snug text-[#1F2937] placeholder:text-[#1F2937]/50 min-[900px]:pl-12 min-[900px]:text-[15px]",
                           )}
                           value={search}
                           onChange={(e) => setSearch(e.target.value)}
@@ -400,7 +400,7 @@ export function WarehouseDispatchDialog({
                         <select
                           key={customerSelectKey || "none"}
                           className={fsInputClass(
-                            "h-[55px] min-w-[140px] max-w-[180px] rounded-xl border-[#E5E7EB] bg-[#F3F4F6] px-2.5 text-sm text-[#1F2937] min-[900px]:min-w-[180px] min-[900px]:text-[14px]",
+                            "h-[42px] min-w-[140px] max-w-[180px] rounded-xl border-[#E5E7EB] bg-[#F3F4F6] px-2.5 text-sm text-[#1F2937] min-[900px]:min-w-[180px] min-[900px]:text-[14px]",
                           )}
                           value={
                             customerId && customersForUi.some((c) => c.id === customerId) ? customerId : ""
@@ -424,7 +424,7 @@ export function WarehouseDispatchDialog({
                             setCreatePhone("");
                             setCreateModalOpen(true);
                           }}
-                          className="inline-flex h-[55px] w-11 shrink-0 items-center justify-center rounded-xl bg-[#F97316] text-white shadow-sm transition hover:opacity-95 disabled:opacity-50 min-[900px]:w-12"
+                          className="inline-flex h-[42px] w-11 shrink-0 items-center justify-center rounded-xl bg-[#F97316] text-white shadow-sm transition hover:opacity-95 disabled:opacity-50 min-[900px]:w-12"
                         >
                           <MdPersonAdd className="h-[22px] w-[22px]" aria-hidden />
                         </button>

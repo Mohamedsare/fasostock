@@ -176,3 +176,16 @@ body {
     border-top-color: color-mix(in srgb, var(--fs-accent) 45%, transparent);
   }
 }
+
+@keyframes partners-marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.partners-marquee-track {
+  animation: partners-marquee 22s linear infinite;
+}
