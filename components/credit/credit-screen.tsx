@@ -216,11 +216,15 @@ export function CreditScreen() {
   const kpiBase = useMemo(() => {
     let totalRem = 0;
     let totalPaidOpen = 0;
+    let totalPaidAll = 0;
     let totalSaleTotal = 0;
     let overdue = 0;
     let dueToday = 0;
     let dueWeek = 0;
     const debtors = new Set<string>();
+    for (const s of rawRows) {
+      totalPaidAll += paidTotal(s);
+    }
     for (const s of openRows) {
       const rem = remainingTotal(s);
       totalRem += rem;
@@ -241,6 +245,7 @@ export function CreditScreen() {
     const weekEnd = weekStart + 6 * 86400000;
     for (const l of legacyRows) {
       const paid = (l.payments ?? []).reduce((s, p) => s + Number(p.amount ?? 0), 0);
+      totalPaidAll += paid;
       const rem = Math.max(0, Number(l.principal_amount) - paid);
       if (rem <= legacyEps) continue;
       totalRem += rem;
@@ -260,6 +265,7 @@ export function CreditScreen() {
     return {
       totalRem,
       totalPaidOpen,
+      totalPaidAll,
       totalSaleTotal,
       countOpen: openRows.length,
       debtors: debtors.size,
@@ -267,7 +273,7 @@ export function CreditScreen() {
       dueToday,
       dueWeek,
     };
-  }, [openRows, legacyRows]);
+  }, [rawRows, openRows, legacyRows]);
 
   /**
    * Filtres rapides : basés sur encaissements réels vs reste (pas uniquement le statut affiché,
@@ -507,8 +513,8 @@ export function CreditScreen() {
         />
         <KpiCard
           label="Déjà encaissé"
-          value={formatCurrency(kpiBase.totalPaidOpen)}
-          subtitle="Dossiers ouverts"
+          value={formatCurrency(kpiBase.totalPaidAll)}
+          subtitle="Tous dossiers"
           icon={MdPayments}
           colorClass="bg-emerald-500/15 text-emerald-600"
         />
