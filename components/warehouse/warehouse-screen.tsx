@@ -2,6 +2,7 @@
 
 import { ProductListThumbnail } from "@/components/products/product-list-thumbnail";
 import { ROUTES } from "@/lib/config/routes";
+import { InvoicePdfPreviewDialog } from "@/components/invoices/invoice-pdf-preview-dialog";
 import { P } from "@/lib/constants/permissions";
 import { computeDashboardFromLists } from "@/lib/features/warehouse/dashboard";
 import {
@@ -12,6 +13,7 @@ import {
   voidWarehouseDispatchInvoice,
 } from "@/lib/features/warehouse/api";
 import { listProducts, listStoreInventory } from "@/lib/features/products/api";
+import { listStores as listStoresFull } from "@/lib/features/stores/api";
 import { downloadStoreProductsPdf } from "@/lib/features/stores/generate-store-products-pdf";
 import type { WarehouseDispatchInvoiceSummary, WarehouseMovement, WarehouseStockLine } from "@/lib/features/warehouse/types";
 import { WAREHOUSE_PACKAGING_LABELS } from "@/lib/features/warehouse/types";
@@ -28,6 +30,13 @@ import type { StockTransferListItem, TransferStatus } from "@/lib/features/trans
 import { usePermissions } from "@/lib/features/permissions/use-permissions";
 import { queryKeys } from "@/lib/query/query-keys";
 import { formatCurrency } from "@/lib/utils/currency";
+import {
+  downloadInvoicePdf,
+  fetchLogoBytes,
+  generateInvoicePdfBlob,
+  printInvoicePdf,
+} from "@/lib/features/invoices/generate-invoice-pdf";
+import type { Store } from "@/lib/features/stores/types";
 import { cn } from "@/lib/utils/cn";
 import { toast, toastMutationError } from "@/lib/toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -45,6 +54,7 @@ import {
   MdChevronLeft,
   MdChevronRight,
   MdClose,
+  MdDownload,
   MdDeleteOutline,
   MdInventory2,
   MdLink,
@@ -53,6 +63,7 @@ import {
   MdNorthEast,
   MdPointOfSale,
   MdPictureAsPdf,
+  MdPrint,
   MdReceiptLong,
   MdRefresh,
   MdSearch,
@@ -212,6 +223,11 @@ export function WarehouseScreen() {
   const [transferDetailId, setTransferDetailId] = useState<string | null>(null);
   const [dispatchDetailId, setDispatchDetailId] = useState<string | null>(null);
   const [voidingId, setVoidingId] = useState<string | null>(null);
+  const [dispatchPdfBusy, setDispatchPdfBusy] = useState<null | {
+    id: string;
+    mode: "view" | "print" | "download";
+  }>(null);
+  const [dispatchPreviewBlob, setDispatchPreviewBlob] = useState<Blob | null>(null);
 
   const invQ = useQuery({
     queryKey: queryKeys.warehouseInventory(companyId),
@@ -231,6 +247,11 @@ export function WarehouseScreen() {
   const whTransfersQ = useQuery({
     queryKey: queryKeys.warehouseTransfers(companyId),
     queryFn: () => listStockTransfers({ companyId, fromWarehouseOnly: true }),
+    enabled: Boolean(companyId) && canWarehouse,
+  });
+  const storesQ = useQuery({
+    queryKey: queryKeys.stores(companyId),
+    queryFn: () => listStoresFull(companyId),
     enabled: Boolean(companyId) && canWarehouse,
   });
 
@@ -436,6 +457,119 @@ export function WarehouseScreen() {
       toastMutationError("void-dispatch-mov", e);
     } finally {
       setVoidingId(null);
+    }
+  }
+
+  async function buildDispatchInvoiceBlob(params: {
+    id: string;
+    documentNumber: string;
+    createdAt: string;
+    customerName: string | null;
+    customerPhone: string | null;
+    notes: string | null;
+    lines: Array<{ productName: string; quantity: number; unitPrice: number; productUnit?: string | null }>;
+  }) {
+    const storesFull = storesQ.data ?? [];
+    const storeForA4 =
+      storesFull.find((s) => s.is_primary) ??
+      (activeStoreId ? storesFull.find((s) => s.id === activeStoreId) : null) ??
+      storesFull[0] ??
+      null;
+
+    const defaultStore: Store = {
+      id: activeStoreId ?? `${companyId}-warehouse`,
+      company_id: companyId,
+      name: companyName || "Magasin",
+      code: null,
+      address: null,
+      logo_url: companyLogoUrl ?? null,
+      phone: null,
+      email: null,
+      description: "Facture / Bon de sortie dépôt",
+      is_active: true,
+      is_primary: true,
+      pos_discount_enabled: false,
+      currency: "XOF",
+      primary_color: "#F97316",
+      secondary_color: null,
+      invoice_prefix: null,
+      footer_text: null,
+      legal_info: null,
+      signature_url: null,
+      stamp_url: null,
+      payment_terms: null,
+      tax_label: null,
+      tax_number: null,
+      city: null,
+      country: null,
+      commercial_name: companyName || "Entreprise",
+      slogan: null,
+      activity: null,
+      mobile_money: null,
+      invoice_short_title: "Facture",
+      invoice_signer_title: null,
+      invoice_signer_name: null,
+      invoice_template: "classic",
+    };
+
+    const effectiveStore = storeForA4 ?? defaultStore;
+    const logoBytes = await fetchLogoBytes(effectiveStore.logo_url ?? companyLogoUrl);
+    const total = params.lines.reduce((sum, line) => sum + line.quantity * line.unitPrice, 0);
+    return generateInvoicePdfBlob({
+      store: effectiveStore,
+      saleNumber: params.documentNumber,
+      date: new Date(params.createdAt),
+      items: params.lines.map((l) => ({
+        description: l.productName,
+        quantity: l.quantity,
+        unit: l.productUnit ?? "u",
+        unitPrice: l.unitPrice,
+        total: l.quantity * l.unitPrice,
+      })),
+      subtotal: total,
+      discount: 0,
+      tax: 0,
+      total,
+      customerName: params.customerName,
+      customerPhone: params.customerPhone,
+      customerAddress: null,
+      depositAmount: 0,
+      paymentLines: [{ label: "À crédit", amount: total, isImmediateEncaisse: false }],
+      amountInWords: null,
+      logoBytes,
+    });
+  }
+
+  async function handleDispatchInvoiceAction(
+    mode: "view" | "print" | "download",
+    params: {
+      id: string;
+      documentNumber: string;
+      createdAt: string;
+      customerName: string | null;
+      customerPhone: string | null;
+      notes: string | null;
+      lines: Array<{ productName: string; quantity: number; unitPrice: number; productUnit?: string | null }>;
+    },
+  ) {
+    if (dispatchPdfBusy) return;
+    setDispatchPdfBusy({ id: params.id, mode });
+    try {
+      const blob = await buildDispatchInvoiceBlob(params);
+      if (mode === "view") {
+        setDispatchPreviewBlob(blob);
+      } else if (mode === "print") {
+        toast.info("Impression directe en cours…");
+        printInvoicePdf(blob);
+        window.setTimeout(() => toast.success("Facture envoyée à l'imprimante."), 400);
+      } else {
+        downloadInvoicePdf(blob, params.documentNumber);
+        toast.success("Facture téléchargée.");
+      }
+    } catch (e) {
+      toastMutationError("warehouse-dispatch-invoice-pdf", e);
+    } finally {
+      setDispatchPdfBusy(null);
     }
   }
 
@@ -795,6 +929,23 @@ export function WarehouseScreen() {
               loading={dispatchQ.isLoading}
               error={dispatchQ.error}
               onOpen={(r) => setDispatchDetailId(r.id)}
+              onPrint={async (r) => {
+                try {
+                  const d = await getWarehouseDispatchInvoiceDetails(r.id);
+                  await handleDispatchInvoiceAction("print", {
+                    id: d.id,
+                    documentNumber: d.documentNumber,
+                    createdAt: d.createdAt,
+                    customerName: d.customerName,
+                    customerPhone: d.customerPhone,
+                    notes: d.notes,
+                    lines: d.lines,
+                  });
+                } catch (e) {
+                  toastMutationError("dispatch-details-for-print", e);
+                }
+              }}
+              printingId={dispatchPdfBusy?.id ?? null}
               onRetry={() => dispatchQ.refetch()}
             />
             </div>
@@ -1130,6 +1281,64 @@ export function WarehouseScreen() {
                         ))}
                       </div>
                       <p className="mt-4 text-right text-base font-bold">Total {formatCurrency(sub)}</p>
+                      <div className="mt-4 rounded-2xl bg-[#F5F5F5] px-3 py-3 sm:px-4 sm:py-3.5">
+                        <p className="mb-3 text-[11px] font-bold tracking-[0.06em] text-neutral-700 sm:text-xs">
+                          FACTURE A4
+                        </p>
+                        <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                          <DispatchInvoiceActionButton
+                            icon={<MdPictureAsPdf className="h-5 w-5 shrink-0" aria-hidden />}
+                            label="Voir le PDF"
+                            loading={dispatchPdfBusy?.id === d.id && dispatchPdfBusy.mode === "view"}
+                            disabled={dispatchPdfBusy != null}
+                            onClick={() =>
+                              void handleDispatchInvoiceAction("view", {
+                                id: d.id,
+                                documentNumber: d.documentNumber,
+                                createdAt: d.createdAt,
+                                customerName: d.customerName,
+                                customerPhone: d.customerPhone,
+                                notes: d.notes,
+                                lines: d.lines,
+                              })
+                            }
+                          />
+                          <DispatchInvoiceActionButton
+                            icon={<MdPrint className="h-5 w-5 shrink-0" aria-hidden />}
+                            label="Réimprimer"
+                            loading={dispatchPdfBusy?.id === d.id && dispatchPdfBusy.mode === "print"}
+                            disabled={dispatchPdfBusy != null}
+                            onClick={() =>
+                              void handleDispatchInvoiceAction("print", {
+                                id: d.id,
+                                documentNumber: d.documentNumber,
+                                createdAt: d.createdAt,
+                                customerName: d.customerName,
+                                customerPhone: d.customerPhone,
+                                notes: d.notes,
+                                lines: d.lines,
+                              })
+                            }
+                          />
+                          <DispatchInvoiceActionButton
+                            icon={<MdDownload className="h-5 w-5 shrink-0" aria-hidden />}
+                            label="Télécharger"
+                            loading={dispatchPdfBusy?.id === d.id && dispatchPdfBusy.mode === "download"}
+                            disabled={dispatchPdfBusy != null}
+                            onClick={() =>
+                              void handleDispatchInvoiceAction("download", {
+                                id: d.id,
+                                documentNumber: d.documentNumber,
+                                createdAt: d.createdAt,
+                                customerName: d.customerName,
+                                customerPhone: d.customerPhone,
+                                notes: d.notes,
+                                lines: d.lines,
+                              })
+                            }
+                          />
+                        </div>
+                      </div>
                       <button
                         type="button"
                         disabled={voidDispatchMut.isPending}
@@ -1154,6 +1363,13 @@ export function WarehouseScreen() {
             ) : null}
           </div>
         </div>
+      ) : null}
+      {dispatchPreviewBlob ? (
+        <InvoicePdfPreviewDialog
+          blob={dispatchPreviewBlob}
+          title="Facture / Bon de sortie dépôt"
+          onClose={() => setDispatchPreviewBlob(null)}
+        />
       ) : null}
     </FsPage>
   );
@@ -1668,6 +1884,8 @@ function HistoriquesTab({
   loading,
   error,
   onOpen,
+  onPrint,
+  printingId,
   onRetry,
 }: {
   rows: WarehouseDispatchInvoiceSummary[];
@@ -1678,6 +1896,8 @@ function HistoriquesTab({
   loading: boolean;
   error: unknown;
   onOpen: (r: WarehouseDispatchInvoiceSummary) => void;
+  onPrint: (r: WarehouseDispatchInvoiceSummary) => void | Promise<void>;
+  printingId: string | null;
   onRetry: () => void;
 }) {
   if (loading && allRows.length === 0) {
@@ -1705,19 +1925,46 @@ function HistoriquesTab({
 
   return (
     <div className="space-y-2 pb-6">
-      {rows.map((r) => (
-        <button
-          key={r.id}
-          type="button"
-          onClick={() => onOpen(r)}
-          className="flex min-h-[52px] w-full flex-col justify-center rounded-[10px] border border-black/[0.06] bg-[color-mix(in_srgb,var(--fs-surface-container-low)_100%,transparent)] px-3 py-3 text-left active:bg-black/[0.03]"
-        >
-          <span className="text-sm font-bold leading-tight">{r.documentNumber}</span>
-          <span className="mt-1 text-xs text-neutral-600">
-            {formatDt(r.createdAt)} · {r.customerName ?? "—"}
-          </span>
-        </button>
-      ))}
+      <div className="overflow-x-auto rounded-xl border border-black/6 bg-[color-mix(in_srgb,var(--fs-surface-container-low)_100%,transparent)]">
+        <table className="w-full min-w-[640px] border-collapse text-left">
+          <thead>
+            <tr className="border-b border-black/8 bg-[#F5F5F5] text-[11px] font-bold uppercase tracking-wide text-neutral-700">
+              <th className="px-3 py-2">N° Bon</th>
+              <th className="px-3 py-2">Date</th>
+              <th className="px-3 py-2">Client</th>
+              <th className="px-3 py-2 text-center">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.id} className="border-b border-black/6 text-sm last:border-b-0">
+                <td className="px-3 py-2.5 font-bold text-fs-text">{r.documentNumber}</td>
+                <td className="px-3 py-2.5 text-neutral-700">{formatDt(r.createdAt)}</td>
+                <td className="px-3 py-2.5 text-neutral-700">{r.customerName ?? "—"}</td>
+                <td className="px-3 py-2.5">
+                  <div className="flex items-center justify-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => onOpen(r)}
+                      className="inline-flex min-h-[32px] items-center rounded-lg border border-[#F97316]/30 bg-white px-3 py-1 text-xs font-bold text-[#F97316]"
+                    >
+                      Voir
+                    </button>
+                    <button
+                      type="button"
+                      disabled={printingId === r.id}
+                      onClick={() => void onPrint(r)}
+                      className="inline-flex min-h-[32px] items-center rounded-lg bg-[#F97316] px-3 py-1 text-xs font-bold text-white disabled:opacity-50"
+                    >
+                      {printingId === r.id ? "Impression…" : "Imprimer direct"}
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
       {totalPages > 1 ? (
         <div className="flex flex-wrap items-center justify-center gap-2 py-2">
           <button
@@ -1742,5 +1989,37 @@ function HistoriquesTab({
         </div>
       ) : null}
     </div>
+  );
+}
+
+function DispatchInvoiceActionButton({
+  icon,
+  label,
+  loading,
+  disabled,
+  onClick,
+}: {
+  icon: ReactNode;
+  label: string;
+  loading: boolean;
+  disabled: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      className={cn(
+        "touch-manipulation inline-flex min-h-11 min-w-0 flex-1 items-center justify-center gap-2 rounded-xl bg-[#F97316] px-3 text-sm font-semibold text-white shadow-sm hover:bg-[#ea580c] disabled:opacity-50",
+      )}
+    >
+      {loading ? (
+        <span className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+      ) : (
+        icon
+      )}
+      {label}
+    </button>
   );
 }
