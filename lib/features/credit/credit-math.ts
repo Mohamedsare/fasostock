@@ -41,6 +41,8 @@ export function grossRecordedPaymentsTotal(payments: CreditPaymentRow[]): number
 }
 
 export function remainingTotal(sale: CreditSaleRow): number {
+  // Vente annulée/remboursée => la créance associée n'est plus exigible.
+  if (sale.status === "cancelled" || sale.status === "refunded") return 0;
   return Math.max(0, Number(sale.total) - paidTotal(sale));
 }
 

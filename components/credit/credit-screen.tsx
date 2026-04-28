@@ -359,6 +359,14 @@ export function CreditScreen() {
     () => rawRows.filter((s) => remainingTotal(s) > CREDIT_AMOUNT_EPS),
     [rawRows],
   );
+  const cancelledCreditMeta = useMemo(() => {
+    const cancelledRows = rawRows.filter((s) => s.status === "cancelled" || s.status === "refunded");
+    const cancelledOpenEquivalent = cancelledRows.reduce((sum, s) => {
+      const wouldRemain = Math.max(0, Number(s.total) - paidTotal(s));
+      return sum + wouldRemain;
+    }, 0);
+    return { count: cancelledRows.length, amount: cancelledOpenEquivalent };
+  }, [rawRows]);
 
   const sellers = useMemo(() => {
     const m = new Map<string, string>();
@@ -593,10 +601,13 @@ export function CreditScreen() {
   }, [openRows, search, sellerId, chip]);
 
   const filteredDispatchCredits = useMemo(() => {
-    if (sellerId) return [] as typeof dispatchCreditRows;
     const q = search.trim().toLowerCase();
     return dispatchCreditRows
       .filter((r) => r.remainingAmount > CREDIT_AMOUNT_EPS)
+      .filter((r) => {
+        if (!sellerId) return true;
+        return (r.createdBy ?? "") === sellerId;
+      })
       .filter((r) => {
         const hasBalance = r.remainingAmount > CREDIT_AMOUNT_EPS;
         const hasEncaisse = r.paidAmount > CREDIT_AMOUNT_EPS;
@@ -960,6 +971,18 @@ export function CreditScreen() {
           </div>
         )}
       </FsCard>
+
+      {cancelledCreditMeta.count > 0 ? (
+        <FsCard className="mt-4 border-slate-200 bg-slate-50/80" padding="p-3">
+          <div className="flex flex-wrap items-center gap-2 text-xs text-slate-700">
+            <span className="rounded-full bg-slate-200 px-2 py-0.5 font-bold">Créances neutralisées</span>
+            <span>
+              {cancelledCreditMeta.count} vente(s) annulée(s)/remboursée(s) retirée(s) automatiquement des crédits
+            </span>
+            <span className="font-bold text-slate-900">({formatCurrency(cancelledCreditMeta.amount)})</span>
+          </div>
+        </FsCard>
+      ) : null}
 
       <FsCard className="mt-6" padding="p-4">
         <div className="flex flex-col gap-3 min-[900px]:flex-row min-[900px]:items-center min-[900px]:justify-between">
