@@ -724,6 +724,7 @@ export function InventoryScreen() {
                                   <ProductListThumbnail
                                     imageUrl={r.imageUrl}
                                     className="h-10 w-10 rounded-lg"
+                                    previewOnTap
                                   />
                                   <span className="line-clamp-2 font-medium text-fs-text">{r.name}</span>
                                 </div>

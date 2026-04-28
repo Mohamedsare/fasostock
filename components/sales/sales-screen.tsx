@@ -798,7 +798,7 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
           ) : null}
 
           {pageCount > 1 ? (
-            <div className="mt-2 rounded-xl border border-black/[0.06] bg-fs-card px-3 py-3 shadow-sm sm:px-4">
+            <div className="mt-2 mb-[calc(5.5rem+var(--fs-safe-bottom))] rounded-xl border border-black/[0.06] bg-fs-card px-3 py-3 shadow-sm min-[900px]:mb-4 sm:px-4">
               <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
                 <span className="order-2 hidden text-sm text-neutral-500 min-[500px]:order-none min-[500px]:inline">
                   {rangeStart} – {rangeEnd} sur {restaurantQuickScopedSales.length}
@@ -1083,7 +1083,10 @@ function EmptyStateCard({
   storeLabel: string;
 }) {
   return (
-    <FsCard className="py-14 text-center sm:py-16" padding="px-5 py-14 sm:px-6 sm:py-16">
+    <FsCard
+      className="mb-[calc(6.5rem+var(--fs-safe-bottom))] py-14 text-center min-[900px]:mb-6 sm:py-16"
+      padding="px-5 py-14 sm:px-6 sm:py-16"
+    >
       <MdShoppingCart
         className="mx-auto h-14 w-14 text-neutral-300"
         aria-hidden

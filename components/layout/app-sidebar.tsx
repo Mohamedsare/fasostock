@@ -79,13 +79,13 @@ export function AppSidebar({
               effectiveCollapsed ? "w-[58px]" : "w-[204px]",
             ),
         "border-r border-[color-mix(in_srgb,#f97316_16%,rgba(0,0,0,0.1))] dark:border-[#7c3a12]",
-        "bg-[color-mix(in_srgb,#f97316_11%,white)] shadow-[inset_-1px_0_0_0_rgba(0,0,0,0.03)] dark:bg-[#2a140a] dark:shadow-[inset_-1px_0_0_0_rgba(255,255,255,0.04)]",
+        "bg-[color-mix(in_srgb,#f97316_16%,white)] shadow-[inset_-1px_0_0_0_rgba(0,0,0,0.03)] dark:bg-[#31170b] dark:shadow-[inset_-1px_0_0_0_rgba(255,255,255,0.04)]",
       )}
       aria-label="Navigation"
     >
       {/* Fond décoratif très léger — même famille que la surface principale */}
       <div
-        className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[color-mix(in_srgb,#f97316_16%,white)] via-[color-mix(in_srgb,#f97316_7%,transparent)] to-[color-mix(in_srgb,#f97316_12%,white)] dark:from-[#3a1d0f] dark:via-[#2f170c] dark:to-[#241108]"
+        className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[color-mix(in_srgb,#f97316_22%,white)] via-[color-mix(in_srgb,#f97316_10%,transparent)] to-[color-mix(in_srgb,#f97316_16%,white)] dark:from-[#45200f] dark:via-[#35190c] dark:to-[#2a1308]"
         aria-hidden
       />
 
@@ -130,7 +130,7 @@ export function AppSidebar({
               />
             ) : (
               <Package
-                className="h-4 w-4 text-[var(--fs-accent)]"
+                className="h-5 w-5 text-[var(--fs-accent)]"
                 strokeWidth={2.25}
               />
             )}
@@ -171,13 +171,13 @@ export function AppSidebar({
                   )}
                 >
                   <span className="inline-flex items-center gap-1.5">
-                    <Icon className="h-3.5 w-3.5" aria-hidden />
+                    <Icon className="h-4.5 w-4.5" aria-hidden />
                     {item.label}
                   </span>
                   {isOpen ? (
-                    <ChevronDown className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                    <ChevronDown className="h-4 w-4 shrink-0" aria-hidden />
                   ) : (
-                    <ChevronRight className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                    <ChevronRight className="h-4 w-4 shrink-0" aria-hidden />
                   )}
                 </button>
               );
@@ -224,12 +224,12 @@ export function AppSidebar({
                     "flex shrink-0 items-center justify-center rounded-xl transition-colors duration-200",
                     active
                       ? "bg-[color-mix(in_srgb,var(--fs-accent)_18%,transparent)] text-[var(--fs-accent)] dark:bg-[#f97316]/28 dark:text-white"
-                      : "bg-[color-mix(in_srgb,#f97316_12%,white)] text-black group-hover/nav:bg-[color-mix(in_srgb,#f97316_19%,white)] group-hover/nav:text-black dark:bg-white/[0.06] dark:text-neutral-100 dark:group-hover/nav:bg-white/[0.1] dark:group-hover/nav:text-white",
-                    effectiveCollapsed ? "h-9 w-9" : "h-8 w-8",
+                      : "bg-[color-mix(in_srgb,#f97316_16%,white)] text-black group-hover/nav:bg-[color-mix(in_srgb,#f97316_24%,white)] group-hover/nav:text-black dark:bg-white/[0.08] dark:text-neutral-100 dark:group-hover/nav:bg-white/[0.13] dark:group-hover/nav:text-white",
+                    effectiveCollapsed ? "h-10 w-10" : "h-9 w-9",
                   )}
                   aria-hidden
                 >
-                  <Icon className="h-4 w-4" strokeWidth={active ? 2.35 : 2} />
+                  <Icon className="h-5 w-5" strokeWidth={active ? 2.35 : 2} />
                 </span>
                 {!effectiveCollapsed ? (
                   <span className="min-w-0 flex-1 truncate">{item.label}</span>

@@ -368,8 +368,7 @@ export function CustomersScreen() {
                 <button
                   type="button"
                   onClick={openCreate}
-                  className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-fs-surface-container shadow-sm ring-1 ring-black/[0.06] active:scale-[0.98]"
-                  style={{ color: "#FDBA74" }}
+                  className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-[#F97316] text-white shadow-sm ring-1 ring-[#EA580C]/30 active:scale-[0.98]"
                   aria-label="Nouveau client"
                 >
                   <MdAdd className="h-6 w-6" aria-hidden />
@@ -402,8 +401,7 @@ export function CustomersScreen() {
               <button
                 type="button"
                 onClick={openCreate}
-                className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-fs-surface-container shadow-sm ring-1 ring-black/[0.06] active:scale-[0.98]"
-                style={{ color: "#FDBA74" }}
+                className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-[#F97316] text-white shadow-sm ring-1 ring-[#EA580C]/30 active:scale-[0.98]"
                 aria-label="Nouveau client"
               >
                 <MdAdd className="h-6 w-6" aria-hidden />

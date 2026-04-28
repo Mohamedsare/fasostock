@@ -285,108 +285,110 @@ export function DashboardScreen() {
           Ces choix s&apos;appliquent au tableau (KPI, graphiques « Chiffre d&apos;affaires par jour »,
           « Évolution du CA », etc.).
         </p>
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              setScope("company");
-            }}
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-semibold transition-colors",
-              scope === "company"
-                ? "border-fs-accent/40 bg-[color-mix(in_srgb,var(--fs-accent)_18%,transparent)] text-[var(--fs-accent)]"
-                : "border-black/[0.08] bg-fs-surface text-neutral-800",
-            )}
-          >
-            <MdBusiness
-              className={cn(
-                "h-[18px] w-[18px]",
-                scope === "company" ? "text-[var(--fs-accent)]" : "text-neutral-500",
-              )}
-              aria-hidden
-            />
-            Entreprise
-          </button>
-          {stores.length > 0 ? (
+        <div className="mt-3 flex flex-col gap-2 min-[900px]:flex-row min-[900px]:items-center min-[900px]:justify-between">
+          <div className="flex flex-wrap items-stretch gap-2 min-[900px]:items-center">
             <button
               type="button"
               onClick={() => {
-                setScope("store");
-                const id =
-                  dashboardStoreId ?? ctxStoreId ?? stores[0]?.id ?? null;
-                setDashboardStoreId(id);
-                if (id) syncGlobalStoreFromDashboard(id);
+                setScope("company");
               }}
               className={cn(
-                "inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-semibold transition-colors",
-                scope === "store"
+                "inline-flex min-h-10 items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-semibold transition-colors",
+                scope === "company"
                   ? "border-fs-accent/40 bg-[color-mix(in_srgb,var(--fs-accent)_18%,transparent)] text-[var(--fs-accent)]"
                   : "border-black/[0.08] bg-fs-surface text-neutral-800",
               )}
             >
-              <MdStore
+              <MdBusiness
                 className={cn(
                   "h-[18px] w-[18px]",
-                  scope === "store" ? "text-[var(--fs-accent)]" : "text-neutral-500",
+                  scope === "company" ? "text-[var(--fs-accent)]" : "text-neutral-500",
                 )}
                 aria-hidden
               />
-              {terms.storeSingular}
+              Entreprise
             </button>
-          ) : (
-            <button
-              type="button"
-              disabled
-              title={`Aucune ${terms.storeSingular.toLowerCase()} enregistrée. Créez une ${terms.storeSingular.toLowerCase()} dans le menu ${terms.storesPlural}.`}
-              className="inline-flex cursor-not-allowed items-center gap-1.5 rounded-lg border border-black/[0.06] bg-neutral-100 px-3 py-1.5 text-sm font-semibold text-neutral-400"
-            >
-              <MdStore className="h-[18px] w-[18px] text-neutral-400" aria-hidden />
-              {terms.storeSingular}
-            </button>
-          )}
-          {scope === "store" && stores.length > 1 ? (
-            <label className="flex min-w-0 max-w-[200px] flex-1 items-center gap-2">
-              <span className="sr-only">{terms.storeSingular}</span>
-              <select
-                value={dashboardStoreId ?? ""}
-                onChange={(e) => {
-                  const id = e.target.value || null;
+            {stores.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setScope("store");
+                  const id =
+                    dashboardStoreId ?? ctxStoreId ?? stores[0]?.id ?? null;
                   setDashboardStoreId(id);
                   if (id) syncGlobalStoreFromDashboard(id);
                 }}
-                className="w-full min-w-0 rounded-lg border border-black/[0.12] bg-white px-2 py-2 text-sm"
+                className={cn(
+                  "inline-flex min-h-10 items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-semibold transition-colors",
+                  scope === "store"
+                    ? "border-fs-accent/40 bg-[color-mix(in_srgb,var(--fs-accent)_18%,transparent)] text-[var(--fs-accent)]"
+                    : "border-black/[0.08] bg-fs-surface text-neutral-800",
+                )}
               >
-                {stores.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          ) : null}
-        </div>
-        <div className="mt-3 flex flex-wrap gap-2">
-          {(
-            [
-              ["today", "Aujourd'hui"],
-              ["week", "Semaine"],
-              ["month", "Mois"],
-            ] as const
-          ).map(([p, label]) => (
-            <button
-              key={p}
-              type="button"
-              onClick={() => setPeriod(p)}
-              className={cn(
-                "rounded-lg px-3 py-1.5 text-sm font-semibold",
-                period === p
-                  ? "bg-[color-mix(in_srgb,var(--fs-accent)_18%,transparent)] text-[var(--fs-accent)]"
-                  : "bg-fs-surface text-neutral-700",
-              )}
-            >
-              {label}
-            </button>
-          ))}
+                <MdStore
+                  className={cn(
+                    "h-[18px] w-[18px]",
+                    scope === "store" ? "text-[var(--fs-accent)]" : "text-neutral-500",
+                  )}
+                  aria-hidden
+                />
+                {terms.storeSingular}
+              </button>
+            ) : (
+              <button
+                type="button"
+                disabled
+                title={`Aucune ${terms.storeSingular.toLowerCase()} enregistrée. Créez une ${terms.storeSingular.toLowerCase()} dans le menu ${terms.storesPlural}.`}
+                className="inline-flex min-h-10 cursor-not-allowed items-center gap-1.5 rounded-lg border border-black/[0.06] bg-neutral-100 px-3 py-1.5 text-sm font-semibold text-neutral-400"
+              >
+                <MdStore className="h-[18px] w-[18px] text-neutral-400" aria-hidden />
+                {terms.storeSingular}
+              </button>
+            )}
+            {scope === "store" && stores.length > 1 ? (
+              <label className="flex min-w-0 max-w-[220px] min-[900px]:w-[220px] items-center gap-2">
+                <span className="sr-only">{terms.storeSingular}</span>
+                <select
+                  value={dashboardStoreId ?? ""}
+                  onChange={(e) => {
+                    const id = e.target.value || null;
+                    setDashboardStoreId(id);
+                    if (id) syncGlobalStoreFromDashboard(id);
+                  }}
+                  className="w-full min-w-0 rounded-lg border border-black/[0.12] bg-white px-2 py-2 text-sm"
+                >
+                  {stores.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
+          </div>
+          <div className="flex flex-wrap items-stretch gap-2 min-[900px]:items-center min-[900px]:justify-end">
+            {(
+              [
+                ["today", "Aujourd'hui"],
+                ["week", "Semaine"],
+                ["month", "Mois"],
+              ] as const
+            ).map(([p, label]) => (
+              <button
+                key={p}
+                type="button"
+                onClick={() => setPeriod(p)}
+                className={cn(
+                  "min-h-10 rounded-lg px-3 py-1.5 text-sm font-semibold",
+                  period === p
+                    ? "bg-[color-mix(in_srgb,var(--fs-accent)_18%,transparent)] text-[var(--fs-accent)]"
+                    : "bg-fs-surface text-neutral-700",
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
       </section>
 

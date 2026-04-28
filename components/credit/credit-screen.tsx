@@ -2,12 +2,13 @@
 
 import { useEffect, useMemo, useRef, useState, type ComponentType } from "react";
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, subMonths } from "date-fns";
 import { fr } from "date-fns/locale";
 import {
   MdAccountBalanceWallet,
   MdCalendarToday,
+  MdClose,
   MdDateRange,
   MdDownload,
   MdLock,
@@ -17,7 +18,9 @@ import {
   MdRefresh,
   MdSearch,
   MdShoppingCart,
+  MdTrendingUp,
   MdWarningAmber,
+  MdInsights,
 } from "react-icons/md";
 import {
   FsCard,
@@ -43,7 +46,11 @@ import {
 } from "@/lib/features/credit/credit-math";
 import type { CreditLineStatus, CreditSaleRow } from "@/lib/features/credit/types";
 import { listLegacyCredits } from "@/lib/features/credit/legacy-api";
-import { listWarehouseDispatchInvoices } from "@/lib/features/warehouse/api";
+import {
+  getWarehouseDispatchInvoiceDetails,
+  listWarehouseDispatchInvoices,
+  warehouseAppendDispatchPayment,
+} from "@/lib/features/warehouse/api";
 import type { WarehouseDispatchInvoiceSummary } from "@/lib/features/warehouse/types";
 import { useAppContext } from "@/lib/features/common/app-context";
 import { activityUiTerms } from "@/lib/features/activity/activity-profiles";
@@ -73,16 +80,22 @@ type DispatchPaymentMode = "cash" | "mobile_money" | "card" | "credit";
 function parseDispatchPaymentInfo(note: string | null, totalAmount: number): {
   mode: DispatchPaymentMode;
   paidAmount: number;
+  mobileProvider: string | null;
 } {
   const raw = (note ?? "").trim();
   if (!raw.startsWith(DISPATCH_PAYMENT_NOTE_PREFIX)) {
-    return { mode: "credit", paidAmount: 0 };
+    return { mode: "credit", paidAmount: 0, mobileProvider: null };
   }
   const payloadRaw = raw.slice(DISPATCH_PAYMENT_NOTE_PREFIX.length).trim();
   try {
-    const payload = JSON.parse(payloadRaw) as { mode?: DispatchPaymentMode; paid_amount?: number };
+    const payload = JSON.parse(payloadRaw) as {
+      mode?: DispatchPaymentMode;
+      paid_amount?: number;
+      mobile_provider?: string | null;
+    };
     const mode = payload.mode;
     const paidRaw = Number(payload.paid_amount ?? 0);
+    const mobileProvider = (payload.mobile_provider ?? null)?.toString().trim() || null;
     if (mode === "cash" || mode === "mobile_money" || mode === "card" || mode === "credit") {
       const paidAmount =
         mode === "cash"
@@ -90,15 +103,32 @@ function parseDispatchPaymentInfo(note: string | null, totalAmount: number): {
           : mode === "credit"
             ? 0
             : totalAmount;
-      return { mode, paidAmount };
+      return { mode, paidAmount, mobileProvider };
     }
   } catch {
     const mode = payloadRaw as DispatchPaymentMode;
     if (mode === "cash" || mode === "mobile_money" || mode === "card" || mode === "credit") {
-      return { mode, paidAmount: mode === "credit" ? 0 : totalAmount };
+      return { mode, paidAmount: mode === "credit" ? 0 : totalAmount, mobileProvider: null };
     }
   }
-  return { mode: "credit", paidAmount: 0 };
+  return { mode: "credit", paidAmount: 0, mobileProvider: null };
+}
+
+function humanDispatchNote(note: string | null, totalAmount: number): string | null {
+  const raw = (note ?? "").trim();
+  if (!raw) return null;
+  if (!raw.startsWith(DISPATCH_PAYMENT_NOTE_PREFIX)) return raw;
+  const info = parseDispatchPaymentInfo(raw, totalAmount);
+  if (info.mode === "credit") return "Paiement: À crédit (non encaissé)";
+  if (info.mode === "card") return "Paiement: Carte (encaissé)";
+  if (info.mode === "mobile_money") {
+    const provider = info.mobileProvider ? ` (${info.mobileProvider.replace("_", " ")})` : "";
+    return `Paiement: Mobile money${provider} (encaissé)`;
+  }
+  if (info.mode === "cash") {
+    return `Paiement: Espèces (${formatCurrency(info.paidAmount)} encaissé)`;
+  }
+  return null;
 }
 
 function toIsoDate(d: Date): string {
@@ -130,7 +160,7 @@ function KpiCard({
     <FsCard
       padding="p-4"
       className={cn(
-        "flex min-h-[120px] flex-col justify-between",
+        "flex min-h-[120px] min-w-0 flex-col justify-between overflow-hidden",
         accentBorder && "border-2 border-fs-accent/40",
       )}
     >
@@ -146,7 +176,9 @@ function KpiCard({
         </div>
       </div>
       <div>
-        <p className="text-base font-bold text-fs-text min-[900px]:text-lg">{value}</p>
+        <p className="min-w-0 max-w-full overflow-hidden text-ellipsis whitespace-nowrap text-base font-bold text-fs-text min-[900px]:text-lg">
+          {value}
+        </p>
         {subtitle ? (
           <p className="mt-0.5 line-clamp-1 text-[11px] text-neutral-500">{subtitle}</p>
         ) : null}
@@ -178,6 +210,7 @@ function dueTone(sale: CreditSaleRow): string {
 }
 
 export function CreditScreen() {
+  const qc = useQueryClient();
   const ctx = useAppContext();
   const { isLoading: permLoading, helpers: h, hasPermission } = usePermissions();
   const canExport = hasPermission(P.salesView);
@@ -200,7 +233,40 @@ export function CreditScreen() {
   const [chip, setChip] = useState<QuickChip>("all");
   const [view, setView] = useState<"sale" | "customer">("sale");
   const [detailId, setDetailId] = useState<string | null>(null);
+  const [dispatchDetailId, setDispatchDetailId] = useState<string | null>(null);
+  const [dispatchPayInvoice, setDispatchPayInvoice] = useState<{
+    id: string;
+    documentNumber: string;
+    totalAmount: number;
+    paidAmount: number;
+    remainingAmount: number;
+  } | null>(null);
   const [paySale, setPaySale] = useState<CreditSaleRow | null>(null);
+
+  const resetCreditFilters = () => {
+    const now = new Date();
+    setFrom(toIsoDate(subMonths(now, 6)));
+    setTo(toIsoDate(now));
+    setSearch("");
+    setSellerId("");
+    setChip("all");
+    setView("sale");
+  };
+
+  const applyQuickRange = (days: 7 | 30 | 90) => {
+    const now = new Date();
+    setFrom(toIsoDate(new Date(now.getTime() - days * 24 * 60 * 60 * 1000)));
+    setTo(toIsoDate(now));
+  };
+
+  const activeFilterCount = useMemo(() => {
+    let n = 0;
+    if (search.trim()) n += 1;
+    if (sellerId) n += 1;
+    if (chip !== "all") n += 1;
+    if (view !== "sale") n += 1;
+    return n;
+  }, [search, sellerId, chip, view]);
 
   useEffect(() => {
     if (allStoresChosen.current) return;
@@ -243,6 +309,12 @@ export function CreditScreen() {
     staleTime: 15_000,
   });
   const dispatchRowsRaw = dispatchQ.data ?? [];
+  const dispatchDetailQ = useQuery({
+    queryKey: dispatchDetailId ? ["credit-dispatch-detail", dispatchDetailId] : ["credit-dispatch-detail-none"],
+    queryFn: () => getWarehouseDispatchInvoiceDetails(dispatchDetailId as string),
+    enabled: !!dispatchDetailId,
+    staleTime: 10_000,
+  });
   const dispatchCreditRows = useMemo(() => {
     const fromMs = Date.parse(`${from}T00:00:00.000Z`);
     const toMs = Date.parse(`${to}T23:59:59.999Z`);
@@ -258,6 +330,30 @@ export function CreditScreen() {
         return { ...r, paidAmount: paid, remainingAmount: rem };
       });
   }, [dispatchRowsRaw, from, to]);
+  const dispatchPayMut = useMutation({
+    mutationFn: (params: {
+      invoiceId: string;
+      method: "cash" | "mobile_money" | "card";
+      amount?: number | null;
+      mobileProvider?: "orange_money" | "moov_money" | "wave" | null;
+    }) =>
+      warehouseAppendDispatchPayment({
+        companyId,
+        invoiceId: params.invoiceId,
+        method: params.method,
+        amount: params.amount ?? null,
+        mobileProvider: params.mobileProvider ?? null,
+      }),
+    onSuccess: async () => {
+      toast.success("Paiement enregistré.");
+      setDispatchPayInvoice(null);
+      await Promise.all([
+        dispatchQ.refetch(),
+        qc.invalidateQueries({ queryKey: queryKeys.creditSales(creditParams) }),
+      ]);
+    },
+    onError: (e) => toast.error(messageFromUnknownError(e, "Encaissement impossible.")),
+  });
 
   const openRows = useMemo(
     () => rawRows.filter((s) => remainingTotal(s) > CREDIT_AMOUNT_EPS),
@@ -321,26 +417,129 @@ export function CreditScreen() {
         }
       }
     }
-    for (const d of dispatchCreditRows) {
-      totalPaidAll += d.paidAmount;
-      totalSaleTotal += d.totalAmount;
-      if (d.remainingAmount <= CREDIT_AMOUNT_EPS) continue;
-      totalRem += d.remainingAmount;
-      totalPaidOpen += d.paidAmount;
-      if (d.customerId) debtors.add(d.customerId);
-    }
+    const portfolioTotal = totalRem + totalPaidAll;
+    const recoveryRate = portfolioTotal > CREDIT_AMOUNT_EPS ? (totalPaidAll / portfolioTotal) * 100 : 100;
+    const avgOpenTicket = openRows.length > 0 ? totalRem / openRows.length : 0;
     return {
       totalRem,
       totalPaidOpen,
       totalPaidAll,
       totalSaleTotal,
-      countOpen: openRows.length + dispatchCreditRows.filter((d) => d.remainingAmount > CREDIT_AMOUNT_EPS).length,
+      countOpen: openRows.length,
       debtors: debtors.size,
       overdue,
       dueToday,
       dueWeek,
+      portfolioTotal,
+      recoveryRate,
+      avgOpenTicket,
     };
-  }, [rawRows, openRows, legacyRows, dispatchCreditRows]);
+  }, [rawRows, openRows, legacyRows]);
+
+  const topRelanceRows = useMemo(() => {
+    type RelanceAgg = {
+      key: string;
+      customerId: string | null;
+      customerName: string;
+      phone: string | null;
+      totalDue: number;
+      overdueDue: number;
+      dueTodayDue: number;
+      openCount: number;
+      maxDelayDays: number;
+    };
+    const byCustomer = new Map<string, RelanceAgg>();
+    const now = new Date();
+    const toStartOfDayMs = (d: Date) => Date.UTC(d.getFullYear(), d.getMonth(), d.getDate());
+    const nowDay = toStartOfDayMs(now);
+
+    for (const s of openRows) {
+      const rem = remainingTotal(s);
+      if (rem <= CREDIT_AMOUNT_EPS) continue;
+      const key = s.customer_id ? `sale-${s.customer_id}` : `sale-unknown-${s.id}`;
+      const existing = byCustomer.get(key);
+      const name = s.customer?.name ?? "Client non renseigné";
+      const phone = s.customer?.phone ?? null;
+      const dueAt = effectiveDueDate(s);
+      let delay = 0;
+      let overdue = 0;
+      let dueToday = 0;
+      if (dueAt) {
+        const dueDay = toStartOfDayMs(dueAt);
+        delay = nowDay > dueDay ? Math.floor((nowDay - dueDay) / 86400000) : 0;
+        if (delay > 0) overdue = rem;
+        if (dueDay === nowDay) dueToday = rem;
+      }
+      if (!existing) {
+        byCustomer.set(key, {
+          key,
+          customerId: s.customer_id,
+          customerName: name,
+          phone,
+          totalDue: rem,
+          overdueDue: overdue,
+          dueTodayDue: dueToday,
+          openCount: 1,
+          maxDelayDays: delay,
+        });
+      } else {
+        existing.totalDue += rem;
+        existing.overdueDue += overdue;
+        existing.dueTodayDue += dueToday;
+        existing.openCount += 1;
+        existing.maxDelayDays = Math.max(existing.maxDelayDays, delay);
+      }
+    }
+
+    for (const l of legacyRows) {
+      const paid = (l.payments ?? []).reduce((s, p) => s + Number(p.amount ?? 0), 0);
+      const rem = Math.max(0, Number(l.principal_amount) - paid);
+      if (rem <= CREDIT_AMOUNT_EPS) continue;
+      const key = l.customer_id ? `legacy-${l.customer_id}` : `legacy-unknown-${l.id}`;
+      const existing = byCustomer.get(key);
+      const name = l.customer?.name ?? "Client non renseigné";
+      const phone = l.customer?.phone ?? null;
+      let delay = 0;
+      let overdue = 0;
+      let dueToday = 0;
+      if (l.due_at) {
+        const due = new Date(l.due_at);
+        if (!Number.isNaN(due.getTime())) {
+          const dueDay = toStartOfDayMs(due);
+          delay = nowDay > dueDay ? Math.floor((nowDay - dueDay) / 86400000) : 0;
+          if (delay > 0) overdue = rem;
+          if (dueDay === nowDay) dueToday = rem;
+        }
+      }
+      if (!existing) {
+        byCustomer.set(key, {
+          key,
+          customerId: l.customer_id ?? null,
+          customerName: name,
+          phone,
+          totalDue: rem,
+          overdueDue: overdue,
+          dueTodayDue: dueToday,
+          openCount: 1,
+          maxDelayDays: delay,
+        });
+      } else {
+        existing.totalDue += rem;
+        existing.overdueDue += overdue;
+        existing.dueTodayDue += dueToday;
+        existing.openCount += 1;
+        existing.maxDelayDays = Math.max(existing.maxDelayDays, delay);
+      }
+    }
+
+    return [...byCustomer.values()]
+      .sort((a, b) => {
+        if (b.overdueDue !== a.overdueDue) return b.overdueDue - a.overdueDue;
+        if (b.maxDelayDays !== a.maxDelayDays) return b.maxDelayDays - a.maxDelayDays;
+        return b.totalDue - a.totalDue;
+      })
+      .slice(0, 5);
+  }, [openRows, legacyRows]);
 
   /**
    * Filtres rapides : basés sur encaissements réels vs reste (pas uniquement le statut affiché,
@@ -392,6 +591,43 @@ export function CreditScreen() {
     });
     return rows;
   }, [openRows, search, sellerId, chip]);
+
+  const filteredDispatchCredits = useMemo(() => {
+    if (sellerId) return [] as typeof dispatchCreditRows;
+    const q = search.trim().toLowerCase();
+    return dispatchCreditRows
+      .filter((r) => r.remainingAmount > CREDIT_AMOUNT_EPS)
+      .filter((r) => {
+        const hasBalance = r.remainingAmount > CREDIT_AMOUNT_EPS;
+        const hasEncaisse = r.paidAmount > CREDIT_AMOUNT_EPS;
+        switch (chip) {
+          case "all":
+            break;
+          case "non_paye":
+            if (!(hasBalance && !hasEncaisse)) return false;
+            break;
+          case "partiel":
+            if (!(hasBalance && hasEncaisse)) return false;
+            break;
+          case "en_retard":
+          case "due_today":
+          case "due_week":
+            return false;
+          default:
+            break;
+        }
+        if (!q) return true;
+        return (
+          (r.documentNumber ?? "").toLowerCase().includes(q) ||
+          (r.customerName ?? "").toLowerCase().includes(q) ||
+          (r.createdByLabel ?? "").toLowerCase().includes(q) ||
+          String(r.totalAmount).includes(q) ||
+          "bon depot".includes(q) ||
+          "depot".includes(q)
+        );
+      })
+      .sort((a, b) => b.remainingAmount - a.remainingAmount);
+  }, [dispatchCreditRows, sellerId, chip, search]);
 
   const customerRows = useMemo(() => buildCustomerAggregates(filteredSales), [filteredSales]);
 
@@ -473,7 +709,7 @@ export function CreditScreen() {
       ) : null}
 
       <FsCard className="mb-6" padding="p-3 sm:p-3.5">
-        <div className="flex w-full min-w-0 flex-wrap items-center gap-x-2 gap-y-2">
+        <div className="flex w-full min-w-0 flex-col gap-2.5 min-[900px]:flex-row min-[900px]:flex-wrap min-[900px]:items-center">
           <div className="flex min-w-0 max-w-full shrink-0 items-center gap-1.5">
             <label
               className="shrink-0 text-[10px] font-medium uppercase tracking-wide text-neutral-500 sm:text-[11px]"
@@ -484,7 +720,7 @@ export function CreditScreen() {
             <select
               id="credit-store"
               className={fsInputClass(
-                "h-8 w-52 min-w-0 max-w-full py-0! text-xs sm:py-0! sm:text-xs",
+                "h-9 w-full min-w-0 max-w-full py-0! text-xs sm:w-52 sm:py-0! sm:text-xs",
               )}
               value={storeFilter}
               onChange={(e) => {
@@ -501,7 +737,7 @@ export function CreditScreen() {
             </select>
           </div>
 
-          <div className="flex min-w-0 max-w-full flex-wrap items-center gap-x-1.5 gap-y-1">
+          <div className="flex min-w-0 max-w-full flex-wrap items-center gap-1.5">
             <label className="sr-only" htmlFor="credit-from">
               Du
             </label>
@@ -509,7 +745,7 @@ export function CreditScreen() {
               id="credit-from"
               type="date"
               className={fsInputClass(
-                "h-8 w-37 max-w-full shrink-0 py-0! text-xs sm:py-0! sm:text-xs",
+                "h-9 w-[47%] min-w-[8.25rem] max-w-full shrink-0 py-0! text-xs sm:w-37 sm:py-0! sm:text-xs",
               )}
               value={from}
               onChange={(e) => {
@@ -528,7 +764,7 @@ export function CreditScreen() {
               id="credit-to"
               type="date"
               className={fsInputClass(
-                "h-8 w-37 max-w-full shrink-0 py-0! text-xs sm:py-0! sm:text-xs",
+                "h-9 w-[47%] min-w-[8.25rem] max-w-full shrink-0 py-0! text-xs sm:w-37 sm:py-0! sm:text-xs",
               )}
               value={to}
               onChange={(e) => {
@@ -540,22 +776,45 @@ export function CreditScreen() {
             <span className="min-w-0 max-w-full text-[10px] text-neutral-500 sm:text-[11px] sm:whitespace-nowrap">
               ({formatDateFr(from)} — {formatDateFr(to)})
             </span>
+            <div className="flex min-w-0 max-w-full flex-wrap items-center gap-1">
+              {[
+                { label: "7j", days: 7 as const },
+                { label: "30j", days: 30 as const },
+                { label: "90j", days: 90 as const },
+              ].map((p) => (
+                <button
+                  key={p.label}
+                  type="button"
+                  onClick={() => applyQuickRange(p.days)}
+                  className="rounded-lg border border-black/10 bg-fs-surface-container px-2 py-1 text-[11px] font-bold text-neutral-700 dark:border-white/10 dark:text-neutral-200"
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
           </div>
 
-          <div className="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-1.5">
+          <div className="flex shrink-0 flex-wrap items-center gap-1.5 min-[900px]:ml-auto min-[900px]:justify-end">
             <button
               type="button"
               onClick={() => void creditQ.refetch()}
-              className="inline-flex h-8 items-center gap-1 rounded-lg border border-black/10 bg-fs-surface-container px-2.5 text-xs font-semibold dark:border-white/10"
+              className="inline-flex h-9 items-center gap-1 rounded-lg border border-black/10 bg-fs-surface-container px-2.5 text-xs font-semibold dark:border-white/10"
             >
               <MdRefresh className={cn("h-4 w-4 shrink-0", creditQ.isFetching && "animate-spin")} aria-hidden />
               Actualiser
+            </button>
+            <button
+              type="button"
+              onClick={resetCreditFilters}
+              className="inline-flex h-9 items-center rounded-lg border border-black/10 bg-fs-surface-container px-2.5 text-xs font-semibold dark:border-white/10"
+            >
+              Réinitialiser
             </button>
             {canExport ? (
               <button
                 type="button"
                 onClick={() => exportSalesExcel()}
-                className="inline-flex h-8 items-center gap-1 rounded-lg border border-black/10 bg-fs-surface-container px-2.5 text-xs font-semibold dark:border-white/10"
+                className="inline-flex h-9 items-center gap-1 rounded-lg border border-black/10 bg-fs-surface-container px-2.5 text-xs font-semibold dark:border-white/10"
               >
                 <MdDownload className="h-4 w-4 shrink-0" aria-hidden />
                 Excel
@@ -622,34 +881,84 @@ export function CreditScreen() {
           icon={MdDateRange}
           colorClass="bg-teal-500/15 text-teal-700"
         />
+        <KpiCard
+          label="Taux de recouvrement"
+          value={`${Math.max(0, Math.min(100, Math.round(kpiBase.recoveryRate)))}%`}
+          subtitle={`Portefeuille: ${formatCurrency(kpiBase.portfolioTotal)}`}
+          icon={MdTrendingUp}
+          colorClass="bg-indigo-500/15 text-indigo-700"
+        />
+        <KpiCard
+          label="Ticket moyen (dossiers ouverts)"
+          value={formatCurrency(kpiBase.avgOpenTicket)}
+          subtitle="Reste moyen par dossier"
+          icon={MdInsights}
+          colorClass="bg-fuchsia-500/15 text-fuchsia-700"
+        />
       </div>
 
       <FsCard className="mt-4" padding="p-4">
+        <p className="text-sm font-bold text-fs-text">Priorité recouvrement</p>
+        <div className="mt-2 grid grid-cols-1 gap-2 text-xs min-[900px]:grid-cols-3">
+          <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-red-700">
+            En retard: <span className="font-bold">{formatCurrency(kpiBase.overdue)}</span>
+          </div>
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-amber-700">
+            À relancer aujourd'hui: <span className="font-bold">{formatCurrency(kpiBase.dueToday)}</span>
+          </div>
+          <div className="rounded-lg border border-teal-200 bg-teal-50 px-3 py-2 text-teal-700">
+            Échéance semaine: <span className="font-bold">{formatCurrency(kpiBase.dueWeek)}</span>
+          </div>
+        </div>
+      </FsCard>
+
+      <FsCard className="mt-4" padding="p-4">
         <div className="mb-2 flex items-center justify-between">
-          <p className="text-sm font-bold text-fs-text">Crédits dépôt (Facture / Sortie)</p>
-          <span className="rounded-full bg-fs-accent/10 px-2 py-0.5 text-xs font-bold text-fs-accent">
-            Traçabilité séparée
+          <p className="text-sm font-bold text-fs-text">Top 5 clients à relancer</p>
+          <span className="rounded-full bg-fs-accent/10 px-2 py-0.5 text-[11px] font-bold text-fs-accent">
+            Tri: retard puis montant
           </span>
         </div>
-        <div className="grid grid-cols-1 gap-2 text-xs text-neutral-700 min-[900px]:grid-cols-3">
-          <p>
-            Dossiers: <span className="font-bold">{dispatchCreditRows.length}</span>
-          </p>
-          <p>
-            Restant:{" "}
-            <span className="font-bold text-fs-accent">
-              {formatCurrency(
-                dispatchCreditRows.reduce((s, r) => s + (r.remainingAmount > CREDIT_AMOUNT_EPS ? r.remainingAmount : 0), 0),
-              )}
-            </span>
-          </p>
-          <p>
-            Déjà encaissé:{" "}
-            <span className="font-bold text-emerald-700">
-              {formatCurrency(dispatchCreditRows.reduce((s, r) => s + r.paidAmount, 0))}
-            </span>
-          </p>
-        </div>
+        {topRelanceRows.length === 0 ? (
+          <p className="text-xs text-neutral-600">Aucun client à relancer pour la période sélectionnée.</p>
+        ) : (
+          <div className="overflow-x-auto rounded-xl border border-black/8">
+            <table className="w-full min-w-[680px] text-left text-[12px] [&_thead_th]:whitespace-nowrap [&_tbody_td]:whitespace-nowrap">
+              <thead>
+                <tr className="border-b border-black/10 bg-fs-surface-low/80 text-[10px] uppercase tracking-wide text-neutral-600">
+                  <th className="px-2.5 py-2">Client</th>
+                  <th className="px-2.5 py-2">Contact</th>
+                  <th className="px-2.5 py-2 text-right">Dossiers</th>
+                  <th className="px-2.5 py-2 text-right">Total dû</th>
+                  <th className="px-2.5 py-2 text-right">En retard</th>
+                  <th className="px-2.5 py-2 text-right">Retard max</th>
+                </tr>
+              </thead>
+              <tbody>
+                {topRelanceRows.map((r) => (
+                  <tr key={r.key} className="border-b border-black/6 last:border-b-0">
+                    <td className="max-w-[220px] truncate px-2.5 py-2 font-semibold text-fs-text">{r.customerName}</td>
+                    <td className="px-2.5 py-2 text-neutral-700">
+                      {r.phone ? (
+                        <a href={`tel:${r.phone}`} className="font-semibold text-fs-accent underline-offset-2 hover:underline">
+                          {r.phone}
+                        </a>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                    <td className="px-2.5 py-2 text-right tabular-nums">{r.openCount}</td>
+                    <td className="px-2.5 py-2 text-right font-semibold tabular-nums">{formatCurrency(r.totalDue)}</td>
+                    <td className="px-2.5 py-2 text-right font-bold tabular-nums text-red-600">{formatCurrency(r.overdueDue)}</td>
+                    <td className="px-2.5 py-2 text-right tabular-nums">
+                      {r.maxDelayDays > 0 ? `${r.maxDelayDays} j` : r.dueTodayDue > 0 ? "Aujourd'hui" : "A venir"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </FsCard>
 
       <FsCard className="mt-6" padding="p-4">
@@ -657,7 +966,7 @@ export function CreditScreen() {
           <div className="relative min-w-0 flex-1">
             <MdSearch className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-neutral-400" />
             <input
-              className={fsInputClass("w-full pl-10 text-sm")}
+              className={fsInputClass("h-11 w-full pl-10 text-sm")}
               placeholder="Client, téléphone, référence, montant, vendeur…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -665,7 +974,7 @@ export function CreditScreen() {
           </div>
           <div className="flex flex-wrap gap-2">
             <select
-              className={fsInputClass("text-sm")}
+              className={fsInputClass("h-11 text-sm")}
               value={sellerId}
               onChange={(e) => setSellerId(e.target.value)}
               aria-label="Vendeur"
@@ -682,7 +991,7 @@ export function CreditScreen() {
                 type="button"
                 onClick={() => setView("sale")}
                 className={cn(
-                  "rounded-lg px-3 py-1.5 text-xs font-bold",
+                  "min-h-[40px] rounded-lg px-3 py-1.5 text-xs font-bold",
                   view === "sale" ? "bg-fs-accent text-white" : "text-neutral-600",
                 )}
               >
@@ -692,16 +1001,20 @@ export function CreditScreen() {
                 type="button"
                 onClick={() => setView("customer")}
                 className={cn(
-                  "rounded-lg px-3 py-1.5 text-xs font-bold",
+                  "min-h-[40px] rounded-lg px-3 py-1.5 text-xs font-bold",
                   view === "customer" ? "bg-fs-accent text-white" : "text-neutral-600",
                 )}
               >
                 Par client
               </button>
             </div>
+            <span className="inline-flex min-h-[40px] items-center rounded-lg bg-fs-accent/10 px-2.5 text-xs font-bold text-fs-accent">
+              Filtres actifs: {activeFilterCount}
+            </span>
           </div>
         </div>
-        <div className="mt-3 flex flex-wrap gap-1.5">
+        <div className="mt-3 -mx-1 overflow-x-auto px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="flex w-max items-center gap-1.5 pb-0.5">
           {(
             [
               ["all", "Tous"],
@@ -717,7 +1030,7 @@ export function CreditScreen() {
               type="button"
               onClick={() => setChip(key)}
               className={cn(
-                "rounded-full px-3 py-1 text-[11px] font-bold",
+                "min-h-[34px] whitespace-nowrap rounded-full px-3 py-1 text-[11px] font-bold",
                 chip === key
                   ? "bg-fs-accent text-white"
                   : "bg-fs-surface-container text-neutral-700 dark:text-neutral-200",
@@ -726,6 +1039,7 @@ export function CreditScreen() {
               {label}
             </button>
           ))}
+          </div>
         </div>
       </FsCard>
 
@@ -738,13 +1052,14 @@ export function CreditScreen() {
           <div className="overflow-x-auto">
             <table
               className={cn(
-                "w-full min-w-[1000px] border-collapse text-left text-[13px]",
+                "w-full min-w-[1120px] border-collapse text-left text-[13px]",
                 "[&_thead_th]:whitespace-nowrap [&_tbody_td]:whitespace-nowrap",
               )}
             >
             <thead>
               <tr className="border-b border-black/10 bg-fs-surface-low/80 dark:border-white/10">
                 <th className="px-3 py-3 font-bold">Réf.</th>
+                <th className="px-3 py-3 font-bold">Source</th>
                 <th className="px-3 py-3 font-bold">Client</th>
                 <th className="px-3 py-3 font-bold">Date</th>
                 <th className="px-3 py-3 font-bold">{terms.storeSingular}</th>
@@ -758,80 +1073,162 @@ export function CreditScreen() {
               </tr>
             </thead>
             <tbody>
-              {filteredSales.length === 0 ? (
+              {filteredSales.length === 0 && filteredDispatchCredits.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={11}
+                    colSpan={12}
                     className="whitespace-normal px-3 py-10 text-center text-neutral-500"
                   >
                     Aucune ligne pour ces filtres.
                   </td>
                 </tr>
               ) : (
-                filteredSales.map((s) => {
-                  const st = creditLineStatus(s);
-                  const rem = remainingTotal(s);
-                  return (
-                    <tr key={s.id} className="border-b border-black/6 hover:bg-black/2 dark:border-white/6">
-                      <td className="max-w-[7.5rem] truncate px-3 py-2.5 font-mono font-semibold">
-                        {s.sale_number}
-                      </td>
-                      <td className="max-w-[180px] truncate px-3 py-2.5">{s.customer?.name ?? "—"}</td>
-                      <td className="px-3 py-2.5 text-neutral-600">
-                        {format(new Date(s.created_at), "dd/MM/yyyy", { locale: fr })}
-                      </td>
-                      <td className="max-w-[130px] truncate px-3 py-2.5">{s.store?.name ?? "—"}</td>
-                      <td className="px-3 py-2.5 text-right tabular-nums">{formatCurrency(s.total)}</td>
-                      <td className="px-3 py-2.5 text-right tabular-nums text-emerald-700 dark:text-emerald-400">
-                        {formatCurrency(paidTotal(s))}
-                      </td>
-                      <td className="px-3 py-2.5 text-right tabular-nums font-bold text-fs-accent">
-                        {formatCurrency(rem)}
-                      </td>
-                      <td className={cn("px-3 py-2.5", dueTone(s))}>
-                        <span className="inline-flex whitespace-nowrap">
-                          {format(effectiveDueDate(s), "dd/MM/yyyy", { locale: fr })}
-                          {daysOverdue(s) > 0 ? (
-                            <span className="ml-1 shrink-0 text-red-600">(+{daysOverdue(s)} j)</span>
-                          ) : null}
-                        </span>
-                      </td>
-                      <td className="px-3 py-2.5">
-                        <span
-                          className={cn(
-                            "inline-flex max-w-[220px] items-center rounded-full px-2 py-0.5 text-[11px] font-bold",
-                            statusPillClass(st),
-                          )}
-                          title={CREDIT_STATUS_LABELS[st]}
-                        >
-                          <span className="min-w-0 truncate">{CREDIT_STATUS_LABELS[st]}</span>
-                        </span>
-                      </td>
-                      <td className="max-w-[120px] truncate px-3 py-2.5 text-xs">{s.created_by_label}</td>
-                      <td className="px-3 py-2.5">
-                        <div className="flex flex-nowrap items-center justify-end gap-1">
-                          <button
-                            type="button"
-                            onClick={() => setDetailId(s.id)}
-                            className="whitespace-nowrap rounded-lg bg-fs-accent/15 px-2 py-1 text-xs font-bold text-fs-accent"
+                <>
+                  {filteredSales.map((s) => {
+                    const st = creditLineStatus(s);
+                    const rem = remainingTotal(s);
+                    return (
+                      <tr key={s.id} className="border-b border-black/6 hover:bg-black/2 dark:border-white/6">
+                        <td className="max-w-[7.5rem] truncate px-3 py-2.5 font-mono font-semibold">
+                          {s.sale_number}
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <span className="inline-flex rounded-full bg-indigo-500/15 px-2 py-0.5 text-[11px] font-bold text-indigo-700 dark:text-indigo-300">
+                            Vente
+                          </span>
+                        </td>
+                        <td className="max-w-[180px] truncate px-3 py-2.5">{s.customer?.name ?? "—"}</td>
+                        <td className="px-3 py-2.5 text-neutral-600">
+                          {format(new Date(s.created_at), "dd/MM/yyyy", { locale: fr })}
+                        </td>
+                        <td className="max-w-[130px] truncate px-3 py-2.5">{s.store?.name ?? "—"}</td>
+                        <td className="px-3 py-2.5 text-right tabular-nums">{formatCurrency(s.total)}</td>
+                        <td className="px-3 py-2.5 text-right tabular-nums text-emerald-700 dark:text-emerald-400">
+                          {formatCurrency(paidTotal(s))}
+                        </td>
+                        <td className="px-3 py-2.5 text-right tabular-nums font-bold text-fs-accent">
+                          {formatCurrency(rem)}
+                        </td>
+                        <td className={cn("px-3 py-2.5", dueTone(s))}>
+                          <span className="inline-flex whitespace-nowrap">
+                            {format(effectiveDueDate(s), "dd/MM/yyyy", { locale: fr })}
+                            {daysOverdue(s) > 0 ? (
+                              <span className="ml-1 shrink-0 text-red-600">(+{daysOverdue(s)} j)</span>
+                            ) : null}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <span
+                            className={cn(
+                              "inline-flex max-w-[220px] items-center rounded-full px-2 py-0.5 text-[11px] font-bold",
+                              statusPillClass(st),
+                            )}
+                            title={CREDIT_STATUS_LABELS[st]}
                           >
-                            Voir
-                          </button>
-                          {canRecordPayment && rem > CREDIT_AMOUNT_EPS ? (
+                            <span className="min-w-0 truncate">{CREDIT_STATUS_LABELS[st]}</span>
+                          </span>
+                        </td>
+                        <td className="max-w-[120px] truncate px-3 py-2.5 text-xs">{s.created_by_label}</td>
+                        <td className="px-3 py-2.5">
+                          <div className="flex flex-nowrap items-center justify-end gap-1">
                             <button
                               type="button"
-                              title="Enregistrer un paiement"
-                              onClick={() => setPaySale(s)}
-                              className="whitespace-nowrap rounded-lg bg-fs-accent px-2 py-1 text-xs font-bold text-white"
+                              onClick={() => setDetailId(s.id)}
+                              className="whitespace-nowrap rounded-lg bg-fs-accent/15 px-2 py-1 text-xs font-bold text-fs-accent"
                             >
-                              Encaisser
+                              Voir
                             </button>
-                          ) : null}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
+                            {canRecordPayment && rem > CREDIT_AMOUNT_EPS ? (
+                              <button
+                                type="button"
+                                title="Enregistrer un paiement"
+                                onClick={() => setPaySale(s)}
+                                className="whitespace-nowrap rounded-lg bg-fs-accent px-2 py-1 text-xs font-bold text-white"
+                              >
+                                Encaisser
+                              </button>
+                            ) : null}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {filteredDispatchCredits.map((d) => {
+                    const hasBalance = d.remainingAmount > CREDIT_AMOUNT_EPS;
+                    const hasEncaisse = d.paidAmount > CREDIT_AMOUNT_EPS;
+                    const status: CreditLineStatus = !hasBalance
+                      ? "solde"
+                      : hasEncaisse
+                        ? "partiel"
+                        : "non_paye";
+                    return (
+                      <tr key={`dispatch-${d.id}`} className="border-b border-black/6 hover:bg-black/2 dark:border-white/6">
+                        <td className="max-w-[7.5rem] truncate px-3 py-2.5 font-mono font-semibold">{d.documentNumber}</td>
+                        <td className="px-3 py-2.5">
+                          <span className="inline-flex rounded-full bg-sky-500/15 px-2 py-0.5 text-[11px] font-bold text-sky-700 dark:text-sky-300">
+                            Bon dépôt
+                          </span>
+                        </td>
+                        <td className="max-w-[180px] truncate px-3 py-2.5">{d.customerName ?? "—"}</td>
+                        <td className="px-3 py-2.5 text-neutral-600">
+                          {format(new Date(d.createdAt), "dd/MM/yyyy", { locale: fr })}
+                        </td>
+                        <td className="max-w-[130px] truncate px-3 py-2.5">Dépôt</td>
+                        <td className="px-3 py-2.5 text-right tabular-nums">{formatCurrency(d.totalAmount)}</td>
+                        <td className="px-3 py-2.5 text-right tabular-nums text-emerald-700 dark:text-emerald-400">
+                          {formatCurrency(d.paidAmount)}
+                        </td>
+                        <td className="px-3 py-2.5 text-right tabular-nums font-bold text-fs-accent">
+                          {formatCurrency(d.remainingAmount)}
+                        </td>
+                        <td className="px-3 py-2.5 text-neutral-500">—</td>
+                        <td className="px-3 py-2.5">
+                          <span
+                            className={cn(
+                              "inline-flex max-w-[220px] items-center rounded-full px-2 py-0.5 text-[11px] font-bold",
+                              statusPillClass(status),
+                            )}
+                            title={CREDIT_STATUS_LABELS[status]}
+                          >
+                            <span className="min-w-0 truncate">{CREDIT_STATUS_LABELS[status]}</span>
+                          </span>
+                        </td>
+                        <td className="max-w-[120px] truncate px-3 py-2.5 text-xs">{d.createdByLabel}</td>
+                        <td className="px-3 py-2.5">
+                          <div className="flex flex-nowrap items-center justify-end gap-1">
+                            <Link
+                              href="#"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                setDispatchDetailId(d.id);
+                              }}
+                              className="whitespace-nowrap rounded-lg bg-fs-accent/15 px-2 py-1 text-xs font-bold text-fs-accent"
+                            >
+                              Voir
+                            </Link>
+                            {canRecordPayment && d.remainingAmount > CREDIT_AMOUNT_EPS ? (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setDispatchPayInvoice({
+                                    id: d.id,
+                                    documentNumber: d.documentNumber,
+                                    totalAmount: d.totalAmount,
+                                    paidAmount: d.paidAmount,
+                                    remainingAmount: d.remainingAmount,
+                                  })
+                                }
+                                className="whitespace-nowrap rounded-lg bg-fs-accent px-2 py-1 text-xs font-bold text-white"
+                              >
+                                Encaisser
+                              </button>
+                            ) : null}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </>
               )}
             </tbody>
           </table>
@@ -951,6 +1348,260 @@ export function CreditScreen() {
       />
 
       <CreditQuickPayDialog sale={paySale} open={paySale !== null} onClose={() => setPaySale(null)} />
+
+      {dispatchDetailId ? (
+        <div className="fixed inset-0 z-56 flex flex-col justify-end bg-black/45 sm:items-center sm:justify-center sm:p-4" role="dialog">
+          <div className="flex max-h-[min(88dvh,640px)] w-full flex-col rounded-t-2xl bg-fs-surface shadow-2xl sm:max-h-[85vh] sm:max-w-lg sm:rounded-2xl">
+            <div className="flex items-center justify-between border-b border-black/6 px-4 py-3">
+              <h2 className="text-base font-bold">Bon de sortie</h2>
+              <button type="button" onClick={() => setDispatchDetailId(null)} className="p-2" aria-label="Fermer">
+                <MdClose className="h-6 w-6" />
+              </button>
+            </div>
+            {dispatchDetailQ.isLoading ? (
+              <div className="flex min-h-[160px] items-center justify-center">
+                <div className="h-9 w-9 animate-spin rounded-full border-2 border-[#F97316] border-t-transparent" />
+              </div>
+            ) : null}
+            {dispatchDetailQ.data ? (
+              <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+                {(() => {
+                  const d = dispatchDetailQ.data;
+                  const sub = d.lines.reduce((s, l) => s + l.quantity * l.unitPrice, 0);
+                  return (
+                    <>
+                      <p className="text-lg font-bold">{d.documentNumber}</p>
+                      <p className="mt-1 text-sm text-neutral-600">{format(new Date(d.createdAt), "dd/MM/yyyy HH:mm", { locale: fr })}</p>
+                      <p className="mt-2 text-sm">
+                        Client : {d.customerName ?? "—"}
+                        {d.customerPhone ? ` · ${d.customerPhone}` : ""}
+                      </p>
+                      {humanDispatchNote(d.notes, sub) ? (
+                        <p className="mt-2 text-xs text-neutral-600">{humanDispatchNote(d.notes, sub)}</p>
+                      ) : null}
+                      <div className="mt-4 space-y-2">
+                        {d.lines.map((l, i) => (
+                          <div key={i} className="flex justify-between gap-2 rounded-lg border border-black/6 px-3 py-2 text-sm">
+                            <span className="min-w-0 font-medium">{l.productName}</span>
+                            <span className="shrink-0 text-neutral-600">
+                              {l.quantity} × {formatCurrency(l.unitPrice)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                      <p className="mt-4 text-right text-base font-bold">Total {formatCurrency(sub)}</p>
+                      {canRecordPayment ? (
+                        <div className="mt-3 flex justify-end">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const info = parseDispatchPaymentInfo(d.notes, sub);
+                              const paidAmount = Math.max(0, Math.round(info.paidAmount));
+                              const remainingAmount = Math.max(0, Math.round(sub - paidAmount));
+                              if (remainingAmount <= CREDIT_AMOUNT_EPS) return;
+                              setDispatchPayInvoice({
+                                id: d.id,
+                                documentNumber: d.documentNumber,
+                                totalAmount: Math.round(sub),
+                                paidAmount,
+                                remainingAmount,
+                              });
+                            }}
+                            disabled={Math.max(0, Math.round(sub - parseDispatchPaymentInfo(d.notes, sub).paidAmount)) <= CREDIT_AMOUNT_EPS}
+                            className={cn(
+                              "inline-flex rounded-lg px-3 py-1.5 text-xs font-bold text-white",
+                              Math.max(0, Math.round(sub - parseDispatchPaymentInfo(d.notes, sub).paidAmount)) <= CREDIT_AMOUNT_EPS
+                                ? "cursor-not-allowed bg-neutral-300 text-neutral-600"
+                                : "bg-fs-accent",
+                            )}
+                          >
+                            Encaisser
+                          </button>
+                        </div>
+                      ) : null}
+                    </>
+                  );
+                })()}
+              </div>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+      <DispatchCreditPayDialog
+        open={dispatchPayInvoice !== null}
+        invoice={dispatchPayInvoice}
+        loading={dispatchPayMut.isPending}
+        onClose={() => setDispatchPayInvoice(null)}
+        onSubmit={async (payload) => {
+          if (!dispatchPayInvoice) return;
+          await dispatchPayMut.mutateAsync({
+            invoiceId: dispatchPayInvoice.id,
+            method: payload.method,
+            amount: payload.amount,
+            mobileProvider: payload.mobileProvider,
+          });
+        }}
+      />
     </FsPage>
+  );
+}
+
+type DispatchCreditPayDialogProps = {
+  open: boolean;
+  invoice: {
+    id: string;
+    documentNumber: string;
+    totalAmount: number;
+    paidAmount: number;
+    remainingAmount: number;
+  } | null;
+  loading: boolean;
+  onClose: () => void;
+  onSubmit: (payload: {
+    method: "cash" | "mobile_money" | "card";
+    amount?: number | null;
+    mobileProvider?: "orange_money" | "moov_money" | "wave" | null;
+  }) => Promise<void>;
+};
+
+function DispatchCreditPayDialog({ open, invoice, loading, onClose, onSubmit }: DispatchCreditPayDialogProps) {
+  const [method, setMethod] = useState<"cash" | "mobile_money" | "card">("cash");
+  const [amountText, setAmountText] = useState("");
+  const [mobileProvider, setMobileProvider] = useState<"orange_money" | "moov_money" | "wave">("orange_money");
+
+  useEffect(() => {
+    if (!open || !invoice) return;
+    setMethod("cash");
+    setAmountText("");
+    setMobileProvider("orange_money");
+  }, [open, invoice]);
+
+  if (!open || !invoice) return null;
+
+  const remaining = Math.max(0, Math.round(invoice.remainingAmount));
+  const parsedAmount = Number(amountText.replace(/\s+/g, ""));
+  const amount = Number.isFinite(parsedAmount) ? Math.round(parsedAmount) : NaN;
+  const isCash = method === "cash";
+  const cashValid = isCash && amount > 0 && amount <= remaining;
+  const canSubmit = loading ? false : isCash ? cashValid : remaining > CREDIT_AMOUNT_EPS;
+
+  return (
+    <div className="fixed inset-0 z-58 flex flex-col justify-end bg-black/45 sm:items-center sm:justify-center sm:p-4" role="dialog">
+      <div className="w-full rounded-t-2xl bg-fs-surface shadow-2xl sm:max-w-md sm:rounded-2xl">
+        <div className="flex items-center justify-between border-b border-black/6 px-4 py-3">
+          <div>
+            <p className="text-sm text-neutral-500">Encaisser bon dépôt</p>
+            <p className="font-mono text-sm font-semibold">{invoice.documentNumber}</p>
+          </div>
+          <button type="button" onClick={onClose} className="p-2" aria-label="Fermer" disabled={loading}>
+            <MdClose className="h-6 w-6" />
+          </button>
+        </div>
+
+        <div className="space-y-3 px-4 py-3">
+          <div className="rounded-xl border border-black/8 bg-fs-surface-low/70 px-3 py-2 text-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-neutral-600">Total</span>
+              <span className="font-semibold">{formatCurrency(invoice.totalAmount)}</span>
+            </div>
+            <div className="mt-1 flex items-center justify-between">
+              <span className="text-neutral-600">Déjà encaissé</span>
+              <span className="font-semibold text-emerald-700">{formatCurrency(invoice.paidAmount)}</span>
+            </div>
+            <div className="mt-1 flex items-center justify-between">
+              <span className="text-neutral-600">Reste</span>
+              <span className="font-bold text-fs-accent">{formatCurrency(remaining)}</span>
+            </div>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-neutral-700">Méthode</label>
+            <div className="grid grid-cols-3 gap-2 text-xs">
+              {[
+                { id: "cash", label: "Espèces" },
+                { id: "mobile_money", label: "Mobile Money" },
+                { id: "card", label: "Carte" },
+              ].map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => setMethod(m.id as "cash" | "mobile_money" | "card")}
+                  className={cn(
+                    "rounded-lg border px-2 py-2 font-bold transition",
+                    method === m.id
+                      ? "border-fs-accent bg-fs-accent/10 text-fs-accent"
+                      : "border-black/8 bg-white text-neutral-700 hover:bg-black/2",
+                  )}
+                  disabled={loading}
+                >
+                  {m.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {method === "mobile_money" ? (
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-neutral-700">Opérateur</label>
+              <select
+                className={cn(fsInputClass(), "h-10 text-sm")}
+                value={mobileProvider}
+                onChange={(e) => setMobileProvider(e.target.value as "orange_money" | "moov_money" | "wave")}
+                disabled={loading}
+              >
+                <option value="orange_money">Orange Money</option>
+                <option value="moov_money">Moov Money</option>
+                <option value="wave">Wave</option>
+              </select>
+            </div>
+          ) : null}
+
+          {isCash ? (
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-neutral-700">Montant a encaisser (F CFA)</label>
+              <input
+                className={cn(fsInputClass(), "h-10 text-sm")}
+                inputMode="numeric"
+                placeholder={`Max ${remaining}`}
+                value={amountText}
+                onChange={(e) => setAmountText(e.target.value.replace(/[^\d]/g, ""))}
+                disabled={loading}
+              />
+              {!cashValid ? <p className="mt-1 text-[11px] text-red-600">Entrer un montant valide (&lt;= reste).</p> : null}
+            </div>
+          ) : (
+            <p className="text-xs text-neutral-600">Cette methode solde le bon en totalite.</p>
+          )}
+        </div>
+
+        <div className="flex gap-2 border-t border-black/6 px-4 pb-[max(1rem,var(--fs-safe-bottom))] pt-3">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={loading}
+            className="flex-1 rounded-lg border border-black/10 px-3 py-2 text-sm font-semibold text-neutral-700"
+          >
+            Fermer
+          </button>
+          <button
+            type="button"
+            disabled={!canSubmit}
+            onClick={() =>
+              void onSubmit({
+                method,
+                amount: isCash ? amount : null,
+                mobileProvider: method === "mobile_money" ? mobileProvider : null,
+              })
+            }
+            className={cn(
+              "flex-1 rounded-lg px-3 py-2 text-sm font-bold text-white",
+              canSubmit ? "bg-fs-accent" : "cursor-not-allowed bg-neutral-300 text-neutral-500",
+            )}
+          >
+            {loading ? "Enregistrement..." : "Valider encaissement"}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }

@@ -24,6 +24,7 @@ export function FsPullToRefresh({
   const [pull, setPull] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const startY = useRef(0);
+  const startX = useRef(0);
   const tracking = useRef(false);
   const pullAmt = useRef(0);
   const onRefreshRef = useRef(onRefresh);
@@ -39,13 +40,25 @@ export function FsPullToRefresh({
       0;
 
     const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length !== 1) return;
       if (scrollTop() > 2) return;
+      const target = e.target as HTMLElement | null;
+      if (target?.closest("input, textarea, select, [contenteditable='true'], [data-no-ptr='true']")) {
+        return;
+      }
       tracking.current = true;
       startY.current = e.touches[0].clientY;
+      startX.current = e.touches[0].clientX;
     };
 
     const onTouchMove = (e: TouchEvent) => {
       if (!tracking.current) return;
+      if (e.touches.length !== 1) {
+        tracking.current = false;
+        pullAmt.current = 0;
+        setPull(0);
+        return;
+      }
       if (scrollTop() > 2) {
         tracking.current = false;
         pullAmt.current = 0;
@@ -53,7 +66,10 @@ export function FsPullToRefresh({
         return;
       }
       const dy = e.touches[0].clientY - startY.current;
+      const dx = Math.abs(e.touches[0].clientX - startX.current);
       if (dy > 0) {
+        // Ne bloque le scroll que pour un vrai geste vertical descendant.
+        if (dy < 10 || dy <= dx * 1.1) return;
         e.preventDefault();
         const p = Math.min(dy * 0.4, 80);
         pullAmt.current = p;

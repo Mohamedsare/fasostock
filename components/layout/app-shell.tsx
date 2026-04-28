@@ -346,7 +346,10 @@ export function AppShell({ children, userEmail }: AppShellProps) {
                   <button
                     type="button"
                     onClick={() => setMobileNavOpen(true)}
-                    className={shellToolbarIconButtonClass}
+                    className={cn(
+                      shellToolbarIconButtonClass,
+                      "h-6 w-8 rounded-lg bg-white shadow-sm ring-1 ring-black/8 dark:bg-white dark:text-neutral-900",
+                    )}
                     aria-label="Ouvrir le menu de navigation"
                     aria-expanded={mobileNavOpen}
                     aria-haspopup="dialog"

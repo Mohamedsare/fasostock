@@ -386,6 +386,26 @@ export function WarehouseScreen() {
       return Number.isFinite(dt) && dt >= from7;
     });
     const dispatchAmount7d = dispatch7d.reduce((s, d) => s + Number(d.totalAmount ?? 0), 0);
+    const dispatchOutstandingTotal = dispatchRows.reduce((s, d) => {
+      const total = Math.max(0, Math.round(Number(d.totalAmount ?? 0)));
+      const paid = Math.min(total, Math.max(0, parseDispatchPaymentInfo(d.notes).paidAmount));
+      return s + Math.max(0, total - paid);
+    }, 0);
+    const dispatchPaidTotal = dispatchRows.reduce((s, d) => {
+      const total = Math.max(0, Math.round(Number(d.totalAmount ?? 0)));
+      const paid = Math.min(total, Math.max(0, parseDispatchPaymentInfo(d.notes).paidAmount));
+      return s + paid;
+    }, 0);
+    const dispatchOpenCount = dispatchRows.filter((d) => {
+      const total = Math.max(0, Math.round(Number(d.totalAmount ?? 0)));
+      const paid = Math.min(total, Math.max(0, parseDispatchPaymentInfo(d.notes).paidAmount));
+      return total - paid > 0.005;
+    }).length;
+    const dispatchOpen7d = dispatch7d.reduce((s, d) => {
+      const total = Math.max(0, Math.round(Number(d.totalAmount ?? 0)));
+      const paid = Math.min(total, Math.max(0, parseDispatchPaymentInfo(d.notes).paidAmount));
+      return s + Math.max(0, total - paid);
+    }, 0);
 
     return {
       topLow: lowLines.slice(0, 5),
@@ -396,6 +416,10 @@ export function WarehouseScreen() {
       pendingTransfersCount,
       dispatch7dCount: dispatch7d.length,
       dispatchAmount7d,
+      dispatchOutstandingTotal,
+      dispatchPaidTotal,
+      dispatchOpenCount,
+      dispatchOpen7d,
     };
   }, [inventory, movements, dashboard, warehouseTransfers, dispatchRows]);
 
@@ -933,36 +957,52 @@ export function WarehouseScreen() {
                         Sorties
                       </span>
                     </div>
-                    <div className="mt-2.5 h-[200px] sm:mt-3 sm:h-[220px]">
+                    <div className="mt-2.5 h-[220px] sm:mt-3 sm:h-[250px]">
                       {dashboard.chartDayLabels.length === 0 ? (
                         <p className="flex h-full items-center justify-center text-[13px] text-neutral-600 sm:text-sm">
                           Pas encore de mouvements sur la période
                         </p>
                       ) : (
-                        <div className="flex h-full items-end justify-around gap-1 border-b border-black/10 pb-1 pt-1.5 sm:pt-2">
-                          {dashboard.chartDayLabels.map((lab, i) => {
-                            const inQ = dashboard.chartEntriesQty[i] ?? 0;
-                            const outQ = dashboard.chartExitsQty[i] ?? 0;
-                            const hIn = maxY > 0 ? (inQ / maxY) * 100 : 0;
-                            const hOut = maxY > 0 ? (outQ / maxY) * 100 : 0;
-                            return (
-                              <div key={i} className="flex flex-1 flex-col items-center gap-0.5 sm:gap-1">
-                                <div className="flex h-[158px] w-full items-end justify-center gap-0.5 sm:h-[180px]">
-                                  <div
-                                    className="w-[40%] max-w-[10px] rounded-t bg-[#059669]"
-                                    style={{ height: `${Math.max(hIn, 2)}%` }}
-                                    title={`Entrées ${inQ}`}
-                                  />
-                                  <div
-                                    className="w-[40%] max-w-[10px] rounded-t bg-[#EA580C]"
-                                    style={{ height: `${Math.max(hOut, 2)}%` }}
-                                    title={`Sorties ${outQ}`}
-                                  />
-                                </div>
-                                <span className="text-[9px] text-neutral-600 sm:text-[10px]">{lab}</span>
-                              </div>
-                            );
-                          })}
+                        <div className="grid h-full grid-cols-[auto_1fr] gap-2 rounded-xl border border-black/8 bg-fs-surface-low/40 px-2.5 py-2 sm:px-3 sm:py-2.5">
+                          <div className="flex h-[170px] flex-col justify-between pb-5 text-right text-[10px] font-medium text-neutral-500 sm:h-[190px] sm:text-[11px]">
+                            {[1, 0.75, 0.5, 0.25, 0].map((t) => (
+                              <span key={t} className="tabular-nums">
+                                {Math.round(maxY * t)}
+                              </span>
+                            ))}
+                          </div>
+                          <div className="relative h-[190px] sm:h-[210px]">
+                            <div className="pointer-events-none absolute inset-0 flex flex-col justify-between pb-5">
+                              {[0, 1, 2, 3, 4].map((idx) => (
+                                <div key={idx} className="border-t border-dashed border-black/10" />
+                              ))}
+                            </div>
+                            <div className="relative z-10 flex h-full items-end justify-around gap-1.5 border-b border-black/15 pb-5">
+                              {dashboard.chartDayLabels.map((lab, i) => {
+                                const inQ = dashboard.chartEntriesQty[i] ?? 0;
+                                const outQ = dashboard.chartExitsQty[i] ?? 0;
+                                const hIn = maxY > 0 ? (inQ / maxY) * 100 : 0;
+                                const hOut = maxY > 0 ? (outQ / maxY) * 100 : 0;
+                                return (
+                                  <div key={i} className="flex min-w-0 flex-1 flex-col items-center justify-end gap-1">
+                                    <div className="flex h-[140px] w-full items-end justify-center gap-1 sm:h-[158px]">
+                                      <div
+                                        className="w-[42%] max-w-[14px] rounded-t-[6px] bg-[#059669] shadow-[0_2px_10px_rgba(5,150,105,0.25)]"
+                                        style={{ height: `${Math.max(hIn, 2)}%` }}
+                                        title={`Entrées ${inQ}`}
+                                      />
+                                      <div
+                                        className="w-[42%] max-w-[14px] rounded-t-[6px] bg-[#EA580C] shadow-[0_2px_10px_rgba(234,88,12,0.25)]"
+                                        style={{ height: `${Math.max(hOut, 2)}%` }}
+                                        title={`Sorties ${outQ}`}
+                                      />
+                                    </div>
+                                    <span className="text-[10px] font-medium text-neutral-600">{lab}</span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -999,6 +1039,43 @@ export function WarehouseScreen() {
                       <p className="mt-1 text-xs text-neutral-600">{formatCurrency(decisionPanel.dispatchAmount7d)}</p>
                     </FsCard>
                   </div>
+
+                  <FsCard padding="p-3.5 sm:p-4">
+                    <div className="mb-2 flex items-center justify-between">
+                      <p className="text-[13px] font-semibold text-fs-text sm:text-sm">Crédit bons de sortie (Magasin)</p>
+                      <button
+                        type="button"
+                        onClick={() => setTab(4)}
+                        className="text-xs font-bold text-fs-accent"
+                      >
+                        Ouvrir Historique
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-1 gap-2 text-xs sm:grid-cols-2 lg:grid-cols-4">
+                      <div className="rounded-lg border border-orange-200 bg-orange-50 px-3 py-2">
+                        <p className="text-neutral-600">Restant à encaisser</p>
+                        <p className="mt-1 text-sm font-extrabold text-orange-700">
+                          {formatCurrency(decisionPanel.dispatchOutstandingTotal)}
+                        </p>
+                      </div>
+                      <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2">
+                        <p className="text-neutral-600">Déjà encaissé</p>
+                        <p className="mt-1 text-sm font-extrabold text-emerald-700">
+                          {formatCurrency(decisionPanel.dispatchPaidTotal)}
+                        </p>
+                      </div>
+                      <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2">
+                        <p className="text-neutral-600">Dossiers ouverts</p>
+                        <p className="mt-1 text-sm font-extrabold text-blue-700">{decisionPanel.dispatchOpenCount}</p>
+                      </div>
+                      <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+                        <p className="text-neutral-600">Reste 7 jours</p>
+                        <p className="mt-1 text-sm font-extrabold text-amber-700">
+                          {formatCurrency(decisionPanel.dispatchOpen7d)}
+                        </p>
+                      </div>
+                    </div>
+                  </FsCard>
 
                   <FsCard padding="p-3.5 sm:p-4">
                     <div className="mb-2 flex items-center justify-between">
@@ -1529,7 +1606,7 @@ export function WarehouseScreen() {
                         <p className="mb-3 text-[11px] font-bold tracking-[0.06em] text-neutral-700 sm:text-xs">
                           FACTURE A4
                         </p>
-                        <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                        <div className="grid grid-cols-1 gap-2 min-[520px]:grid-cols-3 sm:gap-3">
                           <DispatchInvoiceActionButton
                             icon={<MdPictureAsPdf className="h-5 w-5 shrink-0" aria-hidden />}
                             label="Voir le PDF"
@@ -2214,42 +2291,53 @@ function HistoriquesTab({
   return (
     <div className="space-y-2 pb-6">
       <div className="overflow-x-auto rounded-xl border border-black/6 bg-[color-mix(in_srgb,var(--fs-surface-container-low)_100%,transparent)]">
-        <table className="w-full min-w-[640px] border-collapse text-left">
+        <table className="w-full min-w-[980px] border-collapse text-left [&_thead_th]:whitespace-nowrap">
           <thead>
             <tr className="border-b border-black/8 bg-[#F5F5F5] text-[11px] font-bold uppercase tracking-wide text-neutral-700">
               <th className="px-3 py-2">N° Bon</th>
               <th className="px-3 py-2">Date</th>
               <th className="px-3 py-2">Client</th>
+              <th className="px-3 py-2 text-right">Somme</th>
+              <th className="px-3 py-2 text-right whitespace-nowrap">Déjà encaissé</th>
+              <th className="px-3 py-2 text-right">Reste</th>
               <th className="px-3 py-2 text-center">Action</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map((r) => (
-              <tr key={r.id} className="border-b border-black/6 text-sm last:border-b-0">
-                <td className="px-3 py-2.5 font-bold text-fs-text">{r.documentNumber}</td>
-                <td className="px-3 py-2.5 text-neutral-700">{formatDt(r.createdAt)}</td>
-                <td className="px-3 py-2.5 text-neutral-700">{r.customerName ?? "—"}</td>
-                <td className="px-3 py-2.5">
-                  <div className="flex items-center justify-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => onOpen(r)}
-                      className="inline-flex min-h-[32px] items-center rounded-lg border border-[#F97316]/30 bg-white px-3 py-1 text-xs font-bold text-[#F97316]"
-                    >
-                      Voir
-                    </button>
-                    <button
-                      type="button"
-                      disabled={printingId === r.id}
-                      onClick={() => void onPrint(r)}
-                      className="inline-flex min-h-[32px] items-center rounded-lg bg-[#F97316] px-3 py-1 text-xs font-bold text-white disabled:opacity-50"
-                    >
-                      {printingId === r.id ? "Impression…" : "Imprimer direct"}
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
+            {rows.map((r) => {
+              const total = Math.max(0, Math.round(Number(r.totalAmount ?? 0)));
+              const paid = Math.min(total, Math.max(0, parseDispatchPaymentInfo(r.notes).paidAmount));
+              const remaining = Math.max(0, total - paid);
+              return (
+                <tr key={r.id} className="border-b border-black/6 text-sm last:border-b-0">
+                  <td className="px-3 py-2.5 font-bold text-fs-text">{r.documentNumber}</td>
+                  <td className="px-3 py-2.5 text-neutral-700">{formatDt(r.createdAt)}</td>
+                  <td className="px-3 py-2.5 text-neutral-700">{r.customerName ?? "—"}</td>
+                  <td className="px-3 py-2.5 text-right font-semibold tabular-nums">{formatCurrency(total)}</td>
+                  <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-emerald-700">{formatCurrency(paid)}</td>
+                  <td className="px-3 py-2.5 text-right font-bold tabular-nums text-[#F97316]">{formatCurrency(remaining)}</td>
+                  <td className="px-3 py-2.5">
+                    <div className="flex items-center justify-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => onOpen(r)}
+                        className="inline-flex min-h-[32px] items-center rounded-lg border border-[#F97316]/30 bg-white px-3 py-1 text-xs font-bold text-[#F97316]"
+                      >
+                        Voir
+                      </button>
+                      <button
+                        type="button"
+                        disabled={printingId === r.id}
+                        onClick={() => void onPrint(r)}
+                        className="inline-flex min-h-[32px] items-center rounded-lg bg-[#F97316] px-3 py-1 text-xs font-bold text-white disabled:opacity-50"
+                      >
+                        {printingId === r.id ? "Impression…" : "Imprimer direct"}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -2304,7 +2392,7 @@ function DispatchInvoiceActionButton({
       disabled={disabled}
       onClick={onClick}
       className={cn(
-        "touch-manipulation inline-flex min-h-11 min-w-0 flex-1 items-center justify-center gap-2 rounded-xl bg-[#F97316] px-3 text-sm font-semibold text-white shadow-sm hover:bg-[#ea580c] disabled:opacity-50",
+        "touch-manipulation inline-flex min-h-12 min-w-0 w-full items-center justify-center gap-2 rounded-2xl bg-[#F97316] px-4 text-[15px] font-bold text-white shadow-sm transition-colors hover:bg-[#ea580c] disabled:opacity-50 sm:min-h-11 sm:rounded-xl sm:px-3 sm:text-sm sm:font-semibold",
       )}
     >
       {loading ? (
@@ -2312,7 +2400,7 @@ function DispatchInvoiceActionButton({
       ) : (
         icon
       )}
-      {label}
+      <span className="whitespace-nowrap">{label}</span>
     </button>
   );
 }

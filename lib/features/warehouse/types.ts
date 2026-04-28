@@ -49,6 +49,8 @@ export type WarehouseDispatchInvoiceSummary = {
   companyId: string;
   customerId: string | null;
   customerName: string | null;
+  createdBy: string | null;
+  createdByLabel: string;
   documentNumber: string;
   totalAmount: number;
   notes: string | null;

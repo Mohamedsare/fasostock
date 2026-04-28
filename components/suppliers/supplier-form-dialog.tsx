@@ -14,8 +14,8 @@ export type SupplierFormValue = {
   notes: string;
 };
 
-const fieldLabelClass = "mb-1.5 block text-xs font-medium leading-tight text-neutral-600 sm:text-[13px]";
-const fieldGapClass = "flex flex-col gap-3 sm:gap-3";
+const fieldLabelClass = "mb-1.5 block text-[13px] font-medium leading-tight text-neutral-700 sm:text-[13px]";
+const fieldGapClass = "flex flex-col gap-4 sm:gap-3";
 
 export function SupplierFormDialog({
   open,
@@ -60,7 +60,8 @@ export function SupplierFormDialog({
 
   if (!open) return null;
 
-  const inputOutline = "min-h-[44px] rounded-[10px] border border-black/8 sm:min-h-0";
+  const inputOutline =
+    "min-h-12 rounded-[10px] border border-black/8 px-3 text-base touch-manipulation sm:min-h-0 sm:text-sm";
 
   return (
     <div
@@ -74,14 +75,15 @@ export function SupplierFormDialog({
     >
       <FsCard
         className={cn(
-          "max-h-[min(92dvh,640px)] w-full max-w-[400px] shadow-xl",
+          "max-h-[min(94dvh,760px)] w-full max-w-[420px] shadow-xl",
           "rounded-t-2xl rounded-b-none border-x-0 border-b-0 sm:rounded-2xl sm:border-x sm:border-b",
         )}
         padding="p-0"
       >
-        <div className="flex max-h-[min(92dvh,640px)] flex-col">
+        <div className="flex max-h-[min(94dvh,760px)] flex-col">
+          <div className="mx-auto mt-2 h-1.5 w-11 shrink-0 rounded-full bg-neutral-300/80 sm:hidden" aria-hidden />
           {/* En-tête fixe — type AlertDialog Material */}
-          <div className="flex shrink-0 items-start justify-between gap-3 border-b border-black/6 px-4 pb-3 pt-4 sm:px-5 sm:pt-5">
+          <div className="flex shrink-0 items-start justify-between gap-3 border-b border-black/6 px-4 pb-3 pt-3.5 sm:px-5 sm:pt-5">
             <h2 id="supplier-form-title" className="pr-2 text-lg font-semibold leading-snug text-fs-text">
               {title}
             </h2>
@@ -204,18 +206,10 @@ export function SupplierFormDialog({
           <div
             className={cn(
               "shrink-0 border-t border-black/6 bg-fs-card/95 px-4 py-3 backdrop-blur-sm sm:px-5 sm:py-4",
-              "pb-[max(0.75rem,env(safe-area-inset-bottom))]",
+              "pb-[calc(5.75rem+var(--fs-safe-bottom))] sm:pb-[max(0.75rem,env(safe-area-inset-bottom))]",
             )}
           >
             <div className="flex flex-col gap-2.5 sm:flex-row sm:justify-end sm:gap-3">
-              <button
-                type="button"
-                onClick={onClose}
-                className="min-h-[44px] w-full rounded-[10px] px-4 py-3 text-sm font-semibold text-fs-accent active:bg-fs-surface-container sm:min-h-0 sm:w-auto sm:py-2.5"
-                disabled={busy}
-              >
-                Annuler
-              </button>
               <button
                 type="button"
                 onClick={async () => {
@@ -235,7 +229,7 @@ export function SupplierFormDialog({
                     setBusy(false);
                   }
                 }}
-                className="inline-flex min-h-[48px] w-full items-center justify-center rounded-[10px] bg-fs-accent px-4 py-3 text-sm font-semibold text-white shadow-sm active:scale-[0.99] disabled:opacity-60 sm:min-w-[120px] sm:max-w-none"
+                className="inline-flex min-h-12 w-full items-center justify-center rounded-[10px] bg-fs-accent px-4 py-3 text-base font-bold text-white shadow-sm active:scale-[0.99] disabled:opacity-60 sm:min-w-[120px] sm:max-w-none sm:text-sm sm:font-semibold"
                 disabled={busy}
               >
                 {busy ? (

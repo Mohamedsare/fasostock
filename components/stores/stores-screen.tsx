@@ -255,7 +255,7 @@ export function StoresScreen() {
         ) : (
           <div
             className={cn(
-              "grid gap-4 min-[600px]:gap-4",
+              "grid gap-4 pb-[calc(6.5rem+var(--fs-safe-bottom))] min-[600px]:gap-4 min-[900px]:pb-6",
               isWide
                 ? "grid-cols-1 min-[900px]:grid-cols-3"
                 : "grid-cols-1 min-[600px]:grid-cols-2",

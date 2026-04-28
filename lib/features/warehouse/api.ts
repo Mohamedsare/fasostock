@@ -17,6 +17,34 @@ const invSelect =
 const movSelect =
   "id, company_id, product_id, movement_kind, quantity, unit_cost, packaging_type, packs_quantity, reference_type, reference_id, notes, created_at, product:products(id, name, sku)";
 
+function fallbackCreatorLabel(userId: string): string {
+  if (userId.length >= 8) return `Utilisateur ${userId.slice(0, 8)}…`;
+  return "Utilisateur";
+}
+
+async function fetchCreatorLabels(
+  supabase: ReturnType<typeof createClient>,
+  userIds: string[],
+): Promise<Map<string, string>> {
+  const map = new Map<string, string>();
+  const uniq = [...new Set(userIds)].filter((id) => id && id.length > 0);
+  for (const id of uniq) map.set(id, fallbackCreatorLabel(id));
+  if (uniq.length === 0) return map;
+
+  const chunkSize = 120;
+  for (let i = 0; i < uniq.length; i += chunkSize) {
+    const chunk = uniq.slice(i, i + chunkSize);
+    const { data, error } = await supabase.from("profiles").select("id, full_name").in("id", chunk);
+    if (error) throw error;
+    for (const row of data ?? []) {
+      const r = row as { id: string; full_name: string | null };
+      const fn = r.full_name?.trim();
+      map.set(r.id, fn && fn.length > 0 ? fn : fallbackCreatorLabel(r.id));
+    }
+  }
+  return map;
+}
+
 function toInt(v: unknown): number {
   if (typeof v === "number" && Number.isFinite(v)) return Math.trunc(v);
   if (typeof v === "string" && v.trim() !== "") return parseInt(v, 10) || 0;
@@ -206,13 +234,13 @@ export async function listWarehouseDispatchInvoices(
   const { data, error } = await supabase
     .from("warehouse_dispatch_invoices")
     .select(
-      "id, company_id, customer_id, document_number, notes, created_at, customer:customers(name), items:warehouse_dispatch_items(quantity, unit_price)",
+      "id, company_id, customer_id, created_by, document_number, notes, created_at, customer:customers(name), items:warehouse_dispatch_items(quantity, unit_price)",
     )
     .eq("company_id", companyId)
     .order("created_at", { ascending: false })
     .limit(limit);
   if (error) throw mapSupabaseError(error);
-  return (data ?? []).map((raw) => {
+  const rows = (data ?? []).map((raw) => {
     const row = raw as Record<string, unknown>;
     const custRaw = row.customer;
     const customer = Array.isArray(custRaw)
@@ -229,12 +257,25 @@ export async function listWarehouseDispatchInvoices(
       companyId: String(row.company_id),
       customerId: row.customer_id != null ? String(row.customer_id) : null,
       customerName: customer?.name != null ? String(customer.name) : null,
+      createdBy: row.created_by != null ? String(row.created_by) : null,
+      createdByLabel: "Utilisateur",
       documentNumber: String(row.document_number ?? "—"),
       totalAmount,
       notes: row.notes != null ? String(row.notes) : null,
       createdAt: String(row.created_at ?? ""),
     };
   });
+  const creatorIds = rows.map((r) => r.createdBy).filter(Boolean) as string[];
+  let labelByUser = new Map<string, string>();
+  try {
+    labelByUser = await fetchCreatorLabels(supabase, creatorIds);
+  } catch {
+    for (const id of creatorIds) labelByUser.set(id, fallbackCreatorLabel(id));
+  }
+  return rows.map((r) => ({
+    ...r,
+    createdByLabel: r.createdBy ? (labelByUser.get(r.createdBy) ?? fallbackCreatorLabel(r.createdBy)) : "Utilisateur",
+  }));
 }
 
 export async function getWarehouseDispatchInvoiceDetails(
@@ -299,6 +340,24 @@ export async function voidWarehouseDispatchInvoice(params: {
   const { error } = await supabase.rpc("warehouse_void_dispatch_invoice", {
     p_company_id: params.companyId,
     p_invoice_id: params.invoiceId,
+  });
+  if (error) throw mapSupabaseError(error);
+}
+
+export async function warehouseAppendDispatchPayment(params: {
+  companyId: string;
+  invoiceId: string;
+  method: "cash" | "mobile_money" | "card";
+  amount?: number | null;
+  mobileProvider?: "orange_money" | "moov_money" | "wave" | null;
+}): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase.rpc("warehouse_append_dispatch_payment", {
+    p_company_id: params.companyId,
+    p_invoice_id: params.invoiceId,
+    p_method: params.method,
+    p_amount: params.amount ?? null,
+    p_mobile_provider: params.mobileProvider ?? null,
   });
   if (error) throw mapSupabaseError(error);
 }
