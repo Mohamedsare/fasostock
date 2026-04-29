@@ -5,6 +5,7 @@ import { TestimonialsSection } from "@/components/marketing/testimonials-section
 import { FaqSection } from "@/components/marketing/faq-section";
 import { NewsletterSubscribeForm } from "@/components/marketing/newsletter-subscribe-form";
 import { SiteHeader } from "@/components/marketing/site-header";
+import { ScrollDirectionFab } from "@/components/marketing/scroll-direction-fab";
 import { InstallAppButton } from "@/components/pwa/install-app-button";
 import type { Metadata } from "next";
 import Image from "next/image";
@@ -1159,6 +1160,7 @@ export default async function Home() {
           </div>
         </div>
       </footer>
+      <ScrollDirectionFab />
     </main>
   );
 }
