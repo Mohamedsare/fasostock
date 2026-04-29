@@ -9,7 +9,11 @@ import type { ProductItem } from "@/lib/features/products/types";
 import { INVOICE_UNITS, defaultInvoiceUnitForProduct } from "@/lib/features/pos/invoice-units";
 import { queryKeys } from "@/lib/query/query-keys";
 import { readPosCartQtyUiForMode } from "@/lib/utils/pos-cart-settings";
-import { warehouseCreateDispatchInvoice } from "@/lib/features/warehouse/api";
+import {
+  getWarehouseDispatchInvoiceDetails,
+  warehouseCreateDispatchInvoice,
+  warehouseUpdateDispatchInvoice,
+} from "@/lib/features/warehouse/api";
 import type { WarehouseDispatchLineInput } from "@/lib/features/warehouse/types";
 import { formatCurrency } from "@/lib/utils/currency";
 import { cn } from "@/lib/utils/cn";
@@ -62,12 +66,14 @@ export function WarehouseDispatchDialog({
   onClose,
   companyId,
   warehouseQtyByProductId,
+  editInvoiceId = null,
   onSuccess,
 }: {
   open: boolean;
   onClose: () => void;
   companyId: string;
   warehouseQtyByProductId: Record<string, number>;
+  editInvoiceId?: string | null;
   onSuccess: () => void;
 }) {
   const qc = useQueryClient();
@@ -98,6 +104,12 @@ export function WarehouseDispatchDialog({
     staleTime: 0,
   });
   const posCartUi = posCartUiQ.data ?? { showQuantityInput: true, showQuantityButtons: false };
+  const editing = Boolean(editInvoiceId);
+  const editInvoiceQ = useQuery({
+    queryKey: editInvoiceId ? ["warehouse-dispatch-dialog-edit", editInvoiceId] : ["none-dispatch-edit"],
+    queryFn: () => getWarehouseDispatchInvoiceDetails(editInvoiceId as string),
+    enabled: open && Boolean(editInvoiceId),
+  });
 
   const [customerId, setCustomerId] = useState("");
   const [paymentMode, setPaymentMode] = useState<DispatchPaymentMode | null>(null);
@@ -127,6 +139,25 @@ export function WarehouseDispatchDialog({
     setCreateName("");
     setCreatePhone("");
   }, [open]);
+
+  useEffect(() => {
+    if (!editing || !editInvoiceQ.data) return;
+    const d = editInvoiceQ.data;
+    setCustomerId(d.customerId ?? "");
+    setCart(
+      d.lines.map((l) => ({
+        productId: l.productId,
+        name: l.productName,
+        quantity: Math.max(1, Math.floor(Number(l.quantity ?? 0))),
+        unitPrice: Math.max(0, Number(l.unitPrice ?? 0)),
+        unit: defaultInvoiceUnitForProduct(l.productUnit ?? undefined),
+        imageUrl: null,
+      })),
+    );
+    setPaymentMode(null);
+    setCashPaidDraft("");
+    setMobileProvider(null);
+  }, [editing, editInvoiceQ.data]);
 
   const products = productsQ.data ?? [];
   const serverCustomers = customersQ.data ?? [];
@@ -246,7 +277,7 @@ export function WarehouseDispatchDialog({
     !creatingCustomer &&
     hasCustomers &&
     Boolean(customerId.trim()) &&
-    paymentMode !== null &&
+    (editing || paymentMode !== null) &&
     cart.length > 0 &&
     whProducts.length > 0;
 
@@ -327,8 +358,13 @@ export function WarehouseDispatchDialog({
         return;
       }
       const stock = warehouseQtyByProductId[row.productId] ?? 0;
-      if (row.quantity > stock) {
-        toast.info(`Pas assez de stock pour « ${row.name} ». Disponible : ${stock}.`);
+      const previousQty =
+        editing && editInvoiceQ.data
+          ? (editInvoiceQ.data.lines.find((x) => x.productId === row.productId)?.quantity ?? 0)
+          : 0;
+      const allowedQty = stock + previousQty;
+      if (row.quantity > allowedQty) {
+        toast.info(`Pas assez de stock pour « ${row.name} ». Disponible : ${allowedQty}.`);
         return;
       }
       out.push({
@@ -341,12 +377,14 @@ export function WarehouseDispatchDialog({
       toast.info("Reconnectez-vous pour synchroniser le client créé hors ligne, puis enregistrez le bon.");
       return;
     }
-    if (!paymentMode) {
+    if (!editing && !paymentMode) {
       toast.info("Choisissez d'abord un mode de paiement (Espèces, Mobile money, Carte ou À crédit).");
       return;
     }
     let paidAmount = 0;
-    if (paymentMode === "cash") {
+    if (editing) {
+      paidAmount = 0;
+    } else if (paymentMode === "cash") {
       const raw = cashPaidDraft.trim();
       if (raw === "") {
         toast.info("Indiquez le montant reçu en espèces. Vous pouvez saisir un montant partiel ou complet.");
@@ -377,13 +415,24 @@ export function WarehouseDispatchDialog({
     };
     setSaving(true);
     try {
-      const res = await warehouseCreateDispatchInvoice({
-        companyId,
-        customerId,
-        notes: `${DISPATCH_PAYMENT_NOTE_PREFIX}${JSON.stringify(paymentInfo)}`,
-        lines: out,
-      });
-      toast.success(`Bon enregistré : ${res.documentNumber}`);
+      if (editing && editInvoiceId) {
+        await warehouseUpdateDispatchInvoice({
+          companyId,
+          invoiceId: editInvoiceId,
+          customerId,
+          notes: editInvoiceQ.data?.notes ?? null,
+          lines: out,
+        });
+        toast.success("Bon modifié avec succès.");
+      } else {
+        const res = await warehouseCreateDispatchInvoice({
+          companyId,
+          customerId,
+          notes: `${DISPATCH_PAYMENT_NOTE_PREFIX}${JSON.stringify(paymentInfo)}`,
+          lines: out,
+        });
+        toast.success(`Bon enregistré : ${res.documentNumber}`);
+      }
       onSuccess();
       setCustomerId("");
       setPaymentMode(null);
@@ -393,7 +442,7 @@ export function WarehouseDispatchDialog({
       setSearch("");
       setCategoryId(null);
     } catch (e) {
-      toastMutationError("warehouse-dispatch", e);
+      toastMutationError(editing ? "warehouse-dispatch-edit" : "warehouse-dispatch", e);
     } finally {
       setSaving(false);
     }
@@ -407,7 +456,7 @@ export function WarehouseDispatchDialog({
   return (
     <>
       <div
-        className="fixed inset-0 z-[60] flex items-center justify-center bg-black/45 px-2.5 py-[18px] sm:px-2.5"
+        className="fixed inset-0 z-60 flex items-center justify-center bg-black/45 px-2.5 py-[18px] sm:px-2.5"
         role="dialog"
         aria-modal="true"
         aria-labelledby="wh-dispatch-panel-title"
@@ -420,6 +469,16 @@ export function WarehouseDispatchDialog({
           onMouseDown={(e) => e.stopPropagation()}
         >
           <div className="flex min-h-0 flex-1 flex-col">
+            {editing && editInvoiceQ.isLoading ? (
+              <div className="flex min-h-[220px] items-center justify-center">
+                <div className="h-10 w-10 animate-spin rounded-full border-2 border-[#F97316] border-t-transparent" />
+              </div>
+            ) : null}
+            {editing && editInvoiceQ.isError ? (
+              <div className="px-4 pb-3">
+                <p className="text-sm text-red-600">Erreur chargement du bon.</p>
+              </div>
+            ) : null}
             {/* Moitié supérieure : bandeau type PosMainArea (Flutter Card + strip) */}
             <div className="flex min-h-0 flex-[1_1_50%] flex-col overflow-y-auto overflow-x-hidden border-b border-[#E5E7EB]">
               <div className="px-3 pb-0 pt-2">
@@ -442,7 +501,7 @@ export function WarehouseDispatchDialog({
                       </button>
                       <div className="relative min-h-[42px] min-w-0 flex-1">
                         <MdSearch
-                          className="pointer-events-none absolute left-3 top-1/2 z-[1] h-5 w-5 -translate-y-1/2 text-[#F97316] min-[900px]:left-4 min-[900px]:h-6 min-[900px]:w-6"
+                          className="pointer-events-none absolute left-3 top-1/2 z-1 h-5 w-5 -translate-y-1/2 text-[#F97316] min-[900px]:left-4 min-[900px]:h-6 min-[900px]:w-6"
                           aria-hidden
                         />
                         <input
@@ -524,7 +583,7 @@ export function WarehouseDispatchDialog({
                                   : "border-[1.5px] border-[#F97316]/35 shadow-[0_2px_8px_rgba(249,115,22,0.08)]",
                               )}
                             >
-                              <div className="mx-auto flex h-[52px] w-full max-w-[4.75rem] shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[#F8F9FA]">
+                              <div className="mx-auto flex h-[52px] w-full max-w-19 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[#F8F9FA]">
                                 {thumb ? (
                                   // eslint-disable-next-line @next/next/no-img-element
                                   <img
@@ -569,7 +628,7 @@ export function WarehouseDispatchDialog({
                 id="wh-dispatch-panel-title"
                 className="shrink-0 px-4 pb-2.5 pt-3.5 text-[20px] font-bold leading-tight text-[#1F2937]"
               >
-                Facture / sortie dépôt
+                {editing ? "Modifier Facture / sortie dépôt" : "Facture / sortie dépôt"}
               </p>
               <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden [-ms-overflow-style:auto] [scrollbar-width:thin]">
                 <div className="px-2 pb-3 min-[900px]:px-3">
@@ -710,10 +769,12 @@ export function WarehouseDispatchDialog({
                     paddingBottom: "max(12px, env(safe-area-inset-bottom, 0px))",
                   }}
                 >
-                  <label className="mb-1 block text-[11px] font-medium text-[#1F2937]">
-                    Mode de paiement
-                  </label>
-                  <div className="grid grid-cols-2 gap-1.5 min-[520px]:grid-cols-4">
+                  {!editing ? (
+                    <>
+                      <label className="mb-1 block text-[11px] font-medium text-[#1F2937]">
+                        Mode de paiement
+                      </label>
+                      <div className="grid grid-cols-2 gap-1.5 min-[520px]:grid-cols-4">
                     {[
                       { id: "cash", label: "Espèces" },
                       { id: "mobile_money", label: "Mobile money" },
@@ -742,8 +803,10 @@ export function WarehouseDispatchDialog({
                         </button>
                       );
                     })}
-                  </div>
-                  {paymentMode === "cash" ? (
+                      </div>
+                    </>
+                  ) : null}
+                  {!editing && paymentMode === "cash" ? (
                     <div className="mt-2">
                       <label className="mb-1 block text-[11px] font-medium text-[#1F2937]">
                         Montant reçu (espèces)
@@ -761,7 +824,7 @@ export function WarehouseDispatchDialog({
                       </p>
                     </div>
                   ) : null}
-                  {paymentMode === "mobile_money" ? (
+                  {!editing && paymentMode === "mobile_money" ? (
                     <div className="mt-2">
                       <label className="mb-1 block text-[11px] font-medium text-[#1F2937]">
                         Opérateur mobile money
@@ -793,7 +856,7 @@ export function WarehouseDispatchDialog({
                       </div>
                     </div>
                   ) : null}
-                  {paymentMode === "card" ? (
+                  {!editing && paymentMode === "card" ? (
                     <p className="mt-2 text-[11px] text-neutral-600">
                       Carte = virement bancaire automatique (montant total).
                     </p>
@@ -814,14 +877,14 @@ export function WarehouseDispatchDialog({
                       <span className="inline-block h-[22px] w-[22px] animate-spin rounded-full border-2 border-white border-t-transparent" />
                     ) : !hasCustomers ? (
                       "Ajoutez d’abord un client"
-                    ) : paymentMode === null ? (
+                    ) : !editing && paymentMode === null ? (
                       "Choisissez le mode de paiement"
                     ) : cart.length === 0 ? (
                       "Ajoutez des articles"
                     ) : !customerId.trim() ? (
                       "Choisissez le client (bandeau)"
                     ) : (
-                      "Enregistrer le bon de sortie"
+                      editing ? "Enregistrer les modifications" : "Enregistrer le bon de sortie"
                     )}
                   </button>
                 </div>
@@ -833,7 +896,7 @@ export function WarehouseDispatchDialog({
 
       {createModalOpen ? (
         <div
-          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 p-4"
+          className="fixed inset-0 z-80 flex items-center justify-center bg-black/50 p-4"
           role="presentation"
         >
           <div

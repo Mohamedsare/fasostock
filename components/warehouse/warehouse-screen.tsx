@@ -10,8 +10,10 @@ import {
   listWarehouseDispatchInvoices,
   listWarehouseInventory,
   listWarehouseMovements,
+  warehouseUpdateDispatchInvoice,
   voidWarehouseDispatchInvoice,
 } from "@/lib/features/warehouse/api";
+import { listCustomers } from "@/lib/features/customers/api";
 import { listProducts } from "@/lib/features/products/api";
 import { listStores as listStoresFull } from "@/lib/features/stores/api";
 import { downloadStoreProductsPdf } from "@/lib/features/stores/generate-store-products-pdf";
@@ -42,7 +44,7 @@ import { toast, toastMutationError } from "@/lib/toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   MdAdd,
   MdAddCircleOutline,
@@ -56,6 +58,7 @@ import {
   MdClose,
   MdDownload,
   MdDeleteOutline,
+  MdEdit,
   MdInventory2,
   MdLink,
   MdLocalShipping,
@@ -118,6 +121,13 @@ type DispatchPaymentInfo = {
   mode: DispatchPaymentMode;
   paidAmount: number;
   mobileProvider: DispatchMobileProvider | null;
+};
+
+type DispatchEditLine = {
+  productId: string;
+  productName: string;
+  quantity: number;
+  unitPrice: number;
 };
 
 function refLabel(m: WarehouseMovement): string {
@@ -281,6 +291,10 @@ export function WarehouseScreen() {
 
   const [transferDetailId, setTransferDetailId] = useState<string | null>(null);
   const [dispatchDetailId, setDispatchDetailId] = useState<string | null>(null);
+  const [dispatchDialogInvoiceId, setDispatchDialogInvoiceId] = useState<string | null>(null);
+  const [dispatchEditId, setDispatchEditId] = useState<string | null>(null);
+  const [dispatchEditCustomerId, setDispatchEditCustomerId] = useState<string>("");
+  const [dispatchEditLines, setDispatchEditLines] = useState<DispatchEditLine[]>([]);
   const [voidingId, setVoidingId] = useState<string | null>(null);
   const [dispatchPdfBusy, setDispatchPdfBusy] = useState<null | {
     id: string;
@@ -313,6 +327,11 @@ export function WarehouseScreen() {
     queryFn: () => listStoresFull(companyId),
     enabled: Boolean(companyId) && canWarehouse,
   });
+  const customersQ = useQuery({
+    queryKey: queryKeys.customers(companyId),
+    queryFn: () => listCustomers(companyId),
+    enabled: Boolean(companyId) && canWarehouse,
+  });
 
   const detailTransferQ = useQuery({
     queryKey: transferDetailId ? queryKeys.stockTransferDetail(transferDetailId) : ["none"],
@@ -325,11 +344,17 @@ export function WarehouseScreen() {
     queryFn: () => getWarehouseDispatchInvoiceDetails(dispatchDetailId as string),
     enabled: Boolean(dispatchDetailId),
   });
+  const dispatchEditQ = useQuery({
+    queryKey: dispatchEditId ? ["warehouse-dispatch-edit", dispatchEditId] : ["none-edit"],
+    queryFn: () => getWarehouseDispatchInvoiceDetails(dispatchEditId as string),
+    enabled: Boolean(dispatchEditId),
+  });
 
   const inventory = invQ.data ?? [];
   const movements = movQ.data ?? [];
   const dispatchRows = dispatchQ.data ?? [];
   const warehouseTransfers = whTransfersQ.data ?? [];
+  const customers = customersQ.data ?? [];
 
   const warehouseQtyByProductId = useMemo(() => {
     const m: Record<string, number> = {};
@@ -505,6 +530,46 @@ export function WarehouseScreen() {
     },
     onError: (e) => toastMutationError("dispatch-void", e),
   });
+  const updateDispatchMut = useMutation({
+    mutationFn: (payload: {
+      invoiceId: string;
+      customerId: string | null;
+      notes: string | null;
+      lines: DispatchEditLine[];
+    }) =>
+      warehouseUpdateDispatchInvoice({
+        companyId,
+        invoiceId: payload.invoiceId,
+        customerId: payload.customerId,
+        notes: payload.notes,
+        lines: payload.lines.map((l) => ({
+          productId: l.productId,
+          quantity: l.quantity,
+          unitPrice: l.unitPrice,
+        })),
+      }),
+    onSuccess: async () => {
+      toast.success("Bon de sortie modifié. Stock et mouvements mis à jour.");
+      setDispatchEditId(null);
+      setDispatchEditLines([]);
+      setDispatchEditCustomerId("");
+      await refreshAll();
+    },
+    onError: (e) => toastMutationError("dispatch-edit", e),
+  });
+
+  useEffect(() => {
+    if (!dispatchEditQ.data) return;
+    setDispatchEditCustomerId(dispatchEditQ.data.customerId ?? "");
+    setDispatchEditLines(
+      dispatchEditQ.data.lines.map((l) => ({
+        productId: l.productId,
+        productName: l.productName,
+        quantity: Math.max(1, Math.floor(Number(l.quantity ?? 0))),
+        unitPrice: Math.max(0, Math.round(Number(l.unitPrice ?? 0))),
+      })),
+    );
+  }, [dispatchEditQ.data]);
 
   function storeName(id: string | null) {
     if (!id) return "—";
@@ -863,7 +928,10 @@ export function WarehouseScreen() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setDispatchOpen(true)}
+                    onClick={() => {
+                      setDispatchDialogInvoiceId(null);
+                      setDispatchOpen(true);
+                    }}
                     className="inline-flex min-h-[36px] min-w-[44px] items-center gap-1.5 rounded-[12px] border-0 bg-[#F97316] px-3 py-1.5 text-[13px] font-bold text-white shadow-sm active:opacity-90 sm:min-h-[38px] sm:gap-2 sm:rounded-[14px] sm:px-4 sm:py-2 sm:text-sm"
                   >
                     <MdReceiptLong className="h-[18px] w-[18px] shrink-0 sm:h-5 sm:w-5" />
@@ -1248,6 +1316,10 @@ export function WarehouseScreen() {
               loading={dispatchQ.isLoading}
               error={dispatchQ.error}
               onOpen={(r) => setDispatchDetailId(r.id)}
+              onEdit={(r) => {
+                setDispatchDialogInvoiceId(r.id);
+                setDispatchOpen(true);
+              }}
               onPrint={async (r) => {
                 try {
                   const d = await getWarehouseDispatchInvoiceDetails(r.id);
@@ -1296,7 +1368,7 @@ export function WarehouseScreen() {
 
       {actionMenuOpen ? (
         <div
-          className="fixed inset-0 z-[55] flex flex-col justify-end bg-black/45 sm:items-center sm:justify-center sm:p-4"
+          className="fixed inset-0 z-55 flex flex-col justify-end bg-black/45 sm:items-center sm:justify-center sm:p-4"
           role="dialog"
           aria-modal="true"
         >
@@ -1361,6 +1433,7 @@ export function WarehouseScreen() {
                 subtitle="Sortie de produits avec document"
                 onClick={() => {
                   setActionMenuOpen(false);
+                  setDispatchDialogInvoiceId(null);
                   setDispatchOpen(true);
                 }}
               />
@@ -1407,9 +1480,13 @@ export function WarehouseScreen() {
       />
       <WarehouseDispatchDialog
         open={dispatchOpen}
-        onClose={() => setDispatchOpen(false)}
+        onClose={() => {
+          setDispatchOpen(false);
+          setDispatchDialogInvoiceId(null);
+        }}
         companyId={companyId}
         warehouseQtyByProductId={warehouseQtyByProductId}
+        editInvoiceId={dispatchDialogInvoiceId}
         onSuccess={refreshAll}
       />
       <WarehouseExitSaleDialog
@@ -1443,7 +1520,7 @@ export function WarehouseScreen() {
       />
 
       {transferDetailId ? (
-        <div className="fixed inset-0 z-[56] flex flex-col justify-end bg-black/45 sm:items-center sm:justify-center sm:p-4" role="dialog">
+        <div className="fixed inset-0 z-56 flex flex-col justify-end bg-black/45 sm:items-center sm:justify-center sm:p-4" role="dialog">
           <div className="flex max-h-[min(88dvh,640px)] w-full flex-col rounded-t-2xl bg-fs-surface shadow-2xl sm:max-h-[85vh] sm:max-w-lg sm:rounded-2xl">
             <div className="flex items-center justify-between border-b border-black/6 px-4 py-3">
               <h2 className="text-base font-bold">Détail transfert</h2>
@@ -1561,8 +1638,126 @@ export function WarehouseScreen() {
         </div>
       ) : null}
 
+      {dispatchEditId ? (
+        <div className="fixed inset-0 z-57 flex flex-col justify-end bg-black/45 sm:items-center sm:justify-center sm:p-4" role="dialog">
+          <div className="flex max-h-[min(90dvh,680px)] w-full flex-col rounded-t-2xl bg-fs-surface shadow-2xl sm:max-h-[85vh] sm:max-w-2xl sm:rounded-2xl">
+            <div className="flex items-center justify-between border-b border-black/6 px-4 py-3">
+              <h2 className="text-base font-bold">Modifier bon de sortie</h2>
+              <button
+                type="button"
+                onClick={() => setDispatchEditId(null)}
+                className="p-2"
+                aria-label="Fermer"
+                disabled={updateDispatchMut.isPending}
+              >
+                <MdClose className="h-6 w-6" />
+              </button>
+            </div>
+            {dispatchEditQ.isLoading ? (
+              <div className="flex min-h-[180px] items-center justify-center">
+                <div className="h-9 w-9 animate-spin rounded-full border-2 border-[#F97316] border-t-transparent" />
+              </div>
+            ) : null}
+            {dispatchEditQ.isError ? (
+              <div className="p-4">
+                <FsQueryErrorPanel error={dispatchEditQ.error} onRetry={() => dispatchEditQ.refetch()} />
+              </div>
+            ) : null}
+            {dispatchEditQ.data ? (
+              <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+                <p className="text-sm font-bold text-fs-text">{dispatchEditQ.data.documentNumber}</p>
+                <div className="mt-3">
+                  <label className="mb-1 block text-xs font-semibold text-neutral-700">Client</label>
+                  <select
+                    className={fsInputClass("h-10")}
+                    value={dispatchEditCustomerId}
+                    onChange={(e) => setDispatchEditCustomerId(e.target.value)}
+                    disabled={updateDispatchMut.isPending}
+                  >
+                    <option value="">Sans client</option>
+                    {customers.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="mt-4 overflow-x-auto">
+                  <table className="w-full min-w-[640px] border-collapse text-left text-sm">
+                    <thead>
+                      <tr className="border-b border-black/8 bg-[#F5F5F5] text-[11px] font-bold uppercase tracking-wide text-neutral-700">
+                        <th className="px-3 py-2">Produit</th>
+                        <th className="w-[130px] px-3 py-2">Quantité</th>
+                        <th className="w-[150px] px-3 py-2">P.U.</th>
+                        <th className="w-[160px] px-3 py-2 text-right">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {dispatchEditLines.map((line) => (
+                        <tr key={line.productId} className="border-b border-black/6">
+                          <td className="px-3 py-2.5 font-medium">{line.productName}</td>
+                          <td className="px-3 py-2.5">
+                            <input
+                              className={fsInputClass("h-9 text-sm")}
+                              inputMode="numeric"
+                              value={String(line.quantity)}
+                              onChange={(e) => {
+                                const q = Math.max(1, Math.floor(Number(e.target.value || 0)));
+                                setDispatchEditLines((prev) =>
+                                  prev.map((x) => (x.productId === line.productId ? { ...x, quantity: q } : x)),
+                                );
+                              }}
+                              disabled={updateDispatchMut.isPending}
+                            />
+                          </td>
+                          <td className="px-3 py-2.5">
+                            <input
+                              className={fsInputClass("h-9 text-sm")}
+                              inputMode="numeric"
+                              value={String(Math.round(line.unitPrice))}
+                              onChange={(e) => {
+                                const pu = Math.max(0, Math.round(Number(e.target.value || 0)));
+                                setDispatchEditLines((prev) =>
+                                  prev.map((x) => (x.productId === line.productId ? { ...x, unitPrice: pu } : x)),
+                                );
+                              }}
+                              disabled={updateDispatchMut.isPending}
+                            />
+                          </td>
+                          <td className="px-3 py-2.5 text-right font-bold tabular-nums text-[#F97316]">
+                            {formatCurrency(line.quantity * line.unitPrice)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <p className="mt-4 text-right text-base font-extrabold text-fs-text">
+                  Total {formatCurrency(dispatchEditLines.reduce((s, l) => s + l.quantity * l.unitPrice, 0))}
+                </p>
+                <button
+                  type="button"
+                  disabled={updateDispatchMut.isPending || dispatchEditLines.length === 0}
+                  onClick={() => {
+                    void updateDispatchMut.mutate({
+                      invoiceId: dispatchEditQ.data.id,
+                      customerId: dispatchEditCustomerId.trim() || null,
+                      notes: dispatchEditQ.data.notes,
+                      lines: dispatchEditLines,
+                    });
+                  }}
+                  className="fs-touch-target mt-4 w-full rounded-[10px] bg-[#F97316] py-3.5 text-sm font-semibold text-white disabled:opacity-50"
+                >
+                  {updateDispatchMut.isPending ? "Mise à jour…" : "Enregistrer les modifications"}
+                </button>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+
       {dispatchDetailId ? (
-        <div className="fixed inset-0 z-[56] flex flex-col justify-end bg-black/45 sm:items-center sm:justify-center sm:p-4" role="dialog">
+        <div className="fixed inset-0 z-56 flex flex-col justify-end bg-black/45 sm:items-center sm:justify-center sm:p-4" role="dialog">
           <div className="flex max-h-[min(88dvh,640px)] w-full flex-col rounded-t-2xl bg-fs-surface shadow-2xl sm:max-h-[85vh] sm:max-w-lg sm:rounded-2xl">
             <div className="flex items-center justify-between border-b border-black/6 px-4 py-3">
               <h2 className="text-base font-bold">Bon de sortie</h2>
@@ -1712,7 +1907,7 @@ function Kpi({
   return (
     <FsCard
       padding="px-2 py-1.5 sm:p-3"
-      className="min-h-[80px] border border-black/[0.06] shadow-none sm:min-h-0 sm:rounded-2xl"
+      className="min-h-[80px] border border-black/6 shadow-none sm:min-h-0 sm:rounded-2xl"
     >
       <div
         className="[&>svg]:h-[18px] [&>svg]:w-[18px] sm:[&>svg]:h-5 sm:[&>svg]:w-5"
@@ -1750,7 +1945,7 @@ function ActionRow({
     <button
       type="button"
       onClick={onClick}
-      className="mb-2 flex w-full items-start gap-3 rounded-2xl border border-black/[0.06] p-3 text-left transition-colors active:bg-neutral-50"
+      className="mb-2 flex w-full items-start gap-3 rounded-2xl border border-black/6 p-3 text-left transition-colors active:bg-neutral-50"
     >
       <div
         className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-white"
@@ -2249,6 +2444,7 @@ function HistoriquesTab({
   loading,
   error,
   onOpen,
+  onEdit,
   onPrint,
   printingId,
   onRetry,
@@ -2261,6 +2457,7 @@ function HistoriquesTab({
   loading: boolean;
   error: unknown;
   onOpen: (r: WarehouseDispatchInvoiceSummary) => void;
+  onEdit: (r: WarehouseDispatchInvoiceSummary) => void;
   onPrint: (r: WarehouseDispatchInvoiceSummary) => void | Promise<void>;
   printingId: string | null;
   onRetry: () => void;
@@ -2318,6 +2515,15 @@ function HistoriquesTab({
                   <td className="px-3 py-2.5 text-right font-bold tabular-nums text-[#F97316]">{formatCurrency(remaining)}</td>
                   <td className="px-3 py-2.5">
                     <div className="flex items-center justify-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => onEdit(r)}
+                        className="inline-flex min-h-[32px] min-w-[32px] items-center justify-center rounded-lg border border-[#2563EB]/35 bg-[#EFF6FF] text-[#1D4ED8]"
+                        aria-label="Modifier"
+                        title="Modifier"
+                      >
+                        <MdEdit className="h-4.5 w-4.5" />
+                      </button>
                       <button
                         type="button"
                         onClick={() => onOpen(r)}

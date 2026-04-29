@@ -361,3 +361,25 @@ export async function warehouseAppendDispatchPayment(params: {
   });
   if (error) throw mapSupabaseError(error);
 }
+
+export async function warehouseUpdateDispatchInvoice(params: {
+  companyId: string;
+  invoiceId: string;
+  customerId: string | null;
+  notes: string | null;
+  lines: WarehouseDispatchLineInput[];
+}): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase.rpc("warehouse_update_dispatch_invoice", {
+    p_company_id: params.companyId,
+    p_invoice_id: params.invoiceId,
+    p_customer_id: params.customerId,
+    p_notes: params.notes,
+    p_lines: params.lines.map((l) => ({
+      product_id: l.productId,
+      quantity: l.quantity,
+      unit_price: l.unitPrice,
+    })),
+  });
+  if (error) throw mapSupabaseError(error);
+}
