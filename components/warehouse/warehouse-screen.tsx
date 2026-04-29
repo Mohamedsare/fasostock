@@ -138,6 +138,8 @@ function refLabel(m: WarehouseMovement): string {
       return "Transfert boutique";
     case "warehouse_dispatch":
       return "Bon / facture dépôt";
+    case "warehouse_dispatch_void":
+      return "Annulation bon dépôt";
     case "adjustment":
       return "Ajustement inventaire";
     case "manual":
@@ -1323,6 +1325,19 @@ export function WarehouseScreen() {
                 setDispatchDialogInvoiceId(r.id);
                 setDispatchOpen(true);
               }}
+              onVoid={(r) => {
+                if (!companyId) return;
+                if (
+                  !confirm(
+                    `Annuler le bon « ${r.documentNumber} » ? Le stock au dépôt sera réintégré et l'opération sera tracée dans les mouvements.`,
+                  )
+                ) {
+                  return;
+                }
+                setVoidingId(r.id);
+                voidDispatchMut.mutate({ invoiceId: r.id });
+              }}
+              voidingId={voidingId}
               onPrint={async (r) => {
                 try {
                   const d = await getWarehouseDispatchInvoiceDetails(r.id);
@@ -2448,6 +2463,8 @@ function HistoriquesTab({
   error,
   onOpen,
   onEdit,
+  onVoid,
+  voidingId,
   onPrint,
   printingId,
   onRetry,
@@ -2461,6 +2478,8 @@ function HistoriquesTab({
   error: unknown;
   onOpen: (r: WarehouseDispatchInvoiceSummary) => void;
   onEdit: (r: WarehouseDispatchInvoiceSummary) => void;
+  onVoid: (r: WarehouseDispatchInvoiceSummary) => void;
+  voidingId: string | null;
   onPrint: (r: WarehouseDispatchInvoiceSummary) => void | Promise<void>;
   printingId: string | null;
   onRetry: () => void;
@@ -2501,6 +2520,7 @@ function HistoriquesTab({
               <th className="px-3 py-2 text-right whitespace-nowrap">Déjà encaissé</th>
               <th className="px-3 py-2 text-right">Reste</th>
               <th className="px-3 py-2 text-center">Action</th>
+              <th className="px-3 py-2 text-center">Annuler</th>
             </tr>
           </thead>
           <tbody>
@@ -2541,6 +2561,18 @@ function HistoriquesTab({
                         className="inline-flex min-h-[32px] items-center rounded-lg bg-[#F97316] px-3 py-1 text-xs font-bold text-white disabled:opacity-50"
                       >
                         {printingId === r.id ? "Impression…" : "Imprimer direct"}
+                      </button>
+                    </div>
+                  </td>
+                  <td className="px-3 py-2.5">
+                    <div className="flex items-center justify-center">
+                      <button
+                        type="button"
+                        disabled={voidingId === r.id}
+                        onClick={() => onVoid(r)}
+                        className="inline-flex min-h-[32px] items-center rounded-lg border border-red-200 bg-red-50 px-3 py-1 text-xs font-bold text-red-700 disabled:opacity-50"
+                      >
+                        {voidingId === r.id ? "…" : "Annuler"}
                       </button>
                     </div>
                   </td>
