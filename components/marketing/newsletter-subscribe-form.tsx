@@ -31,6 +31,8 @@ export function NewsletterSubscribeForm() {
   const [startedAt] = useState(() => Date.now());
   const [turnstileToken, setTurnstileToken] = useState("");
   const [turnstileReady, setTurnstileReady] = useState(false);
+  const [turnstileWidgetRendered, setTurnstileWidgetRendered] = useState(false);
+  const [turnstileLoadError, setTurnstileLoadError] = useState("");
   const widgetRef = useRef<HTMLDivElement | null>(null);
   const widgetIdRef = useRef<string | null>(null);
   const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim() ?? "";
@@ -41,16 +43,35 @@ export function NewsletterSubscribeForm() {
     widgetIdRef.current = window.turnstile.render(widgetRef.current, {
       sitekey: turnstileSiteKey,
       theme: "dark",
-      callback: (token: string) => setTurnstileToken(token),
+      callback: (token: string) => {
+        setTurnstileToken(token);
+        setTurnstileLoadError("");
+      },
       "expired-callback": () => setTurnstileToken(""),
-      "error-callback": () => setTurnstileToken(""),
+      "error-callback": () => {
+        setTurnstileToken("");
+        setTurnstileLoadError("Le widget anti-bot a rencontré une erreur.");
+      },
     });
+    setTurnstileWidgetRendered(true);
     return () => {
       if (widgetIdRef.current && window.turnstile) {
         window.turnstile.remove(widgetIdRef.current);
       }
       widgetIdRef.current = null;
+      setTurnstileWidgetRendered(false);
     };
+  }, [turnstileReady, turnstileSiteKey]);
+
+  useEffect(() => {
+    if (!turnstileSiteKey) return;
+    if (turnstileReady) return;
+    const timer = window.setTimeout(() => {
+      setTurnstileLoadError(
+        "Le widget anti-bot ne se charge pas. Désactivez le bloqueur de contenu ou rechargez la page.",
+      );
+    }, 6000);
+    return () => window.clearTimeout(timer);
   }, [turnstileReady, turnstileSiteKey]);
 
   async function onSubmit(e: React.FormEvent) {
@@ -62,8 +83,14 @@ export function NewsletterSubscribeForm() {
       setError("Entrez une adresse e-mail.");
       return;
     }
+    if (turnstileSiteKey && !turnstileWidgetRendered) {
+      setError(
+        "Le widget anti-bot n'est pas disponible. Rechargez la page ou vérifiez votre connexion.",
+      );
+      return;
+    }
     if (turnstileSiteKey && !turnstileToken) {
-      setError("Veuillez valider l'anti-bot.");
+      setError("Veuillez valider l'anti-bot visible ci-dessous.");
       return;
     }
     setLoading(true);
@@ -102,7 +129,15 @@ export function NewsletterSubscribeForm() {
         <Script
           src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
           strategy="afterInteractive"
-          onLoad={() => setTurnstileReady(true)}
+          onLoad={() => {
+            setTurnstileReady(true);
+            setTurnstileLoadError("");
+          }}
+          onError={() => {
+            setTurnstileLoadError(
+              "Impossible de charger l'anti-bot. Vérifiez votre réseau ou bloqueur de scripts.",
+            );
+          }}
         />
       ) : null}
       <form onSubmit={onSubmit} className="grid gap-2 sm:grid-cols-[1fr_auto]">
@@ -140,7 +175,13 @@ export function NewsletterSubscribeForm() {
       </form>
       {turnstileSiteKey ? (
         <div className="pt-1">
-          <div ref={widgetRef} />
+          <div
+            ref={widgetRef}
+            className="min-h-[66px] rounded-lg border border-white/10 bg-[#0e223f]/55 p-1"
+          />
+          {turnstileLoadError ? (
+            <p className="mt-1 text-[11px] text-amber-300">{turnstileLoadError}</p>
+          ) : null}
         </div>
       ) : null}
       <p className="text-xs text-white/60">
