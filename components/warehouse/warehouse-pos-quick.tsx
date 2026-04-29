@@ -107,7 +107,7 @@ export function WhCategoryChipsRow({
   onSelect: (id: string | null) => void;
 }) {
   return (
-    <div className="h-9 shrink-0 overflow-x-auto overflow-y-hidden min-[900px]:h-11 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+    <div className="h-8 shrink-0 overflow-x-auto overflow-y-hidden min-[900px]:h-10 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       <div className="flex w-max gap-1 px-2.5 pb-0.5 min-[900px]:gap-2 min-[900px]:px-4 min-[900px]:pb-1">
         <WhCategoryChip label="Tous" selected={selectedId === null} onClick={() => onSelect(null)} />
         {categories.map((c) => (
@@ -124,7 +124,7 @@ function WhCategoryChip({ label, selected, onClick }: { label: string; selected:
       type="button"
       onClick={onClick}
       className={cn(
-        "shrink-0 rounded-full border-2 px-2.5 py-1.5 text-[12px] font-semibold transition-colors min-[900px]:px-3.5 min-[900px]:py-2.5 min-[900px]:text-sm",
+        "shrink-0 rounded-lg border px-2.5 py-1 text-[12px] font-semibold transition-colors min-[900px]:rounded-xl min-[900px]:px-3.5 min-[900px]:py-1.5 min-[900px]:text-sm",
         selected ? "border-[#F97316] bg-[#F97316] text-white" : "border-[#E5E7EB] bg-[#F8F9FA] text-[#1F2937]",
       )}
     >
