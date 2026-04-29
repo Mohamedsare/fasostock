@@ -147,7 +147,7 @@ export function NewsletterSubscribeForm() {
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2.5">
       {turnstileSiteKey && captchaRequired ? (
         <Script
           src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
@@ -175,7 +175,7 @@ export function NewsletterSubscribeForm() {
             /* honeypot: intentionally ignored */
           }}
         />
-        <div className="flex h-11 items-center gap-2 rounded-xl border border-white/15 bg-[#0e223f] px-4 text-white/55">
+        <div className="flex h-10 items-center gap-2 rounded-lg border border-white/15 bg-[#0e223f] px-3.5 text-white/55 sm:h-11 sm:rounded-xl sm:px-4">
           <MdMailOutline className="h-4 w-4" />
           <input
             value={email}
@@ -190,7 +190,7 @@ export function NewsletterSubscribeForm() {
         <button
           type="submit"
           disabled={loading}
-          className="inline-flex h-11 items-center justify-center gap-1.5 rounded-xl bg-fs-accent px-6 text-sm font-black text-white disabled:opacity-60"
+          className="inline-flex h-10 items-center justify-center gap-1.5 rounded-lg bg-fs-accent px-5 text-sm font-black text-white disabled:opacity-60 sm:h-11 sm:rounded-xl sm:px-6"
         >
           {loading ? "Envoi..." : "S'abonner"}
           <MdArrowForward className="h-4 w-4" />
@@ -198,10 +198,13 @@ export function NewsletterSubscribeForm() {
       </form>
       {turnstileSiteKey && captchaRequired ? (
         <div className="pt-1">
-          <div
-            ref={widgetRef}
-            className="min-h-[66px] rounded-lg border border-white/10 bg-[#0e223f]/55 p-1"
-          />
+          <div className="overflow-hidden rounded-lg border border-white/10 bg-[#0e223f]/55 px-1 py-1.5 sm:p-1">
+            <div className="flex justify-center">
+              <div className="origin-top max-[380px]:scale-95 max-[340px]:scale-90">
+                <div ref={widgetRef} className="min-h-[65px] w-[300px] max-w-[300px]" />
+              </div>
+            </div>
+          </div>
           {turnstileLoadError ? (
             <p className="mt-1 text-[11px] text-amber-300">{turnstileLoadError}</p>
           ) : null}
@@ -212,7 +215,7 @@ export function NewsletterSubscribeForm() {
           Anti-bot allégé sur cet environnement (captcha non obligatoire côté serveur).
         </p>
       ) : null}
-      <p className="text-xs text-white/60">
+      <p className="text-[11px] text-white/60 sm:text-xs">
         {error ? <span className="text-red-300">{error}</span> : message || "Pas de spam. Désabonnement à tout moment."}
       </p>
     </div>
