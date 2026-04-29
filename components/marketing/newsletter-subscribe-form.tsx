@@ -147,7 +147,7 @@ export function NewsletterSubscribeForm() {
   }
 
   return (
-    <div className="space-y-2.5">
+    <div className="min-w-0 w-full space-y-2.5 overflow-x-clip">
       {turnstileSiteKey && captchaRequired ? (
         <Script
           src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
@@ -163,7 +163,7 @@ export function NewsletterSubscribeForm() {
           }}
         />
       ) : null}
-      <form onSubmit={onSubmit} className="grid gap-2 sm:grid-cols-[1fr_auto]">
+      <form onSubmit={onSubmit} className="min-w-0 w-full grid gap-2 sm:grid-cols-[1fr_auto]">
         <input
           type="text"
           name="website"
@@ -175,14 +175,14 @@ export function NewsletterSubscribeForm() {
             /* honeypot: intentionally ignored */
           }}
         />
-        <div className="flex h-10 items-center gap-2 rounded-lg border border-white/15 bg-[#0e223f] px-3.5 text-white/55 sm:h-11 sm:rounded-xl sm:px-4">
+        <div className="min-w-0 w-full flex h-10 items-center gap-2 rounded-lg border border-white/15 bg-[#0e223f] px-3.5 text-white/55 sm:h-11 sm:rounded-xl sm:px-4">
           <MdMailOutline className="h-4 w-4" />
           <input
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             type="email"
             required
-            className="h-full w-full bg-transparent text-sm text-white placeholder:text-white/45 outline-none"
+            className="min-w-0 h-full w-full bg-transparent text-sm text-white placeholder:text-white/45 outline-none"
             placeholder="Votre adresse e-mail"
             autoComplete="email"
           />
@@ -190,7 +190,7 @@ export function NewsletterSubscribeForm() {
         <button
           type="submit"
           disabled={loading}
-          className="inline-flex h-10 items-center justify-center gap-1.5 rounded-lg bg-fs-accent px-5 text-sm font-black text-white disabled:opacity-60 sm:h-11 sm:rounded-xl sm:px-6"
+          className="inline-flex w-full sm:w-auto h-10 items-center justify-center gap-1.5 rounded-lg bg-fs-accent px-5 text-sm font-black text-white disabled:opacity-60 sm:h-11 sm:rounded-xl sm:px-6"
         >
           {loading ? "Envoi..." : "S'abonner"}
           <MdArrowForward className="h-4 w-4" />
@@ -198,10 +198,10 @@ export function NewsletterSubscribeForm() {
       </form>
       {turnstileSiteKey && captchaRequired ? (
         <div className="pt-1">
-          <div className="overflow-hidden rounded-lg border border-white/10 bg-[#0e223f]/55 px-1 py-1.5 sm:p-1">
-            <div className="flex justify-center">
-              <div className="origin-top max-[380px]:scale-95 max-[340px]:scale-90">
-                <div ref={widgetRef} className="min-h-[65px] w-[300px] max-w-[300px]" />
+          <div className="w-full max-w-full overflow-hidden rounded-lg border border-white/10 bg-[#0e223f]/55 px-1 py-1.5 sm:p-1">
+            <div className="flex w-full justify-center overflow-hidden">
+              <div className="w-full max-w-[300px] overflow-hidden">
+                <div ref={widgetRef} className="min-h-[65px] w-[300px] max-w-none" />
               </div>
             </div>
           </div>
