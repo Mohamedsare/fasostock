@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-import Image from "next/image";
-import Link from "next/link";
+import { SiteHeader } from "@/components/marketing/site-header";
 
 export const metadata: Metadata = {
   title: "Mentions légales",
@@ -11,24 +10,7 @@ export const metadata: Metadata = {
 export default function MentionsLegalesPage() {
   return (
     <main className="min-h-dvh bg-[#f7f8fb] text-[#17253a]">
-      <header className="sticky top-0 z-40 border-b border-black/8 bg-white/95 backdrop-blur-md">
-        <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
-          <Link href="/" className="inline-flex items-center gap-2.5">
-            <Image src="/fs.png" alt="FasoStock" width={44} height={44} className="h-11 w-11 object-contain" priority />
-            <div className="leading-tight">
-              <p className="text-base font-black tracking-tight text-neutral-900 sm:text-lg">FasoStock</p>
-              <p className="text-[0.67rem] font-semibold uppercase tracking-[0.12em] text-neutral-500">Pilotage commercial</p>
-            </div>
-          </Link>
-          <nav className="hidden items-center gap-2 md:flex">
-            <Link href="/#fonctionnalites-principales" className="rounded-xl px-3 py-2 text-sm font-semibold text-neutral-700 hover:bg-black/5">Fonctionnalités</Link>
-            <Link href="/#tarifs" className="rounded-xl px-3 py-2 text-sm font-semibold text-neutral-700 hover:bg-black/5">Tarifs</Link>
-            <Link href="/#temoignages" className="rounded-xl px-3 py-2 text-sm font-semibold text-neutral-700 hover:bg-black/5">Témoignages</Link>
-            <Link href="/#faq" className="rounded-xl px-3 py-2 text-sm font-semibold text-neutral-700 hover:bg-black/5">FAQ</Link>
-          </nav>
-          <Link href="/login" className="rounded-xl bg-fs-accent px-4 py-2 text-sm font-bold text-white shadow-sm hover:opacity-95">Se connecter</Link>
-        </div>
-      </header>
+      <SiteHeader sectionHrefPrefix="/" />
       <article className="mx-auto mt-6 w-full max-w-4xl rounded-3xl border border-black/10 bg-white p-5 shadow-[0_18px_40px_-30px_rgba(15,23,42,0.45)] sm:mt-8 sm:p-8">
         <p className="text-sm font-bold uppercase tracking-wide text-fs-accent">Mentions légales</p>
         <h1 className="mt-2 text-3xl font-black tracking-tight sm:text-4xl">Mentions légales — FasoStock</h1>

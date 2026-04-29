@@ -102,3 +102,22 @@ export type AdminPublicPartner = {
   isActive: boolean;
   createdAt: string | null;
 };
+
+export type AdminPublicLandingMedia = {
+  key: string;
+  imageUrl: string;
+  updatedAt: string | null;
+};
+
+export type AdminPublicLandingSetting = {
+  key: string;
+  value: string;
+  updatedAt: string | null;
+};
+
+export type AdminNewsletterSubscriber = {
+  id: string;
+  email: string;
+  source: string;
+  createdAt: string | null;
+};

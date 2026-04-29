@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { PartnersSection } from "@/components/marketing/partners-section";
 import { TestimonialsSection } from "@/components/marketing/testimonials-section";
 import { FaqSection } from "@/components/marketing/faq-section";
+import { NewsletterSubscribeForm } from "@/components/marketing/newsletter-subscribe-form";
+import { SiteHeader } from "@/components/marketing/site-header";
 import { InstallAppButton } from "@/components/pwa/install-app-button";
 import type { Metadata } from "next";
 import Image from "next/image";
@@ -16,16 +18,13 @@ import {
   MdCardGiftcard,
   MdCheckCircle,
   MdCreditCard,
-  MdKeyboardArrowDown,
   MdEmojiEmotions,
   MdGroups,
   MdHeadsetMic,
   MdInventory2,
   MdLock,
-  MdMenu,
   MdMailOutline,
   MdOutlinePhoneAndroid,
-  MdPhone,
   MdOfflineBolt,
   MdOutlinePlayCircleFilled,
   MdPointOfSale,
@@ -52,6 +51,17 @@ export const metadata: Metadata = {
   description:
     "FasoStock aide les commerces du Burkina Faso a gerer stock, ventes, credit client et caisse depuis mobile et web.",
   alternates: { canonical: "/" },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
+  },
 };
 
 const highlights = [
@@ -251,76 +261,37 @@ export default async function Home() {
     name: String(p.name ?? "Partenaire"),
     logoUrl: String(p.logo_url ?? "/fs.png"),
   }));
+  const { data: supportMediaRaw } = await supabase
+    .from("public_landing_media")
+    .select("image_url")
+    .eq("key", "support_section_image")
+    .maybeSingle();
+  const supportSectionImageUrl = String((supportMediaRaw as { image_url?: string } | null)?.image_url ?? "").trim();
+  const { data: landingSettingsRaw } = await supabase
+    .from("public_landing_settings")
+    .select("key, value");
+  const landingSettings = Object.fromEntries(
+    ((landingSettingsRaw ?? []) as Array<Record<string, unknown>>).map((row) => [
+      String(row.key ?? ""),
+      String(row.value ?? ""),
+    ]),
+  ) as Record<string, string>;
+  const heroBannerImageUrl = (landingSettings.hero_banner_image_url ?? "").trim();
+  const supportDemoUrl = (landingSettings.support_demo_url ?? "").trim() || "/help";
+  const supportWhatsappUrl = (landingSettings.support_whatsapp_url ?? "").trim() || "/help";
+  const footerWhatsappUrl = (landingSettings.footer_whatsapp_url ?? "").trim() || "https://wa.me/22603079618";
+  const footerFacebookUrl = (landingSettings.footer_facebook_url ?? "").trim() || "https://facebook.com";
+  const footerYoutubeUrl = (landingSettings.footer_youtube_url ?? "").trim() || "https://youtube.com";
+  const footerTiktokUrl = (landingSettings.footer_tiktok_url ?? "").trim() || "https://tiktok.com";
+  const footerLinkedinUrl = (landingSettings.footer_linkedin_url ?? "").trim() || "https://linkedin.com";
+  const trialDays = Math.max(1, Number.parseInt(landingSettings.pricing_trial_days ?? "7", 10) || 7);
+  const monthlyAmount = Math.max(0, Number.parseInt(landingSettings.pricing_monthly_amount ?? "15000", 10) || 15000);
+  const yearlyAmount = Math.max(0, Number.parseInt(landingSettings.pricing_yearly_amount ?? "125000", 10) || 125000);
+  const yearlySavings = Math.max(0, Number.parseInt(landingSettings.pricing_yearly_savings ?? "55000", 10) || 55000);
 
   return (
     <main className="min-h-dvh bg-[radial-gradient(circle_at_top,rgba(232,93,44,0.14),transparent_42%),linear-gradient(to_bottom,#fff,#fff7f3)] text-neutral-900">
-      <header className="sticky top-0 z-40 border-b border-black/8 bg-white/95 backdrop-blur-md">
-        <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
-          <Link href="/" className="inline-flex items-center gap-2.5">
-            <Image src="/fs.png" alt="FasoStock" width={44} height={44} className="h-11 w-11 object-contain" priority />
-            <span className="text-xl font-extrabold tracking-tight">
-              <span className="text-neutral-900">Faso</span>
-              <span className="text-[#f97316]">Stock</span>
-            </span>
-          </Link>
-          <details className="relative sm:hidden">
-            <summary className="flex h-10 w-10 cursor-pointer list-none items-center justify-center rounded-full border border-black/10 bg-white text-neutral-800">
-              <MdMenu className="h-5 w-5" aria-hidden />
-              <span className="sr-only">Ouvrir le menu</span>
-            </summary>
-            <div className="absolute right-0 top-12 z-30 w-[min(88vw,290px)] overflow-hidden rounded-2xl border border-black/10 bg-white p-2 shadow-[0_22px_40px_-20px_rgba(17,24,39,0.35)]">
-              <nav className="flex flex-col">
-                <a href="#fonctionnalites-principales" className="rounded-xl px-3 py-2.5 text-sm font-semibold text-neutral-800 hover:bg-black/5">Fonctionnalités</a>
-                <a href="#tarifs" className="rounded-xl px-3 py-2.5 text-sm font-semibold text-neutral-800 hover:bg-black/5">Tarifs</a>
-                <a href="#temoignages" className="rounded-xl px-3 py-2.5 text-sm font-semibold text-neutral-800 hover:bg-black/5">Témoignages</a>
-                <a href="#faq" className="rounded-xl px-3 py-2.5 text-sm font-semibold text-neutral-800 hover:bg-black/5">FAQ</a>
-                <Link
-                  href="/login"
-                  className="rounded-xl border border-fs-accent/45 bg-fs-accent/8 px-3 py-2.5 text-sm font-extrabold text-fs-accent shadow-[0_10px_24px_-18px_rgba(232,93,44,0.85)]"
-                >
-                  Se connecter
-                </Link>
-                <Link href="/register/select-activity" className="mt-1 rounded-xl bg-fs-accent px-3 py-2.5 text-sm font-bold text-white">
-                  Essai gratuit
-                </Link>
-                <Link href="/help" className="mt-1 rounded-xl px-3 py-2.5 text-sm font-semibold text-neutral-700 hover:bg-black/5">
-                  Parler au support
-                </Link>
-              </nav>
-            </div>
-          </details>
-
-          <nav className="hidden items-center gap-6 lg:flex">
-            <a href="#fonctionnalites-principales" className="inline-flex items-center gap-1 text-sm font-semibold text-neutral-800 hover:text-fs-accent">
-              Fonctionnalités <MdKeyboardArrowDown className="h-4 w-4" />
-            </a>
-            <a href="#tarifs" className="text-sm font-semibold text-neutral-800 hover:text-fs-accent">Tarifs</a>
-            <a href="#temoignages" className="text-sm font-semibold text-neutral-800 hover:text-fs-accent">Témoignages</a>
-            <a href="#faq" className="text-sm font-semibold text-neutral-800 hover:text-fs-accent">FAQ</a>
-          </nav>
-
-          <div className="hidden items-center gap-2 sm:flex">
-            <span className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-white px-3 py-2 text-sm font-bold text-neutral-800">
-              <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-fs-accent/12 text-fs-accent">
-                <MdPhone className="h-4 w-4" />
-              </span>
-              +226 03 07 96 18
-            </span>
-            <Link
-              href="/login"
-              className="rounded-xl border border-fs-accent/55 bg-white px-3.5 py-2 text-sm font-semibold text-fs-accent"
-            >
-              Se connecter
-            </Link>
-            <Link
-              href="/register/select-activity"
-              className="inline-flex items-center gap-1 rounded-xl bg-fs-accent px-3.5 py-2 text-sm font-bold text-white shadow-[0_10px_24px_-14px_rgba(232,93,44,0.95)]"
-            >
-              ☰ Essayer gratuitement
-            </Link>
-          </div>
-        </div>
-      </header>
+      <SiteHeader />
 
       <section id="accueil" className="mx-auto w-full max-w-7xl scroll-mt-24 px-4 pb-10 pt-5 sm:px-6 sm:pb-14 sm:pt-7">
         <div className="overflow-hidden rounded-[2rem] border border-black/10 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.95),rgba(246,246,246,0.9)_52%),linear-gradient(to_bottom,#fafafa,#f3f3f3)] p-4 shadow-[0_28px_70px_-35px_rgba(17,24,39,0.4)] sm:p-6">
@@ -363,27 +334,36 @@ export default async function Home() {
 
             <div className="relative">
               <div className="absolute inset-y-0 -right-8 w-28 rounded-full bg-fs-accent/95 blur-[2px] sm:w-36" />
-              <div className="relative rounded-[1.5rem] border border-black/10 bg-white p-3 shadow-[0_30px_70px_-35px_rgba(17,24,39,0.45)]">
-                <div className="rounded-xl border border-black/10 bg-[#f8f8f8] p-2">
-                  <div className="rounded-lg bg-fs-accent px-3 py-1.5 text-[11px] font-bold text-white">
-                    POS Caisse Rapide
-                  </div>
-                  <div className="mt-2 grid grid-cols-3 gap-2">
-                    {Array.from({ length: 9 }).map((_, i) => (
-                      <div key={i} className="rounded-lg border border-black/8 bg-white p-1.5">
-                        <div className="h-8 rounded bg-gradient-to-br from-neutral-100 to-neutral-200" />
-                        <div className="mt-1 h-2 w-4/5 rounded bg-neutral-200" />
-                        <div className="mt-1 h-2 w-2/3 rounded bg-neutral-200" />
-                      </div>
-                    ))}
-                  </div>
-                  <div className="mt-2 rounded-lg border border-black/8 bg-white p-2">
-                    <div className="h-2 w-1/2 rounded bg-neutral-200" />
-                    <div className="mt-2 h-2 w-2/3 rounded bg-neutral-200" />
-                    <div className="mt-2 h-8 rounded bg-fs-accent/90" />
+              {heroBannerImageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={heroBannerImageUrl}
+                  alt="Bannière FasoStock"
+                  className="relative h-[300px] w-full rounded-[1.5rem] border border-black/10 object-cover shadow-[0_30px_70px_-35px_rgba(17,24,39,0.45)] sm:h-[400px]"
+                />
+              ) : (
+                <div className="relative rounded-[1.5rem] border border-black/10 bg-white p-3 shadow-[0_30px_70px_-35px_rgba(17,24,39,0.45)]">
+                  <div className="rounded-xl border border-black/10 bg-[#f8f8f8] p-2">
+                    <div className="rounded-lg bg-fs-accent px-3 py-1.5 text-[11px] font-bold text-white">
+                      POS Caisse Rapide
+                    </div>
+                    <div className="mt-2 grid grid-cols-3 gap-2">
+                      {Array.from({ length: 9 }).map((_, i) => (
+                        <div key={i} className="rounded-lg border border-black/8 bg-white p-1.5">
+                          <div className="h-8 rounded bg-gradient-to-br from-neutral-100 to-neutral-200" />
+                          <div className="mt-1 h-2 w-4/5 rounded bg-neutral-200" />
+                          <div className="mt-1 h-2 w-2/3 rounded bg-neutral-200" />
+                        </div>
+                      ))}
+                    </div>
+                    <div className="mt-2 rounded-lg border border-black/8 bg-white p-2">
+                      <div className="h-2 w-1/2 rounded bg-neutral-200" />
+                      <div className="mt-2 h-2 w-2/3 rounded bg-neutral-200" />
+                      <div className="mt-2 h-8 rounded bg-fs-accent/90" />
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
         </div>
@@ -421,6 +401,105 @@ export default async function Home() {
                 </div>
               </article>
             ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6 sm:pb-12">
+        <div className="grid items-center gap-6 rounded-[1.7rem] border border-black/8 bg-[#f8f8f8] p-4 shadow-[0_22px_56px_-36px_rgba(17,24,39,0.38)] sm:p-6 lg:grid-cols-[1fr_1fr] lg:p-8">
+          <div className="max-w-[560px]">
+            <p className="inline-flex items-center gap-2 rounded-full bg-[#fff3ea] px-3.5 py-1.5 text-xs font-black uppercase tracking-wide text-fs-accent">
+              <MdGroups className="h-4 w-4" />
+              Accompagnement
+            </p>
+            <h2 className="mt-3 text-[2.05rem] font-black leading-[1.08] tracking-tight text-[#0f172a] sm:text-[3.35rem]">
+              Un expert vous accompagne
+              <br />
+              dans la prise en main de
+              <br />
+              <span className="text-fs-accent">FasoStock</span>
+            </h2>
+            <div className="mt-4 h-1 w-14 rounded-full bg-fs-accent/90" />
+            <p className="mt-5 max-w-xl text-[1.02rem] leading-relaxed text-[#4b5563]">
+              Notre équipe vous aide à configurer votre boutique, importer vos produits, former vos utilisateurs et
+              démarrer rapidement avec FasoStock.
+            </p>
+            <div className="mt-6 flex flex-col gap-3 min-[460px]:flex-row">
+              <Link
+                href={supportDemoUrl}
+                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-fs-accent px-5 py-2.5 text-base font-extrabold text-white shadow-[0_20px_34px_-18px_rgba(232,93,44,0.9)]"
+              >
+                <MdCalendarMonth className="h-5 w-5" aria-hidden />
+                Demander une démo
+              </Link>
+              <Link
+                href={supportWhatsappUrl}
+                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-[#3ab88f]/55 bg-[#f8fffb] px-5 py-2.5 text-base font-extrabold text-[#149a71]"
+              >
+                <MdWhatsapp className="h-5 w-5" aria-hidden />
+                Contacter sur WhatsApp
+              </Link>
+            </div>
+            <div className="mt-7 grid gap-3 border-t border-black/10 pt-4 text-[1rem] font-semibold text-[#374151] sm:grid-cols-3">
+              <p className="inline-flex items-center gap-2.5"><MdGroups className="h-5 w-5 text-fs-accent" /> Accompagnement personnalisé</p>
+              <p className="inline-flex items-center gap-2.5"><MdLock className="h-5 w-5 text-fs-accent" /> Support réactif et disponible</p>
+              <p className="inline-flex items-center gap-2.5"><MdTrendingUp className="h-5 w-5 text-fs-accent" /> Votre réussite est notre priorité</p>
+            </div>
+          </div>
+
+          <div className="relative mx-auto w-full max-w-[530px]">
+            <div className="pointer-events-none absolute left-7 top-14 h-[230px] w-[120px] rounded-full border-2 border-dashed border-fs-accent/35" />
+            <div className="absolute left-4 top-8 z-10 hidden w-[165px] flex-col gap-3 sm:flex">
+              {[
+                { title: "Configuration", subtitle: "Installation et paramétrage", icon: MdAutorenew },
+                { title: "Support client", subtitle: "Assistance rapide et efficace", icon: MdHeadsetMic },
+                { title: "Formation", subtitle: "Formation de vos équipes", icon: MdCalendarMonth },
+                { title: "Suivi", subtitle: "Un suivi régulier de votre activité", icon: MdTrendingUp },
+              ].map((item) => (
+                <article key={item.title} className="rounded-xl border border-black/10 bg-white/96 p-2.5 shadow-[0_14px_28px_-20px_rgba(17,24,39,0.5)]">
+                  <div className="flex items-start gap-2">
+                    <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#fff3ea] text-fs-accent">
+                      <item.icon className="h-4.5 w-4.5" aria-hidden />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-[12px] font-black leading-tight text-[#111827]">{item.title}</p>
+                      <p className="mt-0.5 text-[10px] leading-tight text-[#6b7280]">{item.subtitle}</p>
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+            {supportSectionImageUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={supportSectionImageUrl}
+                alt="Conseiller FasoStock"
+                className="relative z-[1] h-[350px] w-full rounded-[1.1rem] border border-black/10 object-cover sm:h-[520px]"
+              />
+            ) : (
+              <div className="relative z-[1] flex h-[350px] w-full items-center justify-center rounded-[1.1rem] border border-dashed border-black/20 bg-white text-center text-sm text-neutral-500 sm:h-[520px]">
+                Image d&apos;accompagnement non définie.
+                <br />
+                Ajoutez-la dans Super Admin &gt; GPublique.
+              </div>
+            )}
+            <article className="relative z-[2] -mt-10 ml-auto mr-3 w-[90%] rounded-2xl border border-black/10 bg-white p-3 shadow-[0_20px_30px_-22px_rgba(17,24,39,0.7)] sm:-mt-14 sm:mr-4 sm:w-[82%] sm:p-4">
+              <div className="grid grid-cols-[58px_1fr] items-center gap-3 sm:grid-cols-[66px_1fr]">
+                <span className="inline-flex h-14 w-14 items-center justify-center rounded-full bg-[#fff1e7] text-fs-accent sm:h-16 sm:w-16">
+                  <MdGroups className="h-8 w-8" aria-hidden />
+                </span>
+                <div>
+                  <p className="text-[1.55rem] font-black leading-none text-[#111827]">
+                    Conseiller <span className="text-fs-accent">FasoStock</span>
+                  </p>
+                  <p className="mt-1 text-sm text-[#4b5563]">Accompagnement, configuration et support client</p>
+                  <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-[#fff4ec] px-3 py-1 text-[12px] font-bold text-fs-accent">
+                    <MdVerifiedUser className="h-4 w-4" />
+                    À vos côtés à chaque étape
+                  </p>
+                </div>
+              </div>
+            </article>
           </div>
         </div>
       </section>
@@ -622,7 +701,7 @@ export default async function Home() {
                   Gratuit
                 </span>
                 <p className="mt-2 text-[2rem] font-black text-[#202938]">Essai gratuit</p>
-                <p className="mt-1 text-5xl font-black text-[#22a168]">7 jours</p>
+                <p className="mt-1 text-5xl font-black text-[#22a168]">{trialDays} jours</p>
               </div>
               <ul className="mt-5 space-y-2 text-[0.95rem] text-neutral-700">
                 <li className="flex items-center gap-2"><MdCheckCircle className="h-4 w-4 text-[#22a168]" /> Accès complet</li>
@@ -647,12 +726,12 @@ export default async function Home() {
               </div>
               <div className="mt-2 text-center">
                 <p className="text-[2rem] font-black text-[#202938]">Annuel</p>
-                <p className="mt-1 text-6xl font-black text-fs-accent">125 000</p>
+                <p className="mt-1 text-6xl font-black text-fs-accent">{formatFcfa(yearlyAmount)}</p>
                 <p className="text-2xl font-bold text-fs-accent/85">FCFA / an</p>
               </div>
               <ul className="mt-5 space-y-2 text-[0.95rem] text-neutral-700">
                 <li className="flex items-center gap-2"><MdCheckCircle className="h-4 w-4 text-fs-accent" /> Tout le plan mensuel</li>
-                <li className="flex items-center gap-2"><MdCheckCircle className="h-4 w-4 text-fs-accent" /> Économisez 55 000 FCFA</li>
+                <li className="flex items-center gap-2"><MdCheckCircle className="h-4 w-4 text-fs-accent" /> Économisez {formatFcfa(yearlySavings)} FCFA</li>
                 <li className="flex items-center gap-2"><MdCheckCircle className="h-4 w-4 text-fs-accent" /> Facturation unique</li>
               </ul>
               <Link
@@ -673,7 +752,7 @@ export default async function Home() {
                   Flexible
                 </span>
                 <p className="mt-2 text-[2rem] font-black text-[#202938]">Mensuel</p>
-                <p className="mt-1 text-6xl font-black text-[#2f80ed]">15 000</p>
+                <p className="mt-1 text-6xl font-black text-[#2f80ed]">{formatFcfa(monthlyAmount)}</p>
                 <p className="text-2xl font-bold text-[#2f80ed]/85">FCFA / mois</p>
               </div>
               <ul className="mt-5 space-y-2 text-[0.95rem] text-neutral-700">
@@ -839,19 +918,7 @@ export default async function Home() {
                   <p className="text-sm text-white/75">Recevez nos nouveautés, conseils et offres exclusives.</p>
                 </div>
               </div>
-              <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
-                <input
-                  className="h-11 rounded-xl border border-white/15 bg-[#0e223f] px-4 text-sm text-white placeholder:text-white/45"
-                  placeholder="Votre adresse e-mail"
-                />
-                <button
-                  type="button"
-                  className="inline-flex h-11 items-center justify-center rounded-xl bg-fs-accent px-6 text-sm font-black text-white"
-                >
-                  S&apos;abonner
-                </button>
-              </div>
-              <p className="text-xs text-white/60">Pas de spam. Désabonnement à tout moment.</p>
+              <NewsletterSubscribeForm />
             </div>
           </div>
 
@@ -859,16 +926,19 @@ export default async function Home() {
             <div>
               <div className="inline-flex items-center gap-2.5">
                 <Image src="/fs.png" alt="FasoStock" width={44} height={44} className="h-11 w-11 object-contain" />
-                <p className="text-4xl font-black tracking-tight">
+                <p className="text-[1.55rem] font-black tracking-tight">
                   Faso<span className="text-fs-accent">Stock</span>
                 </p>
               </div>
               <p className="mt-3 max-w-xs text-sm leading-relaxed text-white/75">
                 Le logiciel de gestion de commerce tout-en-un pour les commerçants africains.
               </p>
+              <p className="mt-2 max-w-xs text-sm leading-relaxed text-white/70">
+                Vendez, gérez votre stock, suivez vos crédits et développez votre activité en toute simplicité.
+              </p>
               <div className="mt-4 flex items-center gap-2">
                 <a
-                  href="https://wa.me/22603079618"
+                  href={footerWhatsappUrl}
                   target="_blank"
                   rel="noreferrer"
                   className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/15 bg-[#0e223f] text-[#25D366] hover:border-[#25D366]/40"
@@ -877,7 +947,7 @@ export default async function Home() {
                   <FaWhatsapp className="h-4 w-4" />
                 </a>
                 <a
-                  href="https://facebook.com"
+                  href={footerFacebookUrl}
                   target="_blank"
                   rel="noreferrer"
                   className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/15 bg-[#0e223f] text-[#1877F2] hover:border-[#1877F2]/40"
@@ -886,7 +956,7 @@ export default async function Home() {
                   <FaFacebookF className="h-4 w-4" />
                 </a>
                 <a
-                  href="https://youtube.com"
+                  href={footerYoutubeUrl}
                   target="_blank"
                   rel="noreferrer"
                   className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/15 bg-[#0e223f] text-[#FF0000] hover:border-[#FF0000]/40"
@@ -895,7 +965,7 @@ export default async function Home() {
                   <FaYoutube className="h-4 w-4" />
                 </a>
                 <a
-                  href="https://tiktok.com"
+                  href={footerTiktokUrl}
                   target="_blank"
                   rel="noreferrer"
                   className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/15 bg-[#0e223f] text-white hover:border-white/40"
@@ -904,7 +974,7 @@ export default async function Home() {
                   <FaTiktok className="h-4 w-4" />
                 </a>
                 <a
-                  href="https://linkedin.com"
+                  href={footerLinkedinUrl}
                   target="_blank"
                   rel="noreferrer"
                   className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/15 bg-[#0e223f] text-[#0A66C2] hover:border-[#0A66C2]/40"
@@ -957,14 +1027,11 @@ export default async function Home() {
               },
             ].map((col) => (
               <div key={col.title}>
-                <p className="text-2xl font-black text-fs-accent">{col.title}</p>
+                <p className="text-[1.22rem] font-black text-fs-accent">{col.title}</p>
                 <ul className="mt-3 space-y-2.5">
                   {col.links.map((l) => (
                     <li key={l.label} className="text-sm text-white/85">
-                      <Link href={l.href} className="inline-flex items-center gap-2 hover:text-fs-accent">
-                        {l.label}
-                        <span className="text-white/35">›</span>
-                      </Link>
+                      <Link href={l.href} className="inline-flex items-center hover:text-fs-accent">{l.label}</Link>
                     </li>
                   ))}
                 </ul>
@@ -984,7 +1051,7 @@ export default async function Home() {
                 </div>
               </div>
               <div>
-                <p className="text-sm font-bold">Données sécurisées</p>
+                <p className="flex items-center gap-2 text-sm font-bold"><MdSecurity className="h-4 w-4 text-fs-accent" /> Données sécurisées</p>
                 <p className="mt-1 text-xs text-white/70">Vos données sont protégées et sauvegardées en toute sécurité.</p>
               </div>
               <div>
@@ -992,7 +1059,7 @@ export default async function Home() {
                 <p className="mt-1 text-xs text-white/70">Travaillez hors ligne et synchronisez vos données automatiquement.</p>
               </div>
               <div>
-                <p className="text-sm font-bold">Support réactif</p>
+                <p className="flex items-center gap-2 text-sm font-bold"><MdHeadsetMic className="h-4 w-4 text-fs-accent" /> Support réactif</p>
                 <p className="mt-1 text-xs text-white/70">Notre équipe est disponible pour vous accompagner à chaque étape.</p>
               </div>
             </div>
@@ -1112,4 +1179,9 @@ function StatCard({
       <p className="text-xs text-neutral-500">{hint}</p>
     </div>
   );
+}
+
+function formatFcfa(value: number): string {
+  const n = Number.isFinite(value) ? value : 0;
+  return new Intl.NumberFormat("fr-FR").format(Math.max(0, Math.round(n)));
 }

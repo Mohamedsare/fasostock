@@ -14,6 +14,9 @@ import type {
   AuditLogEntry,
   LockedLogin,
   AdminPublicPartner,
+  AdminPublicLandingMedia,
+  AdminPublicLandingSetting,
+  AdminNewsletterSubscriber,
 } from "./types";
 
 function toNum(v: unknown): number {
@@ -392,6 +395,80 @@ export async function adminCreatePublicPartner(params: {
 export async function adminDeletePublicPartner(id: string): Promise<void> {
   const supabase = createClient();
   const { error } = await supabase.from("public_partners").delete().eq("id", id);
+  if (error) throw mapSupabaseError(error);
+}
+
+export async function adminListPublicLandingMedia(): Promise<AdminPublicLandingMedia[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("public_landing_media")
+    .select("key, image_url, updated_at")
+    .order("key", { ascending: true });
+  if (error) throw mapSupabaseError(error);
+  return ((data ?? []) as Record<string, unknown>[]).map((row) => ({
+    key: String(row.key ?? ""),
+    imageUrl: String(row.image_url ?? ""),
+    updatedAt: row.updated_at != null ? String(row.updated_at) : null,
+  }));
+}
+
+export async function adminSetPublicLandingMediaImage(key: string, imageUrl: string): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase.from("public_landing_media").upsert(
+    {
+      key: key.trim(),
+      image_url: imageUrl.trim(),
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "key" },
+  );
+  if (error) throw mapSupabaseError(error);
+}
+
+export async function adminListPublicLandingSettings(): Promise<AdminPublicLandingSetting[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("public_landing_settings")
+    .select("key, value, updated_at")
+    .order("key", { ascending: true });
+  if (error) throw mapSupabaseError(error);
+  return ((data ?? []) as Record<string, unknown>[]).map((row) => ({
+    key: String(row.key ?? ""),
+    value: String(row.value ?? ""),
+    updatedAt: row.updated_at != null ? String(row.updated_at) : null,
+  }));
+}
+
+export async function adminSetPublicLandingSettings(settings: Record<string, string>): Promise<void> {
+  const supabase = createClient();
+  const rows = Object.entries(settings).map(([key, value]) => ({
+    key: key.trim(),
+    value: String(value ?? "").trim(),
+    updated_at: new Date().toISOString(),
+  }));
+  if (rows.length === 0) return;
+  const { error } = await supabase.from("public_landing_settings").upsert(rows, { onConflict: "key" });
+  if (error) throw mapSupabaseError(error);
+}
+
+export async function adminListNewsletterSubscribers(): Promise<AdminNewsletterSubscriber[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("newsletter_subscribers")
+    .select("id, email, source, created_at")
+    .order("created_at", { ascending: false });
+  if (error) throw mapSupabaseError(error);
+  return ((data ?? []) as Record<string, unknown>[]).map((row) => ({
+    id: String(row.id ?? ""),
+    email: String(row.email ?? ""),
+    source: String(row.source ?? ""),
+    createdAt: row.created_at != null ? String(row.created_at) : null,
+  }));
+}
+
+export async function adminDeleteNewsletterSubscriber(id: string): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase.from("newsletter_subscribers").delete().eq("id", id);
   if (error) throw mapSupabaseError(error);
 }
 

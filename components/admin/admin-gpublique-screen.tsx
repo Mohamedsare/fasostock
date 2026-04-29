@@ -5,10 +5,14 @@ import {
   adminCreatePublicPartner,
   adminDeletePublicPartner,
   adminListPublicPartners,
+  adminListPublicLandingMedia,
+  adminListPublicLandingSettings,
+  adminSetPublicLandingMediaImage,
+  adminSetPublicLandingSettings,
 } from "@/lib/features/admin/api";
 import { messageFromUnknownError, toast } from "@/lib/toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { MdAdd, MdDeleteOutline, MdUpload } from "react-icons/md";
 
 export function AdminGPubliqueScreen() {
@@ -16,10 +20,34 @@ export function AdminGPubliqueScreen() {
   const [name, setName] = useState("");
   const [sortOrder, setSortOrder] = useState("0");
   const [logoDataUrl, setLogoDataUrl] = useState("");
+  const [supportImageDataUrl, setSupportImageDataUrl] = useState("");
+  const [heroBannerImageDataUrl, setHeroBannerImageDataUrl] = useState("");
+  const [landingSettings, setLandingSettings] = useState<Record<string, string>>({
+    hero_banner_image_url: "",
+    footer_whatsapp_url: "https://wa.me/22603079618",
+    footer_facebook_url: "https://facebook.com",
+    footer_youtube_url: "https://youtube.com",
+    footer_tiktok_url: "https://tiktok.com",
+    footer_linkedin_url: "https://linkedin.com",
+    pricing_trial_days: "7",
+    pricing_monthly_amount: "15000",
+    pricing_yearly_amount: "125000",
+    pricing_yearly_savings: "55000",
+    support_whatsapp_url: "/help",
+    support_demo_url: "/help",
+  });
 
   const q = useQuery({
     queryKey: ["admin-public-partners"] as const,
     queryFn: adminListPublicPartners,
+  });
+  const mediaQ = useQuery({
+    queryKey: ["admin-public-landing-media"] as const,
+    queryFn: adminListPublicLandingMedia,
+  });
+  const settingsQ = useQuery({
+    queryKey: ["admin-public-landing-settings"] as const,
+    queryFn: adminListPublicLandingSettings,
   });
 
   const addMut = useMutation({
@@ -42,6 +70,24 @@ export function AdminGPubliqueScreen() {
     },
     onError: (e) => toast.error(messageFromUnknownError(e)),
   });
+  const mediaMut = useMutation({
+    mutationFn: ({ key, imageUrl }: { key: string; imageUrl: string }) =>
+      adminSetPublicLandingMediaImage(key, imageUrl),
+    onSuccess: async () => {
+      toast.success("Image landing mise à jour.");
+      setSupportImageDataUrl("");
+      await qc.invalidateQueries({ queryKey: ["admin-public-landing-media"] });
+    },
+    onError: (e) => toast.error(messageFromUnknownError(e)),
+  });
+  const settingsMut = useMutation({
+    mutationFn: adminSetPublicLandingSettings,
+    onSuccess: async () => {
+      toast.success("Réglages landing enregistrés.");
+      await qc.invalidateQueries({ queryKey: ["admin-public-landing-settings"] });
+    },
+    onError: (e) => toast.error(messageFromUnknownError(e)),
+  });
 
   const canAdd = useMemo(
     () => name.trim().length >= 2 && logoDataUrl.trim().length > 0 && !addMut.isPending,
@@ -57,13 +103,276 @@ export function AdminGPubliqueScreen() {
     };
     reader.readAsDataURL(file);
   }
+  function onPickSupportImage(file: File | null) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = typeof reader.result === "string" ? reader.result : "";
+      setSupportImageDataUrl(result);
+    };
+    reader.readAsDataURL(file);
+  }
+  function onPickHeroBannerImage(file: File | null) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = typeof reader.result === "string" ? reader.result : "";
+      setHeroBannerImageDataUrl(result);
+      setSetting("hero_banner_image_url", result);
+    };
+    reader.readAsDataURL(file);
+  }
+
+  const supportMedia = (mediaQ.data ?? []).find((m) => m.key === "support_section_image");
+  useEffect(() => {
+    if (!settingsQ.data) return;
+    const next = { ...landingSettings };
+    for (const item of settingsQ.data) next[item.key] = item.value;
+    setLandingSettings(next);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settingsQ.data]);
+
+  function setSetting(key: string, value: string) {
+    setLandingSettings((prev) => ({ ...prev, [key]: value }));
+  }
 
   return (
     <div className="space-y-6 p-5 md:p-8">
       <AdminPageHeader
         title="GPublique"
-        description="Gestion du contenu public de la landing (section Nos partenaires)."
+        description="Gestion complète du contenu public de la landing (images, liens, tarifs, partenaires)."
       />
+
+      <AdminCard>
+        <h3 className="text-base font-bold text-slate-900">Paramètres globaux de la landing</h3>
+        <p className="mt-1 text-xs text-slate-500">
+          Gérez ici l&apos;image de bannière, les liens sociaux du footer, les tarifs et les liens CTA.
+        </p>
+        <div className="mt-4 grid gap-3 md:grid-cols-2">
+          <label className="space-y-1.5">
+            <span className="text-xs font-semibold text-slate-600">Image bannière (URL ou Data URL)</span>
+            <input
+              value={landingSettings.hero_banner_image_url ?? ""}
+              onChange={(e) => setSetting("hero_banner_image_url", e.target.value)}
+              placeholder="https://..."
+              className="h-11 w-full rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-orange-400"
+            />
+          </label>
+          <div className="space-y-1.5">
+            <span className="text-xs font-semibold text-slate-600">Uploader image bannière</span>
+            <label className="inline-flex h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700">
+              <MdUpload className="h-4 w-4" aria-hidden />
+              Choisir une image
+              <input
+                type="file"
+                accept="image/*"
+                className="sr-only"
+                onChange={(e) => onPickHeroBannerImage(e.target.files?.[0] ?? null)}
+              />
+            </label>
+          </div>
+          <label className="space-y-1.5">
+            <span className="text-xs font-semibold text-slate-600">Lien démo section accompagnement</span>
+            <input
+              value={landingSettings.support_demo_url ?? ""}
+              onChange={(e) => setSetting("support_demo_url", e.target.value)}
+              placeholder="/help"
+              className="h-11 w-full rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-orange-400"
+            />
+          </label>
+          <label className="space-y-1.5">
+            <span className="text-xs font-semibold text-slate-600">Lien WhatsApp section accompagnement</span>
+            <input
+              value={landingSettings.support_whatsapp_url ?? ""}
+              onChange={(e) => setSetting("support_whatsapp_url", e.target.value)}
+              placeholder="https://wa.me/..."
+              className="h-11 w-full rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-orange-400"
+            />
+          </label>
+          <label className="space-y-1.5">
+            <span className="text-xs font-semibold text-slate-600">WhatsApp footer</span>
+            <input
+              value={landingSettings.footer_whatsapp_url ?? ""}
+              onChange={(e) => setSetting("footer_whatsapp_url", e.target.value)}
+              placeholder="https://wa.me/..."
+              className="h-11 w-full rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-orange-400"
+            />
+          </label>
+          <label className="space-y-1.5">
+            <span className="text-xs font-semibold text-slate-600">Facebook footer</span>
+            <input
+              value={landingSettings.footer_facebook_url ?? ""}
+              onChange={(e) => setSetting("footer_facebook_url", e.target.value)}
+              placeholder="https://facebook.com/..."
+              className="h-11 w-full rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-orange-400"
+            />
+          </label>
+          <label className="space-y-1.5">
+            <span className="text-xs font-semibold text-slate-600">YouTube footer</span>
+            <input
+              value={landingSettings.footer_youtube_url ?? ""}
+              onChange={(e) => setSetting("footer_youtube_url", e.target.value)}
+              placeholder="https://youtube.com/..."
+              className="h-11 w-full rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-orange-400"
+            />
+          </label>
+          <label className="space-y-1.5">
+            <span className="text-xs font-semibold text-slate-600">TikTok footer</span>
+            <input
+              value={landingSettings.footer_tiktok_url ?? ""}
+              onChange={(e) => setSetting("footer_tiktok_url", e.target.value)}
+              placeholder="https://tiktok.com/@..."
+              className="h-11 w-full rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-orange-400"
+            />
+          </label>
+          <label className="space-y-1.5">
+            <span className="text-xs font-semibold text-slate-600">LinkedIn footer</span>
+            <input
+              value={landingSettings.footer_linkedin_url ?? ""}
+              onChange={(e) => setSetting("footer_linkedin_url", e.target.value)}
+              placeholder="https://linkedin.com/company/..."
+              className="h-11 w-full rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-orange-400"
+            />
+          </label>
+        </div>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <article className="rounded-2xl border border-slate-200 bg-slate-50 p-2">
+            <p className="mb-2 text-xs font-semibold text-slate-600">Bannière actuelle</p>
+            {landingSettings.hero_banner_image_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={landingSettings.hero_banner_image_url}
+                alt="Bannière actuelle"
+                className="h-44 w-full rounded-xl object-cover"
+              />
+            ) : (
+              <div className="flex h-44 items-center justify-center rounded-xl border border-dashed border-slate-300 bg-white text-xs text-slate-500">
+                Aucune image bannière définie
+              </div>
+            )}
+          </article>
+          <article className="rounded-2xl border border-slate-200 bg-slate-50 p-2">
+            <p className="mb-2 text-xs font-semibold text-slate-600">Aperçu nouvel upload</p>
+            {heroBannerImageDataUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={heroBannerImageDataUrl}
+                alt="Aperçu image bannière"
+                className="h-44 w-full rounded-xl object-cover"
+              />
+            ) : (
+              <div className="flex h-44 items-center justify-center rounded-xl border border-dashed border-slate-300 bg-white text-xs text-slate-500">
+                Aucun upload en attente
+              </div>
+            )}
+          </article>
+        </div>
+        <div className="mt-3 grid gap-3 md:grid-cols-4">
+          <label className="space-y-1.5">
+            <span className="text-xs font-semibold text-slate-600">Essai (jours)</span>
+            <input
+              value={landingSettings.pricing_trial_days ?? ""}
+              onChange={(e) => setSetting("pricing_trial_days", e.target.value.replace(/[^\d]/g, ""))}
+              className="h-11 w-full rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-orange-400"
+            />
+          </label>
+          <label className="space-y-1.5">
+            <span className="text-xs font-semibold text-slate-600">Prix mensuel (FCFA)</span>
+            <input
+              value={landingSettings.pricing_monthly_amount ?? ""}
+              onChange={(e) => setSetting("pricing_monthly_amount", e.target.value.replace(/[^\d]/g, ""))}
+              className="h-11 w-full rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-orange-400"
+            />
+          </label>
+          <label className="space-y-1.5">
+            <span className="text-xs font-semibold text-slate-600">Prix annuel (FCFA)</span>
+            <input
+              value={landingSettings.pricing_yearly_amount ?? ""}
+              onChange={(e) => setSetting("pricing_yearly_amount", e.target.value.replace(/[^\d]/g, ""))}
+              className="h-11 w-full rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-orange-400"
+            />
+          </label>
+          <label className="space-y-1.5">
+            <span className="text-xs font-semibold text-slate-600">Économie annuelle (FCFA)</span>
+            <input
+              value={landingSettings.pricing_yearly_savings ?? ""}
+              onChange={(e) => setSetting("pricing_yearly_savings", e.target.value.replace(/[^\d]/g, ""))}
+              className="h-11 w-full rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-orange-400"
+            />
+          </label>
+        </div>
+        <div className="mt-4">
+          <button
+            type="button"
+            disabled={settingsMut.isPending}
+            onClick={() => settingsMut.mutate(landingSettings)}
+            className="inline-flex h-11 items-center justify-center gap-1.5 rounded-xl bg-orange-600 px-4 text-sm font-bold text-white disabled:opacity-50"
+          >
+            <MdAdd className="h-4 w-4" aria-hidden />
+            Enregistrer les paramètres
+          </button>
+        </div>
+      </AdminCard>
+
+      <AdminCard>
+        <h3 className="text-base font-bold text-slate-900">Image section Accompagnement</h3>
+        <p className="mt-1 text-xs text-slate-500">
+          Cette image pilote la section publique "Un expert vous accompagne" sur la landing.
+        </p>
+        <div className="mt-4 grid gap-3 md:grid-cols-[220px_auto] md:items-center">
+          <label className="inline-flex h-11 cursor-pointer items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700">
+            <MdUpload className="h-4 w-4" aria-hidden />
+            Uploader image
+            <input
+              type="file"
+              accept="image/*"
+              className="sr-only"
+              onChange={(e) => onPickSupportImage(e.target.files?.[0] ?? null)}
+            />
+          </label>
+          <button
+            type="button"
+            disabled={!supportImageDataUrl || mediaMut.isPending}
+            onClick={() =>
+              mediaMut.mutate({
+                key: "support_section_image",
+                imageUrl: supportImageDataUrl,
+              })
+            }
+            className="inline-flex h-11 items-center justify-center gap-1.5 rounded-xl bg-orange-600 px-4 text-sm font-bold text-white disabled:opacity-50 md:w-fit"
+          >
+            <MdAdd className="h-4 w-4" aria-hidden />
+            Enregistrer l'image
+          </button>
+        </div>
+        <p className="mt-2 text-xs text-slate-500">
+          {supportImageDataUrl ? "Image prête pour enregistrement." : "Choisissez une image (.png/.jpg/.webp)."}
+        </p>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <article className="rounded-2xl border border-slate-200 bg-slate-50 p-2">
+            <p className="mb-2 text-xs font-semibold text-slate-600">Image actuellement publiée</p>
+            {supportMedia?.imageUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={supportMedia.imageUrl} alt="Image accompagnement actuelle" className="h-44 w-full rounded-xl object-cover" />
+            ) : (
+              <div className="flex h-44 items-center justify-center rounded-xl border border-dashed border-slate-300 bg-white text-xs text-slate-500">
+                Aucune image publiée
+              </div>
+            )}
+          </article>
+          <article className="rounded-2xl border border-slate-200 bg-slate-50 p-2">
+            <p className="mb-2 text-xs font-semibold text-slate-600">Aperçu nouvel upload</p>
+            {supportImageDataUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={supportImageDataUrl} alt="Aperçu nouvel upload" className="h-44 w-full rounded-xl object-cover" />
+            ) : (
+              <div className="flex h-44 items-center justify-center rounded-xl border border-dashed border-slate-300 bg-white text-xs text-slate-500">
+                Aucun upload en attente
+              </div>
+            )}
+          </article>
+        </div>
+      </AdminCard>
 
       <AdminCard>
         <h3 className="text-base font-bold text-slate-900">Ajouter un partenaire</h3>
