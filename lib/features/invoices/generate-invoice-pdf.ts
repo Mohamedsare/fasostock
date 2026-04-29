@@ -57,9 +57,18 @@ export function printInvoicePdf(blob: Blob): void {
           // L'utilisateur peut imprimer manuellement (Ctrl/Cmd+P) si le navigateur bloque.
         }
       };
-      popup.addEventListener("load", () => window.setTimeout(tryPrint, 180), { once: true });
+      popup.addEventListener(
+        "load",
+        () => {
+          window.setTimeout(tryPrint, 180);
+          // Ne pas fermer automatiquement: on laisse l'utilisateur gérer l'onglet.
+          // On nettoie l'URL blob quand l'onglet est fermé.
+          popup.addEventListener("beforeunload", cleanup, { once: true });
+        },
+        { once: true },
+      );
       window.setTimeout(tryPrint, 1200);
-      window.setTimeout(cleanup, 120_000);
+      window.setTimeout(cleanup, 10 * 60_000);
     } catch {
       window.setTimeout(cleanup, 2_000);
     }
@@ -85,16 +94,29 @@ export function printInvoicePdf(blob: Blob): void {
   iframe.onload = () => {
     iframeLoaded = true;
     window.clearTimeout(fallbackTimer);
+    const win = iframe.contentWindow;
+    if (!win) {
+      fallbackPrintInNewTab();
+      return;
+    }
+    const cleanupIframe = () => {
+      try {
+        document.body.removeChild(iframe);
+      } catch {}
+      cleanup();
+    };
+    // Nettoyage après impression réelle (plus fiable que délai fixe).
+    win.addEventListener("afterprint", cleanupIframe, { once: true });
+    // Filet de sécurité si `afterprint` n'est pas déclenché.
+    window.setTimeout(cleanupIframe, 10 * 60_000);
     try {
-      iframe.contentWindow?.focus();
-      iframe.contentWindow?.print();
-    } finally {
-      setTimeout(() => {
-        try {
-          document.body.removeChild(iframe);
-        } catch {}
-        cleanup();
-      }, 2000);
+      win.focus();
+      win.print();
+    } catch {
+      try {
+        document.body.removeChild(iframe);
+      } catch {}
+      fallbackPrintInNewTab();
     }
   };
   iframe.onerror = () => {
