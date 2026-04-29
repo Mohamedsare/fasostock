@@ -33,9 +33,31 @@ export function NewsletterSubscribeForm() {
   const [turnstileReady, setTurnstileReady] = useState(false);
   const [turnstileWidgetRendered, setTurnstileWidgetRendered] = useState(false);
   const [turnstileLoadError, setTurnstileLoadError] = useState("");
+  const [captchaRequired, setCaptchaRequired] = useState<boolean>(true);
+  const [captchaPolicyLoaded, setCaptchaPolicyLoaded] = useState(false);
   const widgetRef = useRef<HTMLDivElement | null>(null);
   const widgetIdRef = useRef<string | null>(null);
   const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim() ?? "";
+
+  useEffect(() => {
+    let mounted = true;
+    void fetch("/api/newsletter/subscribe", { method: "GET" })
+      .then((r) => r.json())
+      .then((data: { captchaRequired?: boolean }) => {
+        if (!mounted) return;
+        setCaptchaRequired(Boolean(data?.captchaRequired));
+        setCaptchaPolicyLoaded(true);
+      })
+      .catch(() => {
+        if (!mounted) return;
+        // Défaut prudent: captcha requis si on ne peut pas lire la politique serveur.
+        setCaptchaRequired(true);
+        setCaptchaPolicyLoaded(true);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (!turnstileSiteKey || !turnstileReady || !widgetRef.current || !window.turnstile) return;
@@ -83,13 +105,14 @@ export function NewsletterSubscribeForm() {
       setError("Entrez une adresse e-mail.");
       return;
     }
-    if (turnstileSiteKey && !turnstileWidgetRendered) {
+    const needCaptcha = captchaRequired && turnstileSiteKey.length > 0;
+    if (needCaptcha && !turnstileWidgetRendered) {
       setError(
         "Le widget anti-bot n'est pas disponible. Rechargez la page ou vérifiez votre connexion.",
       );
       return;
     }
-    if (turnstileSiteKey && !turnstileToken) {
+    if (needCaptcha && !turnstileToken) {
       setError("Veuillez valider l'anti-bot visible ci-dessous.");
       return;
     }
@@ -102,7 +125,7 @@ export function NewsletterSubscribeForm() {
           email: value,
           website: "",
           elapsedMs: Math.max(0, Date.now() - startedAt),
-          turnstileToken,
+          turnstileToken: needCaptcha ? turnstileToken : "",
         }),
       });
       const data = (await res.json().catch(() => ({}))) as { error?: string; alreadySubscribed?: boolean };
@@ -125,7 +148,7 @@ export function NewsletterSubscribeForm() {
 
   return (
     <div className="space-y-2">
-      {turnstileSiteKey ? (
+      {turnstileSiteKey && captchaRequired ? (
         <Script
           src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
           strategy="afterInteractive"
@@ -173,7 +196,7 @@ export function NewsletterSubscribeForm() {
           <MdArrowForward className="h-4 w-4" />
         </button>
       </form>
-      {turnstileSiteKey ? (
+      {turnstileSiteKey && captchaRequired ? (
         <div className="pt-1">
           <div
             ref={widgetRef}
@@ -183,6 +206,11 @@ export function NewsletterSubscribeForm() {
             <p className="mt-1 text-[11px] text-amber-300">{turnstileLoadError}</p>
           ) : null}
         </div>
+      ) : null}
+      {turnstileSiteKey && !captchaRequired && captchaPolicyLoaded ? (
+        <p className="text-[11px] text-emerald-300">
+          Anti-bot allégé sur cet environnement (captcha non obligatoire côté serveur).
+        </p>
       ) : null}
       <p className="text-xs text-white/60">
         {error ? <span className="text-red-300">{error}</span> : message || "Pas de spam. Désabonnement à tout moment."}

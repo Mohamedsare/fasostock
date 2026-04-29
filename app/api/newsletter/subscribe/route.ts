@@ -142,3 +142,10 @@ export async function POST(req: Request) {
   return NextResponse.json({ error: error.message || "Erreur lors de l'inscription." }, { status: 500 });
 }
 
+export async function GET() {
+  const secret = process.env.TURNSTILE_SECRET_KEY?.trim();
+  return NextResponse.json({
+    captchaRequired: Boolean(secret),
+  });
+}
+
