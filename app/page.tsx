@@ -1,24 +1,49 @@
 import { hasSupabaseConfig } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
 import { PartnersSection } from "@/components/marketing/partners-section";
+import { TestimonialsSection } from "@/components/marketing/testimonials-section";
+import { FaqSection } from "@/components/marketing/faq-section";
+import { InstallAppButton } from "@/components/pwa/install-app-button";
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { cn } from "@/lib/utils/cn";
 import {
   MdArrowForward,
+  MdAutorenew,
+  MdCalendarMonth,
+  MdCardGiftcard,
   MdCheckCircle,
   MdCreditCard,
-  MdGroups,
-  MdInventory2,
   MdKeyboardArrowDown,
+  MdEmojiEmotions,
+  MdGroups,
+  MdHeadsetMic,
+  MdInventory2,
+  MdLock,
   MdMenu,
+  MdMailOutline,
+  MdOutlinePhoneAndroid,
+  MdPhone,
+  MdOfflineBolt,
+  MdOutlinePlayCircleFilled,
   MdPointOfSale,
+  MdPublic,
   MdSecurity,
+  MdSync,
   MdSpeed,
+  MdStorefront,
   MdTrendingUp,
+  MdVerifiedUser,
+  MdWallet,
+  MdLanguage,
   MdWhatsapp,
+  MdWifiOff,
 } from "react-icons/md";
+import { FaFacebookF, FaLinkedinIn, FaTiktok, FaWhatsapp, FaYoutube } from "react-icons/fa6";
+import { FaApple, FaGooglePlay, FaWindows } from "react-icons/fa";
+import { FaCcMastercard, FaCcVisa } from "react-icons/fa";
 
 export const dynamic = "force-dynamic";
 
@@ -35,61 +60,167 @@ const highlights = [
   "Recu pro PDF, export Excel, suivi multi-boutiques",
 ] as const;
 
-const features = [
+const bannerFeatureStrip = [
   {
     icon: MdPointOfSale,
-    title: "Caisse moderne",
-    text: "Vendez vite avec historique, remises, paiements multiples et tickets propres.",
+    title: "Ventes rapides",
+    text: "Encaissez facilement et rapidement",
   },
   {
     icon: MdInventory2,
-    title: "Stock en temps reel",
-    text: "Entrees, sorties, alertes de rupture et inventaire clair par boutique.",
+    title: "Gestion de stock",
+    text: "Suivez votre stock en temps reel",
   },
   {
     icon: MdCreditCard,
-    title: "Credits et remboursements",
-    text: "Suivez dettes clients, paiements partiels et recus de remboursement verifiables.",
+    title: "Crédits clients",
+    text: "Gérez les dettes et encaissements",
   },
   {
     icon: MdTrendingUp,
-    title: "Pilotage business",
-    text: "KPIs, rapports et chiffres utiles pour decider vite et mieux.",
+    title: "Rapports clairs",
+    text: "Prenez de meilleures décisions",
   },
   {
     icon: MdGroups,
-    title: "Equipe & permissions",
-    text: "Roles clairs par employe pour securiser les operations sensibles.",
+    title: "Employés & accès",
+    text: "Gérez vos employés et leurs droits",
   },
   {
-    icon: MdSecurity,
-    title: "Fiable et securise",
-    text: "Authentification, traces d'activite et structure solide pour usage quotidien.",
+    icon: MdWifiOff,
+    title: "Mode offline",
+    text: "Travaillez même sans connexion internet",
   },
 ] as const;
 
-const faqs = [
+const bannerTrustStrip = [
+  { icon: MdEmojiEmotions, title: "100%", text: "Conçu pour les commerçants" },
+  { icon: MdSecurity, title: "Sécurisé", text: "Vos données sont protégées" },
+  { icon: MdOfflineBolt, title: "Rapide", text: "Interface fluide et performante" },
+  { icon: MdVerifiedUser, title: "Adapté à votre réalité", text: "Multi-boutiques, multi-utilisateurs" },
+] as const;
+
+const DOWNLOAD_LINKS = {
+  windows: process.env.NEXT_PUBLIC_DOWNLOAD_WINDOWS_URL ?? "",
+  linux: process.env.NEXT_PUBLIC_DOWNLOAD_LINUX_URL ?? "",
+  android: process.env.NEXT_PUBLIC_DOWNLOAD_ANDROID_URL ?? "",
+  macos: process.env.NEXT_PUBLIC_DOWNLOAD_MACOS_URL ?? "",
+  ios: process.env.NEXT_PUBLIC_DOWNLOAD_IOS_URL ?? "",
+} as const;
+
+function isRealDownloadUrl(value: string) {
+  const v = value.trim();
+  return v.startsWith("http://") || v.startsWith("https://");
+}
+
+const dailyChallenges = [
   {
-    q: "FasoStock convient-il aux petites boutiques ?",
-    a: "Oui. L'application est faite pour demarrer simple puis evoluer avec votre activite.",
+    icon: MdInventory2,
+    title: "Stock mal suivi",
+    text: "Vous ne savez pas exactement ce qui est disponible ou en rupture.",
+    tone: "orange",
   },
   {
-    q: "Puis-je l'utiliser sur telephone ?",
-    a: "Oui, l'interface est mobile-first et fonctionne tres bien sur smartphone.",
+    icon: MdPointOfSale,
+    title: "Ventes non enregistrées correctement",
+    text: "Ventes oubliées, montants erronés, tickets non émis. Vos chiffres ne sont plus fiables.",
+    tone: "blue",
   },
   {
-    q: "Le credit client est-il bien gere ?",
-    a: "Oui, avec suivi des restes, encaissements, historique et recus professionnels.",
+    icon: MdCreditCard,
+    title: "Crédits clients oubliés",
+    text: "Dettes non suivies, paiements oubliés, pertes d'argent et relations clients fragilisées.",
+    tone: "green",
   },
   {
-    q: "Puis-je gerer plusieurs boutiques avec le meme compte ?",
-    a: "Oui. Vous pouvez piloter plusieurs points de vente depuis une seule plateforme avec droits par utilisateur.",
+    icon: MdGroups,
+    title: "Employés difficiles à contrôler",
+    text: "Sans gestion des accès et des rôles, vous ne savez plus qui fait quoi.",
+    tone: "purple",
   },
   {
-    q: "Y a-t-il un support en cas de besoin ?",
-    a: "Oui. Vous avez un support reactif pour vous aider a configurer, lancer et optimiser votre utilisation.",
+    icon: MdTrendingUp,
+    title: "Rapports inexistants",
+    text: "Pas de vision claire sur vos ventes, bénéfices, dépenses ou performances.",
+    tone: "amber",
+  },
+  {
+    icon: MdStorefront,
+    title: "Difficulté à gérer plusieurs boutiques",
+    text: "Les informations sont éparpillées, vous perdez du temps et la vue globale.",
+    tone: "red",
+  },
+  {
+    icon: MdWifiOff,
+    title: "Connexion internet instable",
+    text: "Impossible de continuer à travailler quand internet coupe.",
+    tone: "cyan",
   },
 ] as const;
+
+const solutionCapabilities = [
+  {
+    icon: MdPointOfSale,
+    title: "Gestion des ventes",
+    text: "Encaissez rapidement vos clients, imprimez des tickets et suivez toutes vos ventes en temps réel.",
+    tone: "orange",
+  },
+  {
+    icon: MdInventory2,
+    title: "Gestion du stock",
+    text: "Suivez vos produits, quantités, entrées et sorties. Soyez alerté en cas de rupture de stock.",
+    tone: "blue",
+  },
+  {
+    icon: MdCreditCard,
+    title: "Gestion des crédits clients",
+    text: "Enregistrez les dettes, paiements partiels et soldes. Suivez facilement vos clients et leurs historiques.",
+    tone: "green",
+  },
+  {
+    icon: MdWallet,
+    title: "Gestion des dépenses",
+    text: "Enregistrez et catégorisez toutes vos dépenses pour mieux contrôler vos charges et votre trésorerie.",
+    tone: "purple",
+  },
+  {
+    icon: MdGroups,
+    title: "Gestion des employés",
+    text: "Ajoutez vos employés, définissez des rôles et contrôlez leurs accès selon leurs responsabilités.",
+    tone: "amber",
+  },
+  {
+    icon: MdTrendingUp,
+    title: "Rapports clairs",
+    text: "Consultez des rapports détaillés sur vos ventes, bénéfices, dépenses, stocks, crédits et performances.",
+    tone: "pink",
+  },
+  {
+    icon: MdStorefront,
+    title: "Multi-boutiques",
+    text: "Gérez plusieurs boutiques ou points de vente depuis un seul compte en toute simplicité.",
+    tone: "cyan",
+  },
+  {
+    icon: MdWifiOff,
+    title: "Offline + synchronisation",
+    text: "Travaillez même sans connexion internet et synchronisez vos données dès que la connexion revient.",
+    tone: "indigo",
+  },
+] as const;
+
+const coreFeatures = [
+  { icon: MdPointOfSale, title: "POS caisse rapide", text: "Encaissez rapidement vos clients, imprimez des tickets et suivez toutes vos ventes en temps réel.", tone: "orange" },
+  { icon: MdInventory2, title: "Stock en temps réel", text: "Suivez les entrées, sorties et quantités disponibles de vos produits. Soyez alerté en cas de rupture de stock.", tone: "blue" },
+  { icon: MdCreditCard, title: "Crédits clients", text: "Enregistrez les dettes, paiements partiels et soldes. Suivez facilement vos clients et leurs historiques de paiement.", tone: "green" },
+  { icon: MdTrendingUp, title: "Rapports détaillés", text: "Analysez vos ventes, bénéfices, dépenses, stocks, crédits et performances grâce à des rapports clairs et précis.", tone: "purple" },
+  { icon: MdStorefront, title: "Multi-boutiques", text: "Gérez plusieurs boutiques ou points de vente depuis un seul compte, avec des données centralisées.", tone: "amber" },
+  { icon: MdGroups, title: "Utilisateurs & rôles", text: "Ajoutez vos employés, définissez des rôles et contrôlez leurs accès selon leurs responsabilités.", tone: "pink" },
+  { icon: MdCheckCircle, title: "Tickets & factures", text: "Imprimez des tickets, factures ou reçus professionnels pour vos clients en un clic.", tone: "cyan" },
+  { icon: MdWifiOff, title: "Offline + synchronisation", text: "Travaillez même sans connexion internet et synchronisez automatiquement vos données.", tone: "indigo" },
+] as const;
+
+
 
 export default async function Home() {
   if (!hasSupabaseConfig()) redirect("/setup");
@@ -123,8 +254,8 @@ export default async function Home() {
 
   return (
     <main className="min-h-dvh bg-[radial-gradient(circle_at_top,rgba(232,93,44,0.14),transparent_42%),linear-gradient(to_bottom,#fff,#fff7f3)] text-neutral-900">
-      <header className="sticky top-0 z-40 border-b border-black/10 bg-white/88 backdrop-blur-md">
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
+      <header className="sticky top-0 z-40 border-b border-black/8 bg-white/95 backdrop-blur-md">
+        <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
           <Link href="/" className="inline-flex items-center gap-2.5">
             <Image src="/fs.png" alt="FasoStock" width={44} height={44} className="h-11 w-11 object-contain" priority />
             <span className="text-xl font-extrabold tracking-tight">
@@ -139,7 +270,14 @@ export default async function Home() {
             </summary>
             <div className="absolute right-0 top-12 z-30 w-[min(88vw,290px)] overflow-hidden rounded-2xl border border-black/10 bg-white p-2 shadow-[0_22px_40px_-20px_rgba(17,24,39,0.35)]">
               <nav className="flex flex-col">
-                <Link href="/login" className="rounded-xl px-3 py-2.5 text-sm font-semibold text-neutral-800 hover:bg-black/5">
+                <a href="#fonctionnalites-principales" className="rounded-xl px-3 py-2.5 text-sm font-semibold text-neutral-800 hover:bg-black/5">Fonctionnalités</a>
+                <a href="#tarifs" className="rounded-xl px-3 py-2.5 text-sm font-semibold text-neutral-800 hover:bg-black/5">Tarifs</a>
+                <a href="#temoignages" className="rounded-xl px-3 py-2.5 text-sm font-semibold text-neutral-800 hover:bg-black/5">Témoignages</a>
+                <a href="#faq" className="rounded-xl px-3 py-2.5 text-sm font-semibold text-neutral-800 hover:bg-black/5">FAQ</a>
+                <Link
+                  href="/login"
+                  className="rounded-xl border border-fs-accent/45 bg-fs-accent/8 px-3 py-2.5 text-sm font-extrabold text-fs-accent shadow-[0_10px_24px_-18px_rgba(232,93,44,0.85)]"
+                >
                   Se connecter
                 </Link>
                 <Link href="/register/select-activity" className="mt-1 rounded-xl bg-fs-accent px-3 py-2.5 text-sm font-bold text-white">
@@ -152,89 +290,211 @@ export default async function Home() {
             </div>
           </details>
 
+          <nav className="hidden items-center gap-6 lg:flex">
+            <a href="#fonctionnalites-principales" className="inline-flex items-center gap-1 text-sm font-semibold text-neutral-800 hover:text-fs-accent">
+              Fonctionnalités <MdKeyboardArrowDown className="h-4 w-4" />
+            </a>
+            <a href="#tarifs" className="text-sm font-semibold text-neutral-800 hover:text-fs-accent">Tarifs</a>
+            <a href="#temoignages" className="text-sm font-semibold text-neutral-800 hover:text-fs-accent">Témoignages</a>
+            <a href="#faq" className="text-sm font-semibold text-neutral-800 hover:text-fs-accent">FAQ</a>
+          </nav>
+
           <div className="hidden items-center gap-2 sm:flex">
+            <span className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-white px-3 py-2 text-sm font-bold text-neutral-800">
+              <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-fs-accent/12 text-fs-accent">
+                <MdPhone className="h-4 w-4" />
+              </span>
+              +226 03 07 96 18
+            </span>
             <Link
               href="/login"
-              className="rounded-xl border border-black/10 bg-white px-3.5 py-2 text-sm font-semibold text-neutral-800"
+              className="rounded-xl border border-fs-accent/55 bg-white px-3.5 py-2 text-sm font-semibold text-fs-accent"
             >
               Se connecter
             </Link>
             <Link
               href="/register/select-activity"
-              className="rounded-xl bg-fs-accent px-3.5 py-2 text-sm font-bold text-white shadow-[0_10px_24px_-14px_rgba(232,93,44,0.95)]"
+              className="inline-flex items-center gap-1 rounded-xl bg-fs-accent px-3.5 py-2 text-sm font-bold text-white shadow-[0_10px_24px_-14px_rgba(232,93,44,0.95)]"
             >
-              Essai gratuit
+              ☰ Essayer gratuitement
             </Link>
           </div>
         </div>
       </header>
 
-      <section className="mx-auto w-full max-w-6xl px-4 pb-10 pt-5 sm:px-6 sm:pb-14 sm:pt-7">
+      <section id="accueil" className="mx-auto w-full max-w-7xl scroll-mt-24 px-4 pb-10 pt-5 sm:px-6 sm:pb-14 sm:pt-7">
+        <div className="overflow-hidden rounded-[2rem] border border-black/10 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.95),rgba(246,246,246,0.9)_52%),linear-gradient(to_bottom,#fafafa,#f3f3f3)] p-4 shadow-[0_28px_70px_-35px_rgba(17,24,39,0.4)] sm:p-6">
+          <div className="grid items-center gap-6 lg:grid-cols-[1.05fr_0.95fr]">
+            <div className="max-w-2xl">
+              <p className="mb-3 inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-neutral-700 ring-1 ring-black/8">
+                <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-fs-accent text-white">★</span>
+                LA SOLUTION N°1 POUR LES COMMERÇANTS ET PME
+              </p>
+              <h1 className="text-[2.15rem] font-black leading-[0.98] tracking-tight text-[#202935] sm:text-6xl">
+                Prenez le contrôle
+                <br />
+                total de votre
+                <br />
+                <span className="text-fs-accent">commerce.</span>
+              </h1>
+              <p className="mt-4 max-w-xl text-[15px] leading-relaxed text-neutral-600 sm:text-lg">
+                FasoStock est une solution simple et intelligente pour gérer votre stock, vos ventes, vos crédits, vos
+                employés et vos rapports en toute simplicité.
+              </p>
 
-        <div className="grid items-center gap-8 lg:grid-cols-[1.08fr_0.92fr] lg:gap-12">
-          <div className="max-w-2xl">
-            <p className="mb-4 inline-flex items-center rounded-full border border-fs-accent/20 bg-fs-accent/10 px-3 py-1 text-xs font-bold text-fs-accent">
-              Plateforme SaaS pour commerces au Burkina Faso
-            </p>
-            <h1 className="text-[2.05rem] font-black leading-[1.02] tracking-tight text-neutral-950 sm:text-5xl">
-              Le cockpit de vente et stock pour piloter votre commerce en temps reel.
-            </h1>
-            <p className="mt-4 max-w-xl text-[15px] leading-relaxed text-neutral-700 sm:text-lg">
-              Centralisez caisse, stock, credits clients et rapports dans une experience propre, rapide et ultra mobile-first.
-            </p>
-            <ul className="mt-5 space-y-2.5">
-              {highlights.map((point) => (
-                <li key={point} className="flex items-start gap-2.5 text-sm font-medium text-neutral-800 sm:text-[15px]">
-                  <MdCheckCircle className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" aria-hidden />
-                  <span>{point}</span>
-                </li>
-              ))}
-            </ul>
-            <div className="mt-7 flex flex-col gap-2.5 min-[430px]:flex-row">
-              <Link
-                href="/register/select-activity"
-                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-fs-accent px-5 py-3 text-base font-extrabold text-white shadow-[0_16px_36px_-16px_rgba(232,93,44,0.95)]"
-              >
-                Creer mon espace maintenant
-                <MdArrowForward className="h-5 w-5" aria-hidden />
-              </Link>
-              <Link
-                href="/login"
-                className="inline-flex min-h-12 items-center justify-center rounded-xl border border-black/10 bg-white px-5 py-3 text-base font-bold text-neutral-800"
-              >
-                J&apos;ai deja un compte
-              </Link>
+              <div className="mt-6 flex flex-col gap-2.5 min-[430px]:flex-row">
+                <Link
+                  href="/help"
+                  className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-fs-accent px-4 py-2 text-xs font-extrabold uppercase tracking-wide text-white shadow-[0_18px_36px_-18px_rgba(232,93,44,0.95)] sm:min-h-11 sm:px-5 sm:py-2.5 sm:text-sm"
+                >
+                  <MdWhatsapp className="h-5 w-5" aria-hidden />
+                  Demander une démonstration
+                </Link>
+                <Link
+                  href="/register/select-activity"
+                  className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-black/10 bg-white px-4 py-2 text-xs font-bold text-neutral-800 sm:min-h-11 sm:px-5 sm:py-2.5 sm:text-sm"
+                >
+                  <MdOutlinePlayCircleFilled className="h-4 w-4 text-neutral-500 sm:h-5 sm:w-5" aria-hidden />
+                  Voir en vidéo
+                </Link>
+                <InstallAppButton className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-fs-accent/45 bg-white px-4 py-2 text-xs font-bold text-fs-accent sm:min-h-11 sm:px-5 sm:py-2.5 sm:text-sm" />
+              </div>
             </div>
-            <p className="mt-3 text-xs font-medium text-neutral-500 sm:text-sm">
-              Mise en place rapide, equipe et boutiques connectees sur une seule interface.
-            </p>
-          </div>
 
-          <div className="relative">
-            <div className="absolute -inset-2 -z-10 rounded-4xl bg-linear-to-br from-fs-accent/25 via-orange-200/20 to-transparent blur-2xl" />
-            <div className="rounded-[1.6rem] border border-black/10 bg-white/95 p-4 shadow-[0_35px_80px_-30px_rgba(17,24,39,0.35)] sm:p-5">
-              <div className="mb-4 flex items-center justify-between rounded-xl bg-neutral-900 px-3.5 py-3 text-white">
-                <div>
-                  <p className="text-[11px] uppercase tracking-[0.12em] text-neutral-300">Tableau de bord</p>
-                  <p className="text-sm font-bold">Performance aujourd&apos;hui</p>
+            <div className="relative">
+              <div className="absolute inset-y-0 -right-8 w-28 rounded-full bg-fs-accent/95 blur-[2px] sm:w-36" />
+              <div className="relative rounded-[1.5rem] border border-black/10 bg-white p-3 shadow-[0_30px_70px_-35px_rgba(17,24,39,0.45)]">
+                <div className="rounded-xl border border-black/10 bg-[#f8f8f8] p-2">
+                  <div className="rounded-lg bg-fs-accent px-3 py-1.5 text-[11px] font-bold text-white">
+                    POS Caisse Rapide
+                  </div>
+                  <div className="mt-2 grid grid-cols-3 gap-2">
+                    {Array.from({ length: 9 }).map((_, i) => (
+                      <div key={i} className="rounded-lg border border-black/8 bg-white p-1.5">
+                        <div className="h-8 rounded bg-gradient-to-br from-neutral-100 to-neutral-200" />
+                        <div className="mt-1 h-2 w-4/5 rounded bg-neutral-200" />
+                        <div className="mt-1 h-2 w-2/3 rounded bg-neutral-200" />
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-2 rounded-lg border border-black/8 bg-white p-2">
+                    <div className="h-2 w-1/2 rounded bg-neutral-200" />
+                    <div className="mt-2 h-2 w-2/3 rounded bg-neutral-200" />
+                    <div className="mt-2 h-8 rounded bg-fs-accent/90" />
+                  </div>
                 </div>
-                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2.5 py-1 text-xs font-bold text-emerald-300">
-                  <MdSpeed className="h-4 w-4" aria-hidden />
-                  Live
-                </span>
               </div>
+            </div>
+          </div>
+        </div>
+      </section>
 
-              <div className="grid grid-cols-2 gap-3">
-                <StatCard label="Ventes" value="3 004 500 F" hint="periode en cours" />
-                <StatCard label="Credits restants" value="0 F" hint="controle instantane" />
-                <StatCard label="Transactions" value="+18 000" hint="ce mois" />
-                <StatCard label="Ruptures" value="-52%" hint="apres suivi stock" />
+      <section className="mx-auto w-full max-w-7xl px-4 pb-4 sm:px-6">
+        <div className="overflow-hidden rounded-[1.2rem] border border-black/10 bg-white">
+          <div className="grid grid-cols-2 divide-x divide-y divide-black/8 text-xs min-[700px]:grid-cols-3 lg:grid-cols-6 lg:divide-y-0">
+            {bannerFeatureStrip.map((item) => (
+              <article key={item.title} className="flex min-h-[82px] items-center gap-2.5 px-3 py-3">
+                <div className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-fs-accent text-white">
+                  <item.icon className="h-5 w-5" aria-hidden />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[12px] font-extrabold uppercase text-neutral-800">{item.title}</p>
+                  <p className="mt-0.5 text-[11px] text-neutral-600">{item.text}</p>
+                </div>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6 sm:pb-10">
+        <div className="overflow-hidden rounded-[1.2rem] border border-[#eadfd8] bg-[#fff8f3]">
+          <div className="grid grid-cols-1 divide-y divide-[#f0e5de] min-[760px]:grid-cols-2 min-[760px]:divide-x min-[760px]:divide-y-0 lg:grid-cols-4">
+            {bannerTrustStrip.map((item) => (
+              <article key={item.title} className="flex items-center gap-3 px-4 py-4">
+                <div className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-fs-accent text-fs-accent">
+                  <item.icon className="h-5 w-5" aria-hidden />
+                </div>
+                <div>
+                  <p className="text-xl font-black uppercase tracking-tight text-[#202935]">{item.title}</p>
+                  <p className="text-xs text-neutral-600">{item.text}</p>
+                </div>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section id="demonstration" className="mx-auto w-full max-w-7xl scroll-mt-24 px-4 pb-8 sm:px-6 sm:pb-12">
+        <div className="relative overflow-hidden rounded-[1.7rem] border border-black/8 bg-[#fbfbfb] px-4 py-6 sm:px-8 sm:py-8">
+          <div className="pointer-events-none absolute -left-12 -top-14 h-40 w-40 rounded-full bg-[#fff1e7]" />
+          <div className="pointer-events-none absolute right-6 top-6 text-[11px] tracking-[0.25em] text-fs-accent/25">··············</div>
+
+          <div className="relative text-center">
+            <p className="inline-flex items-center gap-1.5 rounded-full bg-[#fff5ef] px-3 py-1 text-xs font-black uppercase tracking-wide text-fs-accent">
+              <MdEmojiEmotions className="h-4 w-4" />
+              Les défis quotidiens
+            </p>
+            <h3 className="mx-auto mt-3 max-w-4xl text-[2rem] font-black leading-[1.05] tracking-tight text-[#17253a] sm:text-[3.3rem]">
+              Vous perdez peut-être
+              <br />
+              de l&apos;argent <span className="text-fs-accent">sans le savoir</span>
+            </h3>
+            <p className="mx-auto mt-3 max-w-3xl text-sm text-neutral-600 sm:text-[1.05rem]">
+              Gérer un commerce sans outil adapté peut entraîner des erreurs, des pertes et un manque de visibilité sur
+              votre activité.
+            </p>
+          </div>
+
+          <div className="relative mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {dailyChallenges.map((item, i) => {
+              const toneMap = {
+                orange: "border-[#ffe2d2] bg-[#fff7f2] text-[#f97316]",
+                blue: "border-[#d7e9ff] bg-[#f4f9ff] text-[#2f80ed]",
+                green: "border-[#d9efdf] bg-[#f4fbf6] text-[#22a168]",
+                purple: "border-[#e8defa] bg-[#f8f4ff] text-[#7c3aed]",
+                amber: "border-[#f3e3c9] bg-[#fffaf2] text-[#d97706]",
+                red: "border-[#ffe0dc] bg-[#fff6f5] text-[#ef4444]",
+                cyan: "border-[#d7f2f6] bg-[#f3fbfc] text-[#0891b2]",
+              } as const;
+              const tone = toneMap[item.tone];
+              const [borderClass, bgClass, textClass] = tone.split(" ") as [string, string, string];
+              return (
+                <article
+                  key={item.title}
+                  className={cn(
+                    "relative rounded-2xl border p-4 shadow-[0_12px_26px_-22px_rgba(15,23,42,0.45)]",
+                    borderClass,
+                    bgClass,
+                    i >= 4 ? "lg:col-span-1" : "",
+                  )}
+                >
+                  <span className="absolute right-3 top-3 inline-flex rounded-lg bg-white px-2 py-0.5 text-xs font-black text-fs-accent">
+                    {String(i + 1).padStart(2, "0")}
+                  </span>
+                  <div className={cn("mx-auto inline-flex h-14 w-14 items-center justify-center rounded-full border bg-white", textClass)}>
+                    <item.icon className="h-7 w-7" aria-hidden />
+                  </div>
+                  <h4 className="mt-3 text-center text-xl font-black leading-tight text-[#1f2937] sm:text-2xl">
+                    {item.title}
+                  </h4>
+                  <p className="mt-2 text-center text-sm leading-relaxed text-neutral-700">{item.text}</p>
+                  <div className={cn("mx-auto mt-3 h-1 w-12 rounded-full", textClass.replace("text", "bg"))} />
+                </article>
+              );
+            })}
+          </div>
+
+          <div className="mt-4 rounded-xl border border-fs-accent/25 bg-[#fff7f1] px-4 py-3">
+            <div className="flex items-start gap-3">
+              <div className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-fs-accent text-white">
+                <MdEmojiEmotions className="h-5 w-5" />
               </div>
-
-              <div className="mt-4 rounded-xl border border-black/10 bg-fs-surface-container p-3.5">
-                <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Resultat attendu</p>
-                <p className="mt-1 text-sm font-bold text-fs-text">
-                  Plus de vitesse en caisse, moins de pertes stock, meilleur recouvrement client.
+              <div>
+                <p className="text-sm font-black text-[#202938]">La bonne nouvelle ?</p>
+                <p className="text-sm text-neutral-700">
+                  FasoStock a été conçu pour résoudre tous ces problèmes et vous aider à{" "}
+                  <span className="font-bold text-fs-accent">reprendre le contrôle total</span> de votre commerce.
                 </p>
               </div>
             </div>
@@ -242,240 +502,593 @@ export default async function Home() {
         </div>
       </section>
 
-      <section className="mx-auto w-full max-w-6xl px-4 pb-6 sm:px-6">
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {features.map((item) => (
-            <article key={item.title} className="rounded-2xl border border-black/10 bg-white p-4 shadow-sm sm:p-5">
-              <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-fs-accent/12 text-fs-accent">
-                <item.icon className="h-5 w-5" aria-hidden />
-              </div>
-              <h2 className="text-base font-extrabold text-fs-text">{item.title}</h2>
-              <p className="mt-1.5 text-sm leading-relaxed text-neutral-600">{item.text}</p>
-            </article>
-          ))}
-        </div>
-      </section>
+      <section className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6 sm:pb-12">
+        <div className="relative overflow-hidden rounded-[1.7rem] border border-black/8 bg-[#fbfbfb] px-4 py-6 sm:px-8 sm:py-8">
+          <div className="pointer-events-none absolute -left-12 -top-14 h-40 w-40 rounded-full bg-[#fff1e7]" />
+          <div className="pointer-events-none absolute right-6 top-6 text-[11px] tracking-[0.25em] text-fs-accent/25">··············</div>
 
-      <section className="mx-auto w-full max-w-6xl px-4 pb-8 sm:px-6 sm:pb-12">
-        <div className="rounded-3xl border border-black/10 bg-white p-5 shadow-[0_26px_60px_-32px_rgba(17,24,39,0.45)] sm:p-7">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <p className="text-sm font-black uppercase tracking-[0.14em] text-fs-accent">Offre SaaS</p>
-              <h3 className="mt-1 text-2xl font-black tracking-tight text-fs-text sm:text-3xl">
-                Lancez votre gestion pro aujourd&apos;hui
-              </h3>
-              <p className="mt-2 max-w-2xl text-sm leading-relaxed text-neutral-600 sm:text-base">
-                Commencez maintenant, equipez vos boutiques et centralisez vos decisions sur une seule plateforme.
-              </p>
-            </div>
-            <div className="rounded-2xl bg-fs-accent px-5 py-4 text-white">
-              <p className="text-sm font-semibold text-white/90">Pack demarrage</p>
-              <p className="mt-1 text-3xl font-black">SaaS</p>
-              <p className="mt-1 text-xs text-white/90">Accompagnement deploiement possible</p>
-            </div>
-          </div>
-          <div className="mt-5 flex flex-col gap-2.5 min-[460px]:flex-row">
-            <Link
-              href="/register/select-activity"
-              className="inline-flex min-h-12 flex-1 items-center justify-center rounded-xl bg-fs-accent px-5 py-3 text-base font-extrabold text-white"
-            >
-              Demarrer gratuitement
-            </Link>
-            <Link
-              href="/help"
-              className="inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl border border-black/10 bg-white px-5 py-3 text-base font-bold text-neutral-800"
-            >
-              <MdWhatsapp className="h-5 w-5 text-emerald-600" aria-hidden />
-              Parler au support
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      <section className="mx-auto w-full max-w-6xl px-4 pb-8 sm:px-6 sm:pb-12">
-        <div className="relative overflow-hidden rounded-4xl border border-[#d96a3f] bg-[#f7f3ea] px-4 py-5 sm:px-8 sm:py-7">
-          <div className="pointer-events-none absolute right-3 top-3 h-2.5 w-2.5 rounded-full bg-[#c89400]" />
-          <h4 className="text-3xl font-black tracking-tight text-[#2d201d] sm:text-5xl">
-            Plan d&apos;abonnement
-          </h4>
-          <p className="mt-2 text-sm text-[#6c615b] sm:text-lg">
-            Simple et transparent — essai gratuit, puis abonnement
-          </p>
-
-          <div className="mt-5 grid gap-4 lg:grid-cols-3">
-            <article className="rounded-4xl bg-[#f3efe5] p-4 sm:p-5">
-              <div className="mb-4 border-t-[6px] border-[#2f7b5f] pt-4">
-                <span className="inline-flex rounded-lg bg-[#2f7b5f] px-3 py-1 text-sm font-black tracking-wide text-white">
-                  GRATUIT
-                </span>
-              </div>
-              <p className="text-lg font-bold text-[#2d201d] sm:text-xl">Essai gratuit</p>
-              <p className="mt-1 text-4xl font-black text-[#2f7b5f] sm:text-5xl">7 jours</p>
-              <p className="mt-4 text-sm leading-relaxed text-[#3b322d] sm:text-base">
-                Accès complet
-                <br />
-                Aucune carte requise
-                <br />
-                Support inclus
-              </p>
-              <Link
-                href="/register/select-activity"
-                className="mt-4 inline-flex min-h-10 items-center justify-center rounded-xl border border-[#2f7b5f]/35 bg-white px-4 py-2 text-sm font-bold text-[#2f7b5f]"
-              >
-                S&apos;abonner
-              </Link>
-            </article>
-
-            <article className="rounded-[2.2rem] bg-[#c94c25] p-4 text-white shadow-[0_24px_45px_-30px_rgba(34,24,20,0.9)] sm:p-5">
-              <div className="mb-4">
-                <span className="inline-flex rounded-lg bg-white px-3 py-1 text-sm font-black tracking-wide text-[#b24b2b]">
-                  POPULAIRE
-                </span>
-              </div>
-              <p className="text-xl font-bold sm:text-2xl">Annuel</p>
-              <p className="mt-1.5 text-4xl font-black sm:text-5xl">125 000</p>
-              <p className="mt-1 text-lg font-medium text-white/90 sm:text-xl">FCFA / an</p>
-              <p className="mt-4 text-sm leading-relaxed text-white/95 sm:text-base">
-                Tout le plan mensuel
-                <br />
-                Économisez 55 000 FCFA
-                <br />
-                Facturation unique
-                <br />
-                Idéal pour commerces établis
-              </p>
-              <Link
-                href="/register/select-activity"
-                className="mt-4 inline-flex min-h-10 items-center justify-center rounded-xl bg-white px-4 py-2 text-sm font-black text-[#b24b2b]"
-              >
-                S&apos;abonner
-              </Link>
-            </article>
-
-            <article className="rounded-4xl bg-[#f3efe5] p-4 sm:p-5">
-              <div className="mb-4 border-t-[6px] border-[#cc9603] pt-4">
-                <span className="inline-flex rounded-lg bg-[#cc9603] px-3 py-1 text-sm font-black tracking-wide text-white">
-                  FLEXIBLE
-                </span>
-              </div>
-              <p className="text-lg font-bold text-[#2d201d] sm:text-xl">Mensuel</p>
-              <p className="mt-1 text-4xl font-black text-[#b88700] sm:text-5xl">15 000</p>
-              <p className="mt-1 text-lg font-medium text-[#5d5148] sm:text-xl">FCFA / mois</p>
-              <p className="mt-4 text-sm leading-relaxed text-[#3b322d] sm:text-base">
-                Toutes les fonctionnalités
-                <br />
-                Multi-boutiques & utilisateurs
-                <br />
-                Mode hors ligne complet
-                <br />
-                Support prioritaire
-                <br />
-                Mises à jour incluses
-              </p>
-              <Link
-                href="/register/select-activity"
-                className="mt-4 inline-flex min-h-10 items-center justify-center rounded-xl border border-[#cc9603]/40 bg-white px-4 py-2 text-sm font-bold text-[#9f7300]"
-              >
-                S&apos;abonner
-              </Link>
-            </article>
-          </div>
-
-          <p className="mt-5 text-center text-sm font-medium text-[#6c615b] sm:text-base">
-            Pas de frais cachés • Résiliation à tout moment • Support WhatsApp inclus
-          </p>
-        </div>
-      </section>
-
-      <section className="mx-auto w-full max-w-6xl px-4 pb-14 sm:px-6">
-        <div className="rounded-3xl border border-black/10 bg-white p-4 shadow-[0_20px_50px_-32px_rgba(17,24,39,0.35)] sm:p-6">
-          <div className="mb-4 sm:mb-5">
-            <p className="text-xs font-black uppercase tracking-[0.14em] text-fs-accent sm:text-sm">
-              FAQ
+          <div className="relative text-center">
+            <p className="inline-flex items-center gap-1.5 rounded-full bg-[#fff5ef] px-3 py-1 text-xs font-black uppercase tracking-wide text-fs-accent">
+              <MdCheckCircle className="h-4 w-4" />
+              Notre solution
             </p>
-            <h4 className="mt-1 text-2xl font-black tracking-tight text-fs-text sm:text-3xl">
-              Questions frequentes
+            <h3 className="mx-auto mt-3 max-w-4xl text-[2rem] font-black leading-[1.05] tracking-tight text-[#17253a] sm:text-[3.3rem]">
+              FasoStock centralise toute la
+              <br />
+              <span className="text-fs-accent">gestion de votre commerce</span>
+            </h3>
+            <p className="mx-auto mt-3 max-w-3xl text-sm text-neutral-600 sm:text-[1.05rem]">
+              Une plateforme simple, complète et intelligente pour gérer tous les aspects de votre activité depuis un
+              seul endroit.
+            </p>
+          </div>
+
+          <div className="relative mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {solutionCapabilities.map((item) => {
+              const toneMap = {
+                orange: "text-[#f97316] bg-[#fff7f2] border-[#ffe2d2]",
+                blue: "text-[#2f80ed] bg-[#f4f9ff] border-[#d7e9ff]",
+                green: "text-[#22a168] bg-[#f4fbf6] border-[#d9efdf]",
+                purple: "text-[#7c3aed] bg-[#f8f4ff] border-[#e8defa]",
+                amber: "text-[#d97706] bg-[#fffaf2] border-[#f3e3c9]",
+                pink: "text-[#db2777] bg-[#fff4fb] border-[#f8d8ec]",
+                cyan: "text-[#0891b2] bg-[#f3fbfc] border-[#d7f2f6]",
+                indigo: "text-[#2563eb] bg-[#f3f7ff] border-[#d8e3ff]",
+              } as const;
+              const [textClass, bgClass, borderClass] = toneMap[item.tone].split(" ") as [string, string, string];
+              return (
+                <article
+                  key={item.title}
+                  className={cn(
+                    "rounded-2xl border bg-white p-4 shadow-[0_12px_26px_-22px_rgba(15,23,42,0.45)]",
+                    borderClass,
+                  )}
+                >
+                  <div
+                    className={cn(
+                      "inline-flex h-14 w-14 items-center justify-center rounded-full border bg-white",
+                      textClass,
+                    )}
+                  >
+                    <item.icon className="h-7 w-7" aria-hidden />
+                  </div>
+                  <h4 className="mt-3 text-xl font-black leading-tight text-[#1f2937] sm:text-2xl">{item.title}</h4>
+                  <div className={cn("mt-2 h-1 w-12 rounded-full", textClass.replace("text", "bg"))} />
+                  <p className="mt-3 text-sm leading-relaxed text-neutral-700">{item.text}</p>
+                </article>
+              );
+            })}
+          </div>
+
+          <div className="mt-4 overflow-hidden rounded-xl border border-fs-accent/25 bg-[#fff7f1]">
+            <div className="grid grid-cols-1 divide-y divide-fs-accent/15 min-[860px]:grid-cols-[1.35fr_1fr_1fr_1fr_1fr] min-[860px]:divide-x min-[860px]:divide-y-0">
+              <div className="flex items-center gap-3 px-4 py-3.5">
+                <div className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-fs-accent text-white">
+                  <MdSecurity className="h-6 w-6" />
+                </div>
+                <p className="text-lg font-black leading-tight text-[#202938]">
+                  Tout ce dont vous avez besoin,
+                  <br />
+                  <span className="text-fs-accent">dans une seule application.</span>
+                </p>
+              </div>
+              <div className="px-4 py-3">
+                <p className="text-sm font-bold text-[#202938]">Sécurisé</p>
+                <p className="text-xs text-neutral-600">Vos données sont protégées et confidentielles.</p>
+              </div>
+              <div className="px-4 py-3">
+                <p className="text-sm font-bold text-[#202938]">Simple & rapide</p>
+                <p className="text-xs text-neutral-600">Interface intuitive pour gagner du temps.</p>
+              </div>
+              <div className="px-4 py-3">
+                <p className="text-sm font-bold text-[#202938]">Accessible partout</p>
+                <p className="text-xs text-neutral-600">Utilisez FasoStock sur mobile ou ordinateur.</p>
+              </div>
+              <div className="px-4 py-3">
+                <p className="text-sm font-bold text-[#202938]">Support local</p>
+                <p className="text-xs text-neutral-600">Une équipe disponible pour vous accompagner.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="tarifs" className="mx-auto w-full max-w-6xl scroll-mt-24 px-4 pb-8 sm:px-6 sm:pb-12">
+        <div className="relative overflow-hidden rounded-[1.7rem] border border-black/8 bg-[#f8fafc] px-4 py-6 sm:px-7 sm:py-8">
+          <div className="pointer-events-none absolute -left-14 -top-16 h-44 w-44 rounded-full bg-[#ffe8db]" />
+          <div className="pointer-events-none absolute -bottom-14 -right-16 h-44 w-44 rounded-full bg-[#e7f4ef]" />
+
+          <div className="relative text-center">
+            <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-fs-accent">ABONNEMENT</p>
+            <div className="mx-auto mt-2 h-0.5 w-12 rounded-full bg-fs-accent/70" />
+            <h4 className="mt-3 text-[2rem] font-black leading-[1.04] tracking-tight text-[#202938] sm:text-[3.45rem]">
+              Choisissez le plan qui
+              <br />
+              correspond à <span className="text-fs-accent">votre activité</span>
             </h4>
-            <p className="mt-1 text-sm text-neutral-600 sm:text-base">
-              Tout ce qu&apos;il faut savoir avant de demarrer.
+            <p className="mx-auto mt-3 max-w-3xl text-sm text-neutral-600 sm:text-[1.05rem]">
+              Des formules simples, flexibles et adaptées à tous les types de commerces. Commencez gratuitement, puis
+              évoluez selon vos besoins.
             </p>
           </div>
 
-          <div className="space-y-2.5 sm:space-y-3">
-          {faqs.map((f) => (
-              <details
-                key={f.q}
-                className="group rounded-2xl border border-black/10 bg-fs-card p-0 open:border-fs-accent/35 open:bg-fs-accent/5"
+          <div className="relative mt-7 grid gap-4 lg:grid-cols-3">
+            <article className="rounded-3xl border border-[#d5eadf] bg-white p-4 shadow-[0_14px_30px_-24px_rgba(15,23,42,0.5)] sm:min-h-[420px] sm:p-5">
+              <div className="mx-auto inline-flex h-12 w-12 items-center justify-center rounded-full border border-[#d5eadf] bg-[#f2fbf6] text-[#22a168]">
+                <MdCardGiftcard className="h-6 w-6" aria-hidden />
+              </div>
+              <div className="mt-2 text-center">
+                <span className="inline-flex rounded-full bg-[#e7f7ef] px-3 py-1 text-xs font-extrabold uppercase text-[#22a168]">
+                  Gratuit
+                </span>
+                <p className="mt-2 text-[2rem] font-black text-[#202938]">Essai gratuit</p>
+                <p className="mt-1 text-5xl font-black text-[#22a168]">7 jours</p>
+              </div>
+              <ul className="mt-5 space-y-2 text-[0.95rem] text-neutral-700">
+                <li className="flex items-center gap-2"><MdCheckCircle className="h-4 w-4 text-[#22a168]" /> Accès complet</li>
+                <li className="flex items-center gap-2"><MdCheckCircle className="h-4 w-4 text-[#22a168]" /> Aucune carte requise</li>
+                <li className="flex items-center gap-2"><MdCheckCircle className="h-4 w-4 text-[#22a168]" /> Support inclus</li>
+              </ul>
+              <Link
+                href="/register/select-activity"
+                className="mt-5 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#7cd3a9] bg-white px-4 py-2 text-sm font-extrabold text-[#22a168]"
               >
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3.5 sm:px-5 sm:py-4">
-                  <span className="text-sm font-extrabold text-fs-text sm:text-base">
-                    {f.q}
-                  </span>
-                  <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-black/5 text-neutral-600 transition-transform group-open:rotate-180 group-open:bg-fs-accent/20 group-open:text-fs-accent">
-                    <MdKeyboardArrowDown className="h-5 w-5" aria-hidden />
-                  </span>
-                </summary>
-                <p className="border-t border-black/8 px-4 pb-4 pt-3 text-sm leading-relaxed text-neutral-700 sm:px-5 sm:text-[15px]">
-                  {f.a}
-                </p>
-              </details>
-          ))}
+                Commencer l&apos;essai gratuit
+                <MdArrowForward className="h-4 w-4" />
+              </Link>
+            </article>
+
+            <article className="relative rounded-3xl border-2 border-fs-accent bg-white p-4 shadow-[0_20px_40px_-24px_rgba(249,115,22,0.75)] sm:min-h-[420px] sm:p-5">
+              <span className="absolute left-1/2 top-0 inline-flex -translate-x-1/2 -translate-y-1/2 rounded-full bg-fs-accent px-4 py-1 text-xs font-black uppercase text-white">
+                Populaire
+              </span>
+              <div className="mx-auto inline-flex h-12 w-12 items-center justify-center rounded-full border border-fs-accent/20 bg-[#fff5ee] text-fs-accent">
+                <MdCalendarMonth className="h-6 w-6" aria-hidden />
+              </div>
+              <div className="mt-2 text-center">
+                <p className="text-[2rem] font-black text-[#202938]">Annuel</p>
+                <p className="mt-1 text-6xl font-black text-fs-accent">125 000</p>
+                <p className="text-2xl font-bold text-fs-accent/85">FCFA / an</p>
+              </div>
+              <ul className="mt-5 space-y-2 text-[0.95rem] text-neutral-700">
+                <li className="flex items-center gap-2"><MdCheckCircle className="h-4 w-4 text-fs-accent" /> Tout le plan mensuel</li>
+                <li className="flex items-center gap-2"><MdCheckCircle className="h-4 w-4 text-fs-accent" /> Économisez 55 000 FCFA</li>
+                <li className="flex items-center gap-2"><MdCheckCircle className="h-4 w-4 text-fs-accent" /> Facturation unique</li>
+              </ul>
+              <Link
+                href="/register/select-activity"
+                className="mt-5 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-fs-accent px-4 py-2 text-sm font-extrabold text-white"
+              >
+                Choisir le plan annuel
+                <MdArrowForward className="h-4 w-4" />
+              </Link>
+            </article>
+
+            <article className="rounded-3xl border border-[#d5e3ff] bg-white p-4 shadow-[0_14px_30px_-24px_rgba(15,23,42,0.5)] sm:min-h-[420px] sm:p-5">
+              <div className="mx-auto inline-flex h-12 w-12 items-center justify-center rounded-full border border-[#d5e3ff] bg-[#f1f6ff] text-[#2f80ed]">
+                <MdWallet className="h-6 w-6" aria-hidden />
+              </div>
+              <div className="mt-2 text-center">
+                <span className="inline-flex rounded-full bg-[#eaf2ff] px-3 py-1 text-xs font-extrabold uppercase text-[#2f80ed]">
+                  Flexible
+                </span>
+                <p className="mt-2 text-[2rem] font-black text-[#202938]">Mensuel</p>
+                <p className="mt-1 text-6xl font-black text-[#2f80ed]">15 000</p>
+                <p className="text-2xl font-bold text-[#2f80ed]/85">FCFA / mois</p>
+              </div>
+              <ul className="mt-5 space-y-2 text-[0.95rem] text-neutral-700">
+                <li className="flex items-center gap-2"><MdCheckCircle className="h-4 w-4 text-[#2f80ed]" /> Toutes les fonctionnalités</li>
+                <li className="flex items-center gap-2"><MdCheckCircle className="h-4 w-4 text-[#2f80ed]" /> Multi-boutiques & utilisateurs</li>
+                <li className="flex items-center gap-2"><MdCheckCircle className="h-4 w-4 text-[#2f80ed]" /> Support prioritaire</li>
+                <li className="flex items-center gap-2"><MdCheckCircle className="h-4 w-4 text-[#2f80ed]" /> Mises à jour incluses</li>
+              </ul>
+              <Link
+                href="/register/select-activity"
+                className="mt-5 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#2f80ed] px-4 py-2 text-sm font-extrabold text-white"
+              >
+                Choisir le plan mensuel
+                <MdArrowForward className="h-4 w-4" />
+              </Link>
+            </article>
           </div>
 
-          <div className="mt-5 rounded-2xl border border-dashed border-fs-accent/35 bg-fs-accent/5 px-4 py-3.5 sm:px-5">
-            <p className="text-sm font-semibold text-fs-text sm:text-base">
-              Vous avez une question specifique ?
-            </p>
-            <Link
-              href="/help"
-              className="mt-2 inline-flex items-center gap-2 rounded-xl bg-fs-accent px-3.5 py-2 text-sm font-bold text-white"
-            >
-              Contacter le support
-              <MdArrowForward className="h-4 w-4" aria-hidden />
-            </Link>
+          <div className="mt-5 overflow-hidden rounded-2xl border border-black/8 bg-white">
+            <div className="grid grid-cols-1 divide-y divide-black/8 min-[760px]:grid-cols-2 min-[760px]:divide-x min-[760px]:divide-y-0 lg:grid-cols-4">
+              <div className="flex items-center gap-2.5 px-4 py-3">
+                <MdSecurity className="h-5 w-5 shrink-0 text-[#22a168]" />
+                <div>
+                  <p className="text-sm font-bold text-[#202938]">Sans engagement</p>
+                  <p className="text-xs text-neutral-500">Résiliez à tout moment</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2.5 px-4 py-3">
+                <MdLock className="h-5 w-5 shrink-0 text-fs-accent" />
+                <div>
+                  <p className="text-sm font-bold text-[#202938]">Paiement sécurisé</p>
+                  <p className="text-xs text-neutral-500">Vos données sont protégées</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2.5 px-4 py-3">
+                <MdHeadsetMic className="h-5 w-5 shrink-0 text-[#2f80ed]" />
+                <div>
+                  <p className="text-sm font-bold text-[#202938]">Support réactif</p>
+                  <p className="text-xs text-neutral-500">Une équipe à votre écoute</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2.5 px-4 py-3">
+                <MdAutorenew className="h-5 w-5 shrink-0 text-[#7c3aed]" />
+                <div>
+                  <p className="text-sm font-bold text-[#202938]">Mises à jour incluses</p>
+                  <p className="text-xs text-neutral-500">Toujours la meilleure version</p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      <PartnersSection partners={partners} />
+      <section id="fonctionnalites-principales" className="mx-auto w-full max-w-7xl scroll-mt-24 px-4 pb-8 sm:px-6 sm:pb-12">
+        <div className="relative overflow-hidden rounded-[1.7rem] border border-black/8 bg-[#fbfbfb] px-4 py-6 sm:px-8 sm:py-8">
+          <div className="pointer-events-none absolute -left-12 -top-14 h-40 w-40 rounded-full bg-[#fff1e7]" />
+          <div className="relative text-center">
+            <p className="inline-flex items-center gap-1.5 rounded-full bg-[#fff5ef] px-3 py-1 text-xs font-black uppercase tracking-wide text-fs-accent">
+              <MdCheckCircle className="h-4 w-4" />
+              Fonctionnalités principales
+            </p>
+            <h3 className="mx-auto mt-3 max-w-4xl text-[2rem] font-black leading-[1.05] tracking-tight text-[#17253a] sm:text-[3.1rem]">
+              Toutes les fonctionnalités essentielles
+              <br />
+              pour <span className="text-fs-accent">gérer votre activité</span> facilement
+            </h3>
+            <p className="mx-auto mt-3 max-w-3xl text-sm text-neutral-600 sm:text-[1.05rem]">
+              FasoStock regroupe tous les outils dont vous avez besoin pour gérer votre commerce de manière simple,
+              efficace et professionnelle.
+            </p>
+          </div>
 
-      <footer className="border-t border-black/10 bg-white/90 backdrop-blur-sm">
-        <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-7">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div className="relative mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {coreFeatures.map((item) => {
+              const toneMap = {
+                orange: "text-[#f97316] border-[#ffe2d2]",
+                blue: "text-[#2f80ed] border-[#d7e9ff]",
+                green: "text-[#22a168] border-[#d9efdf]",
+                purple: "text-[#7c3aed] border-[#e8defa]",
+                amber: "text-[#d97706] border-[#f3e3c9]",
+                pink: "text-[#db2777] border-[#f8d8ec]",
+                cyan: "text-[#0891b2] border-[#d7f2f6]",
+                indigo: "text-[#2563eb] border-[#d8e3ff]",
+              } as const;
+              const [textClass, borderClass] = toneMap[item.tone].split(" ") as [string, string];
+              return (
+                <article key={item.title} className={cn("rounded-2xl border bg-white p-4 shadow-[0_12px_26px_-22px_rgba(15,23,42,0.45)]", borderClass)}>
+                  <div className={cn("inline-flex h-14 w-14 items-center justify-center rounded-2xl border bg-neutral-50", textClass)}>
+                    <item.icon className="h-7 w-7" aria-hidden />
+                  </div>
+                  <h4 className="mt-3 text-xl font-black leading-tight text-[#1f2937]">{item.title}</h4>
+                  <div className={cn("mt-2 h-1 w-12 rounded-full", textClass.replace("text", "bg"))} />
+                  <p className="mt-3 text-sm leading-relaxed text-neutral-700">{item.text}</p>
+                  <p className={cn("mt-4 text-sm font-bold", textClass)}>
+                    En savoir plus <span aria-hidden>→</span>
+                  </p>
+                </article>
+              );
+            })}
+          </div>
+
+          <div className="mt-4 overflow-hidden rounded-xl border border-fs-accent/25 bg-[#fff7f1]">
+            <div className="grid grid-cols-1 divide-y divide-fs-accent/15 min-[900px]:grid-cols-[1.6fr_1fr_1fr_1fr_1fr_1fr] min-[900px]:divide-x min-[900px]:divide-y-0">
+              <div className="flex items-center gap-3 px-4 py-3.5">
+                <div className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-fs-accent text-white">
+                  <MdSecurity className="h-6 w-6" />
+                </div>
+                <p className="text-lg font-black leading-tight text-[#202938]">
+                  Conçu pour simplifier
+                  <br />
+                  <span className="text-fs-accent">votre quotidien</span>
+                </p>
+              </div>
+              <div className="px-4 py-3">
+                <p className="text-sm font-bold text-[#202938]">Productivité</p>
+                <p className="text-xs text-neutral-600">Gagnez du temps et concentrez-vous sur l’essentiel.</p>
+              </div>
+              <div className="px-4 py-3">
+                <p className="text-sm font-bold text-[#202938]">Précision</p>
+                <p className="text-xs text-neutral-600">Réduisez les erreurs et améliorez la fiabilité.</p>
+              </div>
+              <div className="px-4 py-3">
+                <p className="text-sm font-bold text-[#202938]">Sécurité</p>
+                <p className="text-xs text-neutral-600">Vos données sont protégées et sauvegardées.</p>
+              </div>
+              <div className="px-4 py-3">
+                <p className="text-sm font-bold text-[#202938]">Performance</p>
+                <p className="text-xs text-neutral-600">Une application rapide, fluide et toujours disponible.</p>
+              </div>
+              <div className="px-4 py-3">
+                <p className="text-sm font-bold text-[#202938]">Support dédié</p>
+                <p className="text-xs text-neutral-600">Une équipe disponible pour vous accompagner.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div id="temoignages" className="scroll-mt-24">
+        <TestimonialsSection />
+      </div>
+
+      <div id="faq" className="scroll-mt-24">
+        <FaqSection />
+      </div>
+
+      <div id="partenaires" className="scroll-mt-24">
+        <PartnersSection partners={partners} />
+      </div>
+
+      <footer id="contact" className="border-t border-white/10 bg-[#071427] text-white">
+        <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
+          <div className="rounded-2xl border border-white/10 bg-[#0b1b33] p-4">
+            <div className="grid gap-3 lg:grid-cols-[1fr_1.3fr_auto] lg:items-center">
+              <div className="flex items-center gap-3">
+                <div className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-fs-accent/20 text-fs-accent">
+                  <MdMailOutline className="h-6 w-6" />
+                </div>
+                <div>
+                  <p className="text-2xl font-black leading-tight text-white">
+                    Restez <span className="text-fs-accent">informé</span>
+                  </p>
+                  <p className="text-sm text-white/75">Recevez nos nouveautés, conseils et offres exclusives.</p>
+                </div>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
+                <input
+                  className="h-11 rounded-xl border border-white/15 bg-[#0e223f] px-4 text-sm text-white placeholder:text-white/45"
+                  placeholder="Votre adresse e-mail"
+                />
+                <button
+                  type="button"
+                  className="inline-flex h-11 items-center justify-center rounded-xl bg-fs-accent px-6 text-sm font-black text-white"
+                >
+                  S&apos;abonner
+                </button>
+              </div>
+              <p className="text-xs text-white/60">Pas de spam. Désabonnement à tout moment.</p>
+            </div>
+          </div>
+
+          <div className="mt-6 grid gap-6 lg:grid-cols-[1.15fr_1fr_1fr_1fr_1fr]">
             <div>
               <div className="inline-flex items-center gap-2.5">
-                <Image
-                  src="/fs.png"
-                  alt="FasoStock"
-                  width={32}
-                  height={32}
-                  className="h-8 w-8 object-contain"
-                />
-                <p className="text-lg font-extrabold tracking-tight text-neutral-900">
-                  <span>Faso</span>
-                  <span className="text-fs-accent">Stock</span>
+                <Image src="/fs.png" alt="FasoStock" width={44} height={44} className="h-11 w-11 object-contain" />
+                <p className="text-4xl font-black tracking-tight">
+                  Faso<span className="text-fs-accent">Stock</span>
                 </p>
               </div>
-              <p className="mt-1 text-xs text-neutral-500 sm:text-sm">
-                Gestion moderne de stock, caisse et crédit client.
+              <p className="mt-3 max-w-xs text-sm leading-relaxed text-white/75">
+                Le logiciel de gestion de commerce tout-en-un pour les commerçants africains.
               </p>
+              <div className="mt-4 flex items-center gap-2">
+                <a
+                  href="https://wa.me/22603079618"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/15 bg-[#0e223f] text-[#25D366] hover:border-[#25D366]/40"
+                  aria-label="WhatsApp"
+                >
+                  <FaWhatsapp className="h-4 w-4" />
+                </a>
+                <a
+                  href="https://facebook.com"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/15 bg-[#0e223f] text-[#1877F2] hover:border-[#1877F2]/40"
+                  aria-label="Facebook"
+                >
+                  <FaFacebookF className="h-4 w-4" />
+                </a>
+                <a
+                  href="https://youtube.com"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/15 bg-[#0e223f] text-[#FF0000] hover:border-[#FF0000]/40"
+                  aria-label="YouTube"
+                >
+                  <FaYoutube className="h-4 w-4" />
+                </a>
+                <a
+                  href="https://tiktok.com"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/15 bg-[#0e223f] text-white hover:border-white/40"
+                  aria-label="TikTok"
+                >
+                  <FaTiktok className="h-4 w-4" />
+                </a>
+                <a
+                  href="https://linkedin.com"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/15 bg-[#0e223f] text-[#0A66C2] hover:border-[#0A66C2]/40"
+                  aria-label="LinkedIn"
+                >
+                  <FaLinkedinIn className="h-4 w-4" />
+                </a>
+              </div>
             </div>
-            <nav className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs font-semibold text-neutral-600 sm:text-sm">
-              <Link href="/help" className="transition-colors hover:text-fs-accent">
-                Support
-              </Link>
-              <Link href="/login" className="transition-colors hover:text-fs-accent">
-                Connexion
-              </Link>
-              <Link href="/register/select-activity" className="transition-colors hover:text-fs-accent">
-                Essai gratuit
-              </Link>
-            </nav>
+
+            {[
+              {
+                title: "Produit",
+                links: [
+                  { label: "Fonctionnalités", href: "#fonctionnalites-principales" },
+                  { label: "Tarifs", href: "#tarifs" },
+                  { label: "Démonstration", href: "#demonstration" },
+                  { label: "Mises à jour", href: "/help" },
+                  { label: "Intégrations", href: "/integrations" },
+                ],
+              },
+              {
+                title: "Ressources",
+                links: [
+                  { label: "Blog", href: "/help" },
+                  { label: "Guides & Astuces", href: "/help" },
+                  { label: "Centre d'aide", href: "/help" },
+                  { label: "FAQ", href: "#faq" },
+                  { label: "Vidéos tutoriels", href: "/help" },
+                ],
+              },
+              {
+                title: "Entreprise",
+                links: [
+                  { label: "À propos de nous", href: "#demonstration" },
+                  { label: "Carrières", href: "/help" },
+                  { label: "Partenaires", href: "#partenaires" },
+                  { label: "Presse", href: "/help" },
+                  { label: "Contact", href: "#contact" },
+                ],
+              },
+              {
+                title: "Légal",
+                links: [
+                  { label: "Conditions d'utilisation", href: "/conditions-utilisation" },
+                  { label: "Politique de confidentialité", href: "/politique-confidentialite" },
+                  { label: "Mentions légales", href: "/mentions-legales" },
+                  { label: "Politique de remboursement", href: "/politique-remboursement" },
+                ],
+              },
+            ].map((col) => (
+              <div key={col.title}>
+                <p className="text-2xl font-black text-fs-accent">{col.title}</p>
+                <ul className="mt-3 space-y-2.5">
+                  {col.links.map((l) => (
+                    <li key={l.label} className="text-sm text-white/85">
+                      <Link href={l.href} className="inline-flex items-center gap-2 hover:text-fs-accent">
+                        {l.label}
+                        <span className="text-white/35">›</span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
           </div>
-          <div className="mt-4 border-t border-black/8 pt-3">
-            <p className="text-[11px] text-neutral-500 sm:text-xs">
-              © {new Date().getFullYear()} FasoStock · Tous droits réservés
+
+          <div className="mt-6 rounded-2xl border border-white/10 bg-[#0b1b33] p-4">
+            <div className="grid gap-4 lg:grid-cols-[1.5fr_1fr_1fr_1fr]">
+              <div className="flex items-center gap-3">
+                <div className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-fs-accent/20 text-fs-accent">
+                  <MdOutlinePhoneAndroid className="h-6 w-6" />
+                </div>
+                <div>
+                  <p className="text-2xl font-black">FasoStock sur tous vos appareils</p>
+                  <p className="text-sm text-white/70">Disponible sur Windows, Android et bientôt iOS</p>
+                </div>
+              </div>
+              <div>
+                <p className="text-sm font-bold">Données sécurisées</p>
+                <p className="mt-1 text-xs text-white/70">Vos données sont protégées et sauvegardées en toute sécurité.</p>
+              </div>
+              <div>
+                <p className="flex items-center gap-2 text-sm font-bold"><MdSync className="h-4 w-4 text-fs-accent" /> Synchronisation</p>
+                <p className="mt-1 text-xs text-white/70">Travaillez hors ligne et synchronisez vos données automatiquement.</p>
+              </div>
+              <div>
+                <p className="text-sm font-bold">Support réactif</p>
+                <p className="mt-1 text-xs text-white/70">Notre équipe est disponible pour vous accompagner à chaque étape.</p>
+              </div>
+            </div>
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              {isRealDownloadUrl(DOWNLOAD_LINKS.windows) ? (
+                <a
+                  href={DOWNLOAD_LINKS.windows}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex h-9 items-center gap-2 rounded-lg border border-white/15 bg-[#0e223f] px-3 text-xs font-bold text-white/90 hover:border-fs-accent/55"
+                  title="Télécharger la version Windows"
+                >
+                  <FaWindows className="h-4 w-4" />
+                  Windows
+                </a>
+              ) : (
+                <span className="inline-flex h-9 items-center gap-2 rounded-lg border border-white/15 bg-[#0e223f] px-3 text-xs font-bold text-white/90">
+                  <FaWindows className="h-4 w-4" />
+                  Windows
+                </span>
+              )}
+              {isRealDownloadUrl(DOWNLOAD_LINKS.android) ? (
+                <a
+                  href={DOWNLOAD_LINKS.android}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex h-9 items-center gap-2 rounded-lg border border-white/15 bg-[#0e223f] px-3 text-xs font-bold text-white/90 hover:border-fs-accent/55"
+                  title="Télécharger la version Android"
+                >
+                  <FaGooglePlay className="h-4 w-4" />
+                  Google Play
+                </a>
+              ) : (
+                <span className="inline-flex h-9 items-center gap-2 rounded-lg border border-white/15 bg-[#0e223f] px-3 text-xs font-bold text-white/90">
+                  <FaGooglePlay className="h-4 w-4" />
+                  Google Play
+                </span>
+              )}
+              <span
+                className="inline-flex h-9 items-center gap-2 rounded-lg border border-white/15 bg-[#0e223f] px-3 text-xs font-bold text-white/65"
+                title="Version iOS bientôt"
+              >
+                <FaApple className="h-4 w-4" />
+                App Store (bientôt)
+              </span>
+            </div>
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px]">
+              {isRealDownloadUrl(DOWNLOAD_LINKS.linux) ? (
+                <a
+                  href={DOWNLOAD_LINKS.linux}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex h-7 items-center rounded-md border border-white/15 bg-[#0e223f] px-2.5 font-bold text-white/80 hover:border-fs-accent/55"
+                  title="Télécharger la version Linux"
+                >
+                  Linux
+                </a>
+              ) : (
+                <span className="inline-flex h-7 items-center rounded-md border border-white/15 bg-[#0e223f] px-2.5 font-bold text-white/80">
+                  Linux
+                </span>
+              )}
+              <span className="inline-flex h-7 items-center rounded-md border border-white/10 bg-[#0e223f]/75 px-2.5 font-bold text-white/50">
+                macOS (bientôt)
+              </span>
+              <span className="inline-flex h-7 items-center rounded-md border border-white/10 bg-[#0e223f]/75 px-2.5 font-bold text-white/50">
+                iOS (bientôt)
+              </span>
+            </div>
+          </div>
+
+          <div className="mt-5 flex flex-col gap-3 border-t border-white/10 pt-4 text-sm text-white/70 sm:flex-row sm:items-center sm:justify-between">
+            <p>© {new Date().getFullYear()} FasoStock. Tous droits réservés.</p>
+            <p className="flex items-center gap-2">
+              <span>🇧🇫</span>
+              Fait avec ❤️ au Burkina Faso
             </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex h-9 items-center gap-1.5 rounded-md border border-white/15 bg-[#0e223f] px-2.5 text-[11px] font-bold text-white">
+                <FaCcVisa className="h-5 w-5 text-[#1A1F71]" />
+                VISA
+              </span>
+              <span className="inline-flex h-9 items-center gap-1.5 rounded-md border border-white/15 bg-[#0e223f] px-2.5 text-[11px] font-bold text-white">
+                <FaCcMastercard className="h-5 w-5 text-[#EB001B]" />
+                MasterCard
+              </span>
+              <span className="inline-flex h-9 items-center rounded-md border border-[#1DA1F2]/35 bg-[#1DA1F2]/15 px-2.5 text-[11px] font-bold text-[#7BD0FF]">
+                wave
+              </span>
+              <span className="inline-flex h-9 items-center rounded-md border border-[#f5bf3a]/35 bg-[#f5bf3a]/15 px-2.5 text-[11px] font-bold text-[#ffd672]">
+                Moov Money
+              </span>
+              <span className="inline-flex h-9 items-center rounded-md border border-[#ff7a00]/35 bg-[#ff7a00]/15 px-2.5 text-[11px] font-bold text-[#ffb066]">
+                Orange Money
+              </span>
+            </div>
           </div>
         </div>
       </footer>

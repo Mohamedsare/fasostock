@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
 
-/** Même fichier que le favicon (`public/fs.png`) — installation PWA. */
-const ICON = "/fs.png";
+const ICON_192 = "/pwa-192.png";
+const ICON_512 = "/pwa-512.png";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
@@ -18,19 +18,19 @@ export default function manifest(): MetadataRoute.Manifest {
     lang: "fr",
     icons: [
       {
-        src: ICON,
+        src: ICON_192,
         sizes: "192x192",
         type: "image/png",
         purpose: "any",
       },
       {
-        src: ICON,
+        src: ICON_512,
         sizes: "512x512",
         type: "image/png",
         purpose: "any",
       },
       {
-        src: ICON,
+        src: ICON_512,
         sizes: "512x512",
         type: "image/png",
         purpose: "maskable",
