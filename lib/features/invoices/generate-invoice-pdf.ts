@@ -39,6 +39,31 @@ export function openInvoicePdfInNewTab(blob: Blob): void {
 
 export function printInvoicePdf(blob: Blob): void {
   const url = URL.createObjectURL(blob);
+  let cleaned = false;
+  const cleanup = () => {
+    if (cleaned) return;
+    cleaned = true;
+    URL.revokeObjectURL(url);
+  };
+  const fallbackPrintInNewTab = () => {
+    try {
+      const popup = window.open(url, "_blank", "noopener,noreferrer");
+      if (!popup) return;
+      const tryPrint = () => {
+        try {
+          popup.focus();
+          popup.print();
+        } catch {
+          // L'utilisateur peut imprimer manuellement (Ctrl/Cmd+P) si le navigateur bloque.
+        }
+      };
+      popup.addEventListener("load", () => window.setTimeout(tryPrint, 180), { once: true });
+      window.setTimeout(tryPrint, 1200);
+      window.setTimeout(cleanup, 120_000);
+    } catch {
+      window.setTimeout(cleanup, 2_000);
+    }
+  };
   const iframe = document.createElement("iframe");
   iframe.style.position = "fixed";
   iframe.style.right = "0";
@@ -48,15 +73,35 @@ export function printInvoicePdf(blob: Blob): void {
   iframe.style.border = "none";
   iframe.src = url;
   document.body.appendChild(iframe);
+  let iframeLoaded = false;
+  const fallbackTimer = window.setTimeout(() => {
+    if (!iframeLoaded) {
+      try {
+        document.body.removeChild(iframe);
+      } catch {}
+      fallbackPrintInNewTab();
+    }
+  }, 2500);
   iframe.onload = () => {
+    iframeLoaded = true;
+    window.clearTimeout(fallbackTimer);
     try {
       iframe.contentWindow?.focus();
       iframe.contentWindow?.print();
     } finally {
       setTimeout(() => {
-        document.body.removeChild(iframe);
-        URL.revokeObjectURL(url);
+        try {
+          document.body.removeChild(iframe);
+        } catch {}
+        cleanup();
       }, 2000);
     }
+  };
+  iframe.onerror = () => {
+    window.clearTimeout(fallbackTimer);
+    try {
+      document.body.removeChild(iframe);
+    } catch {}
+    fallbackPrintInNewTab();
   };
 }

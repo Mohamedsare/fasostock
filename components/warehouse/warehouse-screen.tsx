@@ -785,7 +785,10 @@ export function WarehouseScreen() {
       } else if (mode === "print") {
         toast.info("Impression directe en cours…");
         printInvoicePdf(blob);
-        window.setTimeout(() => toast.success("Facture envoyée à l'imprimante."), 400);
+        window.setTimeout(
+          () => toast.success("Fenêtre d’impression lancée. Si rien ne sort, utilisez Ctrl+P dans l’onglet PDF."),
+          450,
+        );
       } else {
         downloadInvoicePdf(blob, params.documentNumber);
         toast.success("Facture téléchargée.");
