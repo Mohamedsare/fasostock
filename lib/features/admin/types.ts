@@ -121,3 +121,95 @@ export type AdminNewsletterSubscriber = {
   source: string;
   createdAt: string | null;
 };
+
+export type AdminSubscriptionRow = {
+  id: string;
+  companyId: string;
+  planCode: string | null;
+  status: "trialing" | "active" | "past_due" | "canceled" | "expired";
+  amountFcfa: number;
+  startedAt: string | null;
+  endsAt: string | null;
+  trialEndsAt: string | null;
+  createdAt: string | null;
+};
+
+export type AdminSalesRow = {
+  id: string;
+  companyId: string;
+  storeId: string | null;
+  total: number;
+  status: string;
+  createdAt: string;
+};
+
+export type AdminStoreLite = {
+  id: string;
+  companyId: string;
+  name: string;
+  city: string | null;
+  isActive: boolean;
+};
+
+export type AdminCompanyLite = {
+  id: string;
+  name: string;
+  isActive: boolean;
+  createdAt: string | null;
+};
+
+export type AdminUserRoleLite = {
+  id: string;
+  userId: string;
+  companyId: string;
+  createdAt: string | null;
+};
+
+export type AdminAuditLite = {
+  id: string;
+  companyId: string | null;
+  entityType: string;
+  action: string;
+  createdAt: string;
+};
+
+export type AdminAppErrorLite = {
+  id: string;
+  companyId: string | null;
+  level: string;
+  message: string;
+  createdAt: string;
+};
+
+export type AdminCockpitData = {
+  companies: AdminCompanyLite[];
+  stores: AdminStoreLite[];
+  userRoles: AdminUserRoleLite[];
+  sales: AdminSalesRow[];
+  subscriptions: AdminSubscriptionRow[];
+  audits: AdminAuditLite[];
+  appErrors: AdminAppErrorLite[];
+};
+
+export type AdminSubscriptionPlanLite = {
+  id: string;
+  slug: string;
+  name: string;
+  priceCents: number;
+  interval: "month" | "year";
+  isActive: boolean;
+};
+
+export type AdminCompanySubscriptionRow = {
+  companyId: string;
+  companyName: string;
+  companyCreatedAt: string | null;
+  subscriptionId: string | null;
+  planId: string | null;
+  planSlug: string | null;
+  planName: string | null;
+  status: "trialing" | "active" | "past_due" | "canceled" | "expired";
+  currentPeriodStart: string | null;
+  currentPeriodEnd: string | null;
+  cancelAtPeriodEnd: boolean;
+};

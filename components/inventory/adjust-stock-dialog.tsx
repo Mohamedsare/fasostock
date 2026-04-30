@@ -3,7 +3,7 @@
 import { FsCard, fsInputClass } from "@/components/ui/fs-screen-primitives";
 import { cn } from "@/lib/utils/cn";
 import { useEffect, useMemo, useState } from "react";
-import { MdAddCircleOutline, MdChecklist, MdInventory2 } from "react-icons/md";
+import { MdAddCircleOutline, MdChecklist, MdClose, MdInventory2 } from "react-icons/md";
 
 const MIN_TOUCH = 48;
 
@@ -11,6 +11,7 @@ export type AdjustStockDialogProps = {
   open: boolean;
   onClose: () => void;
   productName: string;
+  imageUrl?: string | null;
   /** Unité affichée comme Flutter (`Stock actuel: X ${unit}`). */
   unit?: string;
   currentQty: number;
@@ -25,12 +26,14 @@ export function AdjustStockDialog({
   open,
   onClose,
   productName,
+  imageUrl,
   unit = "pce",
   currentQty,
   onConfirm,
 }: AdjustStockDialogProps) {
   const [mode, setMode] = useState<"delta" | "inventory">("delta");
-  const [delta, setDelta] = useState("");
+  const [deltaDirection, setDeltaDirection] = useState<"add" | "remove">("add");
+  const [deltaQty, setDeltaQty] = useState("");
   const [counted, setCounted] = useState(String(currentQty));
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
@@ -39,7 +42,8 @@ export function AdjustStockDialog({
   useEffect(() => {
     if (!open) return;
     setMode("delta");
-    setDelta("");
+    setDeltaDirection("add");
+    setDeltaQty("");
     setCounted(String(currentQty));
     setReason("");
     setBusy(false);
@@ -52,9 +56,11 @@ export function AdjustStockDialog({
       if (!Number.isFinite(c) || c < 0) return 0;
       return c - currentQty;
     }
-    const d = Number.parseInt(delta, 10);
-    return Number.isFinite(d) ? Math.trunc(d) : 0;
-  }, [mode, delta, counted, currentQty]);
+    const q = Number.parseInt(deltaQty, 10);
+    if (!Number.isFinite(q) || q <= 0) return 0;
+    const abs = Math.abs(Math.trunc(q));
+    return deltaDirection === "add" ? abs : -abs;
+  }, [mode, deltaQty, deltaDirection, counted, currentQty]);
 
   const needsAdjust = computedDelta !== 0;
 
@@ -62,7 +68,7 @@ export function AdjustStockDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-3 sm:items-center"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-3 pb-[calc(72px+var(--fs-safe-bottom,0px))] sm:items-center sm:pb-3"
       role="dialog"
       aria-modal="true"
       aria-labelledby="adjust-stock-title"
@@ -72,26 +78,41 @@ export function AdjustStockDialog({
     >
       <FsCard
         padding="p-0"
-        className="flex max-h-[min(90dvh,720px)] w-full max-w-md flex-col overflow-hidden"
+        className="flex max-h-[min(82dvh,700px)] w-full max-w-md flex-col overflow-hidden"
       >
-        <div className="border-b border-black/[0.06] px-4 py-3 sm:px-5">
-          <h2
-            id="adjust-stock-title"
-            className="text-lg font-semibold leading-tight text-fs-text"
-          >
+        <div className="flex items-center justify-between border-b border-black/6 px-4 py-3 sm:px-5">
+          <h2 id="adjust-stock-title" className="text-lg font-semibold leading-tight text-fs-text">
             Ajuster le stock
           </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-black/8 bg-white text-neutral-700"
+            aria-label="Fermer"
+            disabled={busy}
+          >
+            <MdClose className="h-5 w-5" aria-hidden />
+          </button>
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-5">
           {/* En-tête produit — surfaceContainer + bordure, icône 48×48 (Flutter). */}
-          <div className="rounded-xl border border-black/[0.08] bg-neutral-100/80 p-3 dark:bg-fs-surface-container/80">
+          <div className="rounded-xl border border-black/8 bg-neutral-100/80 p-3 dark:bg-fs-surface-container/80">
             <div className="flex gap-3">
               <div
-                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[10px] bg-fs-surface-container ring-1 ring-black/[0.06]"
+                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[10px] bg-fs-surface-container ring-1 ring-black/6"
                 aria-hidden
               >
-                <MdInventory2 className="h-6 w-6 text-neutral-600" />
+                {imageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={imageUrl}
+                    alt={productName}
+                    className="h-12 w-12 rounded-[10px] object-cover"
+                  />
+                ) : (
+                  <MdInventory2 className="h-6 w-6 text-neutral-600" />
+                )}
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-base font-semibold leading-snug text-fs-text line-clamp-2">
@@ -114,7 +135,7 @@ export function AdjustStockDialog({
                 "inline-flex items-center justify-center gap-1.5 rounded-xl border px-2 text-xs font-semibold sm:text-sm",
                 mode === "delta"
                   ? "border-fs-accent/40 bg-fs-accent/15 text-fs-accent"
-                  : "border-black/[0.08] bg-fs-surface-container text-neutral-700",
+                  : "border-black/8 bg-fs-surface-container text-neutral-700",
               )}
             >
               <MdAddCircleOutline className="h-[18px] w-[18px] shrink-0" aria-hidden />
@@ -132,7 +153,7 @@ export function AdjustStockDialog({
                 "inline-flex items-center justify-center gap-1.5 rounded-xl border px-2 text-xs font-semibold sm:text-sm",
                 mode === "inventory"
                   ? "border-fs-accent/40 bg-fs-accent/15 text-fs-accent"
-                  : "border-black/[0.08] bg-fs-surface-container text-neutral-700",
+                  : "border-black/8 bg-fs-surface-container text-neutral-700",
               )}
             >
               <MdChecklist className="h-[18px] w-[18px] shrink-0" aria-hidden />
@@ -143,19 +164,45 @@ export function AdjustStockDialog({
           <div className="mt-4">
             {mode === "delta" ? (
               <>
+                <div className="mb-2 grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setDeltaDirection("add")}
+                  className={cn(
+                    "inline-flex min-h-[38px] items-center justify-center rounded-xl border px-3 text-sm font-semibold",
+                      deltaDirection === "add"
+                        ? "border-emerald-400 bg-emerald-50 text-emerald-700"
+                  : "border-black/8 bg-fs-surface-container text-neutral-700",
+                    )}
+                  >
+                    Ajouter
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDeltaDirection("remove")}
+                  className={cn(
+                    "inline-flex min-h-[38px] items-center justify-center rounded-xl border px-3 text-sm font-semibold",
+                      deltaDirection === "remove"
+                        ? "border-red-400 bg-red-50 text-red-700"
+                        : "border-black/8 bg-fs-surface-container text-neutral-700",
+                    )}
+                  >
+                    Diminuer
+                  </button>
+                </div>
                 <label
                   htmlFor="adjust-delta"
                   className="block text-sm font-medium text-neutral-800"
                 >
-                  Variation (positif = entrée, négatif = sortie)
+                  Quantité de variation
                 </label>
                 <input
                   id="adjust-delta"
                   inputMode="numeric"
-                  className={cn(fsInputClass(), "mt-1.5")}
-                  value={delta}
-                  onChange={(e) => setDelta(e.target.value)}
-                  placeholder="Ex: 10 ou -5"
+                  className={cn(fsInputClass(), "mt-1.5 h-10")}
+                  value={deltaQty}
+                  onChange={(e) => setDeltaQty(e.target.value)}
+                  placeholder="Ex: 10"
                   autoComplete="off"
                 />
               </>
@@ -170,7 +217,7 @@ export function AdjustStockDialog({
                 <input
                   id="adjust-counted"
                   inputMode="numeric"
-                  className={cn(fsInputClass(), "mt-1.5")}
+                  className={cn(fsInputClass(), "mt-1.5 h-10")}
                   value={counted}
                   onChange={(e) => setCounted(e.target.value)}
                   placeholder={String(currentQty)}
@@ -192,7 +239,7 @@ export function AdjustStockDialog({
             </label>
             <input
               id="adjust-reason"
-              className={cn(fsInputClass(), "mt-1.5")}
+              className={cn(fsInputClass(), "mt-1.5 h-10")}
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               placeholder={
@@ -206,15 +253,7 @@ export function AdjustStockDialog({
           ) : null}
         </div>
 
-        <div className="flex flex-col-reverse gap-2 border-t border-black/[0.06] bg-fs-card px-4 py-3 sm:flex-row sm:justify-end sm:gap-2 sm:px-5">
-          <button
-            type="button"
-            onClick={onClose}
-            className="inline-flex min-h-[48px] items-center justify-center rounded-lg px-4 text-sm font-semibold text-fs-accent sm:min-w-0"
-            disabled={busy}
-          >
-            Annuler
-          </button>
+        <div className="flex justify-center border-t border-black/6 bg-fs-card px-4 py-3 sm:px-5">
           <button
             type="button"
             onClick={async () => {
@@ -241,7 +280,7 @@ export function AdjustStockDialog({
               }
             }}
             disabled={busy || !needsAdjust}
-            className="inline-flex min-h-[48px] items-center justify-center rounded-lg bg-fs-accent px-5 text-sm font-semibold text-white disabled:opacity-50 sm:min-w-[120px]"
+            className="inline-flex min-h-[40px] w-full max-w-[220px] items-center justify-center rounded-lg bg-fs-accent px-4 text-sm font-semibold text-white disabled:opacity-50"
           >
             {busy ? "Enregistrement…" : "Valider"}
           </button>

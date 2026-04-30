@@ -289,6 +289,24 @@ export default async function Home() {
   const monthlyAmount = Math.max(0, Number.parseInt(landingSettings.pricing_monthly_amount ?? "15000", 10) || 15000);
   const yearlyAmount = Math.max(0, Number.parseInt(landingSettings.pricing_yearly_amount ?? "125000", 10) || 125000);
   const yearlySavings = Math.max(0, Number.parseInt(landingSettings.pricing_yearly_savings ?? "55000", 10) || 55000);
+  const testimonialsStats = [
+    {
+      value: (landingSettings.testimonials_stat_1_value ?? "").trim() || "500+",
+      label: (landingSettings.testimonials_stat_1_label ?? "").trim() || "Commerçants utilisent déjà FasoStock",
+    },
+    {
+      value: (landingSettings.testimonials_stat_2_value ?? "").trim() || "30+",
+      label: (landingSettings.testimonials_stat_2_label ?? "").trim() || "Types de commerces accompagnés",
+    },
+    {
+      value: (landingSettings.testimonials_stat_3_value ?? "").trim() || "98%",
+      label: (landingSettings.testimonials_stat_3_label ?? "").trim() || "De clients satisfaits selon nos retours",
+    },
+    {
+      value: (landingSettings.testimonials_stat_4_value ?? "").trim() || "+25%",
+      label: (landingSettings.testimonials_stat_4_label ?? "").trim() || "D'augmentation moyenne de performance",
+    },
+  ];
 
   return (
     <main className="min-h-dvh bg-[radial-gradient(circle_at_top,rgba(232,93,44,0.14),transparent_42%),linear-gradient(to_bottom,#fff,#fff7f3)] text-neutral-900">
@@ -893,7 +911,7 @@ export default async function Home() {
       </section>
 
       <div id="temoignages" className="scroll-mt-24">
-        <TestimonialsSection />
+        <TestimonialsSection stats={testimonialsStats} />
       </div>
 
       <div id="faq" className="scroll-mt-24">

@@ -17,6 +17,16 @@ import type {
   AdminPublicLandingMedia,
   AdminPublicLandingSetting,
   AdminNewsletterSubscriber,
+  AdminCockpitData,
+  AdminCompanyLite,
+  AdminStoreLite,
+  AdminUserRoleLite,
+  AdminSalesRow,
+  AdminSubscriptionRow,
+  AdminAuditLite,
+  AdminAppErrorLite,
+  AdminSubscriptionPlanLite,
+  AdminCompanySubscriptionRow,
 } from "./types";
 
 function toNum(v: unknown): number {
@@ -626,4 +636,298 @@ export async function adminListAuditLogs(
       createdAt: String(r.created_at ?? ""),
     };
   });
+}
+
+export async function adminListSubscriptionPlansLite(): Promise<AdminSubscriptionPlanLite[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("subscription_plans")
+    .select("id, slug, name, price_cents, interval, is_active")
+    .order("price_cents", { ascending: true });
+  if (error) throw mapSupabaseError(error);
+  return ((data ?? []) as Record<string, unknown>[]).map((r) => ({
+    id: String(r.id ?? ""),
+    slug: String(r.slug ?? ""),
+    name: String(r.name ?? ""),
+    priceCents: toNum(r.price_cents),
+    interval: String(r.interval ?? "month") === "year" ? "year" : "month",
+    isActive: r.is_active !== false,
+  }));
+}
+
+export async function adminListCompanySubscriptions(): Promise<AdminCompanySubscriptionRow[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("companies")
+    .select(
+      "id, name, created_at, sub:company_subscriptions(id, plan_id, status, current_period_start, current_period_end, cancel_at_period_end, plan:subscription_plans(slug, name))",
+    )
+    .order("name", { ascending: true });
+  if (error) throw mapSupabaseError(error);
+  return ((data ?? []) as Record<string, unknown>[]).map((r) => {
+    const subs = Array.isArray(r.sub) ? (r.sub[0] as Record<string, unknown> | undefined) : (r.sub as Record<string, unknown> | null);
+    const plan = subs?.plan;
+    const planObj = Array.isArray(plan) ? (plan[0] as Record<string, unknown> | undefined) : (plan as Record<string, unknown> | undefined);
+    return {
+      companyId: String(r.id ?? ""),
+      companyName: String(r.name ?? ""),
+      companyCreatedAt: r.created_at != null ? String(r.created_at) : null,
+      subscriptionId: subs?.id != null ? String(subs.id) : null,
+      planId: subs?.plan_id != null ? String(subs.plan_id) : null,
+      planSlug: planObj?.slug != null ? String(planObj.slug) : null,
+      planName: planObj?.name != null ? String(planObj.name) : null,
+      status: ((subs?.status != null ? String(subs.status) : "trialing") as AdminCompanySubscriptionRow["status"]) ?? "trialing",
+      currentPeriodStart: subs?.current_period_start != null ? String(subs.current_period_start) : null,
+      currentPeriodEnd: subs?.current_period_end != null ? String(subs.current_period_end) : null,
+      cancelAtPeriodEnd: subs?.cancel_at_period_end === true,
+    };
+  });
+}
+
+export async function adminUpsertCompanySubscription(params: {
+  companyId: string;
+  planId: string;
+  status: AdminCompanySubscriptionRow["status"];
+  currentPeriodStart: string | null;
+  currentPeriodEnd: string | null;
+  cancelAtPeriodEnd?: boolean;
+}): Promise<void> {
+  const supabase = createClient();
+  const payload = {
+    company_id: params.companyId,
+    plan_id: params.planId,
+    status: params.status,
+    current_period_start: params.currentPeriodStart,
+    current_period_end: params.currentPeriodEnd,
+    cancel_at_period_end: params.cancelAtPeriodEnd === true,
+    updated_at: new Date().toISOString(),
+  };
+  const { error } = await supabase.from("company_subscriptions").upsert(payload, { onConflict: "company_id" });
+  if (error) throw mapSupabaseError(error);
+}
+
+export async function adminAskAiAssistant(params: {
+  question: string;
+  companyId?: string | null;
+  history?: Array<{ role: "user" | "assistant"; content: string }>;
+}): Promise<{
+  answer: string;
+  structuredAnswer?: {
+    intro: string;
+    direct_answer: string;
+    table_title: string;
+    table_columns: string[];
+    table_rows: string[][];
+    key_figures: string[];
+    recommended_actions: string[];
+  };
+  contextScope: string;
+  suggestedActions: Array<{
+    type: "set_company_active" | "set_company_ai_predictions";
+    company_name: string;
+    value: boolean;
+    reason: string;
+  }>;
+}> {
+  const res = await fetch("/api/ai/admin-chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      question: params.question,
+      companyId: params.companyId ?? null,
+      history: params.history ?? [],
+    }),
+  });
+  const raw = await res.text();
+  let parsed: {
+    answer?: string;
+    structuredAnswer?: {
+      intro?: string;
+      direct_answer?: string;
+      table_title?: string;
+      table_columns?: string[];
+      table_rows?: string[][];
+      key_figures?: string[];
+      recommended_actions?: string[];
+    };
+    contextScope?: string;
+    error?: string;
+    suggestedActions?: Array<{
+      type?: "set_company_active" | "set_company_ai_predictions";
+      company_name?: string;
+      value?: boolean;
+      reason?: string;
+    }>;
+  } = {};
+  try {
+    parsed = JSON.parse(raw) as { answer?: string; contextScope?: string; error?: string };
+  } catch {
+    /* ignore */
+  }
+  if (!res.ok) {
+    throw new Error(parsed.error || raw || `Erreur API ${res.status}`);
+  }
+  return {
+    answer: String(parsed.answer ?? "").trim(),
+    structuredAnswer:
+      parsed.structuredAnswer != null
+        ? {
+            intro: String(parsed.structuredAnswer.intro ?? "").trim(),
+            direct_answer: String(parsed.structuredAnswer.direct_answer ?? "").trim(),
+            table_title: String(parsed.structuredAnswer.table_title ?? "").trim(),
+            table_columns: Array.isArray(parsed.structuredAnswer.table_columns)
+              ? parsed.structuredAnswer.table_columns.map((e) => String(e ?? ""))
+              : [],
+            table_rows: Array.isArray(parsed.structuredAnswer.table_rows)
+              ? parsed.structuredAnswer.table_rows.map((r) =>
+                  Array.isArray(r) ? r.map((c) => String(c ?? "")) : [],
+                )
+              : [],
+            key_figures: Array.isArray(parsed.structuredAnswer.key_figures)
+              ? parsed.structuredAnswer.key_figures.map((e) => String(e ?? ""))
+              : [],
+            recommended_actions: Array.isArray(parsed.structuredAnswer.recommended_actions)
+              ? parsed.structuredAnswer.recommended_actions.map((e) => String(e ?? ""))
+              : [],
+          }
+        : undefined,
+    contextScope: String(parsed.contextScope ?? ""),
+    suggestedActions: (parsed.suggestedActions ?? [])
+      .filter((a) => a.type === "set_company_active" || a.type === "set_company_ai_predictions")
+      .map((a) => ({
+        type: a.type as "set_company_active" | "set_company_ai_predictions",
+        company_name: String(a.company_name ?? "").trim(),
+        value: a.value === true,
+        reason: String(a.reason ?? "").trim(),
+      })),
+  };
+}
+
+export async function adminExecuteAiAction(params: {
+  type: "set_company_active" | "set_company_ai_predictions";
+  companyName: string;
+  value: boolean;
+}): Promise<{ message: string }> {
+  const res = await fetch("/api/ai/admin-action", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(params),
+  });
+  const raw = await res.text();
+  let parsed: { message?: string; error?: string } = {};
+  try {
+    parsed = JSON.parse(raw) as { message?: string; error?: string };
+  } catch {
+    /* ignore */
+  }
+  if (!res.ok) throw new Error(parsed.error || raw || `Erreur API ${res.status}`);
+  return { message: String(parsed.message ?? "Action executee") };
+}
+
+export async function adminGetCockpitData(): Promise<AdminCockpitData> {
+  const supabase = createClient();
+
+  const [
+    companiesRes,
+    storesRes,
+    userRolesRes,
+    salesRes,
+    subscriptionsRes,
+    auditsRes,
+    appErrorsRes,
+  ] = await Promise.all([
+    supabase.from("companies").select("id, name, is_active, created_at"),
+    supabase.from("stores").select("id, company_id, name, city, is_active"),
+    supabase.from("user_company_roles").select("id, user_id, company_id, created_at"),
+    supabase
+      .from("sales")
+      .select("id, company_id, store_id, total, status, created_at")
+      .eq("status", "completed")
+      .order("created_at", { ascending: false })
+      .limit(5000),
+    supabase
+      .from("company_subscriptions")
+      .select("id, company_id, plan_code, status, amount_fcfa, started_at, ends_at, trial_ends_at, created_at")
+      .order("created_at", { ascending: false })
+      .limit(5000),
+    supabase
+      .from("audit_logs")
+      .select("id, company_id, entity_type, action, created_at")
+      .order("created_at", { ascending: false })
+      .limit(1000),
+    supabase
+      .from("app_error_logs")
+      .select("id, company_id, level, message, created_at")
+      .order("created_at", { ascending: false })
+      .limit(1000),
+  ]);
+
+  if (companiesRes.error) throw mapSupabaseError(companiesRes.error);
+  if (storesRes.error) throw mapSupabaseError(storesRes.error);
+  if (userRolesRes.error) throw mapSupabaseError(userRolesRes.error);
+  if (salesRes.error) throw mapSupabaseError(salesRes.error);
+
+  const companies: AdminCompanyLite[] = ((companiesRes.data ?? []) as Record<string, unknown>[]).map((r) => ({
+    id: String(r.id ?? ""),
+    name: String(r.name ?? ""),
+    isActive: r.is_active !== false,
+    createdAt: r.created_at != null ? String(r.created_at) : null,
+  }));
+  const stores: AdminStoreLite[] = ((storesRes.data ?? []) as Record<string, unknown>[]).map((r) => ({
+    id: String(r.id ?? ""),
+    companyId: String(r.company_id ?? ""),
+    name: String(r.name ?? ""),
+    city: r.city != null ? String(r.city) : null,
+    isActive: r.is_active !== false,
+  }));
+  const userRoles: AdminUserRoleLite[] = ((userRolesRes.data ?? []) as Record<string, unknown>[]).map((r) => ({
+    id: String(r.id ?? ""),
+    userId: String(r.user_id ?? ""),
+    companyId: String(r.company_id ?? ""),
+    createdAt: r.created_at != null ? String(r.created_at) : null,
+  }));
+  const sales: AdminSalesRow[] = ((salesRes.data ?? []) as Record<string, unknown>[]).map((r) => ({
+    id: String(r.id ?? ""),
+    companyId: String(r.company_id ?? ""),
+    storeId: r.store_id != null ? String(r.store_id) : null,
+    total: toNum(r.total),
+    status: String(r.status ?? ""),
+    createdAt: String(r.created_at ?? ""),
+  }));
+
+  const subscriptions: AdminSubscriptionRow[] = subscriptionsRes.error
+    ? []
+    : ((subscriptionsRes.data ?? []) as Record<string, unknown>[]).map((r) => ({
+        id: String(r.id ?? ""),
+        companyId: String(r.company_id ?? ""),
+        planCode: r.plan_code != null ? String(r.plan_code) : null,
+        status: (String(r.status ?? "active") as AdminSubscriptionRow["status"]) ?? "active",
+        amountFcfa: toNum(r.amount_fcfa),
+        startedAt: r.started_at != null ? String(r.started_at) : null,
+        endsAt: r.ends_at != null ? String(r.ends_at) : null,
+        trialEndsAt: r.trial_ends_at != null ? String(r.trial_ends_at) : null,
+        createdAt: r.created_at != null ? String(r.created_at) : null,
+      }));
+
+  const audits: AdminAuditLite[] = auditsRes.error
+    ? []
+    : ((auditsRes.data ?? []) as Record<string, unknown>[]).map((r) => ({
+        id: String(r.id ?? ""),
+        companyId: r.company_id != null ? String(r.company_id) : null,
+        entityType: String(r.entity_type ?? ""),
+        action: String(r.action ?? ""),
+        createdAt: String(r.created_at ?? ""),
+      }));
+
+  const appErrors: AdminAppErrorLite[] = appErrorsRes.error
+    ? []
+    : ((appErrorsRes.data ?? []) as Record<string, unknown>[]).map((r) => ({
+        id: String(r.id ?? ""),
+        companyId: r.company_id != null ? String(r.company_id) : null,
+        level: String(r.level ?? "error"),
+        message: String(r.message ?? ""),
+        createdAt: String(r.created_at ?? ""),
+      }));
+
+  return { companies, stores, userRoles, sales, subscriptions, audits, appErrors };
 }

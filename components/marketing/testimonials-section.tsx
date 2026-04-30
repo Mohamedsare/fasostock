@@ -40,7 +40,19 @@ function getVisibleCount(width: number) {
   return 1;
 }
 
-export function TestimonialsSection() {
+type TestimonialsStat = {
+  value: string;
+  label: string;
+};
+
+const defaultStats: TestimonialsStat[] = [
+  { value: "500+", label: "Commerçants utilisent déjà FasoStock" },
+  { value: "30+", label: "Types de commerces accompagnés" },
+  { value: "98%", label: "De clients satisfaits selon nos retours" },
+  { value: "+25%", label: "D'augmentation moyenne de performance" },
+];
+
+export function TestimonialsSection({ stats = defaultStats }: { stats?: TestimonialsStat[] }) {
   const [visibleCount, setVisibleCount] = useState(4);
   const [index, setIndex] = useState(0);
 
@@ -136,22 +148,12 @@ export function TestimonialsSection() {
 
         <div className="mt-4 overflow-hidden rounded-xl border border-fs-accent/25 bg-[#fff7f1]">
           <div className="grid grid-cols-2 divide-y divide-fs-accent/15 text-center min-[760px]:grid-cols-4 min-[760px]:divide-x min-[760px]:divide-y-0">
-            <div className="px-4 py-3">
-              <p className="text-4xl font-black text-[#202938]">500+</p>
-              <p className="text-xs text-neutral-600">Commerçants utilisent déjà FasoStock</p>
-            </div>
-            <div className="px-4 py-3">
-              <p className="text-4xl font-black text-[#202938]">30+</p>
-              <p className="text-xs text-neutral-600">Types de commerces accompagnés</p>
-            </div>
-            <div className="px-4 py-3">
-              <p className="text-4xl font-black text-[#202938]">98%</p>
-              <p className="text-xs text-neutral-600">De clients satisfaits selon nos retours</p>
-            </div>
-            <div className="px-4 py-3">
-              <p className="text-4xl font-black text-[#202938]">+25%</p>
-              <p className="text-xs text-neutral-600">D&apos;augmentation moyenne de performance</p>
-            </div>
+            {stats.slice(0, 4).map((item, idx) => (
+              <div key={`${idx}-${item.value}`} className="px-4 py-3">
+                <p className="text-4xl font-black text-[#202938]">{item.value}</p>
+                <p className="text-xs text-neutral-600">{item.label}</p>
+              </div>
+            ))}
           </div>
         </div>
 

@@ -9,6 +9,7 @@ import { useState } from "react";
 import {
   MdAutoAwesome,
   MdBarChart,
+  MdCardMembership,
   MdBugReport,
   MdBusiness,
   MdDashboard,
@@ -40,6 +41,7 @@ const NAV = [
   { href: "/admin/newsletter", label: "Newsletter", icon: MdEmail },
   { href: "/admin/ai", label: "IA", icon: MdAutoAwesome },
   { href: "/admin/reports", label: "Rapports", icon: MdBarChart },
+  { href: "/admin/abonnement", label: "Abonnement", icon: MdCardMembership },
   { href: "/admin/gpublique", label: "GPublique", icon: MdPublic },
   { href: "/admin/settings", label: "Paramètres", icon: MdSettings },
 ] as const;

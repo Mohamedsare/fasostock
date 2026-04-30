@@ -1,215 +1,321 @@
 "use client";
 
-import { AdminCard, AdminPageHeader } from "@/components/admin/admin-page-header";
-import {
-  adminListCompanies,
-  adminListLandingChatMessages,
-  adminUpdateCompany,
-} from "@/lib/features/admin/api";
+import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { adminAskAiAssistant, adminExecuteAiAction, adminListCompanies } from "@/lib/features/admin/api";
 import { messageFromUnknownError, toast } from "@/lib/toast";
-import { downloadProSpreadsheet } from "@/lib/utils/spreadsheet-export-pro";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { format } from "date-fns";
-import { fr } from "date-fns/locale/fr";
-import { MdDownload, MdPowerSettingsNew } from "react-icons/md";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { MdSend } from "react-icons/md";
+
+type ChatMsg = { role: "user" | "assistant"; content: string; at: string };
+type StructuredAnswerUi = {
+  intro: string;
+  direct_answer: string;
+  table_title: string;
+  table_columns: string[];
+  table_rows: string[][];
+  key_figures: string[];
+  recommended_actions: string[];
+};
+type ChatMsgUi = ChatMsg & { structured?: StructuredAnswerUi };
+type PendingAction = {
+  id: string;
+  type: "set_company_active" | "set_company_ai_predictions";
+  companyName: string;
+  value: boolean;
+  reason: string;
+};
 
 export function AdminAiScreen() {
   const qc = useQueryClient();
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string>("all");
+  const [prompt, setPrompt] = useState("");
+  const [chat, setChat] = useState<ChatMsgUi[]>([]);
+  const [pendingActions, setPendingActions] = useState<PendingAction[]>([]);
+  const chatScrollRef = useRef<HTMLDivElement | null>(null);
 
   const companiesQ = useQuery({
     queryKey: ["admin-ai-companies"] as const,
     queryFn: () => adminListCompanies(),
   });
 
-  const chatQ = useQuery({
-    queryKey: ["admin-landing-chat"] as const,
-    queryFn: () => adminListLandingChatMessages(500),
-  });
-
-  const toggle = useMutation({
-    mutationFn: async (p: { id: string; enabled: boolean }) => {
-      await adminUpdateCompany(p.id, { aiPredictionsEnabled: p.enabled });
-    },
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ["admin-ai-companies"] });
-      toast.success("Entreprise mise à jour");
+  const ask = useMutation({
+    mutationFn: async (p: {
+      question: string;
+      companyId: string | null;
+      history: Array<{ role: "user" | "assistant"; content: string }>;
+    }) =>
+      adminAskAiAssistant({
+        question: p.question,
+        companyId: p.companyId,
+        history: p.history,
+      }),
+    onSuccess: (res, vars) => {
+      setChat((prev) => [
+        ...prev,
+        { role: "user", content: vars.question, at: new Date().toISOString() },
+        {
+          role: "assistant",
+          content: res.answer,
+          at: new Date().toISOString(),
+          structured: res.structuredAnswer,
+        },
+      ]);
+      if ((res.suggestedActions ?? []).length > 0) {
+        setPendingActions((prev) => [
+          ...prev,
+          ...res.suggestedActions.map((a, i) => ({
+            id: `${Date.now()}-${i}-${a.type}`,
+            type: a.type,
+            companyName: a.company_name,
+            value: a.value,
+            reason: a.reason,
+          })),
+        ]);
+      }
+      setPrompt("");
     },
     onError: (e) => toast.error(messageFromUnknownError(e)),
   });
 
   const companies = companiesQ.data ?? [];
-  const enabledCount = companies.filter((c) => c.aiPredictionsEnabled).length;
-  const msgs = chatQ.data ?? [];
-  const userMsgs = msgs.filter((m) => m.role === "user");
+  const companyFilter = useMemo(
+    () => (selectedCompanyId === "all" ? null : selectedCompanyId),
+    [selectedCompanyId],
+  );
+
+  useEffect(() => {
+    const el = chatScrollRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+  }, [chat, ask.isPending]);
+
+  function onAsk() {
+    const question = prompt.trim();
+    if (!question) return;
+    ask.mutate({
+      question,
+      companyId: companyFilter,
+      history: chat.slice(-8).map((m) => ({ role: m.role, content: m.content })),
+    });
+  }
+
+  const runAction = useMutation({
+    mutationFn: async (a: PendingAction) =>
+      adminExecuteAiAction({
+        type: a.type,
+        companyName: a.companyName,
+        value: a.value,
+      }),
+    onSuccess: (res, action) => {
+      setChat((prev) => [
+        ...prev,
+        { role: "assistant", content: `Action executee: ${res.message}`, at: new Date().toISOString() },
+      ]);
+      setPendingActions((prev) => prev.filter((a) => a.id !== action.id));
+      void qc.invalidateQueries({ queryKey: ["admin-ai-companies"] });
+    },
+    onError: (e) => toast.error(messageFromUnknownError(e)),
+  });
+
+  const quickPrompts = [
+    "Donne moi un bilan global ultra clair de la plateforme.",
+    "Liste les entreprises et leur statut abonnement dans un tableau propre.",
+    "Analyse ELOF MULTI SERVICES et propose 3 actions prioritaires.",
+    "Quelles entreprises sont a risque de churn ce mois ?",
+  ];
 
   return (
-    <div className="space-y-6 p-5 md:p-8">
-      <AdminPageHeader
-        title="IA"
-        description="Prédictions IA par entreprise et questions du chatbot landing"
-      />
-
-      <AdminCard>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm text-slate-700">
-            {enabledCount} entreprise(s) avec prédictions IA activées sur {companies.length}.
-          </p>
-          {companies.length > 0 ? (
-            <button
-              type="button"
-              onClick={() => {
-                void (async () => {
-                  try {
-                    const headers = ["Entreprise", "Prédictions IA"];
-                    const rows = companies.map((c) => [
-                      c.name,
-                      c.aiPredictionsEnabled ? "Activées" : "Désactivées",
-                    ]);
-                    const d = new Date().toISOString().slice(0, 10);
-                    await downloadProSpreadsheet(
-                      `admin-ia-entreprises-${d}.xlsx`,
-                      "Entreprises",
-                      headers,
-                      rows,
-                      {
-                        title: "FasoStock Admin — IA par entreprise",
-                        subtitle: `${companies.length} ligne(s) · ${d}`,
-                      },
-                    );
-                    toast.success("Excel enregistré");
-                  } catch (e) {
-                    toast.error(messageFromUnknownError(e, "Export impossible."));
-                  }
-                })();
-              }}
-              className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-50"
+    <div className="h-[calc(100dvh-0.75rem)] bg-[#F7F7F5] p-1.5 md:h-[calc(100dvh-1rem)] md:p-2">
+      <div className="mx-auto flex h-full w-full max-w-[99vw] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_20px_60px_-35px_rgba(15,23,42,0.35)]">
+        <div className="border-b border-slate-200 px-3 py-2 md:px-4">
+          <AdminPageHeader
+            title="IA"
+            description="Assistant conversationnel et actions Super Admin"
+          />
+          <div className="mt-1 flex flex-col gap-1.5 md:flex-row md:items-center md:justify-between">
+            <p className="text-xs font-medium text-slate-500">
+              Discussion libre sur toutes les entreprises, avec execution d&apos;actions.
+            </p>
+            <select
+              className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-sm sm:w-[320px]"
+              value={selectedCompanyId}
+              onChange={(e) => setSelectedCompanyId(e.target.value)}
             >
-              <MdDownload className="h-5 w-5 shrink-0" aria-hidden />
-              Exporter Excel
-            </button>
+              <option value="all">Toutes les entreprises (global)</option>
+              {companies.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div
+          ref={chatScrollRef}
+          className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-[#FAFAF8] px-2.5 py-3 md:px-4"
+        >
+          {chat.length === 0 ? (
+            <div className="mx-auto max-w-3xl rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
+              Pose ta question sur le SaaS FasoStock (performance, abonnements, risques, entreprise specifique) puis execute les actions proposees si necessaire.
+            </div>
+          ) : null}
+          {chat.map((m, idx) => (
+            <div
+              key={`${m.at}-${idx}`}
+              className={
+                m.role === "user"
+                  ? "ml-auto max-w-[78%] rounded-2xl bg-[#111827] px-4 py-3 text-sm text-white"
+                  : "mr-auto w-full max-w-[99%] rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800"
+              }
+            >
+              {m.role === "assistant" && m.structured ? (
+                <div className="space-y-4">
+                  <p className="text-sm font-semibold text-slate-900">{m.structured.intro}</p>
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                    <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Reponse directe</p>
+                    <p className="mt-1 text-sm leading-6 text-slate-900">{m.structured.direct_answer}</p>
+                  </div>
+                  <div>
+                    <p className="mb-2 text-sm font-semibold text-slate-900">{m.structured.table_title}</p>
+                    <div className="overflow-x-auto rounded-xl border border-slate-200">
+                      <table className="min-w-full text-sm">
+                        <thead className="bg-slate-50">
+                          <tr>
+                            {m.structured.table_columns.map((c) => (
+                              <th key={c} className="border-b border-slate-200 px-3 py-2 text-left font-semibold text-slate-700">
+                                {c}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {m.structured.table_rows.map((r, ridx) => (
+                            <tr key={`${ridx}-${r.join("-")}`} className="odd:bg-white even:bg-slate-50/40">
+                              {(m.structured?.table_columns ?? []).map((_, cidx) => (
+                                <td key={`${ridx}-${cidx}`} className="border-b border-slate-100 px-3 py-2 text-slate-700">
+                                  {r[cidx] ?? "—"}
+                                </td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <div className="rounded-xl border border-slate-200 bg-white p-3">
+                      <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Chiffres cles</p>
+                      <ul className="mt-2 space-y-1">
+                        {m.structured.key_figures.map((k, kidx) => (
+                          <li key={`${kidx}-${k}`} className="text-sm text-slate-800">
+                            {k}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div className="rounded-xl border border-slate-200 bg-white p-3">
+                      <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Actions recommandees</p>
+                      <ol className="mt-2 list-decimal space-y-1 pl-5">
+                        {m.structured.recommended_actions.map((a, aidx) => (
+                          <li key={`${aidx}-${a}`} className="text-sm text-slate-800">
+                            {a}
+                          </li>
+                        ))}
+                      </ol>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <p className="whitespace-pre-wrap leading-6">{m.content}</p>
+              )}
+            </div>
+          ))}
+          {ask.isPending ? (
+            <div className="mr-auto max-w-[94%] rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-500">
+              L&apos;IA analyse les donnees...
+            </div>
           ) : null}
         </div>
-      </AdminCard>
 
-      <AdminCard padding="p-0" className="overflow-x-auto">
-        <table className="min-w-[480px] w-full text-sm">
-          <thead className="border-b border-slate-200 bg-slate-50">
-            <tr>
-              <th className="p-3 text-left">Entreprise</th>
-              <th className="p-3 text-left">Prédictions IA</th>
-              <th className="p-3 text-left">Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {companies.map((c) => (
-              <tr key={c.id} className="border-b border-slate-100">
-                <td className="p-3 font-medium">{c.name}</td>
-                <td className="p-3">{c.aiPredictionsEnabled ? "Activées" : "Désactivées"}</td>
-                <td className="p-3">
-                  <button
-                    type="button"
-                    className="rounded-lg p-2 hover:bg-slate-100"
-                    onClick={() => toggle.mutate({ id: c.id, enabled: !c.aiPredictionsEnabled })}
-                  >
-                    <MdPowerSettingsNew className="h-5 w-5 text-slate-700" />
-                  </button>
-                </td>
-              </tr>
+        <div className="border-t border-slate-200 bg-white px-4 py-4 md:px-6">
+          <div className="mb-2 flex flex-wrap gap-1.5">
+            {quickPrompts.map((q) => (
+              <button
+                key={q}
+                type="button"
+                className="rounded-full border border-slate-300 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-700 hover:bg-slate-50"
+                onClick={() => setPrompt(q)}
+              >
+                {q}
+              </button>
             ))}
-          </tbody>
-        </table>
-      </AdminCard>
+          </div>
 
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="text-lg font-bold text-slate-900">Questions du chatbot (landing)</h2>
-          <p className="text-sm text-slate-600">
-            {userMsgs.length} question(s) posée(s) par les visiteurs.
-          </p>
+          <div className="flex items-end gap-2">
+            <textarea
+              className="max-h-40 min-h-[46px] flex-1 resize-y rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+              placeholder="Ecris ton message..."
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  onAsk();
+                }
+              }}
+            />
+            <button
+              type="button"
+              onClick={onAsk}
+              disabled={ask.isPending || !prompt.trim()}
+              className="inline-flex h-[46px] items-center gap-2 rounded-xl bg-slate-900 px-3 text-sm font-semibold text-white hover:bg-black disabled:opacity-60"
+            >
+              <MdSend className="h-5 w-5" />
+              Envoyer
+            </button>
+          </div>
+
+          {pendingActions.length > 0 ? (
+            <div className="mt-3 space-y-2 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+              <p className="text-sm font-semibold text-slate-900">Actions proposees par l&apos;IA</p>
+              {pendingActions.map((a) => (
+                <div
+                  key={a.id}
+                  className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-white p-3 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <div className="text-sm text-slate-800">
+                    <p className="font-semibold">
+                      {a.type === "set_company_active" ? "Statut entreprise" : "Predictions IA"} - {a.companyName}
+                    </p>
+                    <p className="text-slate-600">
+                      Cible: {a.value ? "Activer" : "Desactiver"}{a.reason ? ` - ${a.reason}` : ""}
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                      onClick={() => setPendingActions((prev) => prev.filter((x) => x.id !== a.id))}
+                    >
+                      Ignorer
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-black disabled:opacity-60"
+                      disabled={runAction.isPending}
+                      onClick={() => runAction.mutate(a)}
+                    >
+                      Executer
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : null}
         </div>
-        {msgs.length > 0 ? (
-          <button
-            type="button"
-            onClick={() => {
-              void (async () => {
-                try {
-                  const headers = ["Date", "Session", "Rôle", "Message"];
-                  const rows = msgs.map((m) => {
-                    const created = m.created_at != null ? String(m.created_at) : "";
-                    let dateStr = "—";
-                    if (created) {
-                      try {
-                        dateStr = format(new Date(created), "dd/MM/yyyy HH:mm", { locale: fr });
-                      } catch {
-                        dateStr = created;
-                      }
-                    }
-                    return [
-                      dateStr,
-                      String(m.session_id ?? "").slice(0, 36),
-                      String(m.role ?? ""),
-                      String(m.content ?? "").slice(0, 2000),
-                    ];
-                  });
-                  const d = new Date().toISOString().slice(0, 10);
-                  await downloadProSpreadsheet(
-                    `admin-landing-chat-${d}.xlsx`,
-                    "Messages",
-                    headers,
-                    rows,
-                    {
-                      title: "FasoStock Admin — Chat landing",
-                      subtitle: `${msgs.length} message(s) · ${d}`,
-                    },
-                  );
-                  toast.success("Excel enregistré");
-                } catch (e) {
-                  toast.error(messageFromUnknownError(e, "Export impossible."));
-                }
-              })();
-            }}
-            className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-50"
-          >
-            <MdDownload className="h-5 w-5 shrink-0" aria-hidden />
-            Exporter Excel
-          </button>
-        ) : null}
       </div>
-      <AdminCard padding="p-0" className="max-h-[400px] overflow-auto">
-        <table className="min-w-[640px] w-full text-xs">
-          <thead className="sticky top-0 border-b border-slate-200 bg-slate-50">
-            <tr>
-              <th className="p-2 text-left">Date</th>
-              <th className="p-2 text-left">Session</th>
-              <th className="p-2 text-left">Rôle</th>
-              <th className="p-2 text-left">Message</th>
-            </tr>
-          </thead>
-          <tbody>
-            {msgs.map((m) => {
-              const created = m.created_at != null ? String(m.created_at) : null;
-              let dateStr = "—";
-              if (created) {
-                try {
-                  dateStr = format(new Date(created), "dd/MM/yyyy HH:mm", { locale: fr });
-                } catch {
-                  dateStr = created;
-                }
-              }
-              return (
-                <tr key={String(m.id)} className="border-b border-slate-100">
-                  <td className="p-2 whitespace-nowrap text-slate-600">{dateStr}</td>
-                  <td className="p-2 font-mono text-[10px] text-slate-500">
-                    {String(m.session_id ?? "").slice(0, 12)}…
-                  </td>
-                  <td className="p-2">{String(m.role ?? "")}</td>
-                  <td className="p-2 text-slate-800">{String(m.content ?? "").slice(0, 200)}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </AdminCard>
     </div>
   );
 }

@@ -35,6 +35,14 @@ export function AdminGPubliqueScreen() {
     pricing_yearly_savings: "55000",
     support_whatsapp_url: "/help",
     support_demo_url: "/help",
+    testimonials_stat_1_value: "500+",
+    testimonials_stat_1_label: "Commerçants utilisent déjà FasoStock",
+    testimonials_stat_2_value: "30+",
+    testimonials_stat_2_label: "Types de commerces accompagnés",
+    testimonials_stat_3_value: "98%",
+    testimonials_stat_3_label: "De clients satisfaits selon nos retours",
+    testimonials_stat_4_value: "+25%",
+    testimonials_stat_4_label: "D'augmentation moyenne de performance",
   });
 
   const q = useQuery({
@@ -300,6 +308,75 @@ export function AdminGPubliqueScreen() {
               className="h-11 w-full rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-orange-400"
             />
           </label>
+        </div>
+        <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+          <p className="text-xs font-semibold text-slate-700">Statistiques section Témoignages (landing)</p>
+          <div className="mt-3 grid gap-3 md:grid-cols-2">
+            <label className="space-y-1.5">
+              <span className="text-xs font-semibold text-slate-600">Stat 1 — Valeur</span>
+              <input
+                value={landingSettings.testimonials_stat_1_value ?? ""}
+                onChange={(e) => setSetting("testimonials_stat_1_value", e.target.value)}
+                className="h-11 w-full rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-orange-400"
+              />
+            </label>
+            <label className="space-y-1.5">
+              <span className="text-xs font-semibold text-slate-600">Stat 1 — Libellé</span>
+              <input
+                value={landingSettings.testimonials_stat_1_label ?? ""}
+                onChange={(e) => setSetting("testimonials_stat_1_label", e.target.value)}
+                className="h-11 w-full rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-orange-400"
+              />
+            </label>
+            <label className="space-y-1.5">
+              <span className="text-xs font-semibold text-slate-600">Stat 2 — Valeur</span>
+              <input
+                value={landingSettings.testimonials_stat_2_value ?? ""}
+                onChange={(e) => setSetting("testimonials_stat_2_value", e.target.value)}
+                className="h-11 w-full rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-orange-400"
+              />
+            </label>
+            <label className="space-y-1.5">
+              <span className="text-xs font-semibold text-slate-600">Stat 2 — Libellé</span>
+              <input
+                value={landingSettings.testimonials_stat_2_label ?? ""}
+                onChange={(e) => setSetting("testimonials_stat_2_label", e.target.value)}
+                className="h-11 w-full rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-orange-400"
+              />
+            </label>
+            <label className="space-y-1.5">
+              <span className="text-xs font-semibold text-slate-600">Stat 3 — Valeur</span>
+              <input
+                value={landingSettings.testimonials_stat_3_value ?? ""}
+                onChange={(e) => setSetting("testimonials_stat_3_value", e.target.value)}
+                className="h-11 w-full rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-orange-400"
+              />
+            </label>
+            <label className="space-y-1.5">
+              <span className="text-xs font-semibold text-slate-600">Stat 3 — Libellé</span>
+              <input
+                value={landingSettings.testimonials_stat_3_label ?? ""}
+                onChange={(e) => setSetting("testimonials_stat_3_label", e.target.value)}
+                className="h-11 w-full rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-orange-400"
+              />
+            </label>
+            <label className="space-y-1.5">
+              <span className="text-xs font-semibold text-slate-600">Stat 4 — Valeur</span>
+              <input
+                value={landingSettings.testimonials_stat_4_value ?? ""}
+                onChange={(e) => setSetting("testimonials_stat_4_value", e.target.value)}
+                className="h-11 w-full rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-orange-400"
+              />
+            </label>
+            <label className="space-y-1.5">
+              <span className="text-xs font-semibold text-slate-600">Stat 4 — Libellé</span>
+              <input
+                value={landingSettings.testimonials_stat_4_label ?? ""}
+                onChange={(e) => setSetting("testimonials_stat_4_label", e.target.value)}
+                className="h-11 w-full rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-orange-400"
+              />
+            </label>
+          </div>
         </div>
         <div className="mt-4">
           <button
