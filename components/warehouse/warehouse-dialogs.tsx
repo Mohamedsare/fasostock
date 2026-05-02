@@ -806,6 +806,7 @@ export function WarehouseCreateTransferFromDepotDialog({
 }) {
   const [toStoreId, setToStoreId] = useState("");
   const [lines, setLines] = useState<CreateTransferLineInput[]>([{ productId: "", quantityRequested: 1 }]);
+  const [lineSearches, setLineSearches] = useState<string[]>([""]);
   const [stockProblems, setStockProblems] = useState<string[] | null>(null);
 
   const productsQ = useQuery({
@@ -821,6 +822,7 @@ export function WarehouseCreateTransferFromDepotDialog({
       initialToStoreId && ids.has(initialToStoreId) ? initialToStoreId : (stores[0]?.id ?? "");
     setToStoreId(preferred);
     setLines([{ productId: "", quantityRequested: 1 }]);
+    setLineSearches([""]);
     setStockProblems(null);
   }, [open, stores, initialToStoreId]);
 
@@ -837,12 +839,17 @@ export function WarehouseCreateTransferFromDepotDialog({
 
   function addLine() {
     setLines((prev) => [...prev, { productId: "", quantityRequested: 1 }]);
+    setLineSearches((prev) => [...prev, ""]);
   }
   function removeLine(i: number) {
     setLines((prev) => (prev.length <= 1 ? prev : prev.filter((_, j) => j !== i)));
+    setLineSearches((prev) => (prev.length <= 1 ? prev : prev.filter((_, j) => j !== i)));
   }
   function setLine(i: number, patch: Partial<CreateTransferLineInput>) {
     setLines((prev) => prev.map((row, j) => (j === i ? { ...row, ...patch } : row)));
+  }
+  function setLineSearch(i: number, value: string) {
+    setLineSearches((prev) => prev.map((v, j) => (j === i ? value : v)));
   }
 
   async function submit() {
@@ -908,39 +915,67 @@ export function WarehouseCreateTransferFromDepotDialog({
               </option>
             ))}
           </select>
-          <p className="mt-3 text-xs text-neutral-600">
-            Produits « les deux » (catalogue + dépôt) — aligné Flutter.
-          </p>
           <div className="mt-3 space-y-2">
             {lines.map((row, i) => {
               const depotLineProduct = row.productId
                 ? transferProducts.find((p) => p.id === row.productId)
                 : undefined;
               const depotLineImageUrl = depotLineProduct ? firstProductImageUrl(depotLineProduct) : null;
+              const searchQ = (lineSearches[i] ?? "").trim().toLowerCase();
+              const filteredLineProducts = transferProducts
+                .filter((p) => {
+                  if (!searchQ) return true;
+                  return (
+                    p.name.toLowerCase().includes(searchQ) ||
+                    (p.sku ?? "").toLowerCase().includes(searchQ) ||
+                    (p.barcode ?? "").toLowerCase().includes(searchQ)
+                  );
+                })
+                .slice(0, 18);
               return (
               <div key={i} className="flex flex-wrap items-end gap-2 rounded-xl border border-black/6 bg-fs-card p-2">
-                <div className="flex min-w-0 flex-1 items-end gap-2">
+                <div className="flex min-w-0 flex-1 items-start gap-2">
                   <ProductListThumbnail
                     imageUrl={depotLineImageUrl}
                     className="h-10 w-10 shrink-0 rounded-lg"
                   />
                   <div className="min-w-0 flex-1">
                     <span className="text-[10px] font-semibold uppercase text-neutral-500">Produit</span>
-                    <select
+                    <input
                       className={fsInputClass("mt-0.5 w-full text-sm")}
-                      value={row.productId}
-                      onChange={(e) => setLine(i, { productId: e.target.value })}
-                    >
-                      <option value="">—</option>
-                      {transferProducts.map((p) => {
-                        const st = warehouseQtyByProductId[p.id] ?? 0;
-                        return (
-                          <option key={p.id} value={p.id}>
-                            {p.name} (stock dépôt {st})
-                          </option>
-                        );
-                      })}
-                    </select>
+                      value={lineSearches[i] ?? ""}
+                      onChange={(e) => setLineSearch(i, e.target.value)}
+                      placeholder="Rechercher (nom, SKU, code-barres)…"
+                    />
+                    <div className="mt-1.5 max-h-44 overflow-y-auto rounded-lg border border-black/8 bg-white">
+                      {filteredLineProducts.length === 0 ? (
+                        <p className="px-2 py-2 text-xs text-neutral-500">Aucun produit trouvé.</p>
+                      ) : (
+                        filteredLineProducts.map((p) => {
+                          const st = warehouseQtyByProductId[p.id] ?? 0;
+                          const thumb = firstProductImageUrl(p);
+                          const isSelected = row.productId === p.id;
+                          return (
+                            <button
+                              key={p.id}
+                              type="button"
+                              onClick={() => {
+                                setLine(i, { productId: p.id });
+                                setLineSearch(i, p.name);
+                              }}
+                              className={cn(
+                                "flex w-full items-center gap-2 border-b border-black/6 px-2 py-1.5 text-left last:border-b-0",
+                                isSelected ? "bg-fs-accent/10" : "hover:bg-black/3",
+                              )}
+                            >
+                              <ProductListThumbnail imageUrl={thumb} className="h-8 w-8 shrink-0 rounded-md" />
+                              <span className="min-w-0 flex-1 truncate text-xs text-fs-text">{p.name}</span>
+                              <span className="shrink-0 text-[11px] text-neutral-500">Stock {st}</span>
+                            </button>
+                          );
+                        })
+                      )}
+                    </div>
                   </div>
                 </div>
                 <div className="w-24">

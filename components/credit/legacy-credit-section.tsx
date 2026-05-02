@@ -4,8 +4,6 @@ import { CustomerFormDialog, type CustomerFormValue } from "@/components/custome
 import { CreditRepaymentReceiptDialog } from "@/components/credit/credit-repayment-receipt-dialog";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { format } from "date-fns";
-import { fr } from "date-fns/locale";
 import { MdDeleteOutline } from "react-icons/md";
 import { FsCard, fsInputClass } from "@/components/ui/fs-screen-primitives";
 import { createCustomer, listCustomers } from "@/lib/features/customers/api";
@@ -23,6 +21,10 @@ import { queryKeys } from "@/lib/query/query-keys";
 import { messageFromUnknownError, toast } from "@/lib/toast";
 import { cn } from "@/lib/utils/cn";
 import { formatCurrency } from "@/lib/utils/currency";
+import {
+  formatOperationDateTime,
+  formatOperationReceiptCompact,
+} from "@/lib/utils/operation-datetime";
 
 const EPS = 0.005;
 const LEGACY_VENDOR_PREFIX = "__VENDEUR__:";
@@ -115,7 +117,7 @@ function buildCreditRepaymentReceiptData(params: {
   } | null;
 }): CreditRepaymentReceiptData {
   const now = params.issuedAt ?? new Date();
-  const fallbackReceiptNo = `RC-${format(now, "yyMMdd-HHmmss")}-${Math.floor(Math.random() * 1000)
+  const fallbackReceiptNo = `RC-${formatOperationReceiptCompact(now)}-${Math.floor(Math.random() * 1000)
     .toString()
     .padStart(3, "0")}`;
   const previousBalance =
@@ -191,7 +193,17 @@ export function LegacyCreditSection({
   });
 
   const openRows = useMemo(() => (q.data ?? []).filter((r) => remaining(r) > EPS), [q.data]);
+  const settledRows = useMemo(() => {
+    const list = (q.data ?? []).filter((r) => remaining(r) <= EPS);
+    list.sort((a, b) => {
+      const ta = Date.parse(a.created_at);
+      const tb = Date.parse(b.created_at);
+      return (Number.isFinite(tb) ? tb : 0) - (Number.isFinite(ta) ? ta : 0);
+    });
+    return list;
+  }, [q.data]);
   const totalOpen = useMemo(() => openRows.reduce((s, r) => s + remaining(r), 0), [openRows]);
+  const [showSettledLegacy, setShowSettledLegacy] = useState(false);
 
   const createMut = useMutation({
     mutationFn: createLegacyCredit,
@@ -263,13 +275,14 @@ export function LegacyCreditSection({
           <div className="py-5 text-center text-sm text-neutral-500">Aucun crédit libre ouvert.</div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1120px] text-left text-[13px] [&_thead_th]:whitespace-nowrap [&_tbody_td]:whitespace-nowrap">
+            <table className="w-full min-w-[1220px] text-left text-[13px] [&_thead_th]:whitespace-nowrap [&_tbody_td]:whitespace-nowrap">
               <thead>
                 <tr className="border-b border-black/10">
                   <th className="px-2 py-2">Client</th>
                   <th className="px-2 py-2">Libellé</th>
                   <th className="px-2 py-2">Vendeur</th>
                   <th className="px-2 py-2">Entreprise</th>
+                  <th className="px-2 py-2">Date de création</th>
                   <th className="px-2 py-2 text-right">Montant</th>
                   <th className="px-2 py-2 text-right">Encaissé</th>
                   <th className="px-2 py-2 text-right">Reste</th>
@@ -289,6 +302,9 @@ export function LegacyCreditSection({
                       {parseLegacyVendorAndNote(r.internal_note).vendor || LEGACY_DEFAULT_VENDOR_NAME}
                     </td>
                     <td className="px-2 py-2">{companyName || "—"}</td>
+                    <td className="px-2 py-2">
+                      {formatOperationDateTime(r.created_at)}
+                    </td>
                     <td className="px-2 py-2 text-right tabular-nums">{formatCurrency(r.principal_amount)}</td>
                     <td className="px-2 py-2 text-right tabular-nums text-emerald-700">
                       {formatCurrency(sumPaid(r))}
@@ -297,7 +313,7 @@ export function LegacyCreditSection({
                       {formatCurrency(remaining(r))}
                     </td>
                     <td className="px-2 py-2">
-                      {r.due_at ? format(new Date(r.due_at), "dd/MM/yyyy", { locale: fr }) : "—"}
+                      {r.due_at ? formatOperationDateTime(r.due_at) : "—"}
                     </td>
                     <td className="px-2 py-2">
                       <span
@@ -355,6 +371,95 @@ export function LegacyCreditSection({
             </table>
           </div>
         )}
+        {settledRows.length > 0 ? (
+          <div className="mt-4 border-t border-black/10 pt-3 dark:border-white/10">
+            <button
+              type="button"
+              onClick={() => setShowSettledLegacy((v) => !v)}
+              className="flex w-full touch-manipulation items-center justify-between gap-2 rounded-xl bg-fs-surface-container px-3 py-2.5 text-left text-sm font-bold text-fs-text active:opacity-95 sm:py-2 sm:text-xs"
+            >
+              <span>
+                Historique — crédits libres soldés
+                <span className="ml-2 font-normal text-neutral-500">({settledRows.length})</span>
+              </span>
+              <span className="text-fs-accent">{showSettledLegacy ? "▼" : "▶"}</span>
+            </button>
+            {showSettledLegacy ? (
+              <div className="mt-2 overflow-x-auto">
+                <p className="mb-2 text-xs text-neutral-600">
+                  Dossiers entièrement recouvrés — bouton « Paiements » pour le détail et la réimpression des reçus.
+                </p>
+                <table className="w-full min-w-[1000px] text-left text-[13px] [&_thead_th]:whitespace-nowrap [&_tbody_td]:whitespace-nowrap">
+                  <thead>
+                    <tr className="border-b border-black/10">
+                      <th className="px-2 py-2">Client</th>
+                      <th className="px-2 py-2">Libellé</th>
+                      <th className="px-2 py-2">Vendeur</th>
+                      <th className="px-2 py-2 text-right">Montant</th>
+                      <th className="px-2 py-2 text-right">Encaissé</th>
+                      <th className="px-2 py-2">Date de création</th>
+                      <th className="px-2 py-2">Statut</th>
+                      <th className="px-2 py-2">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {settledRows.map((r) => (
+                      <tr key={r.id} className="border-b border-black/6 opacity-95">
+                        <td className="px-2 py-2">{r.customer?.name ?? "—"}</td>
+                        <td className="max-w-[220px] truncate px-2 py-2" title={r.title}>
+                          {r.title}
+                        </td>
+                        <td className="min-w-[200px] px-2 py-2">
+                          {parseLegacyVendorAndNote(r.internal_note).vendor || LEGACY_DEFAULT_VENDOR_NAME}
+                        </td>
+                        <td className="px-2 py-2 text-right tabular-nums">{formatCurrency(r.principal_amount)}</td>
+                        <td className="px-2 py-2 text-right tabular-nums text-emerald-700">
+                          {formatCurrency(sumPaid(r))}
+                        </td>
+                        <td className="px-2 py-2">
+                          {formatOperationDateTime(r.created_at)}
+                        </td>
+                        <td className="px-2 py-2">
+                          <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[11px] font-bold text-emerald-800 dark:text-emerald-300">
+                            Soldé
+                          </span>
+                        </td>
+                        <td className="px-2 py-2">
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => setHistoryFor(r)}
+                              className="touch-manipulation rounded-lg border border-black/10 bg-fs-surface-container px-3 py-2.5 text-xs font-bold text-neutral-800 active:opacity-95 dark:border-white/15 dark:text-neutral-100 sm:py-1"
+                            >
+                              Paiements
+                            </button>
+                            {isOwner ? (
+                              <button
+                                type="button"
+                                disabled={deleteMut.isPending}
+                                onClick={() => {
+                                  if (!window.confirm("Supprimer ce crédit libre et son historique de paiements ?")) {
+                                    return;
+                                  }
+                                  deleteMut.mutate({ creditId: r.id });
+                                }}
+                                className="touch-manipulation rounded-lg border border-black/8 bg-fs-card px-2 py-1 text-xs font-semibold text-red-600 active:opacity-95 disabled:opacity-60"
+                                aria-label={`Supprimer le crédit libre ${r.title}`}
+                                title="Supprimer"
+                              >
+                                <MdDeleteOutline className="h-4 w-4" aria-hidden />
+                              </button>
+                            ) : null}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
       </FsCard>
 
       <LegacyCreateDialog
@@ -841,7 +946,7 @@ function LegacyPaymentsHistoryDialog({
                       .reduce((s, x) => s + Number(x.amount ?? 0), 0),
                 );
                 const issuedAt = new Date(p.created_at);
-                const receiptNo = `RC-${format(issuedAt, "yyMMdd-HHmmss")}-${String(p.id).slice(0, 6).toUpperCase()}`;
+                const receiptNo = `RC-${formatOperationReceiptCompact(issuedAt)}-${String(p.id).slice(0, 6).toUpperCase()}`;
                 return (
                   <div
                     key={p.id}
@@ -850,7 +955,7 @@ function LegacyPaymentsHistoryDialog({
                     <div className="flex flex-col gap-2 min-[560px]:flex-row min-[560px]:items-center min-[560px]:justify-between">
                       <div className="min-w-0">
                         <p className="text-sm font-bold text-fs-text">
-                          {format(new Date(p.created_at), "dd/MM/yyyy HH:mm", { locale: fr })}
+                          {formatOperationDateTime(p.created_at)}
                         </p>
                         <p className="mt-0.5 text-xs text-neutral-600">
                           {paymentMethodLabel(p.method)}

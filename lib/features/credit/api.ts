@@ -63,7 +63,7 @@ function normalizeCreditRow(row: Record<string, unknown>): CreditSaleRow {
 /**
  * Ventes complétées avec client — pour analyse crédit (reste = total − encaissements réels ;
  * les lignes `sale_payments.method = 'other'` = solde à crédit POS, ne réduisent pas le reste).
- * La page Crédit n’affiche que les dossiers avec reste > 0 (soldées exclues de la liste).
+ * La page Crédit liste par défaut les dossiers ouverts ; le filtre « Soldés » affiche l’historique des dossiers soldés.
  * Requiert les colonnes `credit_due_at` / `credit_internal_note` (migration `00082_…`).
  */
 export async function listCreditSales(params: {

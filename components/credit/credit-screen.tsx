@@ -4,7 +4,6 @@ import { useEffect, useMemo, useRef, useState, type ComponentType } from "react"
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, subMonths } from "date-fns";
-import { fr } from "date-fns/locale";
 import {
   MdAccountBalanceWallet,
   MdCalendarToday,
@@ -43,6 +42,7 @@ import {
   isDueToday,
   paidTotal,
   remainingTotal,
+  saleHadCreditBooking,
 } from "@/lib/features/credit/credit-math";
 import type { CreditLineStatus, CreditSaleRow } from "@/lib/features/credit/types";
 import { listLegacyCredits } from "@/lib/features/credit/legacy-api";
@@ -62,6 +62,11 @@ import { messageFromUnknownError, toast } from "@/lib/toast";
 import { creditSalesToSpreadsheetMatrix } from "@/lib/features/credit/csv";
 import { downloadProSpreadsheet } from "@/lib/utils/spreadsheet-export-pro";
 import { cn } from "@/lib/utils/cn";
+import {
+  formatOperationCalendarDayYmd,
+  formatOperationDateTime,
+  formatOperationNowDateFull,
+} from "@/lib/utils/operation-datetime";
 import { CreditDetailPanel } from "./credit-detail-panel";
 import { CreditQuickPayDialog } from "./credit-quick-pay-dialog";
 import { LegacyCreditSection } from "./legacy-credit-section";
@@ -72,7 +77,8 @@ type QuickChip =
   | "partiel"
   | "en_retard"
   | "due_today"
-  | "due_week";
+  | "due_week"
+  | "soldes";
 
 const DISPATCH_PAYMENT_NOTE_PREFIX = "__PAYMENT_INFO__:";
 type DispatchPaymentMode = "cash" | "mobile_money" | "card" | "credit";
@@ -136,9 +142,7 @@ function toIsoDate(d: Date): string {
 }
 
 function formatDateFr(ymd: string) {
-  const d = new Date(`${ymd}T12:00:00`);
-  if (Number.isNaN(d.getTime())) return ymd;
-  return format(d, "d MMM yyyy", { locale: fr });
+  return formatOperationCalendarDayYmd(ymd);
 }
 
 function KpiCard({
@@ -269,6 +273,10 @@ export function CreditScreen() {
   }, [search, sellerId, chip, view]);
 
   useEffect(() => {
+    if (chip === "soldes") setView("sale");
+  }, [chip]);
+
+  useEffect(() => {
     if (allStoresChosen.current) return;
     if (storeFilter === "" && currentStoreId) {
       setStoreFilter(currentStoreId);
@@ -370,11 +378,12 @@ export function CreditScreen() {
 
   const sellers = useMemo(() => {
     const m = new Map<string, string>();
-    for (const r of openRows) {
+    for (const r of rawRows) {
+      if (!saleHadCreditBooking(r) && remainingTotal(r) <= CREDIT_AMOUNT_EPS) continue;
       m.set(r.created_by, r.created_by_label ?? r.created_by);
     }
     return [...m.entries()].sort((a, b) => a[1].localeCompare(b[1], "fr"));
-  }, [openRows]);
+  }, [rawRows]);
 
   const kpiBase = useMemo(() => {
     let totalRem = 0;
@@ -559,6 +568,9 @@ export function CreditScreen() {
     const hasBalance = rem > CREDIT_AMOUNT_EPS;
     const hasEncaisse = paid > CREDIT_AMOUNT_EPS;
     switch (chip) {
+      case "soldes":
+        if (s.status === "cancelled" || s.status === "refunded") return false;
+        return saleHadCreditBooking(s) && rem <= CREDIT_AMOUNT_EPS;
       case "all":
         return true;
       case "non_paye":
@@ -576,9 +588,14 @@ export function CreditScreen() {
     }
   };
 
+  const salesTableSource = useMemo(
+    () => (chip === "soldes" ? rawRows : openRows),
+    [chip, rawRows, openRows],
+  );
+
   const filteredSales = useMemo(() => {
     const q = search.trim().toLowerCase();
-    const rows = openRows.filter((s) => {
+    const rows = salesTableSource.filter((s) => {
       if (sellerId && s.created_by !== sellerId) return false;
       if (!matchesChip(s)) return false;
       if (!q) return true;
@@ -598,17 +615,24 @@ export function CreditScreen() {
       return remainingTotal(b) - remainingTotal(a);
     });
     return rows;
-  }, [openRows, search, sellerId, chip]);
+  }, [salesTableSource, search, sellerId, chip]);
 
   const filteredDispatchCredits = useMemo(() => {
     const q = search.trim().toLowerCase();
     return dispatchCreditRows
-      .filter((r) => r.remainingAmount > CREDIT_AMOUNT_EPS)
+      .filter((r) => {
+        if (chip === "soldes") {
+          const info = parseDispatchPaymentInfo(r.notes, r.totalAmount);
+          return r.remainingAmount <= CREDIT_AMOUNT_EPS && info.mode === "credit";
+        }
+        return r.remainingAmount > CREDIT_AMOUNT_EPS;
+      })
       .filter((r) => {
         if (!sellerId) return true;
         return (r.createdBy ?? "") === sellerId;
       })
       .filter((r) => {
+        if (chip === "soldes") return true;
         const hasBalance = r.remainingAmount > CREDIT_AMOUNT_EPS;
         const hasEncaisse = r.paidAmount > CREDIT_AMOUNT_EPS;
         switch (chip) {
@@ -659,7 +683,7 @@ export function CreditScreen() {
           rows,
           {
             title: `FasoStock — ${terms.creditTitle}`,
-            subtitle: `${filteredSales.length} vente(s) · ${format(new Date(), "PPP", { locale: fr })}`,
+            subtitle: `${filteredSales.length} vente(s) · ${formatOperationNowDateFull()}`,
           },
         );
         toast.success("Excel enregistré");
@@ -1046,6 +1070,7 @@ export function CreditScreen() {
               ["en_retard", "En retard"],
               ["due_today", "Échéance jour"],
               ["due_week", "Échéance semaine"],
+              ["soldes", "Soldés"],
             ] as const
           ).map(([key, label]) => (
             <button
@@ -1064,6 +1089,11 @@ export function CreditScreen() {
           ))}
           </div>
         </div>
+        {chip === "soldes" ? (
+          <p className="mt-2 text-xs text-neutral-600">
+            Ventes passées à crédit (ligne POS « à crédit ») et bons dépôt à crédit entièrement soldés sur la période — ouvrez « Voir » pour l&apos;historique des paiements.
+          </p>
+        ) : null}
       </FsCard>
 
       <FsCard className="mt-6 overflow-hidden p-0" padding="p-0">
@@ -1122,7 +1152,7 @@ export function CreditScreen() {
                         </td>
                         <td className="max-w-[180px] truncate px-3 py-2.5">{s.customer?.name ?? "—"}</td>
                         <td className="px-3 py-2.5 text-neutral-600">
-                          {format(new Date(s.created_at), "dd/MM/yyyy", { locale: fr })}
+                          {formatOperationDateTime(s.created_at)}
                         </td>
                         <td className="max-w-[130px] truncate px-3 py-2.5">{s.store?.name ?? "—"}</td>
                         <td className="px-3 py-2.5 text-right tabular-nums">{formatCurrency(s.total)}</td>
@@ -1134,7 +1164,7 @@ export function CreditScreen() {
                         </td>
                         <td className={cn("px-3 py-2.5", dueTone(s))}>
                           <span className="inline-flex whitespace-nowrap">
-                            {format(effectiveDueDate(s), "dd/MM/yyyy", { locale: fr })}
+                            {formatOperationDateTime(effectiveDueDate(s))}
                             {daysOverdue(s) > 0 ? (
                               <span className="ml-1 shrink-0 text-red-600">(+{daysOverdue(s)} j)</span>
                             ) : null}
@@ -1194,7 +1224,7 @@ export function CreditScreen() {
                         </td>
                         <td className="max-w-[180px] truncate px-3 py-2.5">{d.customerName ?? "—"}</td>
                         <td className="px-3 py-2.5 text-neutral-600">
-                          {format(new Date(d.createdAt), "dd/MM/yyyy", { locale: fr })}
+                          {formatOperationDateTime(d.createdAt)}
                         </td>
                         <td className="max-w-[130px] truncate px-3 py-2.5">Dépôt</td>
                         <td className="px-3 py-2.5 text-right tabular-nums">{formatCurrency(d.totalAmount)}</td>
@@ -1307,12 +1337,12 @@ export function CreditScreen() {
                     </td>
                     <td className="px-3 py-2.5 text-xs text-neutral-600">
                       {c.lastPaymentAt
-                        ? format(new Date(c.lastPaymentAt), "dd/MM/yyyy", { locale: fr })
+                        ? formatOperationDateTime(c.lastPaymentAt)
                         : "—"}
                     </td>
                     <td className="px-3 py-2.5 text-xs">
                       {c.nextDueAt
-                        ? format(new Date(c.nextDueAt), "dd/MM/yyyy", { locale: fr })
+                        ? formatOperationDateTime(c.nextDueAt)
                         : "—"}
                     </td>
                     <td className="px-3 py-2.5">
@@ -1394,7 +1424,7 @@ export function CreditScreen() {
                   return (
                     <>
                       <p className="text-lg font-bold">{d.documentNumber}</p>
-                      <p className="mt-1 text-sm text-neutral-600">{format(new Date(d.createdAt), "dd/MM/yyyy HH:mm", { locale: fr })}</p>
+                      <p className="mt-1 text-sm text-neutral-600">{formatOperationDateTime(d.createdAt)}</p>
                       <p className="mt-2 text-sm">
                         Client : {d.customerName ?? "—"}
                         {d.customerPhone ? ` · ${d.customerPhone}` : ""}

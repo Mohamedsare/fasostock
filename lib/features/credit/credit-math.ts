@@ -35,6 +35,14 @@ export function paidTotal(sale: CreditSaleRow): number {
   return realizedPaidTotal(sale);
 }
 
+/**
+ * Vente ayant une ligne « à crédit » POS (`method === "other"`).
+ * Permet de lister aussi les dossiers soldés (historique recouvrement) sans mélanger les ventes comptant intégralement encaissées.
+ */
+export function saleHadCreditBooking(sale: CreditSaleRow): boolean {
+  return (sale.sale_payments ?? []).some((p) => p.method === "other");
+}
+
 /** Somme brute de toutes les lignes `sale_payments` (audit — inclut les montants « à crédit »). */
 export function grossRecordedPaymentsTotal(payments: CreditPaymentRow[]): number {
   return payments.reduce((s, p) => s + Number(p.amount), 0);

@@ -2,7 +2,6 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { fr } from "date-fns/locale";
 import {
   fsInputClass,
 } from "@/components/ui/fs-screen-primitives";
@@ -19,6 +18,10 @@ import {
 import { paymentMethodLabel } from "@/lib/features/receipt/build-receipt-ticket-data";
 import { messageFromUnknownError, toast } from "@/lib/toast";
 import { formatCurrency } from "@/lib/utils/currency";
+import {
+  formatOperationDateTime,
+  formatOperationDateTimeMedium,
+} from "@/lib/utils/operation-datetime";
 import { P } from "@/lib/constants/permissions";
 import { usePermissions } from "@/lib/features/permissions/use-permissions";
 import { MdClose } from "react-icons/md";
@@ -114,7 +117,7 @@ export function CreditDetailPanel({
                     <p className="mt-1 text-neutral-600">{sale.customer.address}</p>
                   ) : null}
                   <p className="mt-2 text-xs text-neutral-500">
-                    {format(new Date(sale.created_at), "dd MMM yyyy HH:mm", { locale: fr })} ·{" "}
+                    {formatOperationDateTimeMedium(sale.created_at)} ·{" "}
                     {sale.store?.name ?? "—"} · {sale.created_by_label ?? "—"}
                   </p>
                 </div>
@@ -178,7 +181,7 @@ export function CreditDetailPanel({
                           className="flex justify-between rounded-xl border border-black/8 px-3 py-2 text-xs dark:border-white/10"
                         >
                           <span>
-                            {format(new Date(p.created_at), "dd/MM/yyyy HH:mm", { locale: fr })} —{" "}
+                            {formatOperationDateTime(p.created_at)} —{" "}
                             {paymentMethodLabel(p.method)}
                           </span>
                           <span className="font-bold">{formatCurrency(p.amount)}</span>
