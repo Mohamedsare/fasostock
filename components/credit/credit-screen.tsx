@@ -7,6 +7,8 @@ import { format, subMonths } from "date-fns";
 import {
   MdAccountBalanceWallet,
   MdCalendarToday,
+  MdChevronLeft,
+  MdChevronRight,
   MdClose,
   MdDateRange,
   MdDownload,
@@ -82,6 +84,14 @@ type QuickChip =
 
 const DISPATCH_PAYMENT_NOTE_PREFIX = "__PAYMENT_INFO__:";
 type DispatchPaymentMode = "cash" | "mobile_money" | "card" | "credit";
+type DispatchCreditRow = WarehouseDispatchInvoiceSummary & {
+  paidAmount: number;
+  remainingAmount: number;
+};
+type SaleTableRow =
+  | { kind: "sale"; row: CreditSaleRow }
+  | { kind: "dispatch"; row: DispatchCreditRow };
+const CREDIT_PAGE_SIZE = 20;
 
 function parseDispatchPaymentInfo(note: string | null, totalAmount: number): {
   mode: DispatchPaymentMode;
@@ -221,6 +231,7 @@ export function CreditScreen() {
   const canRecordPayment = hasPermission(P.salesUpdate);
   const isOwner = h?.isOwner ?? false;
   const isWide = useMediaQuery("(min-width: 900px)");
+  const isPaginationNarrow = !useMediaQuery("(min-width: 500px)");
 
   const companyId = ctx.data?.companyId ?? "";
   const companyName = ctx.data?.companyName ?? "";
@@ -236,6 +247,8 @@ export function CreditScreen() {
   const [sellerId, setSellerId] = useState("");
   const [chip, setChip] = useState<QuickChip>("all");
   const [view, setView] = useState<"sale" | "customer">("sale");
+  const [salePage, setSalePage] = useState(0);
+  const [customerPage, setCustomerPage] = useState(0);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [dispatchDetailId, setDispatchDetailId] = useState<string | null>(null);
   const [dispatchPayInvoice, setDispatchPayInvoice] = useState<{
@@ -255,12 +268,16 @@ export function CreditScreen() {
     setSellerId("");
     setChip("all");
     setView("sale");
+    setSalePage(0);
+    setCustomerPage(0);
   };
 
   const applyQuickRange = (days: 7 | 30 | 90) => {
     const now = new Date();
     setFrom(toIsoDate(new Date(now.getTime() - days * 24 * 60 * 60 * 1000)));
     setTo(toIsoDate(now));
+    setSalePage(0);
+    setCustomerPage(0);
   };
 
   const activeFilterCount = useMemo(() => {
@@ -323,7 +340,7 @@ export function CreditScreen() {
     enabled: !!dispatchDetailId,
     staleTime: 10_000,
   });
-  const dispatchCreditRows = useMemo(() => {
+  const dispatchCreditRows = useMemo<DispatchCreditRow[]>(() => {
     const fromMs = Date.parse(`${from}T00:00:00.000Z`);
     const toMs = Date.parse(`${to}T23:59:59.999Z`);
     return dispatchRowsRaw
@@ -664,6 +681,38 @@ export function CreditScreen() {
   }, [dispatchCreditRows, sellerId, chip, search]);
 
   const customerRows = useMemo(() => buildCustomerAggregates(filteredSales), [filteredSales]);
+  const saleTableRows = useMemo<SaleTableRow[]>(
+    () => [
+      ...filteredSales.map((row) => ({ kind: "sale" as const, row })),
+      ...filteredDispatchCredits.map((row) => ({ kind: "dispatch" as const, row })),
+    ],
+    [filteredSales, filteredDispatchCredits],
+  );
+  const saleTotalCount = saleTableRows.length;
+  const salePageCount =
+    saleTotalCount === 0 ? 0 : Math.floor((saleTotalCount - 1) / CREDIT_PAGE_SIZE) + 1;
+  const safeSalePage = salePageCount > 0 ? Math.min(salePage, salePageCount - 1) : 0;
+  const paginatedSaleRows = useMemo(
+    () =>
+      saleTableRows.slice(
+        safeSalePage * CREDIT_PAGE_SIZE,
+        safeSalePage * CREDIT_PAGE_SIZE + CREDIT_PAGE_SIZE,
+      ),
+    [saleTableRows, safeSalePage],
+  );
+  const customerTotalCount = customerRows.length;
+  const customerPageCount =
+    customerTotalCount === 0 ? 0 : Math.floor((customerTotalCount - 1) / CREDIT_PAGE_SIZE) + 1;
+  const safeCustomerPage =
+    customerPageCount > 0 ? Math.min(customerPage, customerPageCount - 1) : 0;
+  const paginatedCustomerRows = useMemo(
+    () =>
+      customerRows.slice(
+        safeCustomerPage * CREDIT_PAGE_SIZE,
+        safeCustomerPage * CREDIT_PAGE_SIZE + CREDIT_PAGE_SIZE,
+      ),
+    [customerRows, safeCustomerPage],
+  );
 
   const migrationHint =
     creditQ.error &&
@@ -760,6 +809,8 @@ export function CreditScreen() {
               onChange={(e) => {
                 allStoresChosen.current = e.target.value !== (currentStoreId ?? "");
                 setStoreFilter(e.target.value);
+                setSalePage(0);
+                setCustomerPage(0);
               }}
             >
               <option value="">Tous les {terms.storesPlural.toLowerCase()}</option>
@@ -786,6 +837,8 @@ export function CreditScreen() {
                 const v = e.target.value;
                 setFrom(v);
                 if (to < v) setTo(v);
+                setSalePage(0);
+                setCustomerPage(0);
               }}
             />
             <span className="shrink-0 text-[11px] text-neutral-400" aria-hidden>
@@ -805,6 +858,8 @@ export function CreditScreen() {
                 const v = e.target.value;
                 setTo(v);
                 if (from > v) setFrom(v);
+                setSalePage(0);
+                setCustomerPage(0);
               }}
             />
             <span className="min-w-0 max-w-full text-[10px] text-neutral-500 sm:text-[11px] sm:whitespace-nowrap">
@@ -1015,14 +1070,22 @@ export function CreditScreen() {
               className={fsInputClass("h-11 w-full pl-10 text-sm")}
               placeholder="Client, téléphone, référence, montant, vendeur…"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setSalePage(0);
+                setCustomerPage(0);
+              }}
             />
           </div>
           <div className="flex flex-wrap gap-2">
             <select
               className={fsInputClass("h-11 text-sm")}
               value={sellerId}
-              onChange={(e) => setSellerId(e.target.value)}
+              onChange={(e) => {
+                setSellerId(e.target.value);
+                setSalePage(0);
+                setCustomerPage(0);
+              }}
               aria-label="Vendeur"
             >
               <option value="">Tous vendeurs</option>
@@ -1075,7 +1138,11 @@ export function CreditScreen() {
             <button
               key={key}
               type="button"
-              onClick={() => setChip(key)}
+              onClick={() => {
+                setChip(key);
+                setSalePage(0);
+                setCustomerPage(0);
+              }}
               className={cn(
                 "min-h-[34px] whitespace-nowrap rounded-full px-3 py-1 text-[11px] font-bold",
                 chip === key
@@ -1125,7 +1192,7 @@ export function CreditScreen() {
               </tr>
             </thead>
             <tbody>
-              {filteredSales.length === 0 && filteredDispatchCredits.length === 0 ? (
+              {saleTotalCount === 0 ? (
                 <tr>
                   <td
                     colSpan={12}
@@ -1136,76 +1203,78 @@ export function CreditScreen() {
                 </tr>
               ) : (
                 <>
-                  {filteredSales.map((s) => {
-                    const st = creditLineStatus(s);
-                    const rem = remainingTotal(s);
-                    return (
-                      <tr key={s.id} className="border-b border-black/6 hover:bg-black/2 dark:border-white/6">
-                        <td className="max-w-[7.5rem] truncate px-3 py-2.5 font-mono font-semibold">
-                          {s.sale_number}
-                        </td>
-                        <td className="px-3 py-2.5">
-                          <span className="inline-flex rounded-full bg-indigo-500/15 px-2 py-0.5 text-[11px] font-bold text-indigo-700 dark:text-indigo-300">
-                            Vente
-                          </span>
-                        </td>
-                        <td className="max-w-[180px] truncate px-3 py-2.5">{s.customer?.name ?? "—"}</td>
-                        <td className="px-3 py-2.5 text-neutral-600">
-                          {formatOperationDateTime(s.created_at)}
-                        </td>
-                        <td className="max-w-[130px] truncate px-3 py-2.5">{s.store?.name ?? "—"}</td>
-                        <td className="px-3 py-2.5 text-right tabular-nums">{formatCurrency(s.total)}</td>
-                        <td className="px-3 py-2.5 text-right tabular-nums text-emerald-700 dark:text-emerald-400">
-                          {formatCurrency(paidTotal(s))}
-                        </td>
-                        <td className="px-3 py-2.5 text-right tabular-nums font-bold text-fs-accent">
-                          {formatCurrency(rem)}
-                        </td>
-                        <td className={cn("px-3 py-2.5", dueTone(s))}>
-                          <span className="inline-flex whitespace-nowrap">
-                            {formatOperationDateTime(effectiveDueDate(s))}
-                            {daysOverdue(s) > 0 ? (
-                              <span className="ml-1 shrink-0 text-red-600">(+{daysOverdue(s)} j)</span>
-                            ) : null}
-                          </span>
-                        </td>
-                        <td className="px-3 py-2.5">
-                          <span
-                            className={cn(
-                              "inline-flex max-w-[220px] items-center rounded-full px-2 py-0.5 text-[11px] font-bold",
-                              statusPillClass(st),
-                            )}
-                            title={CREDIT_STATUS_LABELS[st]}
-                          >
-                            <span className="min-w-0 truncate">{CREDIT_STATUS_LABELS[st]}</span>
-                          </span>
-                        </td>
-                        <td className="max-w-[120px] truncate px-3 py-2.5 text-xs">{s.created_by_label}</td>
-                        <td className="px-3 py-2.5">
-                          <div className="flex flex-nowrap items-center justify-end gap-1">
-                            <button
-                              type="button"
-                              onClick={() => setDetailId(s.id)}
-                              className="whitespace-nowrap rounded-lg bg-fs-accent/15 px-2 py-1 text-xs font-bold text-fs-accent"
+                  {paginatedSaleRows.map((saleTableRow) => {
+                    if (saleTableRow.kind === "sale") {
+                      const s = saleTableRow.row;
+                      const st = creditLineStatus(s);
+                      const rem = remainingTotal(s);
+                      return (
+                        <tr key={s.id} className="border-b border-black/6 hover:bg-black/2 dark:border-white/6">
+                          <td className="max-w-[7.5rem] truncate px-3 py-2.5 font-mono font-semibold">
+                            {s.sale_number}
+                          </td>
+                          <td className="px-3 py-2.5">
+                            <span className="inline-flex rounded-full bg-indigo-500/15 px-2 py-0.5 text-[11px] font-bold text-indigo-700 dark:text-indigo-300">
+                              Vente
+                            </span>
+                          </td>
+                          <td className="max-w-[180px] truncate px-3 py-2.5">{s.customer?.name ?? "—"}</td>
+                          <td className="px-3 py-2.5 text-neutral-600">
+                            {formatOperationDateTime(s.created_at)}
+                          </td>
+                          <td className="max-w-[130px] truncate px-3 py-2.5">{s.store?.name ?? "—"}</td>
+                          <td className="px-3 py-2.5 text-right tabular-nums">{formatCurrency(s.total)}</td>
+                          <td className="px-3 py-2.5 text-right tabular-nums text-emerald-700 dark:text-emerald-400">
+                            {formatCurrency(paidTotal(s))}
+                          </td>
+                          <td className="px-3 py-2.5 text-right tabular-nums font-bold text-fs-accent">
+                            {formatCurrency(rem)}
+                          </td>
+                          <td className={cn("px-3 py-2.5", dueTone(s))}>
+                            <span className="inline-flex whitespace-nowrap">
+                              {formatOperationDateTime(effectiveDueDate(s))}
+                              {daysOverdue(s) > 0 ? (
+                                <span className="ml-1 shrink-0 text-red-600">(+{daysOverdue(s)} j)</span>
+                              ) : null}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2.5">
+                            <span
+                              className={cn(
+                                "inline-flex max-w-[220px] items-center rounded-full px-2 py-0.5 text-[11px] font-bold",
+                                statusPillClass(st),
+                              )}
+                              title={CREDIT_STATUS_LABELS[st]}
                             >
-                              Voir
-                            </button>
-                            {canRecordPayment && rem > CREDIT_AMOUNT_EPS ? (
+                              <span className="min-w-0 truncate">{CREDIT_STATUS_LABELS[st]}</span>
+                            </span>
+                          </td>
+                          <td className="max-w-[120px] truncate px-3 py-2.5 text-xs">{s.created_by_label}</td>
+                          <td className="px-3 py-2.5">
+                            <div className="flex flex-nowrap items-center justify-end gap-1">
                               <button
                                 type="button"
-                                title="Enregistrer un paiement"
-                                onClick={() => setPaySale(s)}
-                                className="whitespace-nowrap rounded-lg bg-fs-accent px-2 py-1 text-xs font-bold text-white"
+                                onClick={() => setDetailId(s.id)}
+                                className="whitespace-nowrap rounded-lg bg-fs-accent/15 px-2 py-1 text-xs font-bold text-fs-accent"
                               >
-                                Encaisser
+                                Voir
                               </button>
-                            ) : null}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                  {filteredDispatchCredits.map((d) => {
+                              {canRecordPayment && rem > CREDIT_AMOUNT_EPS ? (
+                                <button
+                                  type="button"
+                                  title="Enregistrer un paiement"
+                                  onClick={() => setPaySale(s)}
+                                  className="whitespace-nowrap rounded-lg bg-fs-accent px-2 py-1 text-xs font-bold text-white"
+                                >
+                                  Encaisser
+                                </button>
+                              ) : null}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    }
+                    const d = saleTableRow.row;
                     const hasBalance = d.remainingAmount > CREDIT_AMOUNT_EPS;
                     const hasEncaisse = d.paidAmount > CREDIT_AMOUNT_EPS;
                     const status: CreditLineStatus = !hasBalance
@@ -1317,7 +1386,7 @@ export function CreditScreen() {
                   </td>
                 </tr>
               ) : (
-                customerRows.map((c) => (
+                paginatedCustomerRows.map((c) => (
                   <tr key={c.customerId} className="border-b border-black/6 dark:border-white/6">
                     <td className="max-w-[200px] truncate px-3 py-2.5 font-semibold">{c.customerName}</td>
                     <td className="max-w-[9rem] truncate px-3 py-2.5">
@@ -1374,6 +1443,107 @@ export function CreditScreen() {
           </div>
         )}
       </FsCard>
+      {view === "sale" && salePageCount > 1 ? (
+        <FsCard className="mt-4" padding="px-4 py-3 sm:py-3">
+          <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
+            {!isPaginationNarrow ? (
+              <span className="mr-2 text-xs text-neutral-600">
+                {safeSalePage * CREDIT_PAGE_SIZE + 1} –{" "}
+                {Math.min((safeSalePage + 1) * CREDIT_PAGE_SIZE, saleTotalCount)} sur {saleTotalCount}
+              </span>
+            ) : null}
+            <button
+              type="button"
+              disabled={safeSalePage <= 0}
+              onClick={() => setSalePage((p) => Math.max(0, p - 1))}
+              className={cn(
+                "inline-flex h-10 w-10 items-center justify-center rounded-full text-white disabled:opacity-40",
+                safeSalePage > 0 ? "bg-fs-accent" : "bg-neutral-300 dark:bg-neutral-600",
+              )}
+              aria-label="Page précédente"
+            >
+              <MdChevronLeft className="h-7 w-7" aria-hidden />
+            </button>
+            <span className="text-sm font-semibold text-fs-text">
+              Page {safeSalePage + 1}
+              {" / "}
+              {salePageCount}
+            </span>
+            <button
+              type="button"
+              disabled={safeSalePage >= salePageCount - 1}
+              onClick={() => setSalePage((p) => Math.min(salePageCount - 1, p + 1))}
+              className={cn(
+                "inline-flex h-10 w-10 items-center justify-center rounded-full text-white disabled:opacity-40",
+                safeSalePage < salePageCount - 1 ? "bg-fs-accent" : "bg-neutral-300 dark:bg-neutral-600",
+              )}
+              aria-label="Page suivante"
+            >
+              <MdChevronRight className="h-7 w-7" aria-hidden />
+            </button>
+            {isPaginationNarrow ? (
+              <span className="w-full text-center text-xs text-neutral-600 sm:w-auto">
+                {safeSalePage * CREDIT_PAGE_SIZE + 1} –{" "}
+                {Math.min((safeSalePage + 1) * CREDIT_PAGE_SIZE, saleTotalCount)}
+                {" / "}
+                {saleTotalCount}
+              </span>
+            ) : null}
+          </div>
+        </FsCard>
+      ) : null}
+      {view === "customer" && customerPageCount > 1 ? (
+        <FsCard className="mt-4" padding="px-4 py-3 sm:py-3">
+          <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
+            {!isPaginationNarrow ? (
+              <span className="mr-2 text-xs text-neutral-600">
+                {safeCustomerPage * CREDIT_PAGE_SIZE + 1} –{" "}
+                {Math.min((safeCustomerPage + 1) * CREDIT_PAGE_SIZE, customerTotalCount)} sur{" "}
+                {customerTotalCount}
+              </span>
+            ) : null}
+            <button
+              type="button"
+              disabled={safeCustomerPage <= 0}
+              onClick={() => setCustomerPage((p) => Math.max(0, p - 1))}
+              className={cn(
+                "inline-flex h-10 w-10 items-center justify-center rounded-full text-white disabled:opacity-40",
+                safeCustomerPage > 0 ? "bg-fs-accent" : "bg-neutral-300 dark:bg-neutral-600",
+              )}
+              aria-label="Page précédente"
+            >
+              <MdChevronLeft className="h-7 w-7" aria-hidden />
+            </button>
+            <span className="text-sm font-semibold text-fs-text">
+              Page {safeCustomerPage + 1}
+              {" / "}
+              {customerPageCount}
+            </span>
+            <button
+              type="button"
+              disabled={safeCustomerPage >= customerPageCount - 1}
+              onClick={() => setCustomerPage((p) => Math.min(customerPageCount - 1, p + 1))}
+              className={cn(
+                "inline-flex h-10 w-10 items-center justify-center rounded-full text-white disabled:opacity-40",
+                safeCustomerPage < customerPageCount - 1
+                  ? "bg-fs-accent"
+                  : "bg-neutral-300 dark:bg-neutral-600",
+              )}
+              aria-label="Page suivante"
+            >
+              <MdChevronRight className="h-7 w-7" aria-hidden />
+            </button>
+            {isPaginationNarrow ? (
+              <span className="w-full text-center text-xs text-neutral-600 sm:w-auto">
+                {safeCustomerPage * CREDIT_PAGE_SIZE + 1} –{" "}
+                {Math.min((safeCustomerPage + 1) * CREDIT_PAGE_SIZE, customerTotalCount)}
+                {" / "}
+                {customerTotalCount}
+              </span>
+            ) : null}
+          </div>
+        </FsCard>
+      ) : null}
 
       <LegacyCreditSection
         companyId={companyId}
