@@ -16,6 +16,16 @@ function formatDate(d: Date): string {
 }
 
 function buildReceiptQrPayload(data: CreditRepaymentReceiptData): string {
+  const isCash = data.paymentMethodCode === "cash";
+  const tendered =
+    isCash &&
+    data.amountTendered != null &&
+    data.changeDue != null &&
+    data.changeDue > 0
+      ? Math.round(data.amountTendered)
+      : null;
+  const change =
+    isCash && data.changeDue != null && data.changeDue > 0 ? Math.round(data.changeDue) : null;
   return JSON.stringify({
     v: 1,
     doc: "credit_repayment_receipt",
@@ -27,6 +37,8 @@ function buildReceiptQrPayload(data: CreditRepaymentReceiptData): string {
     credit_id: data.creditId,
     payment_id: data.paymentId ?? null,
     amount_paid: Math.round(data.amountPaid),
+    amount_tendered: tendered,
+    change_due: change,
     currency: data.currency || "XOF",
     remaining_after: Math.round(data.newBalance),
     method: data.paymentMethodCode,
@@ -259,7 +271,16 @@ export async function renderCreditRepaymentReceiptHtml(data: CreditRepaymentRece
 
     <div class="amounts">
       <div class="amount-row"><span>Solde avant paiement</span><span>${tx(fcfa(data.previousBalance))}</span></div>
-      <div class="amount-row"><span>Montant remboursé</span><span class="paid">${tx(fcfa(data.amountPaid))}</span></div>
+      <div class="amount-row"><span>Montant remboursé (imputé)</span><span class="paid">${tx(fcfa(data.amountPaid))}</span></div>
+      ${
+        data.paymentMethodCode === "cash" &&
+        data.amountTendered != null &&
+        data.changeDue != null &&
+        data.changeDue > 0.5
+          ? `<div class="amount-row"><span>Montant reçu (espèces)</span><span>${tx(fcfa(data.amountTendered))}</span></div>
+      <div class="amount-row"><span>Monnaie à rendre</span><span class="paid">${tx(fcfa(data.changeDue))}</span></div>`
+          : ""
+      }
       <div class="amount-row"><span>Mode de règlement</span><span>${tx(data.paymentMethodLabel)}</span></div>
       ${data.paymentReference ? `<div class="amount-row"><span>Référence</span><span>${tx(data.paymentReference)}</span></div>` : ""}
       <div class="amount-row"><strong>Nouveau solde dû</strong><strong class="rest">${tx(fcfa(data.newBalance))}</strong></div>

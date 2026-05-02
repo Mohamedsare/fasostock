@@ -353,7 +353,6 @@ export function CreditScreen() {
         mobileProvider: params.mobileProvider ?? null,
       }),
     onSuccess: async () => {
-      toast.success("Paiement enregistré.");
       setDispatchPayInvoice(null);
       await Promise.all([
         dispatchQ.refetch(),
@@ -1487,12 +1486,24 @@ export function CreditScreen() {
         onClose={() => setDispatchPayInvoice(null)}
         onSubmit={async (payload) => {
           if (!dispatchPayInvoice) return;
+          const rem = Math.max(0, Math.round(dispatchPayInvoice.remainingAmount));
+          const tendered =
+            payload.method === "cash" && payload.amount != null
+              ? Math.round(payload.amount)
+              : rem;
+          const applied = payload.method === "cash" ? Math.min(tendered, rem) : rem;
+          const changeDue = payload.method === "cash" ? Math.max(0, tendered - applied) : 0;
           await dispatchPayMut.mutateAsync({
             invoiceId: dispatchPayInvoice.id,
             method: payload.method,
             amount: payload.amount,
             mobileProvider: payload.mobileProvider,
           });
+          if (changeDue > 0) {
+            toast.success(`Paiement enregistré. Monnaie à rendre : ${formatCurrency(changeDue)}.`);
+          } else {
+            toast.success("Paiement enregistré.");
+          }
         }}
       />
     </FsPage>
@@ -1533,9 +1544,15 @@ function DispatchCreditPayDialog({ open, invoice, loading, onClose, onSubmit }: 
 
   const remaining = Math.max(0, Math.round(invoice.remainingAmount));
   const parsedAmount = Number(amountText.replace(/\s+/g, ""));
-  const amount = Number.isFinite(parsedAmount) ? Math.round(parsedAmount) : NaN;
+  const tendered = Number.isFinite(parsedAmount) ? Math.round(parsedAmount) : NaN;
+  const appliedToBalance =
+    Number.isFinite(tendered) && tendered > 0 ? Math.min(tendered, remaining) : NaN;
+  const changeDue =
+    Number.isFinite(tendered) && Number.isFinite(appliedToBalance)
+      ? Math.max(0, tendered - appliedToBalance)
+      : 0;
   const isCash = method === "cash";
-  const cashValid = isCash && amount > 0 && amount <= remaining;
+  const cashValid = isCash && tendered > 0 && Number.isFinite(tendered);
   const canSubmit = loading ? false : isCash ? cashValid : remaining > CREDIT_AMOUNT_EPS;
 
   return (
@@ -1611,16 +1628,30 @@ function DispatchCreditPayDialog({ open, invoice, loading, onClose, onSubmit }: 
 
           {isCash ? (
             <div>
-              <label className="mb-1 block text-xs font-semibold text-neutral-700">Montant a encaisser (F CFA)</label>
+              <label className="mb-1 block text-xs font-semibold text-neutral-700">Montant reçu (F CFA)</label>
               <input
                 className={cn(fsInputClass(), "h-10 text-sm")}
                 inputMode="numeric"
-                placeholder={`Max ${remaining}`}
+                placeholder={`Reste ${remaining}`}
                 value={amountText}
                 onChange={(e) => setAmountText(e.target.value.replace(/[^\d]/g, ""))}
                 disabled={loading}
               />
-              {!cashValid ? <p className="mt-1 text-[11px] text-red-600">Entrer un montant valide (&lt;= reste).</p> : null}
+              {cashValid ? (
+                <p className="mt-1 text-[11px] text-neutral-600">
+                  Imputé au bon :{" "}
+                  <span className="font-semibold text-fs-text">{formatCurrency(appliedToBalance)}</span>
+                  {changeDue > 0 ? (
+                    <>
+                      {" "}
+                      · Monnaie à rendre :{" "}
+                      <span className="font-bold text-[#F97316]">{formatCurrency(changeDue)}</span>
+                    </>
+                  ) : null}
+                </p>
+              ) : (
+                <p className="mt-1 text-[11px] text-red-600">Saisissez le montant reçu en espèces.</p>
+              )}
             </div>
           ) : (
             <p className="text-xs text-neutral-600">Cette methode solde le bon en totalite.</p>
@@ -1642,7 +1673,7 @@ function DispatchCreditPayDialog({ open, invoice, loading, onClose, onSubmit }: 
             onClick={() =>
               void onSubmit({
                 method,
-                amount: isCash ? amount : null,
+                amount: isCash ? tendered : null,
                 mobileProvider: method === "mobile_money" ? mobileProvider : null,
               })
             }

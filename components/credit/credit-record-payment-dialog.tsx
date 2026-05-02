@@ -7,7 +7,11 @@ import {
 import { formatCurrency } from "@/lib/utils/currency";
 import { cn } from "@/lib/utils/cn";
 import type { CreditSaleRow } from "@/lib/features/credit/types";
-import { remainingTotal } from "@/lib/features/credit/credit-math";
+import { CREDIT_AMOUNT_EPS, remainingTotal } from "@/lib/features/credit/credit-math";
+
+function roundMoney(v: number): number {
+  return Math.round(v * 100) / 100;
+}
 
 export function CreditRecordPaymentDialog({
   sale,
@@ -21,7 +25,8 @@ export function CreditRecordPaymentDialog({
   onClose: () => void;
   onSubmit: (p: {
     method: "cash" | "mobile_money" | "card" | "transfer";
-    amount: number;
+    /** En espèces : montant réellement remis ; autrement : montant imputé au solde. */
+    tendered: number;
     reference: string | null;
   }) => void;
   busy: boolean;
@@ -39,9 +44,8 @@ export function CreditRecordPaymentDialog({
 
   if (!open || !sale) return null;
 
-  const RPC_EPSILON = 0.0001;
   const rest = remainingTotal(sale);
-  const amount = Math.max(0, parseFloat(amountStr.replace(",", ".") || "0") || 0);
+  const tendered = Math.max(0, parseFloat(amountStr.replace(",", ".") || "0") || 0);
 
   const mobileProviderLabel =
     method === "orange_money"
@@ -55,6 +59,22 @@ export function CreditRecordPaymentDialog({
     method === "orange_money" || method === "moov_money" || method === "wave"
       ? "mobile_money"
       : method;
+
+  const isCash = backendMethod === "cash";
+  const applied = isCash ? roundMoney(Math.min(tendered, rest)) : roundMoney(tendered);
+  const changeDue =
+    isCash ? Math.max(0, roundMoney(tendered - applied)) : 0;
+
+  const nonCashOver =
+    !isCash && tendered > rest + CREDIT_AMOUNT_EPS && tendered > CREDIT_AMOUNT_EPS;
+
+  const canSubmit = isCash
+    ? tendered > CREDIT_AMOUNT_EPS &&
+      applied > CREDIT_AMOUNT_EPS &&
+      rest > CREDIT_AMOUNT_EPS
+    : tendered > CREDIT_AMOUNT_EPS &&
+      tendered <= rest + CREDIT_AMOUNT_EPS &&
+      rest > CREDIT_AMOUNT_EPS;
 
   return (
     <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/45 p-0 sm:items-center sm:p-4">
@@ -75,16 +95,6 @@ export function CreditRecordPaymentDialog({
         </div>
         <div className="mt-4 space-y-3">
           <div>
-            <label className="mb-1 block text-xs font-medium text-neutral-600">Montant</label>
-            <input
-              className={fsInputClass("w-full")}
-              inputMode="decimal"
-              value={amountStr}
-              onChange={(e) => setAmountStr(e.target.value)}
-              placeholder={formatCurrency(Math.min(rest, rest))}
-            />
-          </div>
-          <div>
             <label className="mb-1 block text-xs font-medium text-neutral-600">Mode</label>
             <select
               className={fsInputClass("w-full")}
@@ -100,6 +110,37 @@ export function CreditRecordPaymentDialog({
             </select>
           </div>
           <div>
+            <label className="mb-1 block text-xs font-medium text-neutral-600">
+              {isCash ? "Montant reçu (espèces)" : "Montant encaissé"}
+            </label>
+            <input
+              className={fsInputClass("w-full")}
+              inputMode="decimal"
+              value={amountStr}
+              onChange={(e) => setAmountStr(e.target.value)}
+              placeholder={rest > 0 ? formatCurrency(rest) : "0"}
+            />
+            {isCash && tendered > CREDIT_AMOUNT_EPS ? (
+              <p className="mt-1 text-xs text-neutral-600">
+                Imputé au solde :{" "}
+                <span className="font-semibold text-fs-text">{formatCurrency(applied)}</span>
+                {changeDue > CREDIT_AMOUNT_EPS ? (
+                  <>
+                    {" "}
+                    · Monnaie à rendre :{" "}
+                    <span className="font-bold text-[#F97316]">{formatCurrency(changeDue)}</span>
+                  </>
+                ) : null}
+              </p>
+            ) : null}
+            {nonCashOver ? (
+              <p className="mt-1 text-xs font-medium text-red-600">
+                Le montant ne peut pas dépasser le reste à payer ({formatCurrency(rest)}) pour ce mode de
+                paiement.
+              </p>
+            ) : null}
+          </div>
+          <div>
             <label className="mb-1 block text-xs font-medium text-neutral-600">Note / référence</label>
             <input
               className={fsInputClass("w-full")}
@@ -109,11 +150,6 @@ export function CreditRecordPaymentDialog({
             />
           </div>
         </div>
-        {amount > rest + RPC_EPSILON ? (
-          <p className="mt-3 text-xs font-medium text-red-600">
-            Montant supérieur au reste à payer ({formatCurrency(rest)}).
-          </p>
-        ) : null}
         <div className="mt-5 flex gap-2">
           <button
             type="button"
@@ -124,11 +160,11 @@ export function CreditRecordPaymentDialog({
           </button>
           <button
             type="button"
-            disabled={busy || amount <= 0 || amount > rest + RPC_EPSILON}
+            disabled={busy || !canSubmit}
             onClick={() =>
               onSubmit({
                 method: backendMethod,
-                amount,
+                tendered,
                 reference: mobileProviderLabel
                   ? [mobileProviderLabel, note.trim()].filter(Boolean).join(" — ")
                   : note.trim() || null,

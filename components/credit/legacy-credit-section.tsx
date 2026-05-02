@@ -100,6 +100,8 @@ function buildLegacyInternalNote(vendor: string, note: string): string | null {
 function buildCreditRepaymentReceiptData(params: {
   credit: LegacyCreditRow;
   amountPaid: number;
+  amountTendered?: number | null;
+  changeDue?: number | null;
   method: "cash" | "mobile_money" | "card" | "transfer";
   reference?: string | null;
   paymentId?: string | null;
@@ -142,6 +144,8 @@ function buildCreditRepaymentReceiptData(params: {
     paymentMethodCode: params.method,
     paymentReference: params.reference ?? null,
     amountPaid: Math.max(0, params.amountPaid),
+    amountTendered: params.amountTendered ?? null,
+    changeDue: params.changeDue ?? null,
     previousBalance,
     newBalance,
     currency: params.store?.currency?.trim() || "XOF",
@@ -215,22 +219,51 @@ export function LegacyCreditSection({
     onError: (e) => toast.error(messageFromUnknownError(e)),
   });
 
+  const roundMoney = (v: number) => Math.round(v * 100) / 100;
+
   const payMut = useMutation({
-    mutationFn: appendLegacyCreditPayment,
+    mutationFn: (vars: {
+      creditId: string;
+      method: "cash" | "mobile_money" | "card" | "transfer";
+      amount: number;
+      reference?: string | null;
+      amountTendered: number;
+    }) =>
+      appendLegacyCreditPayment({
+        creditId: vars.creditId,
+        method: vars.method,
+        amount: vars.amount,
+        reference: vars.reference,
+      }),
     onSuccess: async (_data, vars) => {
       if (payFor) {
         const store = (storesQ.data ?? []).find((s) => s.id === payFor.store_id) ?? null;
+        const changeDue =
+          vars.method === "cash"
+            ? Math.max(0, roundMoney(vars.amountTendered - vars.amount))
+            : 0;
+        const showTendered = vars.method === "cash" && changeDue > EPS;
         setReceiptData(
           buildCreditRepaymentReceiptData({
             credit: payFor,
             amountPaid: vars.amount,
+            amountTendered: showTendered ? vars.amountTendered : null,
+            changeDue: showTendered ? changeDue : null,
             method: vars.method,
             reference: vars.reference ?? null,
             store,
           }),
         );
       }
-      toast.success("Paiement enregistré.");
+      const changeDueToast =
+        vars.method === "cash"
+          ? Math.max(0, roundMoney(vars.amountTendered - vars.amount))
+          : 0;
+      toast.success(
+        vars.method === "cash" && changeDueToast > EPS
+          ? `Paiement enregistré. Monnaie à rendre : ${formatCurrency(changeDueToast)}.`
+          : "Paiement enregistré.",
+      );
       setPayFor(null);
       await qc.invalidateQueries({ queryKey: ["legacy-credits"] });
     },
@@ -476,7 +509,15 @@ export function LegacyCreditSection({
         credit={payFor}
         busy={payMut.isPending}
         onClose={() => setPayFor(null)}
-        onSubmit={(v) => payMut.mutate(v)}
+        onSubmit={(v) =>
+          payMut.mutate({
+            creditId: v.creditId,
+            method: v.method,
+            amount: v.amount,
+            amountTendered: v.amountTendered,
+            reference: v.reference,
+          })
+        }
       />
 
       <LegacyPaymentsHistoryDialog
@@ -1027,7 +1068,10 @@ function LegacyPayDialog({
   onSubmit: (p: {
     creditId: string;
     method: "cash" | "mobile_money" | "card" | "transfer";
+    /** Montant imputé au solde (≤ reste). */
     amount: number;
+    /** Montant réellement reçu (peut être > reste en espèces). */
+    amountTendered: number;
     reference?: string | null;
   }) => void;
 }) {
@@ -1041,12 +1085,10 @@ function LegacyPayDialog({
     | "transfer";
   const [method, setMethod] = useState<PaymentModeUi>("cash");
   const [amount, setAmount] = useState("");
-  const [reference, setReference] = useState("");
 
   useEffect(() => {
     if (!open || !credit) return;
     setAmount("");
-    setReference("");
     setMethod("cash");
   }, [open, credit?.id]);
 
@@ -1067,8 +1109,7 @@ function LegacyPayDialog({
 
   if (!open || !credit) return null;
   const rem = remaining(credit);
-  const parsedAmount = Math.max(0, parseFloat(amount.replace(/\s/g, "").replace(",", ".")) || 0);
-  const canSubmit = parsedAmount > 0 && parsedAmount <= rem + 0.0001;
+  const tendered = Math.max(0, parseFloat(amount.replace(/\s/g, "").replace(",", ".")) || 0);
   const mobileProviderLabel =
     method === "orange_money"
       ? "Orange money"
@@ -1081,6 +1122,13 @@ function LegacyPayDialog({
     method === "orange_money" || method === "moov_money" || method === "wave"
       ? "mobile_money"
       : method;
+  const isCash = backendMethod === "cash";
+  const applied = isCash ? Math.min(tendered, rem) : tendered;
+  const changeDue = isCash ? Math.max(0, Math.round((tendered - applied) * 100) / 100) : 0;
+  const nonCashOver = !isCash && tendered > rem + EPS;
+  const canSubmit = isCash
+    ? tendered > 0 && applied > 0 && rem > EPS
+    : tendered > 0 && tendered <= rem + EPS && rem > EPS;
 
   return (
     <div className="fixed inset-0 z-83 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:bg-black/45 sm:p-4">
@@ -1115,16 +1163,6 @@ function LegacyPayDialog({
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-4 pb-2 sm:px-5">
           <div className="space-y-4 sm:space-y-3">
             <div>
-              <label className={mobileLabelClass()}>Montant</label>
-              <input
-                className={mobileFieldClass()}
-                inputMode="decimal"
-                value={amount}
-                onChange={(e) => onAmountChange(e.target.value)}
-                placeholder="Montant"
-              />
-            </div>
-            <div>
               <label className={mobileLabelClass()}>Mode de paiement</label>
               <select
                 className={mobileFieldClass()}
@@ -1140,13 +1178,34 @@ function LegacyPayDialog({
               </select>
             </div>
             <div>
-              <label className={mobileLabelClass()}>Référence (optionnel)</label>
+              <label className={mobileLabelClass()}>
+                {isCash ? "Montant reçu (espèces)" : "Montant encaissé"}
+              </label>
               <input
                 className={mobileFieldClass()}
-                value={reference}
-                onChange={(e) => setReference(e.target.value)}
-                placeholder="N° transaction, reçu…"
+                inputMode="decimal"
+                value={amount}
+                onChange={(e) => onAmountChange(e.target.value)}
+                placeholder={`Reste ${formatCurrency(rem)}`}
               />
+              {isCash && tendered > EPS ? (
+                <p className="mt-1 text-xs text-neutral-600">
+                  Imputé au solde :{" "}
+                  <span className="font-semibold text-fs-text">{formatCurrency(applied)}</span>
+                  {changeDue > EPS ? (
+                    <>
+                      {" "}
+                      · Monnaie à rendre :{" "}
+                      <span className="font-bold text-[#F97316]">{formatCurrency(changeDue)}</span>
+                    </>
+                  ) : null}
+                </p>
+              ) : null}
+              {nonCashOver ? (
+                <p className="mt-1 text-xs font-medium text-red-600">
+                  Le montant ne peut pas dépasser le reste ({formatCurrency(rem)}) pour ce mode de paiement.
+                </p>
+              ) : null}
             </div>
           </div>
         </div>
@@ -1167,10 +1226,9 @@ function LegacyPayDialog({
                 onSubmit({
                   creditId: credit.id,
                   method: backendMethod,
-                  amount: parsedAmount,
-                  reference: mobileProviderLabel
-                    ? [mobileProviderLabel, reference.trim()].filter(Boolean).join(" — ")
-                    : reference.trim() || null,
+                  amount: applied,
+                  amountTendered: tendered,
+                  reference: mobileProviderLabel || null,
                 })
               }
               className="touch-manipulation min-h-12 w-full rounded-xl bg-fs-accent py-3 text-base font-bold text-white active:opacity-95 disabled:opacity-50 sm:flex-1 sm:py-2 sm:text-sm"

@@ -272,6 +272,19 @@ export function WarehouseDispatchDialog({
     [cart],
   );
 
+  const cashTenderedPreview = useMemo(() => {
+    if (paymentMode !== "cash" || editing) return null;
+    const raw = cashPaidDraft.trim();
+    if (raw === "") return null;
+    const parsed = parseFloat(raw.replace(",", "."));
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+  }, [paymentMode, editing, cashPaidDraft]);
+
+  const cashMonnaieARendre =
+    cashTenderedPreview != null && cashTenderedPreview > grandTotal + 0.0001
+      ? Math.round(cashTenderedPreview - grandTotal)
+      : null;
+
   const canSubmit =
     !saving &&
     !creatingCustomer &&
@@ -396,9 +409,6 @@ export function WarehouseDispatchDialog({
         return;
       }
       paidAmount = Math.min(parsed, grandTotal);
-      if (parsed > grandTotal) {
-        toast.info("Montant espèces ajusté au total de la facture.");
-      }
     } else if (paymentMode === "mobile_money" || paymentMode === "card") {
       if (paymentMode === "mobile_money" && !mobileProvider) {
         toast.info("Choisissez l'opérateur Mobile money (Orange Money, Moov Money ou Wave).");
@@ -820,8 +830,14 @@ export function WarehouseDispatchDialog({
                         disabled={saving}
                       />
                       <p className="mt-1 text-[11px] text-neutral-600">
-                        Vous pouvez saisir un montant partiel ou complet.
+                        Partiel ou complet ; si le client paie avec un billet plus grand, la monnaie à rendre
+                        s&apos;affiche ci-dessous.
                       </p>
+                      {cashMonnaieARendre != null && cashMonnaieARendre > 0 ? (
+                        <p className="mt-1 text-[11px] font-bold text-[#F97316]">
+                          Monnaie à rendre : {formatCurrency(cashMonnaieARendre)}
+                        </p>
+                      ) : null}
                     </div>
                   ) : null}
                   {!editing && paymentMode === "mobile_money" ? (
