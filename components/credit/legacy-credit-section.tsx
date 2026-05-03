@@ -4,7 +4,7 @@ import { CustomerFormDialog, type CustomerFormValue } from "@/components/custome
 import { CreditRepaymentReceiptDialog } from "@/components/credit/credit-repayment-receipt-dialog";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { MdDeleteOutline } from "react-icons/md";
+import { MdChevronLeft, MdChevronRight, MdDeleteOutline } from "react-icons/md";
 import { FsCard, fsInputClass } from "@/components/ui/fs-screen-primitives";
 import { createCustomer, listCustomers } from "@/lib/features/customers/api";
 import {
@@ -27,6 +27,7 @@ import {
 } from "@/lib/utils/operation-datetime";
 
 const EPS = 0.005;
+const LEGACY_PAGE_SIZE = 20;
 const LEGACY_VENDOR_PREFIX = "__VENDEUR__:";
 const LEGACY_DEFAULT_VENDOR_NAME = "OUEDRAOGO BOUBA";
 
@@ -177,6 +178,8 @@ export function LegacyCreditSection({
   const [payFor, setPayFor] = useState<LegacyCreditRow | null>(null);
   const [historyFor, setHistoryFor] = useState<LegacyCreditRow | null>(null);
   const [receiptData, setReceiptData] = useState<CreditRepaymentReceiptData | null>(null);
+  const [openPage, setOpenPage] = useState(0);
+  const [settledPage, setSettledPage] = useState(0);
 
   const params = useMemo(
     () => ({ companyId, storeId, from: from ? `${from}T00:00:00.000Z` : "", to }),
@@ -208,6 +211,29 @@ export function LegacyCreditSection({
   }, [q.data]);
   const totalOpen = useMemo(() => openRows.reduce((s, r) => s + remaining(r), 0), [openRows]);
   const [showSettledLegacy, setShowSettledLegacy] = useState(false);
+  const openCount = openRows.length;
+  const openPageCount = openCount === 0 ? 0 : Math.floor((openCount - 1) / LEGACY_PAGE_SIZE) + 1;
+  const safeOpenPage = openPageCount > 0 ? Math.min(openPage, openPageCount - 1) : 0;
+  const paginatedOpenRows = useMemo(
+    () =>
+      openRows.slice(
+        safeOpenPage * LEGACY_PAGE_SIZE,
+        safeOpenPage * LEGACY_PAGE_SIZE + LEGACY_PAGE_SIZE,
+      ),
+    [openRows, safeOpenPage],
+  );
+  const settledCount = settledRows.length;
+  const settledPageCount =
+    settledCount === 0 ? 0 : Math.floor((settledCount - 1) / LEGACY_PAGE_SIZE) + 1;
+  const safeSettledPage = settledPageCount > 0 ? Math.min(settledPage, settledPageCount - 1) : 0;
+  const paginatedSettledRows = useMemo(
+    () =>
+      settledRows.slice(
+        safeSettledPage * LEGACY_PAGE_SIZE,
+        safeSettledPage * LEGACY_PAGE_SIZE + LEGACY_PAGE_SIZE,
+      ),
+    [settledRows, safeSettledPage],
+  );
 
   const createMut = useMutation({
     mutationFn: createLegacyCredit,
@@ -325,7 +351,7 @@ export function LegacyCreditSection({
                 </tr>
               </thead>
               <tbody>
-                {openRows.map((r) => (
+                {paginatedOpenRows.map((r) => (
                   <tr key={r.id} className="border-b border-black/6">
                     <td className="px-2 py-2">{r.customer?.name ?? "—"}</td>
                     <td className="max-w-[220px] truncate px-2 py-2" title={r.title}>
@@ -365,7 +391,9 @@ export function LegacyCreditSection({
                       <div className="flex items-center gap-1.5">
                         <button
                           type="button"
-                          onClick={() => setHistoryFor(r)}
+                          onClick={() => {
+                            setHistoryFor(r);
+                          }}
                           className="touch-manipulation rounded-lg border border-black/10 bg-fs-surface-container px-3 py-2.5 text-xs font-bold text-neutral-800 active:opacity-95 dark:border-white/15 dark:text-neutral-100 sm:py-1"
                         >
                           Paiements
@@ -404,11 +432,49 @@ export function LegacyCreditSection({
             </table>
           </div>
         )}
+        {openPageCount > 1 ? (
+          <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+            <span className="text-xs text-neutral-600">
+              {safeOpenPage * LEGACY_PAGE_SIZE + 1} –{" "}
+              {Math.min((safeOpenPage + 1) * LEGACY_PAGE_SIZE, openCount)} / {openCount}
+            </span>
+            <button
+              type="button"
+              disabled={safeOpenPage <= 0}
+              onClick={() => setOpenPage((p) => Math.max(0, p - 1))}
+              className={cn(
+                "inline-flex h-9 w-9 items-center justify-center rounded-full text-white disabled:opacity-40",
+                safeOpenPage > 0 ? "bg-fs-accent" : "bg-neutral-300 dark:bg-neutral-600",
+              )}
+              aria-label="Page précédente"
+            >
+              <MdChevronLeft className="h-6 w-6" aria-hidden />
+            </button>
+            <span className="text-sm font-semibold text-fs-text">
+              {safeOpenPage + 1} / {openPageCount}
+            </span>
+            <button
+              type="button"
+              disabled={safeOpenPage >= openPageCount - 1}
+              onClick={() => setOpenPage((p) => Math.min(openPageCount - 1, p + 1))}
+              className={cn(
+                "inline-flex h-9 w-9 items-center justify-center rounded-full text-white disabled:opacity-40",
+                safeOpenPage < openPageCount - 1 ? "bg-fs-accent" : "bg-neutral-300 dark:bg-neutral-600",
+              )}
+              aria-label="Page suivante"
+            >
+              <MdChevronRight className="h-6 w-6" aria-hidden />
+            </button>
+          </div>
+        ) : null}
         {settledRows.length > 0 ? (
           <div className="mt-4 border-t border-black/10 pt-3 dark:border-white/10">
             <button
               type="button"
-              onClick={() => setShowSettledLegacy((v) => !v)}
+              onClick={() => {
+                setShowSettledLegacy((v) => !v);
+                setSettledPage(0);
+              }}
               className="flex w-full touch-manipulation items-center justify-between gap-2 rounded-xl bg-fs-surface-container px-3 py-2.5 text-left text-sm font-bold text-fs-text active:opacity-95 sm:py-2 sm:text-xs"
             >
               <span>
@@ -436,7 +502,7 @@ export function LegacyCreditSection({
                     </tr>
                   </thead>
                   <tbody>
-                    {settledRows.map((r) => (
+                    {paginatedSettledRows.map((r) => (
                       <tr key={r.id} className="border-b border-black/6 opacity-95">
                         <td className="px-2 py-2">{r.customer?.name ?? "—"}</td>
                         <td className="max-w-[220px] truncate px-2 py-2" title={r.title}>
@@ -461,7 +527,9 @@ export function LegacyCreditSection({
                           <div className="flex items-center gap-1.5">
                             <button
                               type="button"
-                              onClick={() => setHistoryFor(r)}
+                              onClick={() => {
+                                setHistoryFor(r);
+                              }}
                               className="touch-manipulation rounded-lg border border-black/10 bg-fs-surface-container px-3 py-2.5 text-xs font-bold text-neutral-800 active:opacity-95 dark:border-white/15 dark:text-neutral-100 sm:py-1"
                             >
                               Paiements
@@ -489,6 +557,43 @@ export function LegacyCreditSection({
                     ))}
                   </tbody>
                 </table>
+                {settledPageCount > 1 ? (
+                  <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+                    <span className="text-xs text-neutral-600">
+                      {safeSettledPage * LEGACY_PAGE_SIZE + 1} –{" "}
+                      {Math.min((safeSettledPage + 1) * LEGACY_PAGE_SIZE, settledCount)} / {settledCount}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={safeSettledPage <= 0}
+                      onClick={() => setSettledPage((p) => Math.max(0, p - 1))}
+                      className={cn(
+                        "inline-flex h-9 w-9 items-center justify-center rounded-full text-white disabled:opacity-40",
+                        safeSettledPage > 0 ? "bg-fs-accent" : "bg-neutral-300 dark:bg-neutral-600",
+                      )}
+                      aria-label="Page précédente"
+                    >
+                      <MdChevronLeft className="h-6 w-6" aria-hidden />
+                    </button>
+                    <span className="text-sm font-semibold text-fs-text">
+                      {safeSettledPage + 1} / {settledPageCount}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={safeSettledPage >= settledPageCount - 1}
+                      onClick={() => setSettledPage((p) => Math.min(settledPageCount - 1, p + 1))}
+                      className={cn(
+                        "inline-flex h-9 w-9 items-center justify-center rounded-full text-white disabled:opacity-40",
+                        safeSettledPage < settledPageCount - 1
+                          ? "bg-fs-accent"
+                          : "bg-neutral-300 dark:bg-neutral-600",
+                      )}
+                      aria-label="Page suivante"
+                    >
+                      <MdChevronRight className="h-6 w-6" aria-hidden />
+                    </button>
+                  </div>
+                ) : null}
               </div>
             ) : null}
           </div>
@@ -521,6 +626,7 @@ export function LegacyCreditSection({
       />
 
       <LegacyPaymentsHistoryDialog
+        key={historyFor?.id ?? "legacy-history-none"}
         open={!!historyFor}
         credit={historyFor}
         stores={storesQ.data ?? []}
@@ -943,11 +1049,19 @@ function LegacyPaymentsHistoryDialog({
   onClose: () => void;
   onReprint: (data: CreditRepaymentReceiptData) => void;
 }) {
+  const [page, setPage] = useState(0);
   if (!open || !credit) return null;
   const store = stores.find((s) => s.id === credit.store_id) ?? null;
   const ordered = (credit.payments ?? [])
     .slice()
     .sort((a, b) => a.created_at.localeCompare(b.created_at));
+  const totalCount = ordered.length;
+  const pageCount = totalCount === 0 ? 0 : Math.floor((totalCount - 1) / LEGACY_PAGE_SIZE) + 1;
+  const safePage = pageCount > 0 ? Math.min(page, pageCount - 1) : 0;
+  const paginatedOrdered = ordered.slice(
+    safePage * LEGACY_PAGE_SIZE,
+    safePage * LEGACY_PAGE_SIZE + LEGACY_PAGE_SIZE,
+  );
 
   return (
     <div className="fixed inset-0 z-84 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:bg-black/45 sm:p-4">
@@ -974,7 +1088,8 @@ function LegacyPaymentsHistoryDialog({
             </p>
           ) : (
             <div className="space-y-2.5">
-              {ordered.map((p, idx) => {
+              {paginatedOrdered.map((p, idx) => {
+                const absoluteIndex = safePage * LEGACY_PAGE_SIZE + idx;
                 const methodCode =
                   p.method === "cash" || p.method === "mobile_money" || p.method === "card" || p.method === "transfer"
                     ? p.method
@@ -983,7 +1098,7 @@ function LegacyPaymentsHistoryDialog({
                   0,
                   Number(credit.principal_amount) -
                     ordered
-                      .slice(0, idx)
+                      .slice(0, absoluteIndex)
                       .reduce((s, x) => s + Number(x.amount ?? 0), 0),
                 );
                 const issuedAt = new Date(p.created_at);
@@ -1036,6 +1151,41 @@ function LegacyPaymentsHistoryDialog({
                   </div>
                 );
               })}
+              {pageCount > 1 ? (
+                <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+                  <span className="text-xs text-neutral-600">
+                    {safePage * LEGACY_PAGE_SIZE + 1} –{" "}
+                    {Math.min((safePage + 1) * LEGACY_PAGE_SIZE, totalCount)} / {totalCount}
+                  </span>
+                  <button
+                    type="button"
+                    disabled={safePage <= 0}
+                    onClick={() => setPage((p) => Math.max(0, p - 1))}
+                    className={cn(
+                      "inline-flex h-9 w-9 items-center justify-center rounded-full text-white disabled:opacity-40",
+                      safePage > 0 ? "bg-fs-accent" : "bg-neutral-300 dark:bg-neutral-600",
+                    )}
+                    aria-label="Page précédente"
+                  >
+                    <MdChevronLeft className="h-6 w-6" aria-hidden />
+                  </button>
+                  <span className="text-sm font-semibold text-fs-text">
+                    {safePage + 1} / {pageCount}
+                  </span>
+                  <button
+                    type="button"
+                    disabled={safePage >= pageCount - 1}
+                    onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
+                    className={cn(
+                      "inline-flex h-9 w-9 items-center justify-center rounded-full text-white disabled:opacity-40",
+                      safePage < pageCount - 1 ? "bg-fs-accent" : "bg-neutral-300 dark:bg-neutral-600",
+                    )}
+                    aria-label="Page suivante"
+                  >
+                    <MdChevronRight className="h-6 w-6" aria-hidden />
+                  </button>
+                </div>
+              ) : null}
             </div>
           )}
         </div>

@@ -105,22 +105,43 @@ export function PosBarcodeScannerDialog({
           },
           onFrameFail,
         );
-      } catch (e) {
-        const msg =
-          e instanceof Error &&
-          (/Permission|NotAllowed|NotFound/i.test(e.message) ||
-            e.name === "NotAllowedError")
-            ? "Autorisez l’accès à la caméra pour scanner."
-            : e instanceof Error
-              ? e.message
-              : "Impossible d’ouvrir la caméra.";
-        onErrorRef.current?.(msg);
+      } catch (envErr) {
+        // Some desktops/laptops expose only a "user" camera.
         try {
-          html5.clear();
-        } catch {
-          /* */
+          await html5.start(
+            { facingMode: "user" },
+            config,
+            (decodedText) => {
+              void finish(html5, decodedText);
+            },
+            onFrameFail,
+          );
+          return;
+        } catch (userErr) {
+          const msg = (() => {
+            if (
+              userErr instanceof Error &&
+              (/Permission|NotAllowed|NotFound/i.test(userErr.message) ||
+                userErr.name === "NotAllowedError")
+            ) {
+              return "Autorisez l’accès à la caméra et fermez les autres apps qui utilisent la webcam.";
+            }
+            if (userErr instanceof Error && userErr.message.trim()) {
+              return `Impossible d’ouvrir la caméra: ${userErr.message}`;
+            }
+            if (envErr instanceof Error && envErr.message.trim()) {
+              return `Impossible d’ouvrir la caméra: ${envErr.message}`;
+            }
+            return "Impossible d’ouvrir la caméra.";
+          })();
+          onErrorRef.current?.(msg);
+          try {
+            html5.clear();
+          } catch {
+            /* */
+          }
+          scannerRef.current = null;
         }
-        scannerRef.current = null;
       }
     };
 

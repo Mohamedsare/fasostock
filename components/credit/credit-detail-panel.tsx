@@ -17,6 +17,7 @@ import {
 } from "@/lib/features/credit/credit-math";
 import { paymentMethodLabel } from "@/lib/features/receipt/build-receipt-ticket-data";
 import { messageFromUnknownError, toast } from "@/lib/toast";
+import { cn } from "@/lib/utils/cn";
 import { formatCurrency } from "@/lib/utils/currency";
 import {
   formatOperationDateTime,
@@ -24,10 +25,12 @@ import {
 } from "@/lib/utils/operation-datetime";
 import { P } from "@/lib/constants/permissions";
 import { usePermissions } from "@/lib/features/permissions/use-permissions";
-import { MdClose } from "react-icons/md";
-import { useEffect, useState } from "react";
+import { MdChevronLeft, MdChevronRight, MdClose } from "react-icons/md";
+import { useEffect, useMemo, useState } from "react";
 import { CreditQuickPayDialog } from "./credit-quick-pay-dialog";
 import type { CreditSaleRow } from "@/lib/features/credit/types";
+
+const PAYMENTS_PAGE_SIZE = 15;
 
 function isoDateInput(d: Date): string {
   return format(d, "yyyy-MM-dd");
@@ -49,6 +52,7 @@ export function CreditDetailPanel({
   const [payOpen, setPayOpen] = useState(false);
   const [dueStr, setDueStr] = useState("");
   const [internalNote, setInternalNote] = useState("");
+  const [paymentsPage, setPaymentsPage] = useState(0);
 
   const q = useQuery({
     queryKey: ["credit-sale-detail", saleId],
@@ -57,6 +61,26 @@ export function CreditDetailPanel({
   });
 
   const sale = q.data;
+  const orderedPayments = useMemo(
+    () =>
+      (sale?.sale_payments ?? [])
+        .slice()
+        .sort((a, b) => a.created_at.localeCompare(b.created_at)),
+    [sale?.sale_payments],
+  );
+  const paymentsCount = orderedPayments.length;
+  const paymentsPageCount =
+    paymentsCount === 0 ? 0 : Math.floor((paymentsCount - 1) / PAYMENTS_PAGE_SIZE) + 1;
+  const safePaymentsPage =
+    paymentsPageCount > 0 ? Math.min(paymentsPage, paymentsPageCount - 1) : 0;
+  const paginatedPayments = useMemo(
+    () =>
+      orderedPayments.slice(
+        safePaymentsPage * PAYMENTS_PAGE_SIZE,
+        safePaymentsPage * PAYMENTS_PAGE_SIZE + PAYMENTS_PAGE_SIZE,
+      ),
+    [orderedPayments, safePaymentsPage],
+  );
 
   useEffect(() => {
     if (!sale) {
@@ -172,10 +196,7 @@ export function CreditDetailPanel({
                 <div>
                   <p className="text-xs font-semibold text-neutral-600">Historique des paiements</p>
                   <ul className="mt-2 space-y-2">
-                    {(sale.sale_payments ?? [])
-                      .slice()
-                      .sort((a, b) => a.created_at.localeCompare(b.created_at))
-                      .map((p) => (
+                    {paginatedPayments.map((p) => (
                         <li
                           key={p.id}
                           className="flex justify-between rounded-xl border border-black/8 px-3 py-2 text-xs dark:border-white/10"
@@ -188,6 +209,45 @@ export function CreditDetailPanel({
                         </li>
                       ))}
                   </ul>
+                  {paymentsPageCount > 1 ? (
+                    <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+                      <span className="text-xs text-neutral-600">
+                        {safePaymentsPage * PAYMENTS_PAGE_SIZE + 1} –{" "}
+                        {Math.min((safePaymentsPage + 1) * PAYMENTS_PAGE_SIZE, paymentsCount)}
+                        {" / "}
+                        {paymentsCount}
+                      </span>
+                      <button
+                        type="button"
+                        disabled={safePaymentsPage <= 0}
+                        onClick={() => setPaymentsPage((p) => Math.max(0, p - 1))}
+                        className={cn(
+                          "inline-flex h-9 w-9 items-center justify-center rounded-full text-white disabled:opacity-40",
+                          safePaymentsPage > 0 ? "bg-fs-accent" : "bg-neutral-300 dark:bg-neutral-600",
+                        )}
+                        aria-label="Page précédente"
+                      >
+                        <MdChevronLeft className="h-6 w-6" aria-hidden />
+                      </button>
+                      <span className="text-sm font-semibold text-fs-text">
+                        {safePaymentsPage + 1} / {paymentsPageCount}
+                      </span>
+                      <button
+                        type="button"
+                        disabled={safePaymentsPage >= paymentsPageCount - 1}
+                        onClick={() => setPaymentsPage((p) => Math.min(paymentsPageCount - 1, p + 1))}
+                        className={cn(
+                          "inline-flex h-9 w-9 items-center justify-center rounded-full text-white disabled:opacity-40",
+                          safePaymentsPage < paymentsPageCount - 1
+                            ? "bg-fs-accent"
+                            : "bg-neutral-300 dark:bg-neutral-600",
+                        )}
+                        aria-label="Page suivante"
+                      >
+                        <MdChevronRight className="h-6 w-6" aria-hidden />
+                      </button>
+                    </div>
+                  ) : null}
                 </div>
                 <div>
                   <p className="text-xs font-semibold text-neutral-600">Articles</p>
