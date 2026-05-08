@@ -38,6 +38,8 @@ export function PartnersSection({ partners }: { partners: PartnerItem[] }) {
                       <img
                         src={partner.logoUrl}
                         alt={partner.name}
+                        loading="lazy"
+                        decoding="async"
                         className="h-14 w-auto max-w-[200px] object-contain opacity-95 sm:h-16 sm:max-w-[240px]"
                       />
                     </div>

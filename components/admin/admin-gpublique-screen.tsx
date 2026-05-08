@@ -9,6 +9,7 @@ import {
   adminListPublicLandingSettings,
   adminSetPublicLandingMediaImage,
   adminSetPublicLandingSettings,
+  adminUploadLandingImage,
 } from "@/lib/features/admin/api";
 import { messageFromUnknownError, toast } from "@/lib/toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -107,33 +108,48 @@ export function AdminGPubliqueScreen() {
     [name, logoDataUrl, addMut.isPending],
   );
 
-  function onPickLogo(file: File | null) {
+  const [uploadingHero, setUploadingHero] = useState(false);
+  const [uploadingSupport, setUploadingSupport] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+
+  async function onPickLogo(file: File | null) {
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = typeof reader.result === "string" ? reader.result : "";
-      setLogoDataUrl(result);
-    };
-    reader.readAsDataURL(file);
+    setUploadingLogo(true);
+    try {
+      const url = await adminUploadLandingImage(file, "partners");
+      setLogoDataUrl(url);
+    } catch (e) {
+      toast.error(messageFromUnknownError(e));
+    } finally {
+      setUploadingLogo(false);
+    }
   }
-  function onPickSupportImage(file: File | null) {
+
+  async function onPickSupportImage(file: File | null) {
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = typeof reader.result === "string" ? reader.result : "";
-      setSupportImageDataUrl(result);
-    };
-    reader.readAsDataURL(file);
+    setUploadingSupport(true);
+    try {
+      const url = await adminUploadLandingImage(file, "support");
+      setSupportImageDataUrl(url);
+    } catch (e) {
+      toast.error(messageFromUnknownError(e));
+    } finally {
+      setUploadingSupport(false);
+    }
   }
-  function onPickHeroBannerImage(file: File | null) {
+
+  async function onPickHeroBannerImage(file: File | null) {
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = typeof reader.result === "string" ? reader.result : "";
-      setHeroBannerImageDataUrl(result);
-      setSetting("hero_banner_image_url", result);
-    };
-    reader.readAsDataURL(file);
+    setUploadingHero(true);
+    try {
+      const url = await adminUploadLandingImage(file, "hero");
+      setHeroBannerImageDataUrl(url);
+      setSetting("hero_banner_image_url", url);
+    } catch (e) {
+      toast.error(messageFromUnknownError(e));
+    } finally {
+      setUploadingHero(false);
+    }
   }
 
   const supportMedia = (mediaQ.data ?? []).find((m) => m.key === "support_section_image");
@@ -161,9 +177,12 @@ export function AdminGPubliqueScreen() {
         <p className="mt-1 text-xs text-slate-500">
           Gérez ici l&apos;image de bannière, les liens sociaux du footer, les tarifs et les liens CTA.
         </p>
+        <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+          <strong>Astuce performance :</strong> ne collez plus de Data URL (base64) — utilisez l&apos;upload qui envoie l&apos;image vers Storage et stocke seulement l&apos;URL. Toute valeur Data URL sera ignorée à l&apos;affichage pour préserver la rapidité de la landing.
+        </div>
         <div className="mt-4 grid gap-3 md:grid-cols-2">
           <label className="space-y-1.5">
-            <span className="text-xs font-semibold text-slate-600">Image bannière (URL ou Data URL)</span>
+            <span className="text-xs font-semibold text-slate-600">URL image bannière</span>
             <input
               value={landingSettings.hero_banner_image_url ?? ""}
               onChange={(e) => setSetting("hero_banner_image_url", e.target.value)}
@@ -175,12 +194,13 @@ export function AdminGPubliqueScreen() {
             <span className="text-xs font-semibold text-slate-600">Uploader image bannière</span>
             <label className="inline-flex h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700">
               <MdUpload className="h-4 w-4" aria-hidden />
-              Choisir une image
+              {uploadingHero ? "Upload en cours…" : "Choisir une image"}
               <input
                 type="file"
                 accept="image/*"
                 className="sr-only"
-                onChange={(e) => onPickHeroBannerImage(e.target.files?.[0] ?? null)}
+                disabled={uploadingHero}
+                onChange={(e) => void onPickHeroBannerImage(e.target.files?.[0] ?? null)}
               />
             </label>
           </div>
@@ -425,12 +445,13 @@ export function AdminGPubliqueScreen() {
         <div className="mt-4 grid gap-3 md:grid-cols-[220px_auto] md:items-center">
           <label className="inline-flex h-11 cursor-pointer items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700">
             <MdUpload className="h-4 w-4" aria-hidden />
-            Uploader image
+            {uploadingSupport ? "Upload en cours…" : "Uploader image"}
             <input
               type="file"
               accept="image/*"
               className="sr-only"
-              onChange={(e) => onPickSupportImage(e.target.files?.[0] ?? null)}
+              disabled={uploadingSupport}
+              onChange={(e) => void onPickSupportImage(e.target.files?.[0] ?? null)}
             />
           </label>
           <button
@@ -497,12 +518,13 @@ export function AdminGPubliqueScreen() {
           />
           <label className="inline-flex h-11 cursor-pointer items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700">
             <MdUpload className="h-4 w-4" aria-hidden />
-            Uploader logo
+            {uploadingLogo ? "Upload en cours…" : "Uploader logo"}
             <input
               type="file"
               accept="image/*"
               className="sr-only"
-              onChange={(e) => onPickLogo(e.target.files?.[0] ?? null)}
+              disabled={uploadingLogo}
+              onChange={(e) => void onPickLogo(e.target.files?.[0] ?? null)}
             />
           </label>
           <button

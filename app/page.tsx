@@ -523,6 +523,8 @@ export default async function Home() {
               <img
                 src={supportSectionImageUrl}
                 alt="Conseiller FasoStock"
+                loading="lazy"
+                decoding="async"
                 className="relative z-[1] h-[350px] w-full rounded-[1.1rem] border border-black/10 object-cover sm:h-[520px]"
               />
             ) : (
@@ -1084,7 +1086,13 @@ export default async function Home() {
                 <ul className="mt-3 space-y-2.5">
                   {col.links.map((l) => (
                     <li key={l.label} className="text-sm text-white/85">
-                      <Link href={l.href} className="inline-flex items-center hover:text-fs-accent">{l.label}</Link>
+                      <Link
+                        href={l.href}
+                        prefetch={false}
+                        className="inline-flex items-center hover:text-fs-accent"
+                      >
+                        {l.label}
+                      </Link>
                     </li>
                   ))}
                 </ul>

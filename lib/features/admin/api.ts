@@ -386,6 +386,26 @@ export async function adminListPublicPartners(): Promise<AdminPublicPartner[]> {
   }));
 }
 
+/** Bucket Storage public pour la landing page — voir migration 00104_landing_images_bucket.sql. */
+const LANDING_IMAGES_BUCKET = "landing-images";
+
+/**
+ * Upload une image vers le bucket Storage public de la landing et renvoie l'URL publique.
+ * Préférable à un stockage en Data URL (base64) qui gonfle le HTML et casse le cache.
+ */
+export async function adminUploadLandingImage(file: File, prefix = "general"): Promise<string> {
+  const supabase = createClient();
+  const ext = file.name.includes(".") ? file.name.split(".").pop() || "jpg" : "jpg";
+  const path = `${prefix}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+  const { error: upErr } = await supabase.storage.from(LANDING_IMAGES_BUCKET).upload(path, file, {
+    contentType: file.type || "image/jpeg",
+    upsert: false,
+  });
+  if (upErr) throw mapSupabaseError(upErr);
+  const { data } = supabase.storage.from(LANDING_IMAGES_BUCKET).getPublicUrl(path);
+  return data.publicUrl;
+}
+
 export async function adminCreatePublicPartner(params: {
   name: string;
   logoUrl: string;
