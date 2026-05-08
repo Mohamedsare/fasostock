@@ -25,6 +25,7 @@ import {
 } from "@/lib/utils/operation-datetime";
 import { P } from "@/lib/constants/permissions";
 import { usePermissions } from "@/lib/features/permissions/use-permissions";
+import { useAppContext } from "@/lib/features/common/app-context";
 import { MdChevronLeft, MdChevronRight, MdClose } from "react-icons/md";
 import { useEffect, useMemo, useState } from "react";
 import { CreditQuickPayDialog } from "./credit-quick-pay-dialog";
@@ -46,6 +47,9 @@ export function CreditDetailPanel({
   creditQueryKey: readonly unknown[];
 }) {
   const qc = useQueryClient();
+  const ctx = useAppContext();
+  const companyId = ctx.data?.companyId ?? "";
+  const companyName = ctx.data?.companyName ?? "";
   const { hasPermission } = usePermissions();
   const canPay = hasPermission(P.salesUpdate);
 
@@ -277,9 +281,12 @@ export function CreditDetailPanel({
         </div>
       </div>
       <CreditQuickPayDialog
+        key={saleId ?? "credit-detail-pay"}
         sale={sale as CreditSaleRow | null}
         open={payOpen}
         onClose={() => setPayOpen(false)}
+        companyId={companyId}
+        companyName={companyName}
         onPaid={async () => {
           await qc.invalidateQueries({ queryKey: cq });
           await q.refetch();

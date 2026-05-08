@@ -1,57 +1,55 @@
 import type { CreditRepaymentReceiptData } from "@/lib/features/credit/credit-repayment-receipt-types";
+import { formatCurrencyFlutter } from "@/lib/utils/currency";
+import { formatOperationDateTime } from "@/lib/utils/operation-datetime";
 import { escapeHtml } from "./escape-html";
 import QRCode from "qrcode";
+
+const CREDIT_AMOUNT_EPS = 0.005;
 
 function tx(s: string): string {
   return escapeHtml(String(s ?? "").trim());
 }
 
-function fcfa(v: number): string {
-  return `${Math.round(Number(v || 0)).toLocaleString("fr-FR")} FCFA`;
+function txUpper(s: string): string {
+  return escapeHtml(String(s ?? "").trim().toUpperCase());
 }
 
-function formatDate(d: Date): string {
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
-function buildReceiptQrPayload(data: CreditRepaymentReceiptData): string {
-  const isCash = data.paymentMethodCode === "cash";
-  const tendered =
-    isCash &&
-    data.amountTendered != null &&
-    data.changeDue != null &&
-    data.changeDue > 0
-      ? Math.round(data.amountTendered)
-      : null;
-  const change =
-    isCash && data.changeDue != null && data.changeDue > 0 ? Math.round(data.changeDue) : null;
-  return JSON.stringify({
-    v: 1,
-    doc: "credit_repayment_receipt",
-    receipt_no: data.receiptNumber,
-    issued_at: data.issuedAt.toISOString(),
-    company_id: data.companyId,
-    store_id: data.storeId,
-    customer_id: data.customerId,
-    credit_id: data.creditId,
-    payment_id: data.paymentId ?? null,
-    amount_paid: Math.round(data.amountPaid),
-    amount_tendered: tendered,
-    change_due: change,
-    currency: data.currency || "XOF",
-    remaining_after: Math.round(data.newBalance),
-    method: data.paymentMethodCode,
-    reference: data.paymentReference ?? null,
-  });
+function primaryCss(hex?: string | null): string {
+  const h = (hex ?? "").trim();
+  const norm = h.startsWith("#") ? h : h.length === 6 ? `#${h}` : "";
+  return /^#[0-9A-Fa-f]{6}$/.test(norm) ? norm : "#2196F3";
 }
 
 export async function renderCreditRepaymentReceiptHtml(data: CreditRepaymentReceiptData): Promise<string> {
-  const issued = formatDate(data.issuedAt);
-  const due = data.dueAt ? formatDate(data.dueAt) : null;
-  const badgeText = data.settled ? "CRÉDIT SOLDÉ" : "RÈGLEMENT PARTIEL";
-  const badgeTone = data.settled ? "#047857" : "#b45309";
-  const qrPayload = buildReceiptQrPayload(data);
+  const issued = formatOperationDateTime(data.issuedAt);
+  const receiptNo = (data.receiptNumber ?? "").trim() || "—";
+  /** En-tête (très en haut) : nom légal entreprise (`companies.name`, résolu côté PDF). */
+  const enterpriseLine = (data.companyName ?? "").trim() || "Entreprise";
+  /** À côté du logo : nom de boutique (`stores.name`). */
+  const boutiqueHeadline = (data.storeName?.trim() || "Boutique").trim().toUpperCase();
+  const primary = primaryCss(data.storePrimaryColor);
+  const settledLabel = data.settled ? "CRÉDIT SOLDÉ" : "CRÉDIT EN COURS";
+  const statusLine = data.settled
+    ? "Statut : soldé"
+    : `Statut : solde restant ${formatCurrencyFlutter(data.newBalance)}`;
+
+  const payRef = data.paymentReference?.trim() ?? "";
+  const hasPayRef = payRef.length > 0;
+  const showTendered =
+    data.amountTendered != null && data.amountTendered > CREDIT_AMOUNT_EPS;
+  const showChange = data.changeDue != null && data.changeDue > CREDIT_AMOUNT_EPS;
+
+  const noteTrim = data.note?.trim() ?? "";
+  const hasNote = noteTrim.length > 0;
+
+  const signerTitle = data.invoiceSignerTitle?.trim() ?? "";
+  const signerName = data.invoiceSignerName?.trim() ?? "";
+  const hasSig = signerTitle.length > 0 || signerName.length > 0;
+
+  const footerLine = (data.storeFooterText?.trim() ?? "").length > 0 ? data.storeFooterText!.trim() : "Merci pour votre confiance.";
+
+  /** Même payload que l’app Flutter (`receiptNumber|amountPaid|customerName`). */
+  const qrPayload = `${data.receiptNumber}|${Math.round(Number(data.amountPaid || 0))}|${String(data.customerName ?? "").trim()}`;
   const qrDataUrl = await QRCode.toDataURL(qrPayload, {
     width: 180,
     margin: 1,
@@ -60,8 +58,22 @@ export async function renderCreditRepaymentReceiptHtml(data: CreditRepaymentRece
   });
 
   const logo = data.storeLogoUrl?.trim()
-    ? `<img src="${tx(data.storeLogoUrl)}" alt="" class="logo" />`
-    : `<div class="logo-placeholder">FS</div>`;
+    ? `<div class="logo-box"><img src="${tx(data.storeLogoUrl)}" alt="" class="logo-img" /></div>`
+    : "";
+
+  const kv = (label: string, value: string, strongValue = false): string => `
+    <div class="kv-row">
+      <span class="kv-k">${tx(label)}</span>
+      <span class="kv-v ${strongValue ? "strong" : ""}">${tx(value)}</span>
+    </div>`;
+
+  const signatureHtml = hasSig
+    ? `
+    <div class="sig-wrap">
+      ${signerTitle ? `<div class="sig-t">${txUpper(signerTitle)}</div>` : ""}
+      ${signerName ? `<div class="sig-n">${txUpper(signerName)}</div>` : ""}
+    </div>`
+    : `<div class="sig-spacer"></div>`;
 
   return `<!DOCTYPE html>
 <html lang="fr">
@@ -69,239 +81,283 @@ export async function renderCreditRepaymentReceiptHtml(data: CreditRepaymentRece
   <meta charset="utf-8" />
   <style>
     * { box-sizing: border-box; }
-    html, body { margin: 0; padding: 0; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      min-height: 100%;
+    }
     body {
-      font-family: Inter, Segoe UI, Arial, sans-serif;
-      color: #111827;
+      font-family: system-ui, Segoe UI, Arial, sans-serif;
+      color: #000000;
       background: #ffffff;
-      font-size: 12px;
+      font-size: 10px;
+      line-height: 1.35;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
     }
     .page {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
       width: 100%;
-      min-height: 100%;
-      padding: 20px;
-      border: 1px solid #e5e7eb;
-      border-radius: 14px;
+      min-height: 100vh;
+      padding: 32px;
+      max-width: 210mm;
+      margin: 0 auto;
     }
-    .header {
+    .page-main {
+      flex: 1 1 auto;
+    }
+    .page-header {
       display: flex;
+      flex-direction: row;
       justify-content: space-between;
-      align-items: flex-start;
-      gap: 12px;
-      border-bottom: 2px solid #f97316;
-      padding-bottom: 12px;
-    }
-    .brand {
-      display: flex;
-      gap: 10px;
       align-items: center;
+      gap: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid ${primary};
+      margin-bottom: 16px;
+    }
+    .company-name-line {
+      margin: 0;
+      flex: 1;
       min-width: 0;
+      font-size: 16px;
+      font-weight: 700;
+      color: ${primary};
+      line-height: 1.2;
+      letter-spacing: 0.02em;
     }
-    .logo {
-      width: 52px;
-      height: 52px;
-      object-fit: contain;
-      border-radius: 10px;
-      border: 1px solid #e5e7eb;
+    .receipt-meta-line {
+      margin: 0;
+      flex-shrink: 0;
+      max-width: 48%;
+      font-size: 10px;
+      font-weight: 400;
+      color: #000;
+      text-align: right;
+      line-height: 1.3;
+    }
+    .store-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+    .logo-box {
+      width: 70px;
+      height: 70px;
+      flex-shrink: 0;
+      border: 0.6pt solid #000;
       background: #fff;
-      padding: 3px;
-    }
-    .logo-placeholder {
-      width: 52px;
-      height: 52px;
-      border-radius: 10px;
+      padding: 4px;
       display: flex;
       align-items: center;
       justify-content: center;
-      background: #fff7ed;
-      color: #c2410c;
-      font-weight: 800;
-      border: 1px solid #fed7aa;
     }
+    .logo-img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+    .store-text { flex: 1; min-width: 0; }
     .store-name {
-      font-size: 18px;
-      font-weight: 800;
-      line-height: 1.2;
+      margin: 0;
+      font-size: 14px;
+      font-weight: 700;
+      color: ${primary};
+      letter-spacing: 0.02em;
     }
-    .store-meta { color: #4b5563; margin-top: 2px; font-size: 11px; }
-    .title-wrap { text-align: right; }
-    .title {
-      font-size: 16px;
-      letter-spacing: .06em;
-      font-weight: 900;
-      color: #c2410c;
-    }
-    .receipt-no {
-      margin-top: 2px;
-      color: #374151;
-      font-size: 11px;
-    }
-    .badge {
-      display: inline-block;
-      margin-top: 6px;
-      padding: 4px 10px;
-      border-radius: 999px;
-      font-size: 11px;
-      font-weight: 800;
-      color: ${badgeTone};
-      background: color-mix(in srgb, ${badgeTone} 14%, white);
-      border: 1px solid color-mix(in srgb, ${badgeTone} 30%, white);
-    }
-    .grid {
-      margin-top: 14px;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
+    .info-line { margin: 4px 0 0 0; font-size: 10px; color: #000; }
+    .title-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
       gap: 10px;
+      margin-bottom: 8px;
     }
-    .card {
-      border: 1px solid #e5e7eb;
-      border-radius: 12px;
+    .doc-title {
+      margin: 0;
+      font-size: 14px;
+      font-weight: 700;
+      color: #000;
+    }
+    .pill {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 4px;
+      background: ${primary};
+      color: #fff;
+      font-size: 8px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .block {
+      border: 0.6pt solid #000;
+      background: #fff;
       padding: 10px;
-      background: #fafafa;
     }
-    .card h3 {
+    .row-2 {
+      display: flex;
+      gap: 12px;
+      margin-top: 12px;
+      align-items: stretch;
+    }
+    .col {
+      flex: 1;
+      min-width: 0;
+    }
+    .sect-title {
       margin: 0 0 8px 0;
       font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: .05em;
-      color: #6b7280;
+      font-weight: 700;
+      color: ${primary};
     }
-    .kv { display: flex; justify-content: space-between; gap: 10px; margin: 4px 0; }
-    .kv .k { color: #6b7280; }
-    .kv .v { font-weight: 700; text-align: right; }
-    .amounts {
-      margin-top: 12px;
-      border: 1px solid #e5e7eb;
-      border-radius: 12px;
-      overflow: hidden;
-    }
-    .amount-row {
+    .kv-row {
       display: flex;
       justify-content: space-between;
-      gap: 10px;
-      padding: 10px 12px;
-      border-bottom: 1px solid #e5e7eb;
-      font-size: 12px;
-    }
-    .amount-row:last-child { border-bottom: none; }
-    .amount-row strong { font-size: 14px; }
-    .paid { color: #047857; font-weight: 800; }
-    .rest { color: #c2410c; font-weight: 900; }
-    .note {
-      margin-top: 10px;
-      border-left: 3px solid #f97316;
-      background: #fff7ed;
-      border-radius: 6px;
-      padding: 8px 10px;
-      font-size: 11px;
-      color: #7c2d12;
-      white-space: pre-wrap;
-    }
-    .footer {
-      margin-top: 16px;
-      padding-top: 10px;
-      border-top: 1px dashed #d1d5db;
-      text-align: center;
-      color: #6b7280;
+      align-items: center;
+      gap: 12px;
+      padding-bottom: 6px;
       font-size: 10px;
-      line-height: 1.45;
+      color: #000;
     }
-    .qr-wrap {
+    .kv-row:last-child { padding-bottom: 0; }
+    .kv-k { font-weight: 400; text-align: left; }
+    .kv-v { font-weight: 400; text-align: right; }
+    .kv-v.strong { font-weight: 700; }
+    hr.sep {
+      margin: 6px 0;
+      border: none;
+      border-top: 1px solid #000;
+      height: 0;
+    }
+    .bal-new {
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .status-sub { margin: 6px 0 0 0; font-size: 10px; color: #000; }
+    .trace-row {
+      display: flex;
+      gap: 12px;
       margin-top: 12px;
+      align-items: flex-start;
+    }
+    .qr-box {
+      width: 90px;
+      height: 90px;
+      flex-shrink: 0;
+      border: 0.6pt solid #000;
+      background: #fff;
+      padding: 4px;
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      border: 1px solid #e5e7eb;
-      border-radius: 10px;
-      padding: 8px 10px;
-      background: #fcfcfc;
+      justify-content: center;
     }
-    .qr-wrap img {
-      width: 86px;
-      height: 86px;
-      border: 1px solid #e5e7eb;
-      border-radius: 6px;
-      background: #fff;
-      padding: 3px;
+    .qr-box img { width: 100%; height: 100%; object-fit: contain; display: block; }
+    .trace-meta { flex: 1; min-width: 0; }
+    .trace-h {
+      margin: 0 0 6px 0;
+      font-size: 11px;
+      font-weight: 700;
+      color: ${primary};
+    }
+    .trace-line { margin: 0 0 2px 0; font-size: 10px; color: #000; }
+    .sig-spacer { height: 24px; }
+    .sig-wrap {
+      margin-top: 40px;
+      text-align: right;
+    }
+    .sig-t { font-size: 12px; color: #000; margin-bottom: 4px; }
+    .sig-n { font-size: 11px; color: #000; }
+    .foot {
       flex-shrink: 0;
+      margin-top: auto;
+      padding-top: 8px;
+      border-top: 1px solid #000;
+      text-align: center;
+      font-size: 9px;
+      color: #000;
     }
-    .qr-meta {
-      min-width: 0;
-      font-size: 10px;
-      color: #4b5563;
-      line-height: 1.45;
-    }
-    .qr-meta b {
-      color: #111827;
+    @media print {
+      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     }
   </style>
 </head>
 <body>
   <div class="page">
-    <div class="header">
-      <div class="brand">
-        ${logo}
-        <div>
-          <div class="store-name">${tx(data.storeName || "Boutique")}</div>
-          ${data.storeAddress ? `<div class="store-meta">${tx(data.storeAddress)}</div>` : ""}
-          ${data.storePhone ? `<div class="store-meta">Tél: ${tx(data.storePhone)}</div>` : ""}
-        </div>
-      </div>
-      <div class="title-wrap">
-        <div class="title">REÇU DE REMBOURSEMENT</div>
-        <div class="receipt-no">N° ${tx(data.receiptNumber)}</div>
-        <div class="receipt-no">Date: ${tx(issued)}</div>
-        <div class="badge">${tx(badgeText)}</div>
-      </div>
-    </div>
+    <div class="page-main">
+    <header class="page-header">
+      <p class="company-name-line">${tx(enterpriseLine)}</p>
+      <p class="receipt-meta-line">Reçu ${tx(receiptNo)} - ${tx(issued)}</p>
+    </header>
 
-    <div class="grid">
-      <div class="card">
-        <h3>Client</h3>
-        <div class="kv"><span class="k">Nom</span><span class="v">${tx(data.customerName)}</span></div>
-        ${data.customerPhone ? `<div class="kv"><span class="k">Téléphone</span><span class="v">${tx(data.customerPhone)}</span></div>` : ""}
-      </div>
-      <div class="card">
-        <h3>Crédit concerné</h3>
-        <div class="kv"><span class="k">Libellé</span><span class="v">${tx(data.creditTitle)}</span></div>
-        ${due ? `<div class="kv"><span class="k">Échéance</span><span class="v">${tx(due)}</span></div>` : ""}
+    <div class="store-row">
+      ${logo}
+      <div class="store-text">
+        <p class="store-name">${tx(boutiqueHeadline)}</p>
+        ${data.storeAddress?.trim() ? `<p class="info-line">${tx(data.storeAddress.trim())}</p>` : ""}
+        ${data.storePhone?.trim() ? `<p class="info-line">Tél : ${tx(data.storePhone.trim())}</p>` : ""}
+        ${data.storeMobileMoney?.trim() ? `<p class="info-line">Mobile money : ${tx(data.storeMobileMoney.trim())}</p>` : ""}
       </div>
     </div>
 
-    <div class="amounts">
-      <div class="amount-row"><span>Solde avant paiement</span><span>${tx(fcfa(data.previousBalance))}</span></div>
-      <div class="amount-row"><span>Montant remboursé (imputé)</span><span class="paid">${tx(fcfa(data.amountPaid))}</span></div>
-      ${
-        data.paymentMethodCode === "cash" &&
-        data.amountTendered != null &&
-        data.changeDue != null &&
-        data.changeDue > 0.5
-          ? `<div class="amount-row"><span>Montant reçu (espèces)</span><span>${tx(fcfa(data.amountTendered))}</span></div>
-      <div class="amount-row"><span>Monnaie à rendre</span><span class="paid">${tx(fcfa(data.changeDue))}</span></div>`
-          : ""
-      }
-      <div class="amount-row"><span>Mode de règlement</span><span>${tx(data.paymentMethodLabel)}</span></div>
-      ${data.paymentReference ? `<div class="amount-row"><span>Référence</span><span>${tx(data.paymentReference)}</span></div>` : ""}
-      <div class="amount-row"><strong>Nouveau solde dû</strong><strong class="rest">${tx(fcfa(data.newBalance))}</strong></div>
+    <div class="title-row">
+      <h1 class="doc-title">Reçu de remboursement crédit</h1>
+      <span class="pill">${tx(settledLabel)}</span>
     </div>
 
-    ${data.note?.trim() ? `<div class="note">${tx(data.note)}</div>` : ""}
+    <div class="block">
+      ${kv("N° reçu", receiptNo, true)}
+      ${kv("Date", issued)}
+      ${kv("Crédit concerné", data.creditTitle, true)}
+      ${hasNote ? kv("Référence vente", noteTrim) : ""}
+    </div>
 
-    <div class="qr-wrap">
-      <img src="${qrDataUrl}" alt="QR reçu remboursement" />
-      <div class="qr-meta">
-        <div><b>QR de traçabilité</b></div>
-        <div>N°: ${tx(data.receiptNumber)}</div>
-        <div>Paiement: ${tx(fcfa(data.amountPaid))}</div>
-        <div>Reste après: ${tx(fcfa(data.newBalance))}</div>
+    <div class="row-2">
+      <div class="col block">
+        <p class="sect-title">CLIENT</p>
+        ${kv("Nom", data.customerName, true)}
+        ${data.customerPhone?.trim() ? kv("Tél", data.customerPhone.trim()) : ""}
+      </div>
+      <div class="col block">
+        <p class="sect-title">PAIEMENT</p>
+        ${kv("Mode", data.paymentMethodLabel, true)}
+        ${hasPayRef ? kv("Référence", payRef) : ""}
+        ${showTendered ? kv("Montant reçu", formatCurrencyFlutter(data.amountTendered!)) : ""}
+        ${showChange ? kv("Monnaie à rendre", formatCurrencyFlutter(data.changeDue!), true) : ""}
       </div>
     </div>
 
-    <div class="footer">
-      Ce document atteste le paiement reçu au titre d'un remboursement de crédit client.<br/>
-      Merci pour votre confiance.
+    <div class="block" style="margin-top:12px;">
+      ${kv("Solde avant paiement", formatCurrencyFlutter(data.previousBalance), true)}
+      ${kv("Montant remboursé (imputé)", formatCurrencyFlutter(data.amountPaid), true)}
+      <hr class="sep" />
+      <div class="kv-row bal-new">
+        <span class="kv-k">Nouveau solde dû</span>
+        <span class="kv-v strong">${tx(formatCurrencyFlutter(data.newBalance))}</span>
+      </div>
+      <p class="status-sub">${tx(statusLine)}</p>
     </div>
+
+    <div class="trace-row">
+      <div class="qr-box">
+        <img src="${qrDataUrl}" alt="" />
+      </div>
+      <div class="trace-meta">
+        <p class="trace-h">Traçabilité</p>
+        <p class="trace-line">N° reçu : ${tx(data.receiptNumber)}</p>
+        <p class="trace-line">Paiement : ${tx(formatCurrencyFlutter(data.amountPaid))}</p>
+        <p class="trace-line">Solde après : ${tx(formatCurrencyFlutter(data.newBalance))}</p>
+      </div>
+    </div>
+
+    ${signatureHtml}
+
+    </div>
+    <div class="foot">${tx(footerLine)}</div>
   </div>
 </body>
 </html>`;

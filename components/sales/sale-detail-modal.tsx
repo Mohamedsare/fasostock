@@ -63,6 +63,7 @@ export function SaleDetailModal({
 }) {
   const ctx = useAppContext();
   const companyId = ctx.data?.companyId ?? "";
+  const companyName = ctx.data?.companyName ?? "";
 
   const [invoicePreviewBlob, setInvoicePreviewBlob] = useState<Blob | null>(
     null,
@@ -463,9 +464,12 @@ export function SaleDetailModal({
       ) : null}
 
       <CreditQuickPayDialog
+        key={creditSale?.id ?? "sale-detail-credit-pay"}
         sale={creditSale}
         open={creditPayOpen}
         onClose={() => setCreditPayOpen(false)}
+        companyId={companyId}
+        companyName={companyName}
       />
     </>
   );

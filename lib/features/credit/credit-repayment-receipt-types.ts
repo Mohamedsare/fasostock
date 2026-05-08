@@ -1,5 +1,7 @@
 export type CreditRepaymentReceiptData = {
   companyId: string;
+  /** Nom légal / affichage entreprise — barre du haut du reçu. */
+  companyName: string;
   storeId: string;
   customerId: string;
   creditId: string;
@@ -7,9 +9,18 @@ export type CreditRepaymentReceiptData = {
   receiptNumber: string;
   issuedAt: Date;
   storeName: string;
+  /** Raison sociale affichée (Flutter : `commercial_name` puis `name`). */
+  storeCommercialName?: string | null;
   storeLogoUrl?: string | null;
   storeAddress?: string | null;
   storePhone?: string | null;
+  storeMobileMoney?: string | null;
+  /** Couleur d’accent boutique (`#RRGGBB`) — fallback bleu comme l’app. */
+  storePrimaryColor?: string | null;
+  /** Pied de page facture / reçu (sinon texte par défaut). */
+  storeFooterText?: string | null;
+  invoiceSignerTitle?: string | null;
+  invoiceSignerName?: string | null;
   customerName: string;
   customerPhone?: string | null;
   creditTitle: string;

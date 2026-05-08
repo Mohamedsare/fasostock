@@ -107,7 +107,7 @@ export function CreditRepaymentReceiptDialog({
             <div className="mt-5 flex flex-col gap-2.5 min-[400px]:flex-row min-[400px]:flex-wrap">
               <PostReceiptAction
                 icon={<MdPictureAsPdf className="h-5 w-5 shrink-0" aria-hidden />}
-                label="Voir le PDF"
+                label="Aperçu PDF"
                 loading={busy === "view"}
                 disabled={disabled}
                 onClick={() => void handleView()}
@@ -121,7 +121,7 @@ export function CreditRepaymentReceiptDialog({
               />
               <PostReceiptAction
                 icon={<MdDownload className="h-5 w-5 shrink-0" aria-hidden />}
-                label="Télécharger"
+                label="Enregistrer"
                 loading={busy === "download"}
                 disabled={disabled}
                 onClick={() => void handleDownload()}
@@ -130,7 +130,7 @@ export function CreditRepaymentReceiptDialog({
             <button
               type="button"
               onClick={onClose}
-              className="mt-4 w-full rounded-xl py-2.5 text-sm font-semibold text-[#F97316] hover:bg-orange-50"
+              className="mt-4 w-full rounded-xl py-2.5 text-sm font-semibold text-fs-accent hover:bg-fs-accent/10"
             >
               Fermer
             </button>
@@ -168,7 +168,7 @@ function PostReceiptAction({
       disabled={disabled}
       onClick={onClick}
       className={cn(
-        "touch-manipulation inline-flex min-h-11 min-w-0 flex-1 items-center justify-center gap-2 rounded-xl bg-[#F97316] px-4 text-sm font-semibold text-white shadow-sm hover:bg-[#ea580c] disabled:opacity-50",
+        "touch-manipulation inline-flex min-h-11 min-w-0 flex-1 items-center justify-center gap-2 rounded-xl bg-fs-accent px-4 text-sm font-semibold text-white shadow-sm hover:opacity-90 active:opacity-95 disabled:opacity-50",
       )}
     >
       {loading ? (

@@ -2,7 +2,7 @@
 
 import { CustomerFormDialog, type CustomerFormValue } from "@/components/customers/customer-form-dialog";
 import { CreditRepaymentReceiptDialog } from "@/components/credit/credit-repayment-receipt-dialog";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { MdChevronLeft, MdChevronRight, MdDeleteOutline } from "react-icons/md";
 import { FsCard, fsInputClass } from "@/components/ui/fs-screen-primitives";
@@ -14,17 +14,19 @@ import {
   listLegacyCredits,
 } from "@/lib/features/credit/legacy-api";
 import type { CreditRepaymentReceiptData } from "@/lib/features/credit/credit-repayment-receipt-types";
+import {
+  creditRepaymentReceiptNumberFallback,
+  creditRepaymentReceiptNumberFromPaymentId,
+} from "@/lib/features/credit/credit-repayment-receipt-number";
 import type { LegacyCreditRow } from "@/lib/features/credit/types";
 import { listStores } from "@/lib/features/stores/api";
+import type { Store } from "@/lib/features/stores/types";
 import { paymentMethodLabel } from "@/lib/features/receipt/build-receipt-ticket-data";
 import { queryKeys } from "@/lib/query/query-keys";
 import { messageFromUnknownError, toast } from "@/lib/toast";
 import { cn } from "@/lib/utils/cn";
 import { formatCurrency } from "@/lib/utils/currency";
-import {
-  formatOperationDateTime,
-  formatOperationReceiptCompact,
-} from "@/lib/utils/operation-datetime";
+import { formatOperationDateTime } from "@/lib/utils/operation-datetime";
 
 const EPS = 0.005;
 const LEGACY_PAGE_SIZE = 20;
@@ -100,6 +102,7 @@ function buildLegacyInternalNote(vendor: string, note: string): string | null {
 
 function buildCreditRepaymentReceiptData(params: {
   credit: LegacyCreditRow;
+  companyName: string;
   amountPaid: number;
   amountTendered?: number | null;
   changeDue?: number | null;
@@ -109,35 +112,37 @@ function buildCreditRepaymentReceiptData(params: {
   issuedAt?: Date;
   receiptNumber?: string;
   previousBalanceOverride?: number;
-  store?: {
-    id: string;
-    company_id: string;
-    name: string;
-    currency?: string | null;
-    logo_url?: string | null;
-    address?: string | null;
-    phone?: string | null;
-  } | null;
+  store?: Store | null;
 }): CreditRepaymentReceiptData {
   const now = params.issuedAt ?? new Date();
-  const fallbackReceiptNo = `RC-${formatOperationReceiptCompact(now)}-${Math.floor(Math.random() * 1000)
-    .toString()
-    .padStart(3, "0")}`;
+  const fallbackReceiptNo = creditRepaymentReceiptNumberFallback(now);
+  const receiptNumber =
+    params.receiptNumber ??
+    (params.paymentId && params.paymentId.trim().length > 0
+      ? creditRepaymentReceiptNumberFromPaymentId(params.paymentId.trim(), now)
+      : fallbackReceiptNo);
   const previousBalance =
     params.previousBalanceOverride ?? remaining(params.credit);
   const newBalance = Math.max(0, previousBalance - Math.max(0, params.amountPaid));
   return {
     companyId: params.store?.company_id ?? params.credit.company_id,
+    companyName: params.companyName.trim() || "Entreprise",
     storeId: params.store?.id ?? params.credit.store_id,
     customerId: params.credit.customer_id,
     creditId: params.credit.id,
     paymentId: params.paymentId ?? null,
-    receiptNumber: params.receiptNumber ?? fallbackReceiptNo,
+    receiptNumber,
     issuedAt: now,
     storeName: params.store?.name ?? params.credit.store?.name ?? "Boutique",
+    storeCommercialName: params.store?.commercial_name ?? null,
     storeLogoUrl: params.store?.logo_url ?? null,
     storeAddress: params.store?.address ?? null,
     storePhone: params.store?.phone ?? null,
+    storeMobileMoney: params.store?.mobile_money ?? null,
+    storePrimaryColor: params.store?.primary_color ?? null,
+    storeFooterText: params.store?.footer_text ?? null,
+    invoiceSignerTitle: params.store?.invoice_signer_title ?? null,
+    invoiceSignerName: params.store?.invoice_signer_name ?? null,
     customerName: params.credit.customer?.name ?? "Client",
     customerPhone: params.credit.customer?.phone ?? null,
     creditTitle: params.credit.title ?? "Crédit libre",
@@ -248,20 +253,22 @@ export function LegacyCreditSection({
   const roundMoney = (v: number) => Math.round(v * 100) / 100;
 
   const payMut = useMutation({
-    mutationFn: (vars: {
+    mutationFn: async (vars: {
       creditId: string;
       method: "cash" | "mobile_money" | "card" | "transfer";
       amount: number;
       reference?: string | null;
       amountTendered: number;
-    }) =>
-      appendLegacyCreditPayment({
+    }) => {
+      const rpc = await appendLegacyCreditPayment({
         creditId: vars.creditId,
         method: vars.method,
         amount: vars.amount,
         reference: vars.reference,
-      }),
-    onSuccess: async (_data, vars) => {
+      });
+      return { vars, rpc };
+    },
+    onSuccess: async ({ vars, rpc }) => {
       if (payFor) {
         const store = (storesQ.data ?? []).find((s) => s.id === payFor.store_id) ?? null;
         const changeDue =
@@ -277,6 +284,8 @@ export function LegacyCreditSection({
             changeDue: showTendered ? changeDue : null,
             method: vars.method,
             reference: vars.reference ?? null,
+            paymentId: rpc.paymentId,
+            issuedAt: new Date(rpc.createdAtIso),
             store,
           }),
         );
@@ -610,6 +619,7 @@ export function LegacyCreditSection({
       />
 
       <LegacyPayDialog
+        key={payFor?.id ?? "legacy-pay-closed"}
         open={!!payFor}
         credit={payFor}
         busy={payMut.isPending}
@@ -629,6 +639,7 @@ export function LegacyCreditSection({
         key={historyFor?.id ?? "legacy-history-none"}
         open={!!historyFor}
         credit={historyFor}
+        companyName={companyName}
         stores={storesQ.data ?? []}
         onClose={() => setHistoryFor(null)}
         onReprint={(d) => {
@@ -674,6 +685,7 @@ function LegacyCreateDialog({
   const qc = useQueryClient();
   const comboRef = useRef<HTMLDivElement | null>(null);
   const invalidAmountToastAt = useRef(0);
+  const customerListboxId = useId();
 
   const customersQ = useQuery({
     queryKey: queryKeys.customers(companyId),
@@ -746,7 +758,7 @@ function LegacyCreateDialog({
           (c.email ?? "").toLowerCase().includes(q),
       )
       .slice(0, 12);
-  }, [customersQ.data, customerSearch, q, digits]);
+  }, [customersQ.data, q, digits]);
 
   const customers = customersQ.data ?? [];
   const selectedCustomer = customerId ? customers.find((c) => c.id === customerId) : undefined;
@@ -859,6 +871,9 @@ function LegacyCreateDialog({
                 ) : (
                   <div ref={comboRef} className="relative">
                     <input
+                      type="text"
+                      role="combobox"
+                      aria-controls={customerListboxId}
                       className={mobileFieldClass()}
                       value={customerSearch}
                       onChange={(e) => {
@@ -872,7 +887,11 @@ function LegacyCreateDialog({
                       aria-expanded={listboxOpen}
                     />
                     {listboxOpen ? (
-                      <div className="absolute left-0 right-0 z-20 mt-1 max-h-[min(42dvh,320px)] overflow-auto rounded-xl border border-black/10 bg-fs-card py-1 shadow-xl sm:max-h-60 dark:border-white/10">
+                      <div
+                        id={customerListboxId}
+                        role="listbox"
+                        className="absolute left-0 right-0 z-20 mt-1 max-h-[min(42dvh,320px)] overflow-auto rounded-xl border border-black/10 bg-fs-card py-1 shadow-xl sm:max-h-60 dark:border-white/10"
+                      >
                         {filtered.map((c) => (
                           <button
                             key={c.id}
@@ -1031,21 +1050,15 @@ function LegacyCreateDialog({
 function LegacyPaymentsHistoryDialog({
   open,
   credit,
+  companyName,
   stores,
   onClose,
   onReprint,
 }: {
   open: boolean;
   credit: LegacyCreditRow | null;
-  stores: Array<{
-    id: string;
-    company_id: string;
-    name: string;
-    currency: string | null;
-    logo_url: string | null;
-    address: string | null;
-    phone: string | null;
-  }>;
+  companyName: string;
+  stores: Store[];
   onClose: () => void;
   onReprint: (data: CreditRepaymentReceiptData) => void;
 }) {
@@ -1102,7 +1115,7 @@ function LegacyPaymentsHistoryDialog({
                       .reduce((s, x) => s + Number(x.amount ?? 0), 0),
                 );
                 const issuedAt = new Date(p.created_at);
-                const receiptNo = `RC-${formatOperationReceiptCompact(issuedAt)}-${String(p.id).slice(0, 6).toUpperCase()}`;
+                const receiptNo = creditRepaymentReceiptNumberFromPaymentId(p.id, p.created_at);
                 return (
                   <div
                     key={p.id}
@@ -1132,12 +1145,12 @@ function LegacyPaymentsHistoryDialog({
                             onReprint(
                               buildCreditRepaymentReceiptData({
                                 credit,
+                                companyName,
                                 amountPaid: Number(p.amount),
                                 method: methodCode,
                                 reference: p.reference ?? null,
                                 paymentId: p.id,
                                 issuedAt,
-                                receiptNumber: receiptNo,
                                 previousBalanceOverride: previousBalance,
                                 store,
                               }),
@@ -1235,12 +1248,6 @@ function LegacyPayDialog({
     | "transfer";
   const [method, setMethod] = useState<PaymentModeUi>("cash");
   const [amount, setAmount] = useState("");
-
-  useEffect(() => {
-    if (!open || !credit) return;
-    setAmount("");
-    setMethod("cash");
-  }, [open, credit?.id]);
 
   const warnNonNumericAmount = () => {
     const now = Date.now();

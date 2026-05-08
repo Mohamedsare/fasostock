@@ -72,8 +72,16 @@ export function parseCreditRepaymentReceiptPayload(
     if (!Number.isNaN(d.getTime())) dueAt = d;
   }
   const { issuedAt: _i, dueAt: _d, ...rest } = o;
+  const base = rest as Omit<CreditRepaymentReceiptData, "issuedAt" | "dueAt">;
+  const cn =
+    typeof base.companyName === "string" && base.companyName.trim().length > 0
+      ? base.companyName.trim()
+      : typeof base.storeName === "string" && base.storeName.trim().length > 0
+        ? base.storeName.trim()
+        : "Entreprise";
   return {
-    ...(rest as Omit<CreditRepaymentReceiptData, "issuedAt" | "dueAt">),
+    ...base,
+    companyName: cn,
     issuedAt,
     dueAt,
   };

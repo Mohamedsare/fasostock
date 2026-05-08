@@ -1556,11 +1556,11 @@ export function CreditScreen() {
       />
 
       <p className="mt-6 text-center text-xs text-neutral-500">
-        Reçu après paiement : utilisez le détail vente depuis{" "}
+        Après encaissement sur cette page, un reçu de remboursement PDF est proposé ; depuis{" "}
         <Link href={ROUTES.sales} className="font-semibold text-fs-accent underline-offset-2 hover:underline">
           Ventes
         </Link>{" "}
-        (impression ticket / facture). Rappels SMS / WhatsApp : à brancher côté intégration.
+        vous pouvez aussi imprimer ticket ou facture. Rappels SMS / WhatsApp : à brancher côté intégration.
       </p>
 
       <CreditDetailPanel
@@ -1569,7 +1569,14 @@ export function CreditScreen() {
         creditQueryKey={queryKeys.creditSales(creditParams)}
       />
 
-      <CreditQuickPayDialog sale={paySale} open={paySale !== null} onClose={() => setPaySale(null)} />
+      <CreditQuickPayDialog
+        key={paySale?.id ?? "credit-pay-closed"}
+        sale={paySale}
+        open={paySale !== null}
+        onClose={() => setPaySale(null)}
+        companyId={companyId}
+        companyName={companyName}
+      />
 
       {dispatchDetailId ? (
         <div className="fixed inset-0 z-56 flex flex-col justify-end bg-black/45 sm:items-center sm:justify-center sm:p-4" role="dialog">

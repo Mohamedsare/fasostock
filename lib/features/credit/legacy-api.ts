@@ -84,23 +84,35 @@ export async function createLegacyCredit(params: {
   return String(data ?? "");
 }
 
+export type AppendLegacyCreditPaymentResult = {
+  paymentId: string;
+  createdAtIso: string;
+};
+
 export async function appendLegacyCreditPayment(params: {
   creditId: string;
   method: "cash" | "mobile_money" | "card" | "transfer";
   amount: number;
   reference?: string | null;
-}): Promise<void> {
+}): Promise<AppendLegacyCreditPaymentResult> {
   if (!navigator.onLine) {
     throw new Error("Enregistrement du paiement nécessite une connexion internet.");
   }
   const supabase = createClient();
-  const { error } = await supabase.rpc("append_legacy_customer_credit_payment", {
+  const { data, error } = await supabase.rpc("append_legacy_customer_credit_payment", {
     p_credit_id: params.creditId,
     p_method: params.method,
     p_amount: params.amount,
     p_reference: params.reference ?? null,
   });
   if (error) throw error;
+  const raw = data as Record<string, unknown> | null | undefined;
+  const paymentId = raw != null ? String(raw.payment_id ?? "").trim() : "";
+  const createdAtIso = raw != null ? String(raw.created_at ?? "").trim() : "";
+  if (!paymentId || !createdAtIso) {
+    throw new Error("Réponse serveur invalide après encaissement.");
+  }
+  return { paymentId, createdAtIso };
 }
 
 export async function deleteLegacyCredit(params: { creditId: string }): Promise<void> {

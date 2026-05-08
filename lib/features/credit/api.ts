@@ -104,23 +104,35 @@ export async function listCreditSales(params: {
   }));
 }
 
+export type AppendSalePaymentResult = {
+  paymentId: string;
+  createdAtIso: string;
+};
+
 export async function appendSalePayment(params: {
   saleId: string;
   method: "cash" | "mobile_money" | "card" | "transfer";
   amount: number;
   reference?: string | null;
-}): Promise<void> {
+}): Promise<AppendSalePaymentResult> {
   if (!navigator.onLine) {
     throw new Error("Enregistrement du paiement nécessite une connexion internet.");
   }
   const supabase = createClient();
-  const { error } = await supabase.rpc("append_sale_payment", {
+  const { data, error } = await supabase.rpc("append_sale_payment", {
     p_sale_id: params.saleId,
     p_method: params.method,
     p_amount: params.amount,
     p_reference: params.reference ?? null,
   });
   if (error) throw error;
+  const raw = data as Record<string, unknown> | null | undefined;
+  const paymentId = raw != null ? String(raw.payment_id ?? "").trim() : "";
+  const createdAtIso = raw != null ? String(raw.created_at ?? "").trim() : "";
+  if (!paymentId || !createdAtIso) {
+    throw new Error("Réponse serveur invalide après encaissement.");
+  }
+  return { paymentId, createdAtIso };
 }
 
 export async function updateSaleCreditMeta(params: {
