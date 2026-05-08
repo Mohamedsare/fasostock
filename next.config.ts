@@ -14,6 +14,10 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: false,
   },
+  experimental: {
+    /** Tree-shaking précis pour react-icons (réduit fortement le JS de la landing). */
+    optimizePackageImports: ["react-icons", "react-icons/md", "react-icons/fa", "react-icons/fa6"],
+  },
   async headers() {
     const isProd = process.env.NODE_ENV === "production";
     return [

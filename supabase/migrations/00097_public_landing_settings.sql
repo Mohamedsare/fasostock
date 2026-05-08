@@ -30,7 +30,7 @@ GRANT INSERT, UPDATE, DELETE ON public.public_landing_settings TO authenticated;
 
 INSERT INTO public.public_landing_settings (key, value) VALUES
   ('hero_banner_image_url', ''),
-  ('footer_whatsapp_url', 'https://wa.me/22603079618'),
+  ('footer_whatsapp_url', 'https://wa.me/212771668079?text=Bonjour%2C%20je%20suis%20int%C3%A9ress%C3%A9(e)%20par%20FasoStock.%20Pouvez-vous%20m%27aider%20%3F'),
   ('footer_facebook_url', 'https://facebook.com'),
   ('footer_youtube_url', 'https://youtube.com'),
   ('footer_tiktok_url', 'https://tiktok.com'),
@@ -39,7 +39,7 @@ INSERT INTO public.public_landing_settings (key, value) VALUES
   ('pricing_monthly_amount', '15000'),
   ('pricing_yearly_amount', '125000'),
   ('pricing_yearly_savings', '55000'),
-  ('support_whatsapp_url', '/help'),
+  ('support_whatsapp_url', 'https://wa.me/212771668079?text=Bonjour%2C%20je%20suis%20int%C3%A9ress%C3%A9(e)%20par%20FasoStock.%20Pouvez-vous%20m%27aider%20%3F'),
   ('support_demo_url', '/help')
 ON CONFLICT (key) DO NOTHING;
 

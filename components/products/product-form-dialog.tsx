@@ -88,19 +88,21 @@ export function ProductFormDialog({
   const [barcode, setBarcode] = useState(initial?.barcode ?? "");
   const [unit, setUnit] = useState(initial?.unit ?? "pce");
   const [purchasePrice, setPurchasePrice] = useState(
-    String(initial?.purchase_price ?? 0),
+    initial?.purchase_price != null ? String(initial.purchase_price) : "",
   );
-  const [salePrice, setSalePrice] = useState(String(initial?.sale_price ?? 0));
+  const [salePrice, setSalePrice] = useState(
+    initial?.sale_price != null ? String(initial.sale_price) : "",
+  );
   const [wholesalePrice, setWholesalePrice] = useState(
-    String(initial?.wholesale_price ?? 0),
+    initial?.wholesale_price != null ? String(initial.wholesale_price) : "",
   );
   const [wholesaleQty, setWholesaleQty] = useState(
-    String(initial?.wholesale_qty ?? 0),
+    initial?.wholesale_qty != null ? String(initial.wholesale_qty) : "",
   );
   const [stockMin, setStockMin] = useState(
     String(initial != null ? initial.stock_min ?? 0 : 5),
   );
-  const [initialStock, setInitialStock] = useState("0");
+  const [initialStock, setInitialStock] = useState("");
   const [description, setDescription] = useState(initial?.description ?? "");
   const [categoryId, setCategoryId] = useState(initial?.category_id ?? "");
   const [brandId, setBrandId] = useState(initial?.brand_id ?? "");

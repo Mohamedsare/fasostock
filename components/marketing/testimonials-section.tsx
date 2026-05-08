@@ -52,7 +52,21 @@ const defaultStats: TestimonialsStat[] = [
   { value: "+25%", label: "D'augmentation moyenne de performance" },
 ];
 
-export function TestimonialsSection({ stats = defaultStats }: { stats?: TestimonialsStat[] }) {
+type TestimonialsSectionProps = {
+  stats?: TestimonialsStat[];
+  ctaTitle?: string;
+  ctaSubtitle?: string;
+};
+
+const DEFAULT_CTA_TITLE = "La confiance de centaines de commerçants comme vous";
+const DEFAULT_CTA_SUBTITLE =
+  "Rejoignez la communauté FasoStock et faites passer votre commerce au niveau supérieur.";
+
+export function TestimonialsSection({
+  stats = defaultStats,
+  ctaTitle = DEFAULT_CTA_TITLE,
+  ctaSubtitle = DEFAULT_CTA_SUBTITLE,
+}: TestimonialsSectionProps) {
   const [visibleCount, setVisibleCount] = useState(4);
   const [index, setIndex] = useState(0);
 
@@ -159,11 +173,9 @@ export function TestimonialsSection({ stats = defaultStats }: { stats?: Testimon
 
         <div className="mt-3 text-center">
           <p className="text-2xl font-black text-[#202938]">
-            <span className="text-fs-accent">🛡</span> La confiance de centaines de commerçants comme vous
+            <span className="text-fs-accent">🛡</span> {ctaTitle}
           </p>
-          <p className="text-sm text-neutral-600">
-            Rejoignez la communauté FasoStock et faites passer votre commerce au niveau supérieur.
-          </p>
+          <p className="text-sm text-neutral-600">{ctaSubtitle}</p>
         </div>
       </div>
     </section>

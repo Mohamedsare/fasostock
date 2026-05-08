@@ -113,7 +113,11 @@ export function FaqSection() {
             </div>
             <div className="flex w-full flex-col gap-2 sm:flex-row lg:w-auto">
               <Link
-                href="/help"
+                href={`https://wa.me/212771668079?text=${encodeURIComponent(
+                  "Bonjour, je suis intéressé(e) par FasoStock. Pouvez-vous m'aider ?",
+                )}`}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-fs-accent px-5 py-2 text-sm font-black text-white"
               >
                 <MdWhatsapp className="h-5 w-5" />

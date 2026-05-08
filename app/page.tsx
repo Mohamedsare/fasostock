@@ -1,5 +1,10 @@
 import { hasSupabaseConfig } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
+import {
+  getCachedLandingPartners,
+  getCachedLandingSettings,
+  getCachedLandingSupportImage,
+} from "@/lib/features/landing/server";
 import { PartnersSection } from "@/components/marketing/partners-section";
 import { TestimonialsSection } from "@/components/marketing/testimonials-section";
 import { FaqSection } from "@/components/marketing/faq-section";
@@ -29,15 +34,12 @@ import {
   MdOfflineBolt,
   MdOutlinePlayCircleFilled,
   MdPointOfSale,
-  MdPublic,
   MdSecurity,
   MdSync,
-  MdSpeed,
   MdStorefront,
   MdTrendingUp,
   MdVerifiedUser,
   MdWallet,
-  MdLanguage,
   MdWhatsapp,
   MdWifiOff,
 } from "react-icons/md";
@@ -64,12 +66,6 @@ export const metadata: Metadata = {
     },
   },
 };
-
-const highlights = [
-  "Mobile-first, rapide meme sur connexion instable",
-  "Stock, ventes, credit client et recouvrement",
-  "Recu pro PDF, export Excel, suivi multi-boutiques",
-] as const;
 
 const bannerFeatureStrip = [
   {
@@ -237,9 +233,14 @@ export default async function Home() {
   if (!hasSupabaseConfig()) redirect("/setup");
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Auth + données publiques en parallèle (les données publiques sont mises en cache).
+  const [authResult, partners, supportImage, landingSettings] = await Promise.all([
+    supabase.auth.getUser(),
+    getCachedLandingPartners(),
+    getCachedLandingSupportImage(),
+    getCachedLandingSettings(),
+  ]);
+  const user = authResult.data.user;
   if (user) {
     const { data: profile } = await supabase
       .from("profiles")
@@ -250,37 +251,14 @@ export default async function Home() {
     redirect("/dashboard");
   }
 
-  const { data: partnersRaw } = await supabase
-    .from("public_partners")
-    .select("id, name, logo_url, sort_order")
-    .eq("is_active", true)
-    .order("sort_order", { ascending: true })
-    .order("created_at", { ascending: false });
-
-  const partners = ((partnersRaw ?? []) as Array<Record<string, unknown>>).map((p) => ({
-    id: String(p.id ?? ""),
-    name: String(p.name ?? "Partenaire"),
-    logoUrl: String(p.logo_url ?? "/fs.png"),
-  }));
-  const { data: supportMediaRaw } = await supabase
-    .from("public_landing_media")
-    .select("image_url")
-    .eq("key", "support_section_image")
-    .maybeSingle();
-  const supportSectionImageUrl = String((supportMediaRaw as { image_url?: string } | null)?.image_url ?? "").trim();
-  const { data: landingSettingsRaw } = await supabase
-    .from("public_landing_settings")
-    .select("key, value");
-  const landingSettings = Object.fromEntries(
-    ((landingSettingsRaw ?? []) as Array<Record<string, unknown>>).map((row) => [
-      String(row.key ?? ""),
-      String(row.value ?? ""),
-    ]),
-  ) as Record<string, string>;
+  const supportSectionImageUrl = supportImage.imageUrl;
   const heroBannerImageUrl = (landingSettings.hero_banner_image_url ?? "").trim();
   const supportDemoUrl = (landingSettings.support_demo_url ?? "").trim() || "/help";
-  const supportWhatsappUrl = (landingSettings.support_whatsapp_url ?? "").trim() || "/help";
-  const footerWhatsappUrl = (landingSettings.footer_whatsapp_url ?? "").trim() || "https://wa.me/22603079618";
+  const whatsappDefaultUrl = `https://wa.me/212771668079?text=${encodeURIComponent(
+    "Bonjour, je suis intéressé(e) par FasoStock. Pouvez-vous m'aider ?",
+  )}`;
+  const supportWhatsappUrl = (landingSettings.support_whatsapp_url ?? "").trim() || whatsappDefaultUrl;
+  const footerWhatsappUrl = (landingSettings.footer_whatsapp_url ?? "").trim() || whatsappDefaultUrl;
   const footerFacebookUrl = (landingSettings.footer_facebook_url ?? "").trim() || "https://facebook.com";
   const footerYoutubeUrl = (landingSettings.footer_youtube_url ?? "").trim() || "https://youtube.com";
   const footerTiktokUrl = (landingSettings.footer_tiktok_url ?? "").trim() || "https://tiktok.com";
@@ -307,60 +285,110 @@ export default async function Home() {
       label: (landingSettings.testimonials_stat_4_label ?? "").trim() || "D'augmentation moyenne de performance",
     },
   ];
+  const testimonialsCtaTitle =
+    (landingSettings.testimonials_cta_title ?? "").trim() ||
+    "La confiance de centaines de commerçants comme vous";
+  const testimonialsCtaSubtitle =
+    (landingSettings.testimonials_cta_subtitle ?? "").trim() ||
+    "Rejoignez la communauté FasoStock et faites passer votre commerce au niveau supérieur.";
 
   return (
     <main className="min-h-dvh bg-[radial-gradient(circle_at_top,rgba(232,93,44,0.14),transparent_42%),linear-gradient(to_bottom,#fff,#fff7f3)] text-neutral-900">
       <SiteHeader />
 
       <section id="accueil" className="mx-auto w-full max-w-7xl scroll-mt-24 px-4 pb-10 pt-5 sm:px-6 sm:pb-14 sm:pt-7">
-        <div className="overflow-hidden rounded-[2rem] border border-black/10 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.95),rgba(246,246,246,0.9)_52%),linear-gradient(to_bottom,#fafafa,#f3f3f3)] p-4 shadow-[0_28px_70px_-35px_rgba(17,24,39,0.4)] sm:p-6">
-          <div className="grid items-center gap-6 lg:grid-cols-[1.05fr_0.95fr]">
+        <div
+          className={cn(
+            "relative overflow-hidden rounded-[2rem] border border-black/10 p-4 shadow-[0_28px_70px_-35px_rgba(17,24,39,0.4)] sm:p-6",
+            heroBannerImageUrl
+              ? "min-h-[420px] sm:min-h-[520px]"
+              : "bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.95),rgba(246,246,246,0.9)_52%),linear-gradient(to_bottom,#fafafa,#f3f3f3)]",
+          )}
+        >
+          {heroBannerImageUrl ? (
+            <>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={heroBannerImageUrl}
+                alt=""
+                aria-hidden
+                loading="eager"
+                decoding="async"
+                fetchPriority="high"
+                className="pointer-events-none absolute inset-0 h-full w-full object-cover"
+              />
+              <div
+                aria-hidden
+                className="pointer-events-none absolute inset-0 bg-[linear-gradient(105deg,rgba(15,23,42,0.78)_0%,rgba(15,23,42,0.55)_45%,rgba(15,23,42,0.2)_75%,rgba(15,23,42,0.05)_100%)]"
+              />
+            </>
+          ) : null}
+
+          <div
+            className={cn(
+              "relative grid items-center gap-6",
+              heroBannerImageUrl ? "" : "lg:grid-cols-[1.05fr_0.95fr]",
+            )}
+          >
             <div className="max-w-2xl">
-              <p className="mb-3 inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-neutral-700 ring-1 ring-black/8">
+              <p
+                className={cn(
+                  "mb-3 inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wide ring-1",
+                  heroBannerImageUrl
+                    ? "bg-white/15 text-white ring-white/30 backdrop-blur"
+                    : "bg-white text-neutral-700 ring-black/8",
+                )}
+              >
                 <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-fs-accent text-white">★</span>
                 LA SOLUTION N°1 POUR LES COMMERÇANTS ET PME
               </p>
-              <h1 className="text-[2.15rem] font-black leading-[0.98] tracking-tight text-[#202935] sm:text-6xl">
+              <h1
+                className={cn(
+                  "text-[2.15rem] font-black leading-[0.98] tracking-tight sm:text-6xl",
+                  heroBannerImageUrl
+                    ? "text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.45)]"
+                    : "text-[#202935]",
+                )}
+              >
                 Prenez le contrôle
                 <br />
                 total de votre
                 <br />
                 <span className="text-fs-accent">commerce.</span>
               </h1>
-              <p className="mt-4 max-w-xl text-[15px] leading-relaxed text-neutral-600 sm:text-lg">
+              <p
+                className={cn(
+                  "mt-4 max-w-xl text-[15px] leading-relaxed sm:text-lg",
+                  heroBannerImageUrl ? "text-white/90" : "text-neutral-600",
+                )}
+              >
                 FasoStock est une solution simple et intelligente pour gérer votre stock, vos ventes, vos crédits, vos
                 employés et vos rapports en toute simplicité.
               </p>
 
               <div className="mt-6 flex flex-col gap-2.5 min-[430px]:flex-row">
                 <Link
-                  href="/help"
-                  className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-fs-accent px-4 py-2 text-xs font-extrabold uppercase tracking-wide text-white shadow-[0_18px_36px_-18px_rgba(232,93,44,0.95)] sm:min-h-11 sm:px-5 sm:py-2.5 sm:text-sm"
+                  href={supportWhatsappUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex min-h-10 items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-fs-accent px-4 py-2 text-xs font-extrabold uppercase tracking-wide text-white shadow-[0_18px_36px_-18px_rgba(232,93,44,0.95)] sm:min-h-11 sm:px-5 sm:py-2.5 sm:text-sm"
                 >
                   <MdWhatsapp className="h-5 w-5" aria-hidden />
-                  Demander une démonstration
+                  Demonstration
                 </Link>
                 <Link
                   href="/register/select-activity"
-                  className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-black/10 bg-white px-4 py-2 text-xs font-bold text-neutral-800 sm:min-h-11 sm:px-5 sm:py-2.5 sm:text-sm"
+                  className="inline-flex min-h-10 items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-black/10 bg-white px-4 py-2 text-xs font-bold text-neutral-800 sm:min-h-11 sm:px-5 sm:py-2.5 sm:text-sm"
                 >
                   <MdOutlinePlayCircleFilled className="h-4 w-4 text-neutral-500 sm:h-5 sm:w-5" aria-hidden />
                   Voir en vidéo
                 </Link>
-                <InstallAppButton className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-fs-accent/45 bg-white px-4 py-2 text-xs font-bold text-fs-accent sm:min-h-11 sm:px-5 sm:py-2.5 sm:text-sm" />
+                <InstallAppButton className="inline-flex min-h-10 items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-fs-accent/45 bg-white px-4 py-2 text-xs font-bold text-fs-accent sm:min-h-11 sm:px-5 sm:py-2.5 sm:text-sm" />
               </div>
             </div>
 
-            <div className="relative">
-              <div className="absolute inset-y-0 -right-8 w-28 rounded-full bg-fs-accent/95 blur-[2px] sm:w-36" />
-              {heroBannerImageUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={heroBannerImageUrl}
-                  alt="Bannière FasoStock"
-                  className="relative h-[300px] w-full rounded-[1.5rem] border border-black/10 object-cover shadow-[0_30px_70px_-35px_rgba(17,24,39,0.45)] sm:h-[400px]"
-                />
-              ) : (
+            {!heroBannerImageUrl ? (
+              <div className="relative">
                 <div className="relative rounded-[1.5rem] border border-black/10 bg-white p-3 shadow-[0_30px_70px_-35px_rgba(17,24,39,0.45)]">
                   <div className="rounded-xl border border-black/10 bg-[#f8f8f8] p-2">
                     <div className="rounded-lg bg-fs-accent px-3 py-1.5 text-[11px] font-bold text-white">
@@ -382,8 +410,8 @@ export default async function Home() {
                     </div>
                   </div>
                 </div>
-              )}
-            </div>
+              </div>
+            ) : null}
           </div>
         </div>
       </section>
@@ -453,10 +481,12 @@ export default async function Home() {
               </Link>
               <Link
                 href={supportWhatsappUrl}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-[#3ab88f]/55 bg-[#f8fffb] px-5 py-2.5 text-base font-extrabold text-[#149a71]"
               >
                 <MdWhatsapp className="h-5 w-5" aria-hidden />
-                Contacter sur WhatsApp
+                 WhatsApp
               </Link>
             </div>
             <div className="mt-7 grid gap-3 border-t border-black/10 pt-4 text-[1rem] font-semibold text-[#374151] sm:grid-cols-3">
@@ -911,7 +941,11 @@ export default async function Home() {
       </section>
 
       <div id="temoignages" className="scroll-mt-24">
-        <TestimonialsSection stats={testimonialsStats} />
+        <TestimonialsSection
+          stats={testimonialsStats}
+          ctaTitle={testimonialsCtaTitle}
+          ctaSubtitle={testimonialsCtaSubtitle}
+        />
       </div>
 
       <div id="faq" className="scroll-mt-24">
@@ -1180,24 +1214,6 @@ export default async function Home() {
       </footer>
       <ScrollDirectionFab />
     </main>
-  );
-}
-
-function StatCard({
-  label,
-  value,
-  hint,
-}: {
-  label: string;
-  value: string;
-  hint: string;
-}) {
-  return (
-    <div className="rounded-xl border border-black/10 bg-white p-3.5">
-      <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">{label}</p>
-      <p className="mt-1 text-xl font-black tracking-tight text-fs-text">{value}</p>
-      <p className="text-xs text-neutral-500">{hint}</p>
-    </div>
   );
 }
 

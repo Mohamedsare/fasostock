@@ -24,7 +24,8 @@ export function AdminGPubliqueScreen() {
   const [heroBannerImageDataUrl, setHeroBannerImageDataUrl] = useState("");
   const [landingSettings, setLandingSettings] = useState<Record<string, string>>({
     hero_banner_image_url: "",
-    footer_whatsapp_url: "https://wa.me/22603079618",
+    footer_whatsapp_url:
+      "https://wa.me/212771668079?text=Bonjour%2C%20je%20suis%20int%C3%A9ress%C3%A9(e)%20par%20FasoStock.%20Pouvez-vous%20m%27aider%20%3F",
     footer_facebook_url: "https://facebook.com",
     footer_youtube_url: "https://youtube.com",
     footer_tiktok_url: "https://tiktok.com",
@@ -33,7 +34,8 @@ export function AdminGPubliqueScreen() {
     pricing_monthly_amount: "15000",
     pricing_yearly_amount: "125000",
     pricing_yearly_savings: "55000",
-    support_whatsapp_url: "/help",
+    support_whatsapp_url:
+      "https://wa.me/212771668079?text=Bonjour%2C%20je%20suis%20int%C3%A9ress%C3%A9(e)%20par%20FasoStock.%20Pouvez-vous%20m%27aider%20%3F",
     support_demo_url: "/help",
     testimonials_stat_1_value: "500+",
     testimonials_stat_1_label: "Commerçants utilisent déjà FasoStock",
@@ -43,6 +45,9 @@ export function AdminGPubliqueScreen() {
     testimonials_stat_3_label: "De clients satisfaits selon nos retours",
     testimonials_stat_4_value: "+25%",
     testimonials_stat_4_label: "D'augmentation moyenne de performance",
+    testimonials_cta_title: "La confiance de centaines de commerçants comme vous",
+    testimonials_cta_subtitle:
+      "Rejoignez la communauté FasoStock et faites passer votre commerce au niveau supérieur.",
   });
 
   const q = useQuery({
@@ -376,6 +381,27 @@ export function AdminGPubliqueScreen() {
                 className="h-11 w-full rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-orange-400"
               />
             </label>
+          </div>
+          <div className="mt-4 border-t border-slate-200 pt-4">
+            <p className="text-xs font-semibold text-slate-700">Bloc CTA sous les statistiques</p>
+            <div className="mt-3 grid gap-3 md:grid-cols-2">
+              <label className="space-y-1.5">
+                <span className="text-xs font-semibold text-slate-600">CTA — Titre</span>
+                <input
+                  value={landingSettings.testimonials_cta_title ?? ""}
+                  onChange={(e) => setSetting("testimonials_cta_title", e.target.value)}
+                  className="h-11 w-full rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-orange-400"
+                />
+              </label>
+              <label className="space-y-1.5">
+                <span className="text-xs font-semibold text-slate-600">CTA — Sous-titre</span>
+                <input
+                  value={landingSettings.testimonials_cta_subtitle ?? ""}
+                  onChange={(e) => setSetting("testimonials_cta_subtitle", e.target.value)}
+                  className="h-11 w-full rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-orange-400"
+                />
+              </label>
+            </div>
           </div>
         </div>
         <div className="mt-4">
