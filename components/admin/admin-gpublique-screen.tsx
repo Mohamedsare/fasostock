@@ -1,5 +1,6 @@
 "use client";
 
+import { revalidateLandingCache } from "@/app/(admin)/admin/gpublique/actions";
 import { AdminCard, AdminPageHeader } from "@/components/admin/admin-page-header";
 import {
   adminCreatePublicPartner,
@@ -71,7 +72,10 @@ export function AdminGPubliqueScreen() {
       setName("");
       setSortOrder("0");
       setLogoDataUrl("");
-      await qc.invalidateQueries({ queryKey: ["admin-public-partners"] });
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["admin-public-partners"] }),
+        revalidateLandingCache(),
+      ]);
     },
     onError: (e) => toast.error(messageFromUnknownError(e)),
   });
@@ -80,7 +84,10 @@ export function AdminGPubliqueScreen() {
     mutationFn: adminDeletePublicPartner,
     onSuccess: async () => {
       toast.success("Partenaire supprimé.");
-      await qc.invalidateQueries({ queryKey: ["admin-public-partners"] });
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["admin-public-partners"] }),
+        revalidateLandingCache(),
+      ]);
     },
     onError: (e) => toast.error(messageFromUnknownError(e)),
   });
@@ -90,7 +97,10 @@ export function AdminGPubliqueScreen() {
     onSuccess: async () => {
       toast.success("Image landing mise à jour.");
       setSupportImageDataUrl("");
-      await qc.invalidateQueries({ queryKey: ["admin-public-landing-media"] });
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["admin-public-landing-media"] }),
+        revalidateLandingCache(),
+      ]);
     },
     onError: (e) => toast.error(messageFromUnknownError(e)),
   });
@@ -98,7 +108,10 @@ export function AdminGPubliqueScreen() {
     mutationFn: adminSetPublicLandingSettings,
     onSuccess: async () => {
       toast.success("Réglages landing enregistrés.");
-      await qc.invalidateQueries({ queryKey: ["admin-public-landing-settings"] });
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["admin-public-landing-settings"] }),
+        revalidateLandingCache(),
+      ]);
     },
     onError: (e) => toast.error(messageFromUnknownError(e)),
   });
@@ -131,6 +144,14 @@ export function AdminGPubliqueScreen() {
     try {
       const url = await adminUploadLandingImage(file, "support");
       setSupportImageDataUrl(url);
+      // Auto-save : on persiste tout de suite l'URL Storage (la Data URL géante en base est écrasée).
+      await adminSetPublicLandingMediaImage("support_section_image", url);
+      setSupportImageDataUrl("");
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["admin-public-landing-media"] }),
+        revalidateLandingCache(),
+      ]);
+      toast.success("Image accompagnement publiée.");
     } catch (e) {
       toast.error(messageFromUnknownError(e));
     } finally {
@@ -144,7 +165,15 @@ export function AdminGPubliqueScreen() {
     try {
       const url = await adminUploadLandingImage(file, "hero");
       setHeroBannerImageDataUrl(url);
-      setSetting("hero_banner_image_url", url);
+      // Auto-save : remplace immédiatement la valeur en base (sinon les anciennes Data URLs filtrées restent).
+      const merged = { ...landingSettings, hero_banner_image_url: url };
+      setLandingSettings(merged);
+      await adminSetPublicLandingSettings({ hero_banner_image_url: url });
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["admin-public-landing-settings"] }),
+        revalidateLandingCache(),
+      ]);
+      toast.success("Bannière publiée.");
     } catch (e) {
       toast.error(messageFromUnknownError(e));
     } finally {
@@ -165,6 +194,13 @@ export function AdminGPubliqueScreen() {
     setLandingSettings((prev) => ({ ...prev, [key]: value }));
   }
 
+  /** Détecte si la valeur stockée actuellement est une Data URL géante (héritée d'avant la migration). */
+  const heroSettingRaw = (settingsQ.data ?? []).find((s) => s.key === "hero_banner_image_url")?.value ?? "";
+  const heroSettingIsLegacyDataUrl = heroSettingRaw.startsWith("data:") && heroSettingRaw.length > 200_000;
+  const supportMediaRaw = (mediaQ.data ?? []).find((m) => m.key === "support_section_image")?.imageUrl ?? "";
+  const supportMediaIsLegacyDataUrl = supportMediaRaw.startsWith("data:") && supportMediaRaw.length > 200_000;
+  const hasLegacyData = heroSettingIsLegacyDataUrl || supportMediaIsLegacyDataUrl;
+
   return (
     <div className="space-y-6 p-5 md:p-8">
       <AdminPageHeader
@@ -180,6 +216,41 @@ export function AdminGPubliqueScreen() {
         <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
           <strong>Astuce performance :</strong> ne collez plus de Data URL (base64) — utilisez l&apos;upload qui envoie l&apos;image vers Storage et stocke seulement l&apos;URL. Toute valeur Data URL sera ignorée à l&apos;affichage pour préserver la rapidité de la landing.
         </div>
+        {hasLegacyData ? (
+          <div className="mt-3 flex items-start justify-between gap-3 rounded-xl border border-red-300 bg-red-50 p-3 text-xs text-red-800">
+            <div>
+              <strong>Anciennes images en base64 détectées</strong> (
+              {heroSettingIsLegacyDataUrl ? "bannière hero" : null}
+              {heroSettingIsLegacyDataUrl && supportMediaIsLegacyDataUrl ? ", " : null}
+              {supportMediaIsLegacyDataUrl ? "image accompagnement" : null}). Elles sont ignorées par la landing pour préserver la performance, ce qui peut expliquer pourquoi l&apos;image n&apos;apparaît pas. Cliquez ci-contre pour les vider, puis ré-uploadez via Storage.
+            </div>
+            <button
+              type="button"
+              onClick={async () => {
+                try {
+                  if (heroSettingIsLegacyDataUrl) {
+                    await adminSetPublicLandingSettings({ hero_banner_image_url: "" });
+                    setSetting("hero_banner_image_url", "");
+                  }
+                  if (supportMediaIsLegacyDataUrl) {
+                    await adminSetPublicLandingMediaImage("support_section_image", "");
+                  }
+                  await Promise.all([
+                    qc.invalidateQueries({ queryKey: ["admin-public-landing-settings"] }),
+                    qc.invalidateQueries({ queryKey: ["admin-public-landing-media"] }),
+                    revalidateLandingCache(),
+                  ]);
+                  toast.success("Anciennes Data URL supprimées.");
+                } catch (e) {
+                  toast.error(messageFromUnknownError(e));
+                }
+              }}
+              className="inline-flex h-9 shrink-0 items-center justify-center rounded-lg bg-red-600 px-3 text-xs font-bold text-white"
+            >
+              Nettoyer
+            </button>
+          </div>
+        ) : null}
         <div className="mt-4 grid gap-3 md:grid-cols-2">
           <label className="space-y-1.5">
             <span className="text-xs font-semibold text-slate-600">URL image bannière</span>
