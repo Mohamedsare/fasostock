@@ -126,3 +126,28 @@ export async function deleteLegacyCredit(params: { creditId: string }): Promise<
     .eq("id", params.creditId);
   if (error) throw error;
 }
+
+export async function updateLegacyCredit(params: {
+  creditId: string;
+  storeId: string;
+  customerId: string;
+  title: string;
+  amount: number;
+  dueAt: string | null;
+  internalNote?: string | null;
+}): Promise<void> {
+  if (!navigator.onLine) {
+    throw new Error("Modification du crédit libre nécessite une connexion internet.");
+  }
+  const supabase = createClient();
+  const { error } = await supabase.rpc("owner_update_legacy_customer_credit", {
+    p_credit_id: params.creditId,
+    p_customer_id: params.customerId,
+    p_store_id: params.storeId,
+    p_title: params.title,
+    p_amount: params.amount,
+    p_due_at: params.dueAt,
+    p_internal_note: params.internalNote ?? null,
+  });
+  if (error) throw error;
+}

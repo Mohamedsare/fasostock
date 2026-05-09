@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type ComponentType } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState, type ComponentType } from "react";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, subMonths } from "date-fns";
@@ -46,6 +46,11 @@ import {
   remainingTotal,
   saleHadCreditBooking,
 } from "@/lib/features/credit/credit-math";
+import {
+  customerAggSearchRelevance,
+  dispatchSearchRelevance,
+  saleSearchRelevance,
+} from "@/lib/features/credit/credit-search-relevance";
 import type { CreditLineStatus, CreditSaleRow } from "@/lib/features/credit/types";
 import { listLegacyCredits } from "@/lib/features/credit/legacy-api";
 import {
@@ -244,6 +249,8 @@ export function CreditScreen() {
   const [from, setFrom] = useState(() => toIsoDate(subMonths(new Date(), 6)));
   const [to, setTo] = useState(() => toIsoDate(new Date()));
   const [search, setSearch] = useState("");
+  const deferredSearch = useDeferredValue(search.trim());
+  const isMainSearchStale = search.trim() !== deferredSearch;
   const [sellerId, setSellerId] = useState("");
   const [chip, setChip] = useState<QuickChip>("all");
   const [view, setView] = useState<"sale" | "customer">("sale");
@@ -259,6 +266,7 @@ export function CreditScreen() {
     remainingAmount: number;
   } | null>(null);
   const [paySale, setPaySale] = useState<CreditSaleRow | null>(null);
+  const [creditFilterResetNonce, setCreditFilterResetNonce] = useState(0);
 
   const resetCreditFilters = () => {
     const now = new Date();
@@ -270,6 +278,7 @@ export function CreditScreen() {
     setView("sale");
     setSalePage(0);
     setCustomerPage(0);
+    setCreditFilterResetNonce((n) => n + 1);
   };
 
   const applyQuickRange = (days: 7 | 30 | 90) => {
@@ -288,6 +297,11 @@ export function CreditScreen() {
     if (view !== "sale") n += 1;
     return n;
   }, [search, sellerId, chip, view]);
+
+  useEffect(() => {
+    setSalePage(0);
+    setCustomerPage(0);
+  }, [deferredSearch]);
 
   useEffect(() => {
     if (chip === "soldes") setView("sale");
@@ -610,7 +624,7 @@ export function CreditScreen() {
   );
 
   const filteredSales = useMemo(() => {
-    const q = search.trim().toLowerCase();
+    const q = deferredSearch.trim().toLowerCase();
     const rows = salesTableSource.filter((s) => {
       if (sellerId && s.created_by !== sellerId) return false;
       if (!matchesChip(s)) return false;
@@ -621,20 +635,28 @@ export function CreditScreen() {
         (s.customer?.name ?? "").toLowerCase().includes(q) ||
         (s.customer?.phone ?? "").replace(/\s/g, "").includes(num) ||
         String(s.total).includes(q) ||
-        (s.created_by_label ?? "").toLowerCase().includes(q)
+        (s.created_by_label ?? "").toLowerCase().includes(q) ||
+        (s.store?.name ?? "").toLowerCase().includes(q) ||
+        (s.id ?? "").toLowerCase().includes(q)
       );
     });
+    const numOnly = q.replace(/\s/g, "");
     rows.sort((a, b) => {
+      if (q.length > 0 || numOnly.length > 0) {
+        const rab = saleSearchRelevance(b, q, numOnly);
+        const raa = saleSearchRelevance(a, q, numOnly);
+        if (rab !== raa) return rab - raa;
+      }
       const db = daysOverdue(b);
       const da = daysOverdue(a);
       if (db !== da) return db - da;
       return remainingTotal(b) - remainingTotal(a);
     });
     return rows;
-  }, [salesTableSource, search, sellerId, chip]);
+  }, [salesTableSource, deferredSearch, sellerId, chip]);
 
   const filteredDispatchCredits = useMemo(() => {
-    const q = search.trim().toLowerCase();
+    const q = deferredSearch.trim().toLowerCase();
     return dispatchCreditRows
       .filter((r) => {
         if (chip === "soldes") {
@@ -677,10 +699,28 @@ export function CreditScreen() {
           "depot".includes(q)
         );
       })
-      .sort((a, b) => b.remainingAmount - a.remainingAmount);
-  }, [dispatchCreditRows, sellerId, chip, search]);
+      .sort((a, b) => {
+        if (q) {
+          const sa = dispatchSearchRelevance(a, q, a.totalAmount);
+          const sb = dispatchSearchRelevance(b, q, b.totalAmount);
+          if (sb !== sa) return sb - sa;
+        }
+        return b.remainingAmount - a.remainingAmount;
+      });
+  }, [dispatchCreditRows, sellerId, chip, deferredSearch]);
 
-  const customerRows = useMemo(() => buildCustomerAggregates(filteredSales), [filteredSales]);
+  const customerRows = useMemo(() => {
+    const ql = deferredSearch.trim().toLowerCase();
+    const numOnly = ql.replace(/\s/g, "");
+    const base = buildCustomerAggregates(filteredSales);
+    if (!ql.length && !numOnly.length) return base;
+    return [...base].sort((a, b) => {
+      const sb = customerAggSearchRelevance(b, ql, numOnly);
+      const sa = customerAggSearchRelevance(a, ql, numOnly);
+      if (sb !== sa) return sb - sa;
+      return b.totalDue - a.totalDue;
+    });
+  }, [filteredSales, deferredSearch]);
   const saleTableRows = useMemo<SaleTableRow[]>(
     () => [
       ...filteredSales.map((row) => ({ kind: "sale" as const, row })),
@@ -1063,23 +1103,35 @@ export function CreditScreen() {
       ) : null}
 
       <FsCard className="mt-6" padding="p-4">
-        <div className="flex flex-col gap-3 min-[900px]:flex-row min-[900px]:items-center min-[900px]:justify-between">
-          <div className="relative min-w-0 flex-1">
-            <MdSearch className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-neutral-400" />
+        <div className="flex flex-col gap-3 min-[900px]:flex-row min-[900px]:flex-wrap min-[900px]:items-end min-[900px]:gap-x-3 min-[900px]:gap-y-2">
+          <div className="relative w-full min-w-0 shrink-0 min-[900px]:w-72 min-[900px]:max-w-sm">
+            <MdSearch
+              className={cn(
+                "pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2",
+                isMainSearchStale ? "text-fs-accent" : "text-neutral-400",
+              )}
+              aria-hidden
+            />
             <input
-              className={fsInputClass("h-11 w-full pl-10 text-sm")}
+              className={cn(
+                fsInputClass("h-11 w-full pl-10 text-sm"),
+                isMainSearchStale && "ring-1 ring-fs-accent/35",
+              )}
               placeholder="Client, téléphone, référence, montant, vendeur…"
               value={search}
+              aria-busy={isMainSearchStale}
               onChange={(e) => {
                 setSearch(e.target.value);
-                setSalePage(0);
-                setCustomerPage(0);
               }}
+              aria-label="Recherche"
             />
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-end gap-2">
             <select
-              className={fsInputClass("h-11 text-sm")}
+              className={cn(
+                fsInputClass("h-11 text-sm"),
+                "w-full max-w-40 shrink-0 sm:max-w-44",
+              )}
               value={sellerId}
               onChange={(e) => {
                 setSellerId(e.target.value);
@@ -1553,6 +1605,11 @@ export function CreditScreen() {
         to={to}
         canRecordPayment={canRecordPayment}
         isOwner={isOwner}
+        tableSearch={deferredSearch}
+        creditFilterResetNonce={creditFilterResetNonce}
+        creditSaleRows={rawRows}
+        sellerId={sellerId}
+        onOpenSaleDetail={(saleId) => setDetailId(saleId)}
       />
 
       <p className="mt-6 text-center text-xs text-neutral-500">

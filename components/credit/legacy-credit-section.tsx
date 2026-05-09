@@ -2,9 +2,9 @@
 
 import { CustomerFormDialog, type CustomerFormValue } from "@/components/customers/customer-form-dialog";
 import { CreditRepaymentReceiptDialog } from "@/components/credit/credit-repayment-receipt-dialog";
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useDeferredValue, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { MdChevronLeft, MdChevronRight, MdDeleteOutline } from "react-icons/md";
+import { MdChevronLeft, MdChevronRight, MdDeleteOutline, MdSearch } from "react-icons/md";
 import { FsCard, fsInputClass } from "@/components/ui/fs-screen-primitives";
 import { createCustomer, listCustomers } from "@/lib/features/customers/api";
 import {
@@ -12,13 +12,21 @@ import {
   createLegacyCredit,
   deleteLegacyCredit,
   listLegacyCredits,
+  updateLegacyCredit,
 } from "@/lib/features/credit/legacy-api";
 import type { CreditRepaymentReceiptData } from "@/lib/features/credit/credit-repayment-receipt-types";
 import {
   creditRepaymentReceiptNumberFallback,
   creditRepaymentReceiptNumberFromPaymentId,
 } from "@/lib/features/credit/credit-repayment-receipt-number";
-import type { LegacyCreditRow } from "@/lib/features/credit/types";
+import type { CreditSaleRow, LegacyCreditRow } from "@/lib/features/credit/types";
+import {
+  CREDIT_AMOUNT_EPS,
+  paidTotal as creditSalePaidTotal,
+  remainingTotal as creditSaleRemainingTotal,
+  saleHadCreditBooking,
+} from "@/lib/features/credit/credit-math";
+import { saleSearchRelevance } from "@/lib/features/credit/credit-search-relevance";
 import { listStores } from "@/lib/features/stores/api";
 import type { Store } from "@/lib/features/stores/types";
 import { paymentMethodLabel } from "@/lib/features/receipt/build-receipt-ticket-data";
@@ -88,6 +96,154 @@ function parseLegacyVendorAndNote(internalNote: string | null): { vendor: string
   }
 }
 
+function legacyRowMatchesTableSearch(credit: LegacyCreditRow, qRaw: string, companyDisplayName: string): boolean {
+  const q = qRaw.trim().toLowerCase();
+  if (!q) return true;
+  const numOnly = q.replace(/\s/g, "");
+  const vendor = (parseLegacyVendorAndNote(credit.internal_note).vendor || LEGACY_DEFAULT_VENDOR_NAME).toLowerCase();
+  const paid = sumPaid(credit);
+  const rem = remaining(credit);
+  const companyNorm = companyDisplayName.trim().toLowerCase();
+  return (
+    (credit.customer?.name ?? "").toLowerCase().includes(q) ||
+    (credit.customer?.phone ?? "").replace(/\s/g, "").includes(numOnly) ||
+    (credit.title ?? "").toLowerCase().includes(q) ||
+    String(credit.principal_amount).includes(q) ||
+    String(paid).includes(q) ||
+    String(rem).includes(q) ||
+    vendor.includes(q) ||
+    (credit.store?.name ?? "").toLowerCase().includes(q) ||
+    (companyNorm.length > 0 && companyNorm.includes(q)) ||
+    credit.id.toLowerCase().includes(q)
+  );
+}
+
+/** Pertinence (tri historique soldé) — même idée que Flutter `_legacyRowRelevanceAgainstQuery`. */
+function legacyCreditRelevanceAgainstQuery(
+  c: LegacyCreditRow,
+  qRaw: string,
+  companyDisplayName: string,
+): number {
+  const q = qRaw.trim().toLowerCase();
+  if (!q) return 0;
+  const numOnly = q.replace(/\s/g, "");
+  let score = 0;
+  const vendor = (parseLegacyVendorAndNote(c.internal_note).vendor || LEGACY_DEFAULT_VENDOR_NAME).toLowerCase();
+  const name = (c.customer?.name ?? "").toLowerCase();
+  const phoneDigits = (c.customer?.phone ?? "").replace(/\s/g, "");
+  const title = (c.title ?? "").toLowerCase();
+  const store = (c.store?.name ?? "").toLowerCase();
+  const bid = c.id.toLowerCase();
+  const paid = sumPaid(c);
+  const rem = remaining(c);
+  const prin = String(c.principal_amount);
+  const paidStr = String(paid);
+  const remStr = String(rem);
+  const companyNorm = companyDisplayName.trim().toLowerCase();
+
+  const bump = (hay: string, prefixWt: number, innerWt: number) => {
+    if (!hay || !hay.includes(q)) return;
+    score += hay.startsWith(q) ? prefixWt : innerWt;
+    score += Math.max(0, 24 - Math.min(hay.indexOf(q), 24));
+  };
+
+  bump(name, 108, 52);
+  bump(title, 92, 46);
+  bump(vendor, 40, 22);
+  bump(store, 42, 24);
+  bump(bid, 38, 24);
+  if (numOnly.length > 0 && phoneDigits.includes(numOnly)) {
+    score += phoneDigits.startsWith(numOnly) ? 94 : 52;
+    score += Math.max(0, 14 - Math.min(phoneDigits.indexOf(numOnly), 14));
+  }
+  if (prin.includes(q)) score += 34;
+  if (paidStr.includes(q)) score += 28;
+  if (remStr.includes(q)) score += 28;
+  if (companyNorm.length > 0 && companyNorm.includes(q)) {
+    score += companyNorm.startsWith(q) ? 28 : 14;
+    score += Math.max(0, 20 - Math.min(companyNorm.indexOf(q), 20));
+  }
+  return score;
+}
+
+function legacySoldesCombinedRelevance(
+  c: LegacyCreditRow,
+  mq: string,
+  sq: string,
+  hq: string,
+  companyDisplayName: string,
+) {
+  return (
+    legacyCreditRelevanceAgainstQuery(c, mq, companyDisplayName) +
+    legacyCreditRelevanceAgainstQuery(c, sq, companyDisplayName) +
+    legacyCreditRelevanceAgainstQuery(c, hq, companyDisplayName)
+  );
+}
+
+function saleRowMatchesHistorySearch(sale: CreditSaleRow, qRaw: string): boolean {
+  const q = qRaw.trim().toLowerCase();
+  if (!q) return true;
+  const numOnly = q.replace(/\s/g, "");
+  return (
+    (sale.sale_number ?? "").toLowerCase().includes(q) ||
+    (sale.customer?.name ?? "").toLowerCase().includes(q) ||
+    (sale.customer?.phone ?? "").replace(/\s/g, "").includes(numOnly) ||
+    String(sale.total).includes(q) ||
+    (sale.created_by_label ?? "").toLowerCase().includes(q) ||
+    (sale.store?.name ?? "").toLowerCase().includes(q) ||
+    sale.id.toLowerCase().includes(q)
+  );
+}
+
+function isSaleSettledCreditNormale(sale: CreditSaleRow): boolean {
+  if (sale.status === "cancelled" || sale.status === "refunded") return false;
+  return saleHadCreditBooking(sale) && creditSaleRemainingTotal(sale) <= CREDIT_AMOUNT_EPS;
+}
+
+function saleSettledHistoryRelevance(sale: CreditSaleRow, mq: string, hq: string) {
+  const qm = mq.trim().toLowerCase();
+  const qmn = qm.replace(/\s/g, "");
+  const qh = hq.trim().toLowerCase();
+  const qhn = qh.replace(/\s/g, "");
+  return saleSearchRelevance(sale, qm, qmn) + saleSearchRelevance(sale, qh, qhn);
+}
+
+type SettledHistoryMerged =
+  | { kind: "libre"; legacy: LegacyCreditRow }
+  | { kind: "vente"; sale: CreditSaleRow };
+
+function sortSettledHistoryMerged(
+  rows: SettledHistoryMerged[],
+  companyDisplayName: string,
+  mq: string,
+  sq: string,
+  hq: string,
+) {
+  const hasRel = mq.trim().length > 0 || sq.trim().length > 0 || hq.trim().length > 0;
+  rows.sort((a, b) => {
+    if (hasRel) {
+      const rb =
+        b.kind === "libre"
+          ? legacySoldesCombinedRelevance(b.legacy, mq, sq, hq, companyDisplayName)
+          : saleSettledHistoryRelevance(b.sale, mq, hq);
+      const ra =
+        a.kind === "libre"
+          ? legacySoldesCombinedRelevance(a.legacy, mq, sq, hq, companyDisplayName)
+          : saleSettledHistoryRelevance(a.sale, mq, hq);
+      if (rb !== ra) return rb - ra;
+    }
+    const da =
+      a.kind === "libre"
+        ? Date.parse(a.legacy.created_at)
+        : Date.parse(a.sale.created_at);
+    const db =
+      b.kind === "libre"
+        ? Date.parse(b.legacy.created_at)
+        : Date.parse(b.sale.created_at);
+    return (Number.isFinite(db) ? db : 0) - (Number.isFinite(da) ? da : 0);
+  });
+}
+
 function buildLegacyInternalNote(vendor: string, note: string): string | null {
   const trimmedVendor = vendor.trim();
   const trimmedNote = note.trim();
@@ -98,6 +254,16 @@ function buildLegacyInternalNote(vendor: string, note: string): string | null {
     vendor: trimmedVendor,
     note: trimmedNote || null,
   })}`;
+}
+
+function isoDateFromMaybeTs(ts: string | null): string {
+  if (!ts) return "";
+  const d = new Date(ts);
+  if (Number.isNaN(d.getTime())) return "";
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
 function buildCreditRepaymentReceiptData(params: {
@@ -169,6 +335,11 @@ export function LegacyCreditSection({
   to,
   canRecordPayment,
   isOwner,
+  tableSearch = "",
+  creditFilterResetNonce = 0,
+  creditSaleRows = [],
+  sellerId = "",
+  onOpenSaleDetail,
 }: {
   companyId: string;
   companyName: string;
@@ -177,14 +348,30 @@ export function LegacyCreditSection({
   to: string;
   canRecordPayment: boolean;
   isOwner: boolean;
+  /** Même champ que la page Crédit (ventes / dispatch) ; filtre aussi le tableau ci-dessous. */
+  tableSearch?: string;
+  /** Incrémenté par « Réinitialiser » sur l’écran Crédit : vide la recherche locale de cette section. */
+  creditFilterResetNonce?: number;
+  /** Ventes crédit sur la période (page Crédit) — historique soldé inclut aussi les ventes soldées. */
+  creditSaleRows?: CreditSaleRow[];
+  /** Filtre vendeur partagé avec le tableau principal. */
+  sellerId?: string;
+  onOpenSaleDetail?: (saleId: string) => void;
 }) {
   const qc = useQueryClient();
   const [createOpen, setCreateOpen] = useState(false);
   const [payFor, setPayFor] = useState<LegacyCreditRow | null>(null);
+  const [editFor, setEditFor] = useState<LegacyCreditRow | null>(null);
   const [historyFor, setHistoryFor] = useState<LegacyCreditRow | null>(null);
   const [receiptData, setReceiptData] = useState<CreditRepaymentReceiptData | null>(null);
   const [openPage, setOpenPage] = useState(0);
   const [settledPage, setSettledPage] = useState(0);
+  const [sectionSearch, setSectionSearch] = useState("");
+  const [historiqueSoldesSearch, setHistoriqueSoldesSearch] = useState("");
+  const deferredSectionSearch = useDeferredValue(sectionSearch.trim());
+  const deferredHistoriqueSoldesSearch = useDeferredValue(historiqueSoldesSearch.trim());
+  const isSectionSearchStale = sectionSearch.trim() !== deferredSectionSearch;
+  const isHistoriqueSearchStale = historiqueSoldesSearch.trim() !== deferredHistoriqueSoldesSearch;
 
   const params = useMemo(
     () => ({ companyId, storeId, from: from ? `${from}T00:00:00.000Z` : "", to }),
@@ -204,40 +391,128 @@ export function LegacyCreditSection({
     staleTime: 60_000,
   });
 
-  const openRows = useMemo(() => (q.data ?? []).filter((r) => remaining(r) > EPS), [q.data]);
-  const settledRows = useMemo(() => {
-    const list = (q.data ?? []).filter((r) => remaining(r) <= EPS);
+  const searchNorm = tableSearch.trim();
+
+  useEffect(() => {
+    if (creditFilterResetNonce <= 0) return;
+    const id = window.requestAnimationFrame(() => {
+      setSectionSearch("");
+      setHistoriqueSoldesSearch("");
+    });
+    return () => window.cancelAnimationFrame(id);
+  }, [creditFilterResetNonce]);
+
+  useEffect(() => {
+    const id = window.requestAnimationFrame(() => {
+      setOpenPage(0);
+      setSettledPage(0);
+    });
+    return () => window.cancelAnimationFrame(id);
+  }, [searchNorm, deferredSectionSearch, deferredHistoriqueSoldesSearch, sellerId]);
+
+  const rowMatchesCombinedSearch = useCallback(
+    (r: LegacyCreditRow) =>
+      legacyRowMatchesTableSearch(r, searchNorm, companyName) &&
+      legacyRowMatchesTableSearch(r, deferredSectionSearch.trim(), companyName),
+    [searchNorm, deferredSectionSearch, companyName],
+  );
+
+  const openRows = useMemo(
+    () =>
+      (q.data ?? [])
+        .filter((r) => remaining(r) > EPS)
+        .filter(rowMatchesCombinedSearch),
+    [q.data, rowMatchesCombinedSearch],
+  );
+  const openRowsSortedForSearch = useMemo(() => {
+    const mq = searchNorm.trim();
+    const sq = deferredSectionSearch.trim();
+    if (!mq && !sq) return openRows;
+    const list = [...openRows];
+    list.sort((a, b) => {
+      const ra =
+        legacyCreditRelevanceAgainstQuery(a, mq, companyName) +
+        legacyCreditRelevanceAgainstQuery(a, sq, companyName);
+      const rb =
+        legacyCreditRelevanceAgainstQuery(b, mq, companyName) +
+        legacyCreditRelevanceAgainstQuery(b, sq, companyName);
+      if (rb !== ra) return rb - ra;
+      const ta = Date.parse(a.created_at);
+      const tb = Date.parse(b.created_at);
+      return (Number.isFinite(tb) ? tb : 0) - (Number.isFinite(ta) ? ta : 0);
+    });
+    return list;
+  }, [openRows, searchNorm, deferredSectionSearch, companyName]);
+  const settledLegacyRows = useMemo(() => {
+    const list = (q.data ?? [])
+      .filter((r) => remaining(r) <= EPS)
+      .filter(rowMatchesCombinedSearch);
     list.sort((a, b) => {
       const ta = Date.parse(a.created_at);
       const tb = Date.parse(b.created_at);
       return (Number.isFinite(tb) ? tb : 0) - (Number.isFinite(ta) ? ta : 0);
     });
     return list;
-  }, [q.data]);
+  }, [q.data, rowMatchesCombinedSearch]);
+
+  const settledVenteCandidates = useMemo(
+    () =>
+      creditSaleRows.filter((s) => {
+        if (!isSaleSettledCreditNormale(s)) return false;
+        if (sellerId && s.created_by !== sellerId) return false;
+        return saleRowMatchesHistorySearch(s, searchNorm);
+      }),
+    [creditSaleRows, sellerId, searchNorm],
+  );
+
+  const settledHistoryBadgeTotal = settledLegacyRows.length + settledVenteCandidates.length;
+
+  const settledMergedRows = useMemo(() => {
+    const mq = searchNorm;
+    const sq = deferredSectionSearch.trim();
+    const hq = deferredHistoriqueSoldesSearch.trim();
+    const legacyH = settledLegacyRows.filter((r) =>
+      legacyRowMatchesTableSearch(r, hq, companyName),
+    );
+    const ventH = settledVenteCandidates.filter((s) => saleRowMatchesHistorySearch(s, hq));
+    const merged: SettledHistoryMerged[] = [
+      ...legacyH.map((legacy) => ({ kind: "libre" as const, legacy })),
+      ...ventH.map((sale) => ({ kind: "vente" as const, sale })),
+    ];
+    sortSettledHistoryMerged(merged, companyName, mq, sq, hq);
+    return merged;
+  }, [
+    settledLegacyRows,
+    settledVenteCandidates,
+    searchNorm,
+    deferredSectionSearch,
+    deferredHistoriqueSoldesSearch,
+    companyName,
+  ]);
   const totalOpen = useMemo(() => openRows.reduce((s, r) => s + remaining(r), 0), [openRows]);
-  const [showSettledLegacy, setShowSettledLegacy] = useState(false);
-  const openCount = openRows.length;
+  const [showSettledLegacy, setShowSettledLegacy] = useState(true);
+  const openCount = openRowsSortedForSearch.length;
   const openPageCount = openCount === 0 ? 0 : Math.floor((openCount - 1) / LEGACY_PAGE_SIZE) + 1;
   const safeOpenPage = openPageCount > 0 ? Math.min(openPage, openPageCount - 1) : 0;
   const paginatedOpenRows = useMemo(
     () =>
-      openRows.slice(
+      openRowsSortedForSearch.slice(
         safeOpenPage * LEGACY_PAGE_SIZE,
         safeOpenPage * LEGACY_PAGE_SIZE + LEGACY_PAGE_SIZE,
       ),
-    [openRows, safeOpenPage],
+    [openRowsSortedForSearch, safeOpenPage],
   );
-  const settledCount = settledRows.length;
+  const settledHistCount = settledMergedRows.length;
   const settledPageCount =
-    settledCount === 0 ? 0 : Math.floor((settledCount - 1) / LEGACY_PAGE_SIZE) + 1;
+    settledHistCount === 0 ? 0 : Math.floor((settledHistCount - 1) / LEGACY_PAGE_SIZE) + 1;
   const safeSettledPage = settledPageCount > 0 ? Math.min(settledPage, settledPageCount - 1) : 0;
   const paginatedSettledRows = useMemo(
     () =>
-      settledRows.slice(
+      settledMergedRows.slice(
         safeSettledPage * LEGACY_PAGE_SIZE,
         safeSettledPage * LEGACY_PAGE_SIZE + LEGACY_PAGE_SIZE,
       ),
-    [settledRows, safeSettledPage],
+    [settledMergedRows, safeSettledPage],
   );
 
   const createMut = useMutation({
@@ -279,6 +554,7 @@ export function LegacyCreditSection({
         setReceiptData(
           buildCreditRepaymentReceiptData({
             credit: payFor,
+            companyName,
             amountPaid: vars.amount,
             amountTendered: showTendered ? vars.amountTendered : null,
             changeDue: showTendered ? changeDue : null,
@@ -314,6 +590,16 @@ export function LegacyCreditSection({
     onError: (e) => toast.error(messageFromUnknownError(e)),
   });
 
+  const editMut = useMutation({
+    mutationFn: updateLegacyCredit,
+    onSuccess: async () => {
+      toast.success("Crédit libre modifié.");
+      setEditFor(null);
+      await qc.invalidateQueries({ queryKey: ["legacy-credits"] });
+    },
+    onError: (e) => toast.error(messageFromUnknownError(e)),
+  });
+
   return (
     <>
       <FsCard className="mt-6" padding="p-4">
@@ -334,12 +620,32 @@ export function LegacyCreditSection({
             </button>
           ) : null}
         </div>
+        <div className="relative mb-3 min-w-0">
+          <MdSearch
+            className={cn(
+              "pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2",
+              isSectionSearchStale ? "text-fs-accent" : "text-neutral-400",
+            )}
+            aria-hidden
+          />
+          <input
+            className={cn(
+              fsInputClass("h-11 w-full pl-10 text-sm"),
+              isSectionSearchStale && "ring-1 ring-fs-accent/35",
+            )}
+            placeholder="Filtrer le crédit libre : client, téléphone, libellé, montant, vendeur…"
+            value={sectionSearch}
+            aria-busy={isSectionSearchStale}
+            aria-label="Rechercher dans le crédit libre"
+            onChange={(e) => setSectionSearch(e.target.value)}
+          />
+        </div>
         <div className="mb-3 rounded-xl bg-fs-surface-container px-3 py-2 text-xs">
           Reste total crédit libre: <span className="font-bold text-fs-accent">{formatCurrency(totalOpen)}</span>
         </div>
         {q.isLoading ? (
           <div className="py-5 text-center text-sm text-neutral-500">Chargement…</div>
-        ) : openRows.length === 0 ? (
+        ) : openRowsSortedForSearch.length === 0 ? (
           <div className="py-5 text-center text-sm text-neutral-500">Aucun crédit libre ouvert.</div>
         ) : (
           <div className="overflow-x-auto">
@@ -407,6 +713,15 @@ export function LegacyCreditSection({
                         >
                           Paiements
                         </button>
+                        {isOwner ? (
+                          <button
+                            type="button"
+                            onClick={() => setEditFor(r)}
+                            className="touch-manipulation whitespace-nowrap rounded-lg bg-fs-accent/15 px-2 py-2.5 text-xs font-bold text-fs-accent active:opacity-95 sm:px-3 sm:py-1"
+                          >
+                            Modifier
+                          </button>
+                        ) : null}
                         {canRecordPayment ? (
                           <button
                             type="button"
@@ -476,7 +791,7 @@ export function LegacyCreditSection({
             </button>
           </div>
         ) : null}
-        {settledRows.length > 0 ? (
+        {settledHistoryBadgeTotal > 0 ? (
           <div className="mt-4 border-t border-black/10 pt-3 dark:border-white/10">
             <button
               type="button"
@@ -487,19 +802,48 @@ export function LegacyCreditSection({
               className="flex w-full touch-manipulation items-center justify-between gap-2 rounded-xl bg-fs-surface-container px-3 py-2.5 text-left text-sm font-bold text-fs-text active:opacity-95 sm:py-2 sm:text-xs"
             >
               <span>
-                Historique — crédits libres soldés
-                <span className="ml-2 font-normal text-neutral-500">({settledRows.length})</span>
+                Historique — crédits soldés
+                <span className="ml-2 font-normal text-neutral-500">({settledHistoryBadgeTotal})</span>
               </span>
               <span className="text-fs-accent">{showSettledLegacy ? "▼" : "▶"}</span>
             </button>
             {showSettledLegacy ? (
               <div className="mt-2 overflow-x-auto">
                 <p className="mb-2 text-xs text-neutral-600">
-                  Dossiers entièrement recouvrés — bouton « Paiements » pour le détail et la réimpression des reçus.
+                  Crédit libre et ventes à crédit entièrement recouvrées — « Paiements » (libre) ou « Voir »
+                  (vente).
                 </p>
-                <table className="w-full min-w-[1000px] text-left text-[13px] [&_thead_th]:whitespace-nowrap [&_tbody_td]:whitespace-nowrap">
+                <div className="relative mb-3 min-w-0">
+                  <MdSearch
+                    className={cn(
+                      "pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2",
+                      isHistoriqueSearchStale ? "text-fs-accent" : "text-neutral-400",
+                    )}
+                    aria-hidden
+                  />
+                  <input
+                    className={cn(
+                      fsInputClass("h-11 w-full pl-10 text-sm"),
+                      isHistoriqueSearchStale && "ring-1 ring-fs-accent/35",
+                    )}
+                    placeholder="Filtrer l'historique (client, tél., réf. vente, libellé crédit libre…)…"
+                    value={historiqueSoldesSearch}
+                    aria-busy={isHistoriqueSearchStale}
+                    aria-label="Rechercher dans l'historique des crédits soldés"
+                    onChange={(e) => setHistoriqueSoldesSearch(e.target.value)}
+                  />
+                </div>
+                {settledMergedRows.length === 0 ? (
+                  <p className="py-6 text-center text-sm text-neutral-500">
+                    {settledHistoryBadgeTotal > 0
+                      ? "Aucun dossier ne correspond à cette recherche."
+                      : "—"}
+                  </p>
+                ) : (
+                <table className="w-full min-w-[1080px] text-left text-[13px] [&_thead_th]:whitespace-nowrap [&_tbody_td]:whitespace-nowrap">
                   <thead>
                     <tr className="border-b border-black/10">
+                      <th className="px-2 py-2">Type</th>
                       <th className="px-2 py-2">Client</th>
                       <th className="px-2 py-2">Libellé</th>
                       <th className="px-2 py-2">Vendeur</th>
@@ -511,66 +855,133 @@ export function LegacyCreditSection({
                     </tr>
                   </thead>
                   <tbody>
-                    {paginatedSettledRows.map((r) => (
-                      <tr key={r.id} className="border-b border-black/6 opacity-95">
-                        <td className="px-2 py-2">{r.customer?.name ?? "—"}</td>
-                        <td className="max-w-[220px] truncate px-2 py-2" title={r.title}>
-                          {r.title}
-                        </td>
-                        <td className="min-w-[200px] px-2 py-2">
-                          {parseLegacyVendorAndNote(r.internal_note).vendor || LEGACY_DEFAULT_VENDOR_NAME}
-                        </td>
-                        <td className="px-2 py-2 text-right tabular-nums">{formatCurrency(r.principal_amount)}</td>
-                        <td className="px-2 py-2 text-right tabular-nums text-emerald-700">
-                          {formatCurrency(sumPaid(r))}
-                        </td>
-                        <td className="px-2 py-2">
-                          {formatOperationDateTime(r.created_at)}
-                        </td>
-                        <td className="px-2 py-2">
-                          <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[11px] font-bold text-emerald-800 dark:text-emerald-300">
-                            Soldé
-                          </span>
-                        </td>
-                        <td className="px-2 py-2">
-                          <div className="flex items-center gap-1.5">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setHistoryFor(r);
-                              }}
-                              className="touch-manipulation rounded-lg border border-black/10 bg-fs-surface-container px-3 py-2.5 text-xs font-bold text-neutral-800 active:opacity-95 dark:border-white/15 dark:text-neutral-100 sm:py-1"
-                            >
-                              Paiements
-                            </button>
-                            {isOwner ? (
+                    {paginatedSettledRows.map((entry) =>
+                      entry.kind === "libre" ? (
+                        <tr key={`libre-${entry.legacy.id}`} className="border-b border-black/6 opacity-95">
+                          <td className="px-2 py-2">
+                            <span className="rounded-full bg-violet-500/15 px-2 py-0.5 text-[11px] font-bold text-violet-900 dark:text-violet-200">
+                              Crédit libre
+                            </span>
+                          </td>
+                          <td className="px-2 py-2">{entry.legacy.customer?.name ?? "—"}</td>
+                          <td className="max-w-[220px] truncate px-2 py-2" title={entry.legacy.title}>
+                            {entry.legacy.title}
+                          </td>
+                          <td className="min-w-[200px] px-2 py-2">
+                            {parseLegacyVendorAndNote(entry.legacy.internal_note).vendor ||
+                              LEGACY_DEFAULT_VENDOR_NAME}
+                          </td>
+                          <td className="px-2 py-2 text-right tabular-nums">
+                            {formatCurrency(entry.legacy.principal_amount)}
+                          </td>
+                          <td className="px-2 py-2 text-right tabular-nums text-emerald-700">
+                            {formatCurrency(sumPaid(entry.legacy))}
+                          </td>
+                          <td className="px-2 py-2">
+                            {formatOperationDateTime(entry.legacy.created_at)}
+                          </td>
+                          <td className="px-2 py-2">
+                            <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[11px] font-bold text-emerald-800 dark:text-emerald-300">
+                              Soldé
+                            </span>
+                          </td>
+                          <td className="px-2 py-2">
+                            <div className="flex items-center gap-1.5">
                               <button
                                 type="button"
-                                disabled={deleteMut.isPending}
                                 onClick={() => {
-                                  if (!window.confirm("Supprimer ce crédit libre et son historique de paiements ?")) {
-                                    return;
-                                  }
-                                  deleteMut.mutate({ creditId: r.id });
+                                  setHistoryFor(entry.legacy);
                                 }}
-                                className="touch-manipulation rounded-lg border border-black/8 bg-fs-card px-2 py-1 text-xs font-semibold text-red-600 active:opacity-95 disabled:opacity-60"
-                                aria-label={`Supprimer le crédit libre ${r.title}`}
-                                title="Supprimer"
+                                className="touch-manipulation rounded-lg border border-black/10 bg-fs-surface-container px-3 py-2.5 text-xs font-bold text-neutral-800 active:opacity-95 dark:border-white/15 dark:text-neutral-100 sm:py-1"
                               >
-                                <MdDeleteOutline className="h-4 w-4" aria-hidden />
+                                Paiements
                               </button>
-                            ) : null}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                              {isOwner ? (
+                                <button
+                                  type="button"
+                                  onClick={() => setEditFor(entry.legacy)}
+                                  className="touch-manipulation whitespace-nowrap rounded-lg bg-fs-accent/15 px-2 py-2.5 text-xs font-bold text-fs-accent active:opacity-95 sm:px-3 sm:py-1"
+                                >
+                                  Modifier
+                                </button>
+                              ) : null}
+                              {isOwner ? (
+                                <button
+                                  type="button"
+                                  disabled={deleteMut.isPending}
+                                  onClick={() => {
+                                    if (
+                                      !window.confirm(
+                                        "Supprimer ce crédit libre et son historique de paiements ?",
+                                      )
+                                    ) {
+                                      return;
+                                    }
+                                    deleteMut.mutate({ creditId: entry.legacy.id });
+                                  }}
+                                  className="touch-manipulation rounded-lg border border-black/8 bg-fs-card px-2 py-1 text-xs font-semibold text-red-600 active:opacity-95 disabled:opacity-60"
+                                  aria-label={`Supprimer le crédit libre ${entry.legacy.title}`}
+                                  title="Supprimer"
+                                >
+                                  <MdDeleteOutline className="h-4 w-4" aria-hidden />
+                                </button>
+                              ) : null}
+                            </div>
+                          </td>
+                        </tr>
+                      ) : (
+                        <tr key={`vente-${entry.sale.id}`} className="border-b border-black/6 opacity-95">
+                          <td className="px-2 py-2">
+                            <span className="rounded-full bg-indigo-500/14 px-2 py-0.5 text-[11px] font-bold text-indigo-900 dark:text-indigo-200">
+                              Vente
+                            </span>
+                          </td>
+                          <td className="px-2 py-2">{entry.sale.customer?.name ?? "—"}</td>
+                          <td
+                            className="max-w-[220px] truncate px-2 py-2 font-mono font-semibold"
+                            title={entry.sale.sale_number}
+                          >
+                            {entry.sale.sale_number}
+                          </td>
+                          <td className="min-w-[160px] px-2 py-2 text-xs text-neutral-700">
+                            {entry.sale.created_by_label ?? "—"}
+                          </td>
+                          <td className="px-2 py-2 text-right tabular-nums">
+                            {formatCurrency(entry.sale.total)}
+                          </td>
+                          <td className="px-2 py-2 text-right tabular-nums text-emerald-700">
+                            {formatCurrency(creditSalePaidTotal(entry.sale))}
+                          </td>
+                          <td className="px-2 py-2">
+                            {formatOperationDateTime(entry.sale.created_at)}
+                          </td>
+                          <td className="px-2 py-2">
+                            <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[11px] font-bold text-emerald-800 dark:text-emerald-300">
+                              Soldé
+                            </span>
+                          </td>
+                          <td className="px-2 py-2">
+                            <button
+                              type="button"
+                              disabled={!onOpenSaleDetail}
+                              onClick={() => onOpenSaleDetail?.(entry.sale.id)}
+                              className="touch-manipulation rounded-lg border border-black/10 bg-fs-surface-container px-3 py-2.5 text-xs font-bold text-neutral-800 active:opacity-95 disabled:cursor-not-allowed disabled:opacity-45 dark:border-white/15 dark:text-neutral-100 sm:py-1"
+                            >
+                              Voir
+                            </button>
+                          </td>
+                        </tr>
+                      ),
+                    )}
                   </tbody>
                 </table>
-                {settledPageCount > 1 ? (
+                )}
+                {settledMergedRows.length > 0 && settledPageCount > 1 ? (
                   <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
                     <span className="text-xs text-neutral-600">
                       {safeSettledPage * LEGACY_PAGE_SIZE + 1} –{" "}
-                      {Math.min((safeSettledPage + 1) * LEGACY_PAGE_SIZE, settledCount)} / {settledCount}
+                      {Math.min((safeSettledPage + 1) * LEGACY_PAGE_SIZE, settledHistCount)} /{" "}
+                      {settledHistCount}
                     </span>
                     <button
                       type="button"
@@ -616,6 +1027,16 @@ export function LegacyCreditSection({
         busy={createMut.isPending}
         onClose={() => setCreateOpen(false)}
         onSubmit={(v) => createMut.mutate(v)}
+      />
+
+      <LegacyEditDialog
+        key={editFor?.id ?? "legacy-edit-closed"}
+        open={!!editFor}
+        companyId={companyId}
+        credit={editFor}
+        busy={editMut.isPending}
+        onClose={() => setEditFor(null)}
+        onSubmit={(v) => editMut.mutate(v)}
       />
 
       <LegacyPayDialog
@@ -1016,6 +1437,417 @@ function LegacyCreateDialog({
                     amount: parsedAmount,
                     dueAt: dueAt ? new Date(`${dueAt}T12:00:00`).toISOString() : null,
                     vendorName: vendorName.trim(),
+                    internalNote: buildLegacyInternalNote(vendorName, note),
+                  })
+                }
+                className="touch-manipulation min-h-12 w-full rounded-xl bg-fs-accent py-3 text-base font-bold text-white active:opacity-95 disabled:opacity-50 sm:flex-1 sm:py-2 sm:text-sm"
+              >
+                {busy ? "…" : "Enregistrer"}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <CustomerFormDialog
+        open={fullClientOpen}
+        variant="create"
+        overlayClassName="z-[96]"
+        initialValue={{
+          name: searchTrim.length >= 2 ? searchTrim : "",
+          type: "individual",
+          phone: "",
+          email: "",
+          address: "",
+          notes: "",
+        }}
+        onClose={() => setFullClientOpen(false)}
+        onSubmit={onFullClientSubmit}
+      />
+    </>
+  );
+}
+
+function LegacyEditDialog({
+  open,
+  busy,
+  companyId,
+  credit,
+  onClose,
+  onSubmit,
+}: {
+  open: boolean;
+  busy: boolean;
+  companyId: string;
+  credit: LegacyCreditRow | null;
+  onClose: () => void;
+  onSubmit: (p: {
+    creditId: string;
+    storeId: string;
+    customerId: string;
+    title: string;
+    amount: number;
+    dueAt: string | null;
+    internalNote?: string | null;
+  }) => void;
+}) {
+  const qc = useQueryClient();
+  const comboRef = useRef<HTMLDivElement | null>(null);
+  const invalidAmountToastAt = useRef(0);
+  const customerListboxId = useId();
+
+  const customersQ = useQuery({
+    queryKey: queryKeys.customers(companyId),
+    queryFn: () => listCustomers(companyId),
+    enabled: open && !!companyId,
+    staleTime: 60_000,
+  });
+
+  const [customerId, setCustomerId] = useState("");
+  const [customerSearch, setCustomerSearch] = useState("");
+  const [listboxOpen, setListboxOpen] = useState(false);
+  const [quickCreateBusy, setQuickCreateBusy] = useState(false);
+  const [fullClientOpen, setFullClientOpen] = useState(false);
+
+  const [title, setTitle] = useState("Crédit libre");
+  const [amount, setAmount] = useState("");
+  const [dueAt, setDueAt] = useState("");
+  const [vendorName, setVendorName] = useState("");
+  const [note, setNote] = useState("");
+
+  useEffect(() => {
+    if (!open || !credit) return;
+    setCustomerId(credit.customer_id);
+    setCustomerSearch(credit.customer?.name ?? "");
+    setListboxOpen(false);
+    setQuickCreateBusy(false);
+    setFullClientOpen(false);
+    setTitle(credit.title || "Crédit libre");
+    setAmount(String(credit.principal_amount ?? ""));
+    setDueAt(isoDateFromMaybeTs(credit.due_at));
+    const { vendor, note: n } = parseLegacyVendorAndNote(credit.internal_note);
+    setVendorName(vendor.trim() ? vendor : LEGACY_DEFAULT_VENDOR_NAME);
+    setNote(n ?? "");
+  }, [open, credit]);
+
+  useEffect(() => {
+    if (!listboxOpen) return;
+    const onDocMouseDown = (e: MouseEvent) => {
+      const el = comboRef.current;
+      if (el && !el.contains(e.target as Node)) setListboxOpen(false);
+    };
+    document.addEventListener("mousedown", onDocMouseDown);
+    return () => document.removeEventListener("mousedown", onDocMouseDown);
+  }, [listboxOpen]);
+
+  const warnNonNumericAmount = () => {
+    const now = Date.now();
+    if (now - invalidAmountToastAt.current < 750) return;
+    invalidAmountToastAt.current = now;
+    toast.info(
+      "Saisissez uniquement des chiffres (espaces autorisés ; une virgule ou un point pour les décimales).",
+    );
+  };
+
+  const onAmountChange = (raw: string) => {
+    const cleaned = raw.replace(/[^\d.,\s]/g, "");
+    if (cleaned !== raw) warnNonNumericAmount();
+    setAmount(cleaned);
+  };
+
+  const q = customerSearch.trim().toLowerCase();
+  const digits = customerSearch.replace(/\s/g, "");
+  const filtered = useMemo(() => {
+    const list = customersQ.data ?? [];
+    if (!q) return list.slice(0, 12);
+    return list
+      .filter(
+        (c) =>
+          c.name.toLowerCase().includes(q) ||
+          (c.phone ?? "").replace(/\s/g, "").includes(digits) ||
+          (c.email ?? "").toLowerCase().includes(q),
+      )
+      .slice(0, 12);
+  }, [customersQ.data, q, digits]);
+
+  const customers = customersQ.data ?? [];
+  const selectedCustomer = customerId ? customers.find((c) => c.id === customerId) : undefined;
+  const displayCustomer = customerId
+    ? selectedCustomer ??
+      (credit && customerId === credit.customer_id
+        ? {
+            id: customerId,
+            name:
+              (credit.customer?.name ?? "").trim() ||
+              customerSearch.trim() ||
+              "Client",
+            phone: credit.customer?.phone ?? null,
+          }
+        : { id: customerId, name: customerSearch.trim() || "Client", phone: null })
+    : undefined;
+  const searchTrim = customerSearch.trim();
+  const exactNameExists = searchTrim.length >= 2 && customers.some((c) => c.name.trim().toLowerCase() === searchTrim.toLowerCase());
+  const showQuickCreate =
+    searchTrim.length >= 2 && !exactNameExists && !customerId;
+
+  async function quickCreateFromSearch() {
+    const name = searchTrim;
+    if (name.length < 2) return;
+    setQuickCreateBusy(true);
+    try {
+      const id = await createCustomer(companyId, { name, type: "individual" });
+      if (!id) {
+        toast.error("Connexion requise pour créer un client.");
+        return;
+      }
+      await qc.invalidateQueries({ queryKey: queryKeys.customers(companyId) });
+      setCustomerId(id);
+      setCustomerSearch(name);
+      setListboxOpen(false);
+      toast.success("Client créé et sélectionné.");
+    } catch (e) {
+      toast.error(messageFromUnknownError(e, "Impossible de créer le client."));
+    } finally {
+      setQuickCreateBusy(false);
+    }
+  }
+
+  async function onFullClientSubmit(v: CustomerFormValue) {
+    const id = await createCustomer(companyId, {
+      name: v.name.trim(),
+      type: v.type,
+      phone: v.phone.trim() || null,
+      email: v.email.trim() || null,
+      address: v.address.trim() || null,
+      notes: v.notes.trim() || null,
+    });
+    if (!id) {
+      toast.error("Connexion requise pour créer un client.");
+      throw new Error("Connexion requise");
+    }
+    await qc.invalidateQueries({ queryKey: queryKeys.customers(companyId) });
+    setCustomerId(id);
+    setCustomerSearch(v.name.trim());
+    setListboxOpen(false);
+    setFullClientOpen(false);
+    toast.success("Client créé et sélectionné.");
+  }
+
+  if (!open || !credit) return null;
+  const parsedAmount = Math.max(0, parseFloat(amount.replace(/\s/g, "").replace(",", ".")) || 0);
+  const paidSoFar = sumPaid(credit);
+  const minPrincipal = paidSoFar;
+  const amountOk = parsedAmount + EPS >= minPrincipal;
+  const canSubmit =
+    !!customerId && parsedAmount > 0 && amountOk && vendorName.trim().length > 0;
+
+  return (
+    <>
+      <div className="fixed inset-0 z-82 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:bg-black/45 sm:p-4">
+        <button
+          type="button"
+          className="absolute inset-0 touch-manipulation"
+          onClick={onClose}
+          aria-label="Fermer"
+        />
+        <div
+          className="relative z-10 flex max-h-[min(92dvh,900px)] w-full max-w-lg flex-col overflow-hidden rounded-t-[1.35rem] border border-black/10 bg-fs-card shadow-2xl sm:max-h-[min(88vh,820px)] sm:rounded-2xl dark:border-white/10"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="legacy-credit-edit-title"
+        >
+          <div className="shrink-0 px-4 pt-3 sm:px-5 sm:pt-4">
+            <div className="mx-auto mb-3 h-1.5 w-12 shrink-0 rounded-full bg-neutral-400/60 sm:hidden" aria-hidden />
+            <h3 id="legacy-credit-edit-title" className="text-lg font-bold tracking-tight text-fs-text sm:text-base">
+              Modifier le crédit libre
+            </h3>
+            <p className="mt-1 text-sm leading-snug text-neutral-600 sm:text-xs">
+              Boutique : <span className="font-semibold text-fs-text">{credit.store?.name ?? "—"}</span>
+            </p>
+          </div>
+
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-4 pb-1 sm:px-5">
+            <div className="space-y-4 pb-2 sm:space-y-3">
+              {paidSoFar > EPS ? (
+                <p className="rounded-xl bg-fs-surface-container px-3 py-2 text-xs text-neutral-700">
+                  Montant principal minimal :{" "}
+                  <span className="font-bold text-fs-accent">{formatCurrency(minPrincipal)}</span>{" "}
+                  (déjà encaissé).
+                </p>
+              ) : null}
+              <div>
+                <label className={mobileLabelClass()}>Client</label>
+                {displayCustomer ? (
+                  <div className="flex flex-col gap-3 rounded-xl border border-black/10 bg-fs-surface-container p-3 dark:border-white/10 sm:flex-row sm:items-center sm:gap-2 sm:p-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-base font-semibold text-fs-text sm:text-sm">{displayCustomer.name}</p>
+                      {displayCustomer.phone ? (
+                        <p className="mt-0.5 text-sm text-neutral-600 sm:hidden">{displayCustomer.phone}</p>
+                      ) : null}
+                    </div>
+                    <div className="flex items-center gap-2 sm:shrink-0">
+                      {displayCustomer.phone ? (
+                        <span className="hidden text-xs text-neutral-500 sm:inline">{displayCustomer.phone}</span>
+                      ) : null}
+                      <button
+                        type="button"
+                        className="touch-manipulation w-full rounded-xl bg-fs-accent/15 px-4 py-3 text-sm font-bold text-fs-accent active:opacity-90 sm:w-auto sm:px-3 sm:py-2 sm:text-xs"
+                        onClick={() => {
+                          setCustomerId("");
+                          setCustomerSearch("");
+                          setListboxOpen(true);
+                        }}
+                      >
+                        Changer
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div ref={comboRef} className="relative">
+                    <input
+                      type="text"
+                      role="combobox"
+                      aria-controls={customerListboxId}
+                      className={mobileFieldClass()}
+                      value={customerSearch}
+                      onChange={(e) => {
+                        setCustomerSearch(e.target.value);
+                        setListboxOpen(true);
+                      }}
+                      onFocus={() => setListboxOpen(true)}
+                      placeholder="Nom ou téléphone…"
+                      autoComplete="off"
+                      aria-autocomplete="list"
+                      aria-expanded={listboxOpen}
+                    />
+                    {listboxOpen ? (
+                      <div
+                        id={customerListboxId}
+                        role="listbox"
+                        className="absolute left-0 right-0 z-20 mt-1 max-h-[min(42dvh,320px)] overflow-auto rounded-xl border border-black/10 bg-fs-card py-1 shadow-xl sm:max-h-60 dark:border-white/10"
+                      >
+                        {filtered.map((c) => (
+                          <button
+                            key={c.id}
+                            type="button"
+                            className="flex min-h-12 w-full flex-col items-start justify-center gap-0.5 px-4 py-3 text-left text-base active:bg-black/6 sm:min-h-0 sm:px-3 sm:py-2.5 sm:text-sm dark:active:bg-white/8"
+                            onClick={() => {
+                              setCustomerId(c.id);
+                              setCustomerSearch(c.name);
+                              setListboxOpen(false);
+                            }}
+                          >
+                            <span className="font-semibold text-fs-text">{c.name}</span>
+                            {c.phone ? <span className="text-sm text-neutral-500 sm:text-xs">{c.phone}</span> : null}
+                          </button>
+                        ))}
+                        {showQuickCreate ? (
+                          <div className="space-y-2 border-t border-black/8 p-3 dark:border-white/10">
+                            <p className="text-sm text-neutral-600 sm:text-[11px]">Aucune correspondance exacte.</p>
+                            <button
+                              type="button"
+                              disabled={quickCreateBusy}
+                              onClick={() => void quickCreateFromSearch()}
+                              className="touch-manipulation w-full rounded-xl bg-fs-accent py-3.5 text-base font-bold text-white disabled:opacity-50 sm:py-2.5 sm:text-sm"
+                            >
+                              {quickCreateBusy ? "…" : `Créer « ${searchTrim} » et sélectionner`}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setFullClientOpen(true);
+                                setListboxOpen(false);
+                              }}
+                              className="touch-manipulation w-full rounded-xl border border-black/10 py-3.5 text-base font-semibold sm:py-2 sm:text-xs dark:border-white/15"
+                            >
+                              Fiche complète (email, adresse…)
+                            </button>
+                          </div>
+                        ) : searchTrim.length > 0 && searchTrim.length < 2 ? (
+                          <p className="border-t border-black/8 px-4 py-3 text-sm text-neutral-500 sm:px-3 sm:py-2 sm:text-[11px] dark:border-white/10">
+                            Saisissez au moins 2 caractères pour créer un nouveau client.
+                          </p>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className={mobileLabelClass()}>Libellé</label>
+                <input
+                  className={mobileFieldClass()}
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Crédit libre"
+                />
+              </div>
+              <div>
+                <label className={mobileLabelClass()}>Montant principal</label>
+                <input
+                  className={mobileFieldClass()}
+                  inputMode="decimal"
+                  value={amount}
+                  onChange={(e) => onAmountChange(e.target.value)}
+                  placeholder="Ex. 150 000 ou 150000,50"
+                />
+                {!amountOk && parsedAmount > 0 ? (
+                  <p className="mt-1 text-xs font-medium text-red-600">
+                    Le montant doit être au moins égal aux encaissements ({formatCurrency(minPrincipal)}).
+                  </p>
+                ) : null}
+              </div>
+              <div>
+                <label className={mobileLabelClass()}>Échéance (optionnel)</label>
+                <input
+                  className={mobileFieldClass()}
+                  type="date"
+                  value={dueAt}
+                  onChange={(e) => setDueAt(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className={mobileLabelClass()}>Vendeur *</label>
+                <input
+                  className={mobileFieldClass()}
+                  value={vendorName}
+                  onChange={(e) => setVendorName(e.target.value)}
+                  placeholder="Nom du vendeur"
+                />
+              </div>
+              <div>
+                <label className={mobileLabelClass()}>Note interne (optionnel)</label>
+                <textarea
+                  className={mobileFieldClass("min-h-22 resize-y sm:min-h-18")}
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  placeholder="Relance, contexte…"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="shrink-0 border-t border-black/10 bg-fs-card px-4 py-3 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-[0_-4px_20px_rgba(0,0,0,0.06)] sm:px-5 dark:border-white/10">
+            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="touch-manipulation min-h-12 w-full rounded-xl border border-black/10 py-3 text-base font-semibold active:bg-black/4 sm:flex-1 sm:py-2 sm:text-sm dark:border-white/15 dark:active:bg-white/6"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                disabled={busy || !canSubmit}
+                onClick={() =>
+                  onSubmit({
+                    creditId: credit.id,
+                    storeId: credit.store_id,
+                    customerId,
+                    title: title.trim() || "Crédit libre",
+                    amount: parsedAmount,
+                    dueAt: dueAt ? new Date(`${dueAt}T12:00:00`).toISOString() : null,
                     internalNote: buildLegacyInternalNote(vendorName, note),
                   })
                 }
