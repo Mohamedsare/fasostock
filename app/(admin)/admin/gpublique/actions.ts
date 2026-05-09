@@ -13,7 +13,8 @@ const LANDING_CACHE_TAGS = [
 ] as const;
 
 export async function revalidateLandingCache(): Promise<void> {
+  const immediate = { expire: 0 } as const;
   for (const tag of LANDING_CACHE_TAGS) {
-    revalidateTag(tag, "max");
+    revalidateTag(tag, immediate);
   }
 }
