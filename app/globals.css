@@ -189,3 +189,213 @@ body {
 .partners-marquee-track {
   animation: partners-marquee 22s linear infinite;
 }
+
+/* =====================================================================
+ * Landing page — Scroll effects (ultra smooth, GPU-friendly)
+ * Utilise les animations CSS pilotées par le scroll (animation-timeline:
+ * view() / scroll()) pour un rendu 60fps sans JS. Dégrade gracieusement
+ * sur les rares navigateurs sans support : aucun flash, contenu visible.
+ * Respecte `prefers-reduced-motion: reduce`.
+ * ===================================================================== */
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+@keyframes fs-reveal-up {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 28px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes fs-reveal-zoom {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 14px, 0) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes fs-hero-parallax {
+  from {
+    transform: translate3d(0, -2%, 0) scale(1.06);
+  }
+  to {
+    transform: translate3d(0, 8%, 0) scale(1.06);
+  }
+}
+
+@keyframes fs-hero-text-rise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 24px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes fs-hero-fade {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.35;
+  }
+}
+
+@keyframes fs-progress-fill {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes fs-header-elevate {
+  from {
+    background-color: rgba(255, 255, 255, 0.82);
+    box-shadow: 0 0 0 0 rgba(15, 23, 42, 0);
+    border-bottom-color: rgba(0, 0, 0, 0.05);
+  }
+  to {
+    background-color: rgba(255, 255, 255, 0.985);
+    box-shadow: 0 10px 28px -18px rgba(15, 23, 42, 0.32);
+    border-bottom-color: rgba(0, 0, 0, 0.1);
+  }
+}
+
+/* Apparition initiale du hero (déclenchée au mount, pas au scroll).
+ * Utilise `animation-fill-mode: both` pour que l'état initial (opacity 0)
+ * soit appliqué dès le premier paint — pas de flash. */
+@media (prefers-reduced-motion: no-preference) {
+  #accueil h1,
+  #accueil > div > div > div > p,
+  #accueil > div > div > div > div:last-child {
+    animation: fs-hero-text-rise 720ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+  }
+  #accueil > div > div > div > p:first-of-type {
+    animation-delay: 0ms;
+  }
+  #accueil h1 {
+    animation-delay: 100ms;
+  }
+  #accueil > div > div > div > p:last-of-type {
+    animation-delay: 200ms;
+  }
+  #accueil > div > div > div > div:last-child {
+    animation-delay: 300ms;
+  }
+}
+
+/* Barre de progression top — pilotée nativement par le scroll racine */
+.fs-scroll-progress {
+  position: fixed;
+  inset: 0 0 auto 0;
+  height: 3px;
+  z-index: 60;
+  pointer-events: none;
+  transform-origin: 0 50%;
+  transform: scaleX(0);
+  background: linear-gradient(
+    90deg,
+    var(--fs-accent) 0%,
+    #f97316 50%,
+    #ffb15a 100%
+  );
+  box-shadow: 0 1px 8px -1px rgba(232, 93, 44, 0.55);
+  will-change: transform;
+}
+
+@supports (animation-timeline: scroll()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .fs-scroll-progress {
+      animation: fs-progress-fill linear both;
+      animation-timeline: scroll(root);
+    }
+  }
+}
+
+/* Reveal automatique de toutes les sections de la landing.
+ * `view()` = le timeline est lié à la position de l'élément dans le viewport.
+ * `entry 0% cover 22%` = anime depuis l'instant où le haut de l'élément
+ * touche le bas du viewport jusqu'à 22% de couverture. Ressenti soyeux. */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    main > section,
+    main > div[id="temoignages"],
+    main > div[id="faq"],
+    main > div[id="partenaires"] {
+      animation: fs-reveal-up linear both;
+      animation-timeline: view();
+      animation-range: entry 0% cover 22%;
+      will-change: opacity, transform;
+    }
+
+    /* Le hero ne doit pas s'animer au scroll : déjà animé au mount. */
+    main > section#accueil {
+      animation: none;
+    }
+
+    /* Stagger reveal sur les grilles décorées : chaque enfant a sa
+     * propre animation-range décalée, créant un effet en cascade
+     * naturel (sans avoir besoin d'animation-delay non pris en charge
+     * par les scroll-timelines). */
+    [data-fs-stagger] > * {
+      animation: fs-reveal-zoom linear both;
+      animation-timeline: view();
+      will-change: opacity, transform;
+    }
+    [data-fs-stagger] > *:nth-child(1)  { animation-range: entry 0%  cover 18%; }
+    [data-fs-stagger] > *:nth-child(2)  { animation-range: entry 4%  cover 22%; }
+    [data-fs-stagger] > *:nth-child(3)  { animation-range: entry 8%  cover 26%; }
+    [data-fs-stagger] > *:nth-child(4)  { animation-range: entry 12% cover 30%; }
+    [data-fs-stagger] > *:nth-child(5)  { animation-range: entry 16% cover 34%; }
+    [data-fs-stagger] > *:nth-child(6)  { animation-range: entry 20% cover 38%; }
+    [data-fs-stagger] > *:nth-child(7)  { animation-range: entry 22% cover 40%; }
+    [data-fs-stagger] > *:nth-child(8)  { animation-range: entry 24% cover 42%; }
+    [data-fs-stagger] > *:nth-child(n + 9) { animation-range: entry 26% cover 44%; }
+
+    /* Parallaxe de l'image de fond du hero */
+    #accueil img[aria-hidden="true"] {
+      animation: fs-hero-parallax linear both;
+      animation-timeline: view(block);
+      animation-range: entry 0% exit 100%;
+      will-change: transform;
+    }
+
+    /* Léger fondu du contenu hero quand on quitte la zone */
+    main > section#accueil > div > div {
+      animation: fs-hero-fade linear both;
+      animation-timeline: view(block);
+      animation-range: exit 0% exit 80%;
+      will-change: opacity;
+    }
+
+    /* Header marketing : passe d'un état translucide à un état "élevé"
+     * dès que la page descend, sans listener JS. Scopé au header sticky
+     * direct de la landing (autres pages non impactées). */
+    main > header.sticky {
+      animation: fs-header-elevate linear both;
+      animation-timeline: scroll(root);
+      animation-range: 0 220px;
+    }
+  }
+}
+
+/* Petite réassurance : sur les navigateurs qui n'ont pas du tout
+ * `animation-timeline`, les éléments restent dans leur état final
+ * naturel (opacity 1, transform none) → aucun flash, aucun blocage. */
+

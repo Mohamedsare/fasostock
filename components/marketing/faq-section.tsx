@@ -96,8 +96,8 @@ export function FaqSection() {
         </div>
 
         <div className="mt-6 grid gap-3 lg:grid-cols-2">
-          <div className="space-y-2.5">{left.map(renderItem)}</div>
-          <div className="space-y-2.5">{right.map(renderItem)}</div>
+          <div data-fs-stagger className="space-y-2.5">{left.map(renderItem)}</div>
+          <div data-fs-stagger className="space-y-2.5">{right.map(renderItem)}</div>
         </div>
 
         <div className="mt-4 rounded-xl border border-fs-accent/25 bg-[#fff7f1] px-4 py-3">

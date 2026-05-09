@@ -422,6 +422,37 @@ export async function adminCreatePublicPartner(params: {
   if (error) throw mapSupabaseError(error);
 }
 
+/**
+ * Met à jour un partenaire existant. Tous les champs sont optionnels —
+ * seuls ceux fournis sont envoyés à Supabase.
+ */
+export async function adminUpdatePublicPartner(
+  id: string,
+  patch: { name?: string; logoUrl?: string; sortOrder?: number; isActive?: boolean },
+): Promise<void> {
+  const supabase = createClient();
+  const row: Record<string, unknown> = {};
+  if (patch.name !== undefined) {
+    const trimmed = patch.name.trim();
+    if (trimmed.length < 2) throw new Error("Le nom doit contenir au moins 2 caractères.");
+    row.name = trimmed;
+  }
+  if (patch.logoUrl !== undefined) {
+    const trimmed = patch.logoUrl.trim();
+    if (!trimmed) throw new Error("Logo invalide.");
+    row.logo_url = trimmed;
+  }
+  if (patch.sortOrder !== undefined) {
+    row.sort_order = Math.max(0, Math.floor(Number(patch.sortOrder)));
+  }
+  if (patch.isActive !== undefined) {
+    row.is_active = patch.isActive === true;
+  }
+  if (Object.keys(row).length === 0) return;
+  const { error } = await supabase.from("public_partners").update(row).eq("id", id);
+  if (error) throw mapSupabaseError(error);
+}
+
 export async function adminDeletePublicPartner(id: string): Promise<void> {
   const supabase = createClient();
   const { error } = await supabase.from("public_partners").delete().eq("id", id);

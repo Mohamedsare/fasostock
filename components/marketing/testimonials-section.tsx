@@ -116,7 +116,7 @@ export function TestimonialsSection({
           >
             <MdChevronLeft className="h-5 w-5" />
           </button>
-          <div className="grid flex-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div data-fs-stagger className="grid flex-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {visible.map((t) => (
               <article key={`${t.name}-${t.tag}`} className="rounded-2xl border border-black/10 bg-white p-4 shadow-[0_12px_26px_-22px_rgba(15,23,42,0.45)]">
                 <p className="text-fs-accent">❝</p>
@@ -161,7 +161,7 @@ export function TestimonialsSection({
         </div>
 
         <div className="mt-4 overflow-hidden rounded-xl border border-fs-accent/25 bg-[#fff7f1]">
-          <div className="grid grid-cols-2 divide-y divide-fs-accent/15 text-center min-[760px]:grid-cols-4 min-[760px]:divide-x min-[760px]:divide-y-0">
+          <div data-fs-stagger className="grid grid-cols-2 divide-y divide-fs-accent/15 text-center min-[760px]:grid-cols-4 min-[760px]:divide-x min-[760px]:divide-y-0">
             {stats.slice(0, 4).map((item, idx) => (
               <div key={`${idx}-${item.value}`} className="px-4 py-3">
                 <p className="text-4xl font-black text-[#202938]">{item.value}</p>

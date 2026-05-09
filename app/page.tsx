@@ -11,6 +11,7 @@ import { FaqSection } from "@/components/marketing/faq-section";
 import { NewsletterSubscribeForm } from "@/components/marketing/newsletter-subscribe-form";
 import { SiteHeader } from "@/components/marketing/site-header";
 import { ScrollDirectionFab } from "@/components/marketing/scroll-direction-fab";
+import { ScrollProgress } from "@/components/marketing/scroll-progress";
 import { InstallAppButton } from "@/components/pwa/install-app-button";
 import type { Metadata } from "next";
 import Image from "next/image";
@@ -294,6 +295,7 @@ export default async function Home() {
 
   return (
     <main className="min-h-dvh bg-[radial-gradient(circle_at_top,rgba(232,93,44,0.14),transparent_42%),linear-gradient(to_bottom,#fff,#fff7f3)] text-neutral-900">
+      <ScrollProgress />
       <SiteHeader />
 
       <section id="accueil" className="mx-auto w-full max-w-7xl scroll-mt-24 px-4 pb-10 pt-5 sm:px-6 sm:pb-14 sm:pt-7">
@@ -418,7 +420,7 @@ export default async function Home() {
 
       <section className="mx-auto w-full max-w-7xl px-4 pb-4 sm:px-6">
         <div className="overflow-hidden rounded-[1.2rem] border border-black/10 bg-white">
-          <div className="grid grid-cols-2 divide-x divide-y divide-black/8 text-xs min-[700px]:grid-cols-3 lg:grid-cols-6 lg:divide-y-0">
+          <div data-fs-stagger className="grid grid-cols-2 divide-x divide-y divide-black/8 text-xs min-[700px]:grid-cols-3 lg:grid-cols-6 lg:divide-y-0">
             {bannerFeatureStrip.map((item) => (
               <article key={item.title} className="flex min-h-[82px] items-center gap-2.5 px-3 py-3">
                 <div className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-fs-accent text-white">
@@ -436,7 +438,7 @@ export default async function Home() {
 
       <section className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6 sm:pb-10">
         <div className="overflow-hidden rounded-[1.2rem] border border-[#eadfd8] bg-[#fff8f3]">
-          <div className="grid grid-cols-1 divide-y divide-[#f0e5de] min-[760px]:grid-cols-2 min-[760px]:divide-x min-[760px]:divide-y-0 lg:grid-cols-4">
+          <div data-fs-stagger className="grid grid-cols-1 divide-y divide-[#f0e5de] min-[760px]:grid-cols-2 min-[760px]:divide-x min-[760px]:divide-y-0 lg:grid-cols-4">
             {bannerTrustStrip.map((item) => (
               <article key={item.title} className="flex items-center gap-3 px-4 py-4">
                 <div className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-fs-accent text-fs-accent">
@@ -576,7 +578,7 @@ export default async function Home() {
             </p>
           </div>
 
-          <div className="relative mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div data-fs-stagger className="relative mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {dailyChallenges.map((item, i) => {
               const toneMap = {
                 orange: "border-[#ffe2d2] bg-[#fff7f2] text-[#f97316]",
@@ -653,7 +655,7 @@ export default async function Home() {
             </p>
           </div>
 
-          <div className="relative mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div data-fs-stagger className="relative mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {solutionCapabilities.map((item) => {
               const toneMap = {
                 orange: "text-[#f97316] bg-[#fff7f2] border-[#ffe2d2]",
@@ -742,7 +744,7 @@ export default async function Home() {
             </p>
           </div>
 
-          <div className="relative mt-7 grid gap-4 lg:grid-cols-3">
+          <div data-fs-stagger className="relative mt-7 grid gap-4 lg:grid-cols-3">
             <article className="rounded-3xl border border-[#d5eadf] bg-white p-4 shadow-[0_14px_30px_-24px_rgba(15,23,42,0.5)] sm:min-h-[420px] sm:p-5">
               <div className="mx-auto inline-flex h-12 w-12 items-center justify-center rounded-full border border-[#d5eadf] bg-[#f2fbf6] text-[#22a168]">
                 <MdCardGiftcard className="h-6 w-6" aria-hidden />
@@ -876,7 +878,7 @@ export default async function Home() {
             </p>
           </div>
 
-          <div className="relative mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div data-fs-stagger className="relative mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {coreFeatures.map((item) => {
               const toneMap = {
                 orange: "text-[#f97316] border-[#ffe2d2]",
