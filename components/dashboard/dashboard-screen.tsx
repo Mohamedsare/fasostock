@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, parseISO } from "date-fns";
 import { fr } from "date-fns/locale";
 import {
@@ -35,7 +35,10 @@ import {
   type ReactNode,
 } from "react";
 import { fetchDashboardData } from "@/lib/features/dashboard/api";
-import { getDefaultDateRange } from "@/lib/features/dashboard/date-range";
+import {
+  resolveDashboardRange,
+  type DashboardPeriod,
+} from "@/lib/features/dashboard/date-range";
 import { useAppContext } from "@/lib/features/common/app-context";
 import type { AccessHelpers } from "@/lib/features/permissions/access";
 import { usePermissions } from "@/lib/features/permissions/use-permissions";
@@ -55,6 +58,7 @@ import {
   DashboardLineChart,
   DashboardPieChart,
 } from "@/components/dashboard/dashboard-charts";
+import { OwnerDashboardUi } from "@/components/dashboard/owner-dashboard-ui";
 import {
   FsPage,
   FsScreenHeader,
@@ -105,7 +109,9 @@ export function DashboardScreen() {
 
   const [scope, setScope] = useState<"company" | "store">("company");
   const [dashboardStoreId, setDashboardStoreId] = useState<string | null>(null);
-  const [period, setPeriod] = useState<"today" | "week" | "month">("week");
+  const [period, setPeriod] = useState<DashboardPeriod>("week");
+  const [customFrom, setCustomFrom] = useState<string | null>(null);
+  const [customTo, setCustomTo] = useState<string | null>(null);
   const [selectedDay, setSelectedDay] = useState(() =>
     format(new Date(), "yyyy-MM-dd"),
   );
@@ -146,12 +152,23 @@ export function DashboardScreen() {
     if (scope === "store" && stores.length === 0) setScope("company");
   }, [scope, stores.length]);
 
+  useEffect(() => {
+    if (permLoading || !helpers) return;
+    if (!helpers.isOwner && period === "custom") {
+      setPeriod("week");
+      setCustomFrom(null);
+      setCustomTo(null);
+    }
+  }, [permLoading, helpers, period]);
+
   const dashQ = useQuery({
     queryKey: queryKeys.dashboard({
       companyId,
       storeId: effectiveStoreId,
       period,
       selectedDay,
+      customFrom: period === "custom" ? customFrom : null,
+      customTo: period === "custom" ? customTo : null,
     }),
     queryFn: () =>
       fetchDashboardData({
@@ -159,14 +176,23 @@ export function DashboardScreen() {
         storeId: effectiveStoreId,
         period,
         selectedDay,
+        customFrom: period === "custom" ? customFrom : undefined,
+        customTo: period === "custom" ? customTo : undefined,
       }),
     enabled:
       !!companyId &&
       canDash &&
-      (scope !== "store" || !!effectiveStoreId),
+      (scope !== "store" || !!effectiveStoreId) &&
+      (period !== "custom" ||
+        (!!customFrom && !!customTo && customFrom <= customTo)),
+    placeholderData: keepPreviousData,
+    staleTime: 20_000,
   });
 
-  const range = useMemo(() => getDefaultDateRange(period), [period]);
+  const range = useMemo(
+    () => resolveDashboardRange({ period, customFrom, customTo }),
+    [period, customFrom, customTo],
+  );
   const companyName = ctx.data?.companyName ?? "";
   const storeName =
     stores.find((s) => s.id === dashboardStoreId)?.name ?? "";
@@ -264,6 +290,63 @@ export function DashboardScreen() {
     );
   }
 
+  const isOwnerDashboard = Boolean(helpers?.isOwner && canDash);
+
+  if (isOwnerDashboard) {
+    return (
+      <FsPage className="flex max-w-[100vw] flex-col overflow-x-hidden bg-fs-surface !px-2 !pt-3 min-[900px]:!px-6 min-[900px]:pt-6 sm:!px-4">
+        {dashQ.isPending && !dashQ.data ? (
+          <div className="flex flex-1 flex-col gap-3 py-8" aria-busy="true" aria-label="Chargement du tableau de bord">
+            <div className="h-9 w-9 animate-spin rounded-full border-2 border-[#FF6B35] border-t-transparent" />
+            <div className="h-40 w-full animate-pulse rounded-[14px] bg-neutral-200/80" />
+            <div className="grid grid-cols-2 gap-2 min-[700px]:grid-cols-4">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} className="h-28 animate-pulse rounded-[14px] bg-neutral-200/70" />
+              ))}
+            </div>
+          </div>
+        ) : dashQ.isError ? (
+          <div className="mt-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+            {(dashQ.error as Error)?.message ?? "Impossible de charger le tableau de bord."}
+          </div>
+        ) : dashQ.data ? (
+          <OwnerDashboardUi
+            companyName={companyName}
+            terms={terms}
+            description={description}
+            scope={scope}
+            setScope={setScope}
+            stores={stores}
+            dashboardStoreId={dashboardStoreId}
+            setDashboardStoreId={setDashboardStoreId}
+            syncGlobalStoreFromDashboard={syncGlobalStoreFromDashboard}
+            ctxStoreId={ctxStoreId}
+            period={period}
+            setPeriod={setPeriod}
+            customFrom={customFrom}
+            customTo={customTo}
+            setCustomFrom={setCustomFrom}
+            setCustomTo={setCustomTo}
+            selectedDay={selectedDay}
+            setSelectedDay={setSelectedDay}
+            d={dashQ.data}
+            isWide={isWide}
+            effectiveStoreId={effectiveStoreId}
+            purchasesLabel={terms.purchasesTitle}
+            rangeFooter={{ from: footerFrom, to: footerTo }}
+            helpers={helpers!}
+            hasPermission={hasPermission}
+            canPosQuick={canPosQuick}
+            canInvoiceA4={canInvoiceA4}
+            canFactureTab={canFactureTab}
+            isFetching={dashQ.isFetching}
+            isPlaceholderData={dashQ.isPlaceholderData}
+          />
+        ) : null}
+      </FsPage>
+    );
+  }
+
   return (
     <FsPage className="flex flex-col min-[900px]:pt-6">
       <div className="mb-3 flex items-start gap-3 min-[900px]:mb-5">
@@ -355,7 +438,7 @@ export function DashboardScreen() {
                     setDashboardStoreId(id);
                     if (id) syncGlobalStoreFromDashboard(id);
                   }}
-                  className="w-full min-w-0 rounded-lg border border-black/[0.12] bg-white px-2 py-2 text-sm"
+                  className="w-full min-w-0 rounded-lg border border-black/[0.12] bg-fs-card px-2 py-2 text-sm"
                 >
                   {stores.map((s) => (
                     <option key={s.id} value={s.id}>
@@ -392,7 +475,7 @@ export function DashboardScreen() {
         </div>
       </section>
 
-      {dashQ.isLoading ? (
+      {dashQ.isPending && !dashQ.data ? (
         <div className="flex flex-1 items-center justify-center py-16">
           <div className="h-9 w-9 animate-spin rounded-full border-2 border-fs-accent border-t-transparent" />
         </div>

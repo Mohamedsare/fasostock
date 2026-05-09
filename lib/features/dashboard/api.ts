@@ -1,7 +1,12 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
-import { getDefaultDateRange } from "@/lib/features/dashboard/date-range";
+import {
+  getDefaultDateRange,
+  getPreviousComparableRange,
+  resolveDashboardRange,
+  type DashboardPeriod,
+} from "@/lib/features/dashboard/date-range";
 import type {
   CategorySales,
   DashboardData,
@@ -12,6 +17,7 @@ import type {
   StockMovementByDay,
   StockReportData,
   StockValue,
+  StockWatchSample,
   TopProduct,
 } from "@/lib/features/dashboard/types";
 import { format } from "date-fns";
@@ -112,10 +118,9 @@ function computeSalesByDay(
     .sort((a, b) => a.date.localeCompare(b.date));
 }
 
-async function getTopProducts(
+async function aggregateProductsFromSales(
   supabase: ReturnType<typeof createClient>,
   saleIds: string[],
-  limit: number,
 ): Promise<TopProduct[]> {
   if (saleIds.length === 0) return [];
   const { data: items, error } = await supabase
@@ -150,13 +155,21 @@ async function getTopProducts(
       cost: cur.cost + purchasePrice * qty,
     });
   }
-  const list = [...agg.entries()].map(([productId, v]) => ({
+  return [...agg.entries()].map(([productId, v]) => ({
     productId,
     productName: v.name,
     quantitySold: v.qty,
     revenue: v.revenue,
     margin: v.revenue - v.cost,
   }));
+}
+
+async function getTopProducts(
+  supabase: ReturnType<typeof createClient>,
+  saleIds: string[],
+  limit: number,
+): Promise<TopProduct[]> {
+  const list = await aggregateProductsFromSales(supabase, saleIds);
   list.sort((a, b) => b.revenue - a.revenue);
   return list.slice(0, limit);
 }
@@ -345,6 +358,78 @@ async function getLowStockCount(
     if (qty <= min) alertKeys.add(`${sid}-${pid}`);
   }
   return alertKeys.size;
+}
+
+async function getLowStockSamples(
+  supabase: ReturnType<typeof createClient>,
+  companyId: string,
+  storeId: string | null,
+  limit: number,
+): Promise<StockWatchSample[]> {
+  let storeIds: string[];
+  if (storeId) {
+    storeIds = [storeId];
+  } else {
+    const { data: stores, error } = await supabase
+      .from("stores")
+      .select("id")
+      .eq("company_id", companyId)
+      .eq("is_active", true);
+    if (error) throw error;
+    storeIds = (stores ?? []).map((s) => s.id as string);
+  }
+  if (storeIds.length === 0) return [];
+  const { data: inv, error: invErr } = await supabase
+    .from("store_inventory")
+    .select("store_id, product_id, quantity, product:products(id, name, stock_min)")
+    .in("store_id", storeIds);
+  if (invErr) throw invErr;
+  const { data: overrides, error: oErr } = await supabase
+    .from("product_store_settings")
+    .select("store_id, product_id, stock_min_override")
+    .in("store_id", storeIds);
+  if (oErr) throw oErr;
+  const overrideMap = new Map<string, number | null>();
+  for (const o of overrides ?? []) {
+    const m = o as {
+      store_id?: string;
+      product_id?: string;
+      stock_min_override?: number | null;
+    };
+    if (m.store_id && m.product_id) {
+      overrideMap.set(
+        `${m.store_id}-${m.product_id}`,
+        m.stock_min_override != null
+          ? Number(m.stock_min_override)
+          : null,
+      );
+    }
+  }
+  const samples: StockWatchSample[] = [];
+  for (const row of inv ?? []) {
+    const m = row as {
+      store_id?: string;
+      product_id?: string;
+      quantity?: number;
+      product?: { name?: string; stock_min?: number } | null;
+    };
+    const sid = m.store_id;
+    const pid = m.product_id;
+    if (!sid || !pid) continue;
+    const qty = Number(m.quantity ?? 0);
+    const min =
+      overrideMap.get(`${sid}-${pid}`) ??
+      Number(m.product?.stock_min ?? 0);
+    if (qty <= min) {
+      samples.push({
+        productName: m.product?.name ?? "—",
+        quantity: qty,
+        threshold: min,
+      });
+    }
+  }
+  samples.sort((a, b) => a.quantity - b.quantity);
+  return samples.slice(0, limit);
 }
 
 const CHUNK = 800;
@@ -765,20 +850,36 @@ export async function fetchReportsPageData(params: {
 export async function fetchDashboardData(params: {
   companyId: string;
   storeId: string | null;
-  period: "today" | "week" | "month";
+  period: DashboardPeriod;
   selectedDay: string;
+  customFrom?: string | null;
+  customTo?: string | null;
 }): Promise<DashboardData> {
   const supabase = createClient();
-  const range = getDefaultDateRange(params.period);
+  const range = resolveDashboardRange({
+    period: params.period,
+    customFrom: params.customFrom,
+    customTo: params.customTo,
+  });
+  const prevRange = getPreviousComparableRange(range);
   const effectiveStoreId = params.storeId;
 
-  const saleIds = await fetchSalesIdsInRange(
-    supabase,
-    params.companyId,
-    effectiveStoreId,
-    range.from,
-    range.to,
-  );
+  const [saleIds, prevSaleIds] = await Promise.all([
+    fetchSalesIdsInRange(
+      supabase,
+      params.companyId,
+      effectiveStoreId,
+      range.from,
+      range.to,
+    ),
+    fetchSalesIdsInRange(
+      supabase,
+      params.companyId,
+      effectiveStoreId,
+      prevRange.from,
+      prevRange.to,
+    ),
+  ]);
 
   let salesByDayComputed: SalesByDay[] = [];
   if (saleIds.length > 0) {
@@ -792,16 +893,22 @@ export async function fetchDashboardData(params: {
     );
   }
 
+  const productAggP = aggregateProductsFromSales(supabase, saleIds);
+
   const [
     salesSummary,
-    topProducts,
+    productAgg,
+    previousPeriodSummary,
     salesByCategory,
     purchasesSummary,
+    previousPurchasesSummary,
     stockValue,
     lowStockCount,
+    stockWatchSamples,
   ] = await Promise.all([
     computeSalesSummaryFromIds(supabase, saleIds),
-    getTopProducts(supabase, saleIds, 5),
+    productAggP,
+    computeSalesSummaryFromIds(supabase, prevSaleIds),
     getSalesByCategory(supabase, saleIds),
     getPurchasesSummary(
       supabase,
@@ -810,9 +917,27 @@ export async function fetchDashboardData(params: {
       range.from,
       range.to,
     ),
+    getPurchasesSummary(
+      supabase,
+      params.companyId,
+      effectiveStoreId,
+      prevRange.from,
+      prevRange.to,
+    ),
     getStockValue(supabase, params.companyId, effectiveStoreId),
     getLowStockCount(supabase, params.companyId, effectiveStoreId),
+    getLowStockSamples(supabase, params.companyId, effectiveStoreId, 5),
   ]);
+
+  const byRev = [...productAgg].sort((a, b) => b.revenue - a.revenue);
+  const topProducts = byRev.slice(0, 5);
+  const topByMargin = [...productAgg]
+    .sort((a, b) => b.margin - a.margin)
+    .slice(0, 3);
+  const leastByRevenue = [...productAgg]
+    .filter((p) => p.revenue > 0)
+    .sort((a, b) => a.revenue - b.revenue)
+    .slice(0, 3);
 
   const ticketAverage =
     salesSummary.count > 0
@@ -842,10 +967,15 @@ export async function fetchDashboardData(params: {
     ticketAverage,
     salesByDay: salesByDayComputed,
     topProducts,
+    topByMargin,
+    leastByRevenue,
     salesByCategory,
     purchasesSummary,
     stockValue,
     lowStockCount,
+    stockWatchSamples,
+    previousPeriodSummary,
+    previousPurchasesSummary,
     daySalesSummary,
     dayPurchasesSummary,
   };

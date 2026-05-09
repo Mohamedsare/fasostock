@@ -26,15 +26,29 @@ export type CategorySales = {
   quantity: number;
 };
 
+export type StockWatchSample = {
+  productName: string;
+  quantity: number;
+  threshold: number;
+};
+
 export type DashboardData = {
   salesSummary: SalesSummary;
   ticketAverage: number;
   salesByDay: SalesByDay[];
   topProducts: TopProduct[];
+  /** Top ventes par marge sur la période (propriétaire — panneau performance). */
+  topByMargin: TopProduct[];
+  /** Faible rotation (CA le plus bas sur la période). */
+  leastByRevenue: TopProduct[];
   salesByCategory: CategorySales[];
   purchasesSummary: PurchasesSummary;
   stockValue: StockValue;
   lowStockCount: number;
+  stockWatchSamples: StockWatchSample[];
+  /** Même fenêtre que la période courante, décalée en arrière. */
+  previousPeriodSummary: SalesSummary;
+  previousPurchasesSummary: PurchasesSummary;
   daySalesSummary: SalesSummary;
   dayPurchasesSummary: PurchasesSummary;
 };

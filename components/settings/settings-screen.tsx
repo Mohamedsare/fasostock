@@ -400,14 +400,7 @@ export function SettingsScreen() {
     await Promise.all([
       qc.invalidateQueries({ queryKey: queryKeys.appContext }),
       qc.invalidateQueries({ queryKey: queryKeys.stores(companyId) }),
-      qc.invalidateQueries({
-        queryKey: queryKeys.dashboard({
-          companyId,
-          storeId: ctxStoreId,
-          period: "month",
-          selectedDay: new Date().toISOString().slice(0, 10),
-        }),
-      }),
+      qc.invalidateQueries({ queryKey: ["dashboard"] }),
       qc.invalidateQueries({
         queryKey: queryKeys.sales({
           companyId,

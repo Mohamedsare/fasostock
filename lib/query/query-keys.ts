@@ -1,6 +1,8 @@
 /**
  * Clés TanStack Query — à aligner sur les repositories Flutter / tables Supabase.
  */
+import type { DashboardPeriod } from "@/lib/features/dashboard/date-range";
+
 export const queryKeys = {
   appContext: ["app-context"] as const,
   company: (id: string) => ["company", id] as const,
@@ -53,8 +55,10 @@ export const queryKeys = {
   dashboard: (params: {
     companyId: string;
     storeId: string | null;
-    period: "today" | "week" | "month";
+    period: DashboardPeriod;
     selectedDay: string;
+    customFrom: string | null;
+    customTo: string | null;
   }) => ["dashboard", params] as const,
   reports: (params: {
     companyId: string;

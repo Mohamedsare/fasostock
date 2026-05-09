@@ -52,6 +52,16 @@ body {
   font-family: var(--font-roboto), ui-sans-serif, system-ui, sans-serif;
 }
 
+/* Tableau de bord propriétaire : pas d’ajustement agressif du texte mobile, lisible à 100 % de zoom. */
+.fs-owner-dashboard {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+html.dark .fs-owner-dashboard {
+  color-scheme: dark;
+}
+
 /* Zone tactile minimale mobile (type Flutter 48) */
 .fs-touch-target {
   min-height: 48px;
@@ -107,7 +117,8 @@ body {
   }
 
   html.dark .bg-neutral-50,
-  html.dark .bg-neutral-50\/80 {
+  html.dark .bg-neutral-50\/80,
+  html.dark .bg-neutral-50\/90 {
     background-color: var(--fs-surface-low);
   }
 

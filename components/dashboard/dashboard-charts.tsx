@@ -490,11 +490,14 @@ export function DashboardPieChart({
   categories,
   total,
   legendMax = 6,
+  centerHint = "CA catégories",
 }: {
   categories: CategorySales[];
   total: number;
   /** Nombre de lignes visibles avant scroll dans la légende (mobile vs large). */
   legendMax?: number;
+  /** Ligne au-dessus du montant central ; `null` pour n’afficher que le total. */
+  centerHint?: string | null;
 }) {
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
 
@@ -609,18 +612,20 @@ export function DashboardPieChart({
             );
           })}
 
+          {centerHint ? (
+            <text
+              x={cx}
+              y={cy - 6}
+              textAnchor="middle"
+              className="fill-fs-on-surface-variant"
+              style={{ fontSize: 10, fontWeight: 500 }}
+            >
+              {centerHint}
+            </text>
+          ) : null}
           <text
             x={cx}
-            y={cy - 6}
-            textAnchor="middle"
-            className="fill-fs-on-surface-variant"
-            style={{ fontSize: 10, fontWeight: 500 }}
-          >
-            CA catégories
-          </text>
-          <text
-            x={cx}
-            y={cy + 12}
+            y={centerHint ? cy + 12 : cy + 4}
             textAnchor="middle"
             className="fill-fs-text"
             style={{ fontSize: 15, fontWeight: 700 }}
