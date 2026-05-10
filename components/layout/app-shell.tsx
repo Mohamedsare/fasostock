@@ -1,5 +1,6 @@
 "use client";
 
+import { AppPresenceReporter } from "@/components/presence/app-presence-reporter";
 import { OfflineStrip } from "@/components/offline/offline-strip";
 import { AppShellLoadingOverlay } from "@/components/layout/app-shell-loading-overlay";
 import { AppShellSkeleton } from "@/components/layout/app-shell-skeleton";
@@ -491,6 +492,7 @@ export function AppShell({ children, userEmail }: AppShellProps) {
           ) : null}
         </div>
       </div>
+      <AppPresenceReporter />
     </div>
   );
 }

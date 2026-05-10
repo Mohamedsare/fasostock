@@ -1,5 +1,6 @@
 "use client";
 
+import { ROUTES } from "@/lib/config/routes";
 import { signOutAndRedirect } from "@/lib/auth/sign-out-client";
 import { cn } from "@/lib/utils/cn";
 import { useQueryClient } from "@tanstack/react-query";
@@ -16,6 +17,7 @@ import {
   MdHistory,
   MdLogout,
   MdMenu,
+  MdMap,
   MdMessage,
   MdEmail,
   MdPeople,
@@ -35,6 +37,7 @@ const NAV = [
   { href: "/admin/fonctionnalites", label: "Fonctionnalités", icon: MdTune },
   { href: "/admin/stores", label: "Boutiques", icon: MdStore },
   { href: "/admin/users", label: "Utilisateurs", icon: MdPeople },
+  { href: ROUTES.adminMaps, label: "Maps", icon: MdMap },
   { href: "/admin/audit", label: "Journal d'audit", icon: MdHistory },
   { href: "/admin/app-errors", label: "Erreurs App", icon: MdBugReport },
   { href: "/admin/messages", label: "Messages", icon: MdMessage },

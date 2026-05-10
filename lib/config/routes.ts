@@ -44,6 +44,7 @@ export const ROUTES = {
   adminAi: "/admin/ai",
   adminReports: "/admin/reports",
   adminGpublique: "/admin/gpublique",
+  adminMaps: "/admin/maps",
   adminSettings: "/admin/settings",
 } as const;
 
