@@ -122,6 +122,92 @@ html.dark .fs-owner-dashboard {
     background-color: var(--fs-surface-low);
   }
 
+  html.dark .bg-white,
+  html.dark .bg-white\/95,
+  html.dark .bg-white\/96 {
+    background-color: var(--fs-card);
+  }
+
+  /* Landing marketing: remap des pastels tres clairs vers des surfaces dark. */
+  html.dark #landing-page .bg-\[\#f8f8f8\],
+  html.dark #landing-page .bg-\[\#fbfbfb\],
+  html.dark #landing-page .bg-\[\#f8fafc\],
+  html.dark #landing-page .bg-\[\#fafafa\],
+  html.dark #landing-page .bg-\[\#f3f3f3\],
+  html.dark #landing-page .bg-\[\#fff8f3\],
+  html.dark #landing-page .bg-\[\#fff7f1\],
+  html.dark #landing-page .bg-\[\#fff7f2\],
+  html.dark #landing-page .bg-\[\#fffaf2\],
+  html.dark #landing-page .bg-\[\#fff6f5\],
+  html.dark #landing-page .bg-\[\#fff5ef\],
+  html.dark #landing-page .bg-\[\#fff5ee\],
+  html.dark #landing-page .bg-\[\#fff4ec\],
+  html.dark #landing-page .bg-\[\#fff4fb\],
+  html.dark #landing-page .bg-\[\#fff3ea\],
+  html.dark #landing-page .bg-\[\#fff1e7\],
+  html.dark #landing-page .bg-\[\#ffe8db\],
+  html.dark #landing-page .bg-\[\#f4f9ff\],
+  html.dark #landing-page .bg-\[\#f4fbf6\],
+  html.dark #landing-page .bg-\[\#f3fbfc\],
+  html.dark #landing-page .bg-\[\#f3f7ff\],
+  html.dark #landing-page .bg-\[\#f2fbf6\],
+  html.dark #landing-page .bg-\[\#f1f6ff\],
+  html.dark #landing-page .bg-\[\#eaf2ff\],
+  html.dark #landing-page .bg-\[\#e7f7ef\],
+  html.dark #landing-page .bg-\[\#e7f4ef\],
+  html.dark #landing-page .bg-\[\#f8f4ff\],
+  html.dark #landing-page .bg-\[\#f8fffb\] {
+    background-color: var(--fs-surface-container);
+  }
+
+  html.dark #landing-page .bg-white\/15 {
+    background-color: color-mix(in oklab, var(--fs-card) 72%, transparent);
+  }
+
+  html.dark #landing-page .from-neutral-100 {
+    --tw-gradient-from: color-mix(in oklab, var(--fs-surface-container) 90%, transparent) var(--tw-gradient-from-position);
+    --tw-gradient-to: color-mix(in oklab, var(--fs-surface-container) 0%, transparent) var(--tw-gradient-to-position);
+    --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
+  }
+
+  html.dark #landing-page .to-neutral-200 {
+    --tw-gradient-to: color-mix(in oklab, var(--fs-surface-low) 88%, transparent) var(--tw-gradient-to-position);
+  }
+
+  /* Titres/paragraphes hardcodes en hexa sombre -> lisibles en dark */
+  html.dark #landing-page .text-\[\#0f172a\],
+  html.dark #landing-page .text-\[\#111827\],
+  html.dark #landing-page .text-\[\#17253a\],
+  html.dark #landing-page .text-\[\#1f2937\],
+  html.dark #landing-page .text-\[\#202935\],
+  html.dark #landing-page .text-\[\#202938\],
+  html.dark #landing-page .text-\[\#374151\] {
+    color: var(--fs-text);
+  }
+
+  html.dark #landing-page .text-\[\#4b5563\],
+  html.dark #landing-page .text-\[\#6b7280\] {
+    color: var(--fs-on-surface-variant);
+  }
+
+  /* Bordures pastel trop claires en sombre */
+  html.dark #landing-page .border-\[\#eadfd8\],
+  html.dark #landing-page .border-\[\#f0e5de\],
+  html.dark #landing-page .border-\[\#ffe2d2\],
+  html.dark #landing-page .border-\[\#d7e9ff\],
+  html.dark #landing-page .border-\[\#d9efdf\],
+  html.dark #landing-page .border-\[\#e8defa\],
+  html.dark #landing-page .border-\[\#f3e3c9\],
+  html.dark #landing-page .border-\[\#ffe0dc\],
+  html.dark #landing-page .border-\[\#d7f2f6\],
+  html.dark #landing-page .border-\[\#d8e3ff\],
+  html.dark #landing-page .border-\[\#f8d8ec\],
+  html.dark #landing-page .border-\[\#d5eadf\],
+  html.dark #landing-page .border-\[\#d5e3ff\],
+  html.dark #landing-page .border-\[\#7cd3a9\] {
+    border-color: color-mix(in oklab, white 14%, transparent);
+  }
+
   html.dark .active\:bg-neutral-50:active,
   html.dark .active\:bg-neutral-50\/80:active {
     background-color: var(--fs-surface-container);
@@ -199,6 +285,21 @@ html.dark .fs-owner-dashboard {
 
 .partners-marquee-track {
   animation: partners-marquee 22s linear infinite;
+}
+
+@keyframes testimonials-marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.testimonials-auto-track {
+  width: max-content;
+  animation: testimonials-marquee 34s linear infinite;
+  will-change: transform;
 }
 
 /* =====================================================================
@@ -285,6 +386,19 @@ html.dark .fs-owner-dashboard {
     background-color: rgba(255, 255, 255, 0.985);
     box-shadow: 0 10px 28px -18px rgba(15, 23, 42, 0.32);
     border-bottom-color: rgba(0, 0, 0, 0.1);
+  }
+}
+
+@keyframes fs-header-elevate-dark {
+  from {
+    background-color: rgba(17, 24, 39, 0.78);
+    box-shadow: 0 0 0 0 rgba(0, 0, 0, 0);
+    border-bottom-color: rgba(255, 255, 255, 0.08);
+  }
+  to {
+    background-color: rgba(17, 24, 39, 0.96);
+    box-shadow: 0 12px 30px -18px rgba(0, 0, 0, 0.65);
+    border-bottom-color: rgba(255, 255, 255, 0.12);
   }
 }
 
@@ -402,6 +516,10 @@ html.dark .fs-owner-dashboard {
       animation: fs-header-elevate linear both;
       animation-timeline: scroll(root);
       animation-range: 0 220px;
+    }
+
+    html.dark main > header.sticky {
+      animation-name: fs-header-elevate-dark;
     }
   }
 }

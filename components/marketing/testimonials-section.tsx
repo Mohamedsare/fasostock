@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { MdChevronLeft, MdChevronRight, MdGroups } from "react-icons/md";
+import { MdGroups } from "react-icons/md";
 
 const testimonials = [
   {
@@ -33,12 +32,7 @@ const testimonials = [
     tag: "Quincaillerie",
   },
 ] as const;
-
-function getVisibleCount(width: number) {
-  if (width >= 1024) return 4;
-  if (width >= 640) return 2;
-  return 1;
-}
+const loopTestimonials = [...testimonials, ...testimonials] as const;
 
 type TestimonialsStat = {
   value: string;
@@ -67,29 +61,6 @@ export function TestimonialsSection({
   ctaTitle = DEFAULT_CTA_TITLE,
   ctaSubtitle = DEFAULT_CTA_SUBTITLE,
 }: TestimonialsSectionProps) {
-  const [visibleCount, setVisibleCount] = useState(4);
-  const [index, setIndex] = useState(0);
-
-  useEffect(() => {
-    const onResize = () => setVisibleCount(getVisibleCount(window.innerWidth));
-    onResize();
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
-  }, []);
-
-  const maxIndex = Math.max(0, testimonials.length - visibleCount);
-  const safeIndex = Math.min(index, maxIndex);
-  const visible = useMemo(
-    () => testimonials.slice(safeIndex, safeIndex + visibleCount),
-    [safeIndex, visibleCount],
-  );
-
-  useEffect(() => {
-    if (index > maxIndex) setIndex(maxIndex);
-  }, [index, maxIndex]);
-
-  const dotCount = maxIndex + 1;
-
   return (
     <section className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6 sm:pb-12">
       <div className="rounded-[1.7rem] border border-black/8 bg-[#fbfbfb] px-4 py-6 sm:px-8 sm:py-8">
@@ -106,23 +77,19 @@ export function TestimonialsSection({
           </p>
         </div>
 
-        <div className="mt-6 flex items-center gap-2">
-          <button
-            type="button"
-            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-fs-accent/25 bg-white text-fs-accent disabled:opacity-40"
-            aria-label="Précédent"
-            onClick={() => setIndex((p) => Math.max(0, p - 1))}
-            disabled={safeIndex <= 0}
-          >
-            <MdChevronLeft className="h-5 w-5" />
-          </button>
-          <div data-fs-stagger className="grid flex-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {visible.map((t) => (
-              <article key={`${t.name}-${t.tag}`} className="rounded-2xl border border-black/10 bg-white p-4 shadow-[0_12px_26px_-22px_rgba(15,23,42,0.45)]">
+        <div className="mt-6 overflow-hidden">
+          <div data-fs-stagger className="testimonials-auto-track flex items-stretch gap-3">
+            {loopTestimonials.map((t, i) => (
+              <article
+                key={`${t.name}-${t.tag}-${i}`}
+                className="flex min-h-[320px] w-[min(82vw,300px)] shrink-0 flex-col rounded-2xl border border-black/10 bg-white p-4 shadow-[0_12px_26px_-22px_rgba(15,23,42,0.45)] sm:w-[min(44vw,320px)] lg:w-[320px]"
+              >
                 <p className="text-fs-accent">❝</p>
-                <p className="mt-1 text-sm leading-relaxed text-neutral-700">{t.quote}</p>
+                <p className="mt-1 font-['Inter',ui-sans-serif,system-ui,sans-serif] text-[0.9rem] font-medium italic leading-[1.72] tracking-[0.003em] text-[#17253a]">
+                  {t.quote}
+                </p>
                 <p className="mt-3 text-sm text-fs-accent">★★★★★</p>
-                <div className="mt-3 border-t border-black/8 pt-3">
+                <div className="mt-auto border-t border-black/8 pt-3">
                   <div className="flex items-center gap-2.5">
                     <div className="h-11 w-11 rounded-full bg-[linear-gradient(135deg,#d9d9d9,#a8a8a8)] ring-1 ring-black/10" />
                     <div>
@@ -137,27 +104,6 @@ export function TestimonialsSection({
               </article>
             ))}
           </div>
-          <button
-            type="button"
-            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-fs-accent/25 bg-white text-fs-accent disabled:opacity-40"
-            aria-label="Suivant"
-            onClick={() => setIndex((p) => Math.min(maxIndex, p + 1))}
-            disabled={safeIndex >= maxIndex}
-          >
-            <MdChevronRight className="h-5 w-5" />
-          </button>
-        </div>
-
-        <div className="mt-4 flex items-center justify-center gap-2">
-          {Array.from({ length: dotCount }).map((_, i) => (
-            <button
-              key={i}
-              type="button"
-              onClick={() => setIndex(i)}
-              className={i === safeIndex ? "h-2.5 w-2.5 rounded-full bg-fs-accent" : "h-2.5 w-2.5 rounded-full bg-neutral-300"}
-              aria-label={`Aller au slide ${i + 1}`}
-            />
-          ))}
         </div>
 
         <div className="mt-4 overflow-hidden rounded-xl border border-fs-accent/25 bg-[#fff7f1]">

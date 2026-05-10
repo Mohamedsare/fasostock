@@ -294,7 +294,10 @@ export default async function Home() {
     "Rejoignez la communauté FasoStock et faites passer votre commerce au niveau supérieur.";
 
   return (
-    <main className="min-h-dvh bg-[radial-gradient(circle_at_top,rgba(232,93,44,0.14),transparent_42%),linear-gradient(to_bottom,#fff,#fff7f3)] text-neutral-900">
+    <main
+      id="landing-page"
+      className="min-h-dvh bg-[radial-gradient(circle_at_top,rgba(232,93,44,0.14),transparent_42%),linear-gradient(to_bottom,#fff,#fff7f3)] text-neutral-900 dark:bg-[radial-gradient(circle_at_top,rgba(232,93,44,0.22),transparent_42%),linear-gradient(to_bottom,#0b1220,#111827)] dark:text-neutral-100"
+    >
       <ScrollProgress />
       <SiteHeader />
 
