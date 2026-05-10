@@ -1,8 +1,12 @@
-/** Canal Realtime Presence partagé (web app ⇄ tableau super-admin). */
+/** Canal Realtime Presence partagé (web app ⇄ landing ⇄ tableau super-admin). */
 export const APP_WEB_PRESENCE_CHANNEL = "app_web_presence_v1";
 
+const VISITOR_STORAGE_KEY = "fs_public_presence_vid";
+
+export type PresenceSurface = "web" | "landing";
+
 export type AppWebPresencePayload = {
-  surface: "web";
+  surface: PresenceSurface;
   user_id: string;
   email: string | null;
   company_id: string;
@@ -15,6 +19,21 @@ export type AppWebPresencePayload = {
   ts: number;
 };
 
+/** Identifiant anonyme stable par navigateur (visiteurs sans compte). */
+export function getOrCreateLandingVisitorId(): string {
+  if (typeof window === "undefined") return "";
+  try {
+    let id = localStorage.getItem(VISITOR_STORAGE_KEY);
+    if (!id || id.length < 8) {
+      id = crypto.randomUUID();
+      localStorage.setItem(VISITOR_STORAGE_KEY, id);
+    }
+    return id;
+  } catch {
+    return `v-${Date.now()}`;
+  }
+}
+
 /** Aplatit l’état `presenceState()` sans dépendre des types génériques internes Supabase. */
 export function flattenAppWebPresence(state: Record<string, unknown>): AppWebPresencePayload[] {
   const out: AppWebPresencePayload[] = [];
@@ -23,10 +42,10 @@ export function flattenAppWebPresence(state: Record<string, unknown>): AppWebPre
     for (const meta of metasUnknown) {
       if (!meta || typeof meta !== "object") continue;
       const m = meta as Record<string, unknown>;
-      if (m.surface !== "web") continue;
+      if (m.surface !== "web" && m.surface !== "landing") continue;
       if (typeof m.user_id !== "string" || !m.user_id) continue;
       out.push({
-        surface: "web",
+        surface: m.surface === "landing" ? "landing" : "web",
         user_id: m.user_id,
         email: typeof m.email === "string" ? m.email : m.email == null ? null : String(m.email),
         company_id: typeof m.company_id === "string" ? m.company_id : "",

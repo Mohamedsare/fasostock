@@ -48,17 +48,23 @@ function initialsFromEmail(email: string | null, fallback: string): string {
   return (letters || part.slice(0, 2)).toUpperCase() || "?";
 }
 
+function rowInitials(u: AppWebPresencePayload): string {
+  if (u.surface === "landing" && !u.email) return "VI";
+  return initialsFromEmail(u.email, u.user_id);
+}
+
 export function AdminMapsScreen() {
   const [users, setUsers] = useState<AppWebPresencePayload[]>([]);
 
   const refresh = useCallback((raw: Record<string, unknown>) => {
     const flat = flattenAppWebPresence(raw);
-    const byUser = new Map<string, AppWebPresencePayload>();
+    const byKey = new Map<string, AppWebPresencePayload>();
     for (const u of flat) {
-      const prev = byUser.get(u.user_id);
-      if (!prev || u.ts >= prev.ts) byUser.set(u.user_id, u);
+      const k = `${u.surface}:${u.user_id}`;
+      const prev = byKey.get(k);
+      if (!prev || u.ts >= prev.ts) byKey.set(k, u);
     }
-    setUsers([...byUser.values()]);
+    setUsers([...byKey.values()]);
   }, []);
 
   useEffect(() => {
@@ -87,7 +93,21 @@ export function AdminMapsScreen() {
     [users],
   );
 
-  const onMap = users.filter((u) => u.lat != null && u.lng != null).length;
+  const withGps = useMemo(
+    () =>
+      users.filter(
+        (u) =>
+          u.lat != null &&
+          u.lng != null &&
+          Number.isFinite(u.lat) &&
+          Number.isFinite(u.lng),
+      ).length,
+    [users],
+  );
+  const approxOnMap = users.length - withGps;
+
+  const nApp = useMemo(() => users.filter((u) => u.surface === "web").length, [users]);
+  const nSite = useMemo(() => users.filter((u) => u.surface === "landing").length, [users]);
 
   return (
     <div className="min-h-dvh bg-linear-to-br from-slate-50 via-white to-slate-100/90 px-3 py-5 sm:px-5 sm:py-6 md:px-7 md:py-7">
@@ -111,7 +131,9 @@ export function AdminMapsScreen() {
                   Live
                 </span>
                 <span className="text-xs font-medium text-slate-500">
-                  {sorted.length} · {onMap} carte
+                  {sorted.length} session{sorted.length !== 1 ? "s" : ""} · {nApp} app · {nSite} site ·{" "}
+                  {withGps} GPS
+                  {approxOnMap > 0 ? ` · ${approxOnMap} indicatif` : ""}
                 </span>
               </div>
             </div>
@@ -136,29 +158,50 @@ export function AdminMapsScreen() {
                     <MdMyLocation className="h-6 w-6" aria-hidden />
                   </div>
                   <p className="text-sm font-medium text-slate-500">Aucune session</p>
-                  <p className="max-w-[240px] text-[11px] leading-snug text-slate-400">
-                    Super-admin non compté · ouvrez <span className="font-mono text-slate-500">/dashboard</span> avec un compte métier.
+                  <p className="max-w-[260px] text-[11px] leading-snug text-slate-400">
+                    Super-admin exclu. Ouvrez <span className="font-mono text-slate-500">/</span> ou{" "}
+                    <span className="font-mono text-slate-500">/dashboard</span> dans un autre onglet.
                   </p>
                 </li>
               ) : (
                 sorted.map((u) => (
                   <li
-                    key={u.user_id}
+                    key={`${u.surface}-${u.user_id}`}
                     className="group rounded-xl border border-transparent bg-slate-50/80 px-2.5 py-2 transition-colors hover:border-slate-200/80 hover:bg-white"
                   >
                     <div className="flex items-center gap-2.5">
                       <div
                         className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-[11px] font-bold text-white shadow-sm"
-                        style={{ background: `linear-gradient(145deg, ${ACCENT}, #c2410c)` }}
+                        style={{
+                          background:
+                            u.surface === "landing"
+                              ? "linear-gradient(145deg, #0891b2, #0e7490)"
+                              : `linear-gradient(145deg, ${ACCENT}, #c2410c)`,
+                        }}
                       >
-                        {initialsFromEmail(u.email, u.user_id)}
+                        {rowInitials(u)}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-[13px] font-semibold text-slate-900">
-                          {u.email ?? u.user_id.slice(0, 8)}
-                        </p>
+                        <div className="flex min-w-0 items-center gap-1.5">
+                          <p className="truncate text-[13px] font-semibold text-slate-900">
+                            {u.surface === "landing"
+                              ? (u.email ?? "Visiteur")
+                              : (u.email ?? u.user_id.slice(0, 8))}
+                          </p>
+                          <span
+                            className={`shrink-0 rounded-md px-1.5 py-px text-[9px] font-bold uppercase tracking-wide ${
+                              u.surface === "landing"
+                                ? "bg-cyan-500/15 text-cyan-800"
+                                : "bg-orange-500/15 text-orange-900"
+                            }`}
+                          >
+                            {u.surface === "landing" ? "Site" : "App"}
+                          </span>
+                        </div>
                         {u.company_name ? (
                           <p className="truncate text-[11px] text-slate-500">{u.company_name}</p>
+                        ) : u.surface === "landing" ? (
+                          <p className="truncate text-[11px] text-slate-400">Page publique</p>
                         ) : null}
                         <p className="mt-0.5 truncate font-mono text-[10px] text-slate-400">
                           {u.path || "/"}

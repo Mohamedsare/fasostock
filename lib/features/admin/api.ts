@@ -18,6 +18,7 @@ import type {
   AdminPublicLandingSetting,
   AdminNewsletterSubscriber,
   AdminCockpitData,
+  AdminCockpitPlatformMetrics,
   AdminCompanyLite,
   AdminStoreLite,
   AdminUserRoleLite,
@@ -875,6 +876,8 @@ export async function adminExecuteAiAction(params: {
   return { message: String(parsed.message ?? "Action executee") };
 }
 
+const COCKPIT_SALES_LOAD_CAP = 15_000;
+
 export async function adminGetCockpitData(): Promise<AdminCockpitData> {
   const supabase = createClient();
 
@@ -886,6 +889,7 @@ export async function adminGetCockpitData(): Promise<AdminCockpitData> {
     subscriptionsRes,
     auditsRes,
     appErrorsRes,
+    metricsRes,
   ] = await Promise.all([
     supabase.from("companies").select("id, name, is_active, created_at"),
     supabase.from("stores").select("id, company_id, name, city, is_active"),
@@ -895,7 +899,7 @@ export async function adminGetCockpitData(): Promise<AdminCockpitData> {
       .select("id, company_id, store_id, total, status, created_at")
       .eq("status", "completed")
       .order("created_at", { ascending: false })
-      .limit(5000),
+      .limit(COCKPIT_SALES_LOAD_CAP),
     supabase
       .from("company_subscriptions")
       .select("id, company_id, plan_code, status, amount_fcfa, started_at, ends_at, trial_ends_at, created_at")
@@ -905,12 +909,13 @@ export async function adminGetCockpitData(): Promise<AdminCockpitData> {
       .from("audit_logs")
       .select("id, company_id, entity_type, action, created_at")
       .order("created_at", { ascending: false })
-      .limit(1000),
+      .limit(2500),
     supabase
       .from("app_error_logs")
       .select("id, company_id, level, message, created_at")
       .order("created_at", { ascending: false })
       .limit(1000),
+    supabase.rpc("admin_cockpit_dashboard_metrics"),
   ]);
 
   if (companiesRes.error) throw mapSupabaseError(companiesRes.error);
@@ -980,5 +985,27 @@ export async function adminGetCockpitData(): Promise<AdminCockpitData> {
         createdAt: String(r.created_at ?? ""),
       }));
 
-  return { companies, stores, userRoles, sales, subscriptions, audits, appErrors };
+  let platformMetrics: AdminCockpitPlatformMetrics | null = null;
+  if (!metricsRes.error && metricsRes.data != null && typeof metricsRes.data === "object") {
+    const m = metricsRes.data as Record<string, unknown>;
+    platformMetrics = {
+      completedSalesCount: toNum(m.completed_sales_count),
+      completedSalesTotal: toNum(m.completed_sales_total),
+      productsCount: toNum(m.products_count),
+      customersCount: toNum(m.customers_count),
+      auditDistinctUsers24h: toNum(m.audit_distinct_users_24h),
+    };
+  }
+
+  return {
+    companies,
+    stores,
+    userRoles,
+    sales,
+    subscriptions,
+    audits,
+    appErrors,
+    platformMetrics,
+    salesLoadedCap: COCKPIT_SALES_LOAD_CAP,
+  };
 }

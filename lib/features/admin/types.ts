@@ -181,6 +181,15 @@ export type AdminAppErrorLite = {
   createdAt: string;
 };
 
+/** Agrégats SQL exacts (RPC `admin_cockpit_dashboard_metrics`) — indépendants de la limite de lignes chargées. */
+export type AdminCockpitPlatformMetrics = {
+  completedSalesCount: number;
+  completedSalesTotal: number;
+  productsCount: number;
+  customersCount: number;
+  auditDistinctUsers24h: number;
+};
+
 export type AdminCockpitData = {
   companies: AdminCompanyLite[];
   stores: AdminStoreLite[];
@@ -189,6 +198,10 @@ export type AdminCockpitData = {
   subscriptions: AdminSubscriptionRow[];
   audits: AdminAuditLite[];
   appErrors: AdminAppErrorLite[];
+  /** null si la RPC n’est pas encore déployée ou erreur réseau. */
+  platformMetrics: AdminCockpitPlatformMetrics | null;
+  /** Nombre de ventes complétées chargées pour graphiques / filtres (≤ cap). */
+  salesLoadedCap: number;
 };
 
 export type AdminSubscriptionPlanLite = {
