@@ -3,6 +3,7 @@
 import { CreatePurchaseDialog } from "@/components/purchases/create-purchase-dialog";
 import type { CreatePurchasePayload } from "@/components/purchases/create-purchase-dialog";
 import { PurchaseDetailDialog } from "@/components/purchases/purchase-detail-dialog";
+import { FsHorizontalScroll } from "@/components/ui/fs-horizontal-scroll";
 import { FsCard, FsPage, fsInputClass } from "@/components/ui/fs-screen-primitives";
 import { FsPullToRefresh } from "@/components/ui/fs-pull-to-refresh";
 import { P } from "@/lib/constants/permissions";
@@ -515,7 +516,7 @@ export function PurchasesScreen() {
         {!purchasesQ.isLoading && !purchasesQ.isError && rows.length > 0 ? (
           <>
             <FsCard className="overflow-hidden p-0" padding="p-0">
-              <div className="overflow-x-auto overscroll-x-contain [-webkit-overflow-scrolling:touch] touch-pan-x">
+              <FsHorizontalScroll className="touch-pan-x">
                 <table className="w-full min-w-[880px] border-collapse text-left text-sm">
                   <thead>
                     <tr className="border-b border-black/6 bg-fs-surface-container/80">
@@ -597,7 +598,7 @@ export function PurchasesScreen() {
                     ))}
                   </tbody>
                 </table>
-              </div>
+              </FsHorizontalScroll>
             </FsCard>
 
             {pageCount > 1 ? (

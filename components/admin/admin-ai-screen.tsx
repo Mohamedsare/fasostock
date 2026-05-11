@@ -1,6 +1,7 @@
 "use client";
 
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { FsHorizontalScroll } from "@/components/ui/fs-horizontal-scroll";
 import { adminAskAiAssistant, adminExecuteAiAction, adminListCompanies } from "@/lib/features/admin/api";
 import { messageFromUnknownError, toast } from "@/lib/toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -179,7 +180,7 @@ export function AdminAiScreen() {
                   </div>
                   <div>
                     <p className="mb-2 text-sm font-semibold text-slate-900">{m.structured.table_title}</p>
-                    <div className="overflow-x-auto rounded-xl border border-slate-200">
+                    <FsHorizontalScroll className="rounded-xl border border-slate-200">
                       <table className="min-w-full text-sm">
                         <thead className="bg-slate-50">
                           <tr>
@@ -202,7 +203,7 @@ export function AdminAiScreen() {
                           ))}
                         </tbody>
                       </table>
-                    </div>
+                    </FsHorizontalScroll>
                   </div>
                   <div className="grid gap-3 md:grid-cols-2">
                     <div className="rounded-xl border border-slate-200 bg-white p-3">

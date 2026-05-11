@@ -41,6 +41,7 @@ import {
   DashboardLineChart,
   DashboardPieChart,
 } from "@/components/dashboard/dashboard-charts";
+import { FsHorizontalScroll } from "@/components/ui/fs-horizontal-scroll";
 import { getDefaultDateRange } from "@/lib/features/dashboard/date-range";
 
 const OWNER_ACCENT = "#FF6B35";
@@ -1098,9 +1099,9 @@ export function OwnerDashboardUi(props: OwnerDashboardUiProps) {
         {/* Actions rapides */}
         <section className="mt-8">
           <h3 className="mb-3 text-base font-extrabold text-neutral-900">Actions rapides</h3>
-          <div
+          <FsHorizontalScroll
             className={cn(
-              "flex gap-3 overflow-x-auto overflow-y-visible pb-2 pt-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+              "flex gap-3 overflow-y-visible pb-2 pt-0.5",
               "snap-x snap-mandatory min-[1100px]:grid min-[1100px]:snap-none min-[1100px]:grid-cols-8 min-[1100px]:gap-3 min-[1100px]:overflow-visible",
             )}
           >
@@ -1130,7 +1131,7 @@ export function OwnerDashboardUi(props: OwnerDashboardUiProps) {
                 </div>
               </Link>
             ))}
-          </div>
+          </FsHorizontalScroll>
         </section>
 
         <p className="mt-6 text-center text-xs font-medium text-neutral-400 min-[900px]:text-[11px]">

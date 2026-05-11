@@ -11,3 +11,26 @@
 .warehouse-tabbar-scroll::-webkit-scrollbar {
   display: none;
 }
+
+/* Desktop : barre fine pour découvrir le scroll (tactile : inchangé, sans barre). */
+@media (pointer: fine) {
+  .warehouse-tabbar-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--fs-text) 30%, transparent) transparent;
+    -ms-overflow-style: auto;
+  }
+
+  .warehouse-tabbar-scroll::-webkit-scrollbar {
+    display: block;
+    height: 6px;
+  }
+
+  .warehouse-tabbar-scroll::-webkit-scrollbar-thumb {
+    border-radius: 9999px;
+    background: color-mix(in srgb, var(--fs-text) 28%, transparent);
+  }
+
+  .warehouse-tabbar-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}

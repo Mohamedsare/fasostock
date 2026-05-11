@@ -1,6 +1,7 @@
 "use client";
 
 import { AdminCard } from "@/components/admin/admin-page-header";
+import { FsHorizontalScroll } from "@/components/ui/fs-horizontal-scroll";
 import { cn } from "@/lib/utils/cn";
 import type { ReactNode } from "react";
 
@@ -204,7 +205,7 @@ export function ChurnRiskTable({
       <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-red-700/80">Rétention</p>
       <p className="mt-1 text-sm font-bold text-slate-900">Risque de désabonnement</p>
       <p className="mt-1 text-xs text-slate-600">Score indicatif (inactivité, abonnement, baisse d’activité).</p>
-      <div className="mt-3 overflow-x-auto">
+      <FsHorizontalScroll className="mt-3">
         <table className="w-full min-w-[460px] text-left text-xs">
           <thead>
             <tr className="text-slate-500">
@@ -223,7 +224,7 @@ export function ChurnRiskTable({
             ))}
           </tbody>
         </table>
-      </div>
+      </FsHorizontalScroll>
     </AdminCard>
   );
 }
@@ -238,7 +239,7 @@ export function AdoptionTable({
       <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-emerald-700/85">Engagement</p>
       <p className="mt-1 text-sm font-bold text-slate-900">Adoption par entreprise</p>
       <p className="mt-1 text-xs text-slate-600">Score interne (ventes, utilisateurs actifs récents).</p>
-      <div className="mt-3 overflow-x-auto">
+      <FsHorizontalScroll className="mt-3">
         <table className="w-full min-w-[460px] text-left text-xs">
           <thead>
             <tr className="text-slate-500">
@@ -259,7 +260,7 @@ export function AdoptionTable({
             ))}
           </tbody>
         </table>
-      </div>
+      </FsHorizontalScroll>
     </AdminCard>
   );
 }

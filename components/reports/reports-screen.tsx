@@ -14,6 +14,7 @@ import {
   FsSectionLabel,
   fsInputClass,
 } from "@/components/ui/fs-screen-primitives";
+import { FsHorizontalScroll } from "@/components/ui/fs-horizontal-scroll";
 import { ROUTES } from "@/lib/config/routes";
 import { P } from "@/lib/constants/permissions";
 import { fetchReportsPageData } from "@/lib/features/dashboard/api";
@@ -698,7 +699,7 @@ export function ReportsScreen() {
                   Aucune vente sur la période
                 </p>
               ) : (
-                <div className="overflow-x-auto">
+                <FsHorizontalScroll>
                   <table className="w-full min-w-[520px] text-left text-xs">
                     <thead>
                       <tr className="bg-fs-surface-container/80 text-[11px] text-neutral-600">
@@ -745,7 +746,7 @@ export function ReportsScreen() {
                       ))}
                     </tbody>
                   </table>
-                </div>
+                </FsHorizontalScroll>
               )}
 
               {d.leastProducts.length > 0 ? (

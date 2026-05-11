@@ -1,6 +1,7 @@
 "use client";
 
 import { AdminCard } from "@/components/admin/admin-page-header";
+import { FsHorizontalScroll } from "@/components/ui/fs-horizontal-scroll";
 import { cn } from "@/lib/utils/cn";
 import type { ReactNode } from "react";
 import { MdContentCopy } from "react-icons/md";
@@ -146,7 +147,7 @@ export function ActivityRevenueMatrix({
   return (
     <AdminCard className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
       <p className="text-sm font-bold text-slate-900">Matrice activité / revenu</p>
-      <div className="mt-3 overflow-x-auto">
+      <FsHorizontalScroll className="mt-3">
         <table className="w-full min-w-[560px] text-left text-xs">
           <thead>
             <tr className="text-slate-500">
@@ -171,7 +172,7 @@ export function ActivityRevenueMatrix({
             ))}
           </tbody>
         </table>
-      </div>
+      </FsHorizontalScroll>
     </AdminCard>
   );
 }
@@ -242,7 +243,7 @@ export function CompanyReportTable({
   return (
     <AdminCard className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
       <p className="text-sm font-bold text-slate-900">Rapports par entreprise</p>
-      <div className="mt-3 overflow-x-auto">
+      <FsHorizontalScroll className="mt-3">
         <table className="w-full min-w-[1100px] text-left text-xs">
           <thead className="text-slate-500">
             <tr>
@@ -271,7 +272,7 @@ export function CompanyReportTable({
             ))}
           </tbody>
         </table>
-      </div>
+      </FsHorizontalScroll>
     </AdminCard>
   );
 }
@@ -340,7 +341,7 @@ export function FollowUpClientsTable({
   return (
     <AdminCard className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
       <p className="text-sm font-bold text-slate-900">Clients à relancer</p>
-      <div className="mt-3 overflow-x-auto">
+      <FsHorizontalScroll className="mt-3">
         <table className="w-full min-w-[760px] text-left text-xs">
           <thead className="text-slate-500">
             <tr>
@@ -366,7 +367,7 @@ export function FollowUpClientsTable({
             ))}
           </tbody>
         </table>
-      </div>
+      </FsHorizontalScroll>
     </AdminCard>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { AdminCard, AdminPageHeader } from "@/components/admin/admin-page-header";
+import { FsHorizontalScroll } from "@/components/ui/fs-horizontal-scroll";
 import {
   adminDeleteCompany,
   adminDeleteStore,
@@ -110,8 +111,9 @@ export function AdminCompaniesScreen() {
         description="Gestion des entreprises et de leurs boutiques"
       />
 
-      <AdminCard padding="p-0" className="overflow-x-auto">
-        <table className="min-w-[800px] w-full text-left text-sm">
+      <AdminCard padding="p-0">
+        <FsHorizontalScroll>
+          <table className="min-w-[800px] w-full text-left text-sm">
           <thead className="border-b border-slate-200 bg-slate-50 text-xs font-bold uppercase text-slate-600">
             <tr>
               <th className="w-10 p-3" />
@@ -227,6 +229,7 @@ export function AdminCompaniesScreen() {
             })}
           </tbody>
         </table>
+        </FsHorizontalScroll>
       </AdminCard>
     </div>
   );

@@ -1,5 +1,6 @@
 "use client";
 
+import { FsHorizontalScroll } from "@/components/ui/fs-horizontal-scroll";
 import { fsInputClass } from "@/components/ui/fs-screen-primitives";
 import { createCustomer, listCustomers } from "@/lib/features/customers/api";
 import type { Customer } from "@/lib/features/customers/types";
@@ -561,7 +562,7 @@ export function WarehouseDispatchDialog({
                     </div>
                     <WhCategoryChipsRow categories={categories} selectedId={categoryId} onSelect={setCategoryId} />
                   </div>
-                  <div className="min-h-[120px] max-h-[min(360px,42vh)] overflow-x-auto overflow-y-hidden px-3 pb-3 [-ms-overflow-style:auto] [scrollbar-width:thin]">
+                  <FsHorizontalScroll className="min-h-[120px] max-h-[min(360px,42vh)] overflow-y-hidden px-3 pb-3">
                     {filteredStrip.length === 0 ? (
                       <div className="flex h-full min-h-[120px] flex-col items-center justify-center text-sm text-neutral-600">
                         {search.trim() ? "Aucun résultat" : "Aucun produit actif"}
@@ -624,7 +625,7 @@ export function WarehouseDispatchDialog({
                         })}
                       </div>
                     )}
-                  </div>
+                  </FsHorizontalScroll>
                 </div>
               </div>
             </div>
@@ -649,7 +650,7 @@ export function WarehouseDispatchDialog({
                       Les lignes s’affichent en tableau comme sur la caisse « Facture tab. ».
                     </p>
                   ) : (
-                    <div className="overflow-x-auto pb-2">
+                    <FsHorizontalScroll className="pb-2">
                       <table className="w-full min-w-[520px] border-collapse text-left text-[13px]">
                         <thead>
                           <tr className="border-b border-[#E5E7EB] bg-[#F8F9FA] text-[11px] font-semibold uppercase tracking-wide text-[#6B7280]">
@@ -768,7 +769,7 @@ export function WarehouseDispatchDialog({
                           })}
                         </tbody>
                       </table>
-                    </div>
+                    </FsHorizontalScroll>
                   )}
                 </div>
 

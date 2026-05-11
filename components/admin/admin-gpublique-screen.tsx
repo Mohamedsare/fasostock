@@ -2,6 +2,7 @@
 
 import { revalidateLandingCache } from "@/app/(admin)/admin/gpublique/actions";
 import { AdminCard } from "@/components/admin/admin-page-header";
+import { FsHorizontalScroll } from "@/components/ui/fs-horizontal-scroll";
 import {
   adminCreatePublicPartner,
   adminDeletePublicPartner,
@@ -331,10 +332,10 @@ export function AdminGPubliqueScreen() {
         </div>
       </header>
 
-      <div
+      <FsHorizontalScroll
         role="tablist"
         aria-label="Sections GPublique"
-        className="sticky top-0 z-20 -mx-4 flex gap-1.5 overflow-x-auto overscroll-x-contain border-b border-slate-200/90 bg-slate-50/95 px-4 py-2 backdrop-blur-md [-webkit-overflow-scrolling:touch] sm:static sm:mx-0 sm:mb-1 sm:flex-wrap sm:gap-2 sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none"
+        className="sticky top-0 z-20 -mx-4 flex gap-1.5 border-b border-slate-200/90 bg-slate-50/95 px-4 py-2 backdrop-blur-md sm:static sm:mx-0 sm:mb-1 sm:flex-wrap sm:gap-2 sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none"
       >
         {(
           [
@@ -366,7 +367,7 @@ export function AdminGPubliqueScreen() {
             </span>
           </button>
         ))}
-      </div>
+      </FsHorizontalScroll>
 
       <div className="space-y-4 md:space-y-5">
         {activeTab === "general" && (

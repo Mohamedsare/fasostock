@@ -10,6 +10,7 @@ import {
   FsQueryErrorPanel,
   fsInputClass,
 } from "@/components/ui/fs-screen-primitives";
+import { FsHorizontalScroll } from "@/components/ui/fs-horizontal-scroll";
 import { P } from "@/lib/constants/permissions";
 import {
   adjustStockAtomic,
@@ -702,7 +703,7 @@ export function InventoryScreen() {
                 </p>
               ) : (
                 <>
-                  <div className="overflow-x-auto">
+                  <FsHorizontalScroll>
                     <table className="w-full min-w-[920px] border-collapse text-left text-sm">
                       <thead>
                         <tr className="border-b border-black/[0.06] bg-fs-surface-container/80">
@@ -761,7 +762,7 @@ export function InventoryScreen() {
                         ))}
                       </tbody>
                     </table>
-                  </div>
+                  </FsHorizontalScroll>
                   <InventoryPagination
                     totalCount={filteredForTable.length}
                     pageSize={INVENTORY_PAGE_SIZE}
@@ -789,7 +790,7 @@ export function InventoryScreen() {
                 <p className="px-4 py-10 text-center text-sm text-neutral-600">Aucun mouvement récent</p>
               ) : (
                 <>
-                  <div className="overflow-x-auto">
+                  <FsHorizontalScroll>
                     <table className="w-full min-w-[720px] border-collapse text-left text-sm">
                       <thead>
                         <tr className="border-b border-black/[0.06] bg-fs-surface-container/80">
@@ -806,7 +807,7 @@ export function InventoryScreen() {
                         ))}
                       </tbody>
                     </table>
-                  </div>
+                  </FsHorizontalScroll>
                   <InventoryPagination
                     totalCount={movTotal}
                     pageSize={MOVEMENTS_PAGE_SIZE}

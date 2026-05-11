@@ -5,6 +5,7 @@ import { CreditRepaymentReceiptDialog } from "@/components/credit/credit-repayme
 import { useDeferredValue, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { MdChevronLeft, MdChevronRight, MdDeleteOutline, MdSearch } from "react-icons/md";
+import { FsHorizontalScroll } from "@/components/ui/fs-horizontal-scroll";
 import { FsCard, fsInputClass } from "@/components/ui/fs-screen-primitives";
 import { createCustomer, listCustomers } from "@/lib/features/customers/api";
 import {
@@ -648,7 +649,7 @@ export function LegacyCreditSection({
         ) : openRowsSortedForSearch.length === 0 ? (
           <div className="py-5 text-center text-sm text-neutral-500">Aucun crédit libre ouvert.</div>
         ) : (
-          <div className="overflow-x-auto">
+          <FsHorizontalScroll>
             <table className="w-full min-w-[1220px] text-left text-[13px] [&_thead_th]:whitespace-nowrap [&_tbody_td]:whitespace-nowrap">
               <thead>
                 <tr className="border-b border-black/10">
@@ -754,7 +755,7 @@ export function LegacyCreditSection({
                 ))}
               </tbody>
             </table>
-          </div>
+          </FsHorizontalScroll>
         )}
         {openPageCount > 1 ? (
           <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
@@ -808,7 +809,7 @@ export function LegacyCreditSection({
               <span className="text-fs-accent">{showSettledLegacy ? "▼" : "▶"}</span>
             </button>
             {showSettledLegacy ? (
-              <div className="mt-2 overflow-x-auto">
+              <FsHorizontalScroll className="mt-2">
                 <p className="mb-2 text-xs text-neutral-600">
                   Crédit libre et ventes à crédit entièrement recouvrées — « Paiements » (libre) ou « Voir »
                   (vente).
@@ -1014,7 +1015,7 @@ export function LegacyCreditSection({
                     </button>
                   </div>
                 ) : null}
-              </div>
+              </FsHorizontalScroll>
             ) : null}
           </div>
         ) : null}

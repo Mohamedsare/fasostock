@@ -26,6 +26,7 @@ import { messageFromUnknownError, toast } from "@/lib/toast";
 import { cn } from "@/lib/utils/cn";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { SaleDetailModal } from "./sale-detail-modal";
+import { FsHorizontalScroll } from "@/components/ui/fs-horizontal-scroll";
 import { FsPage, FsCard, fsInputClass } from "@/components/ui/fs-screen-primitives";
 import {
   MdAdd,
@@ -651,7 +652,7 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
       ) : (
         <>
           {isWide ? (
-            <div className="overflow-x-auto rounded-xl border border-black/[0.06] bg-fs-card shadow-sm">
+            <FsHorizontalScroll className="rounded-xl border border-black/[0.06] bg-fs-card shadow-sm">
               <table className="min-w-full text-sm [&_th]:whitespace-nowrap [&_td]:whitespace-nowrap">
                 <thead className="bg-neutral-100/80 text-left text-xs font-medium text-neutral-600">
                   <tr>
@@ -754,7 +755,7 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
                   ))}
                 </tbody>
               </table>
-            </div>
+            </FsHorizontalScroll>
           ) : null}
 
           {!isWide ? (

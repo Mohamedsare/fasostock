@@ -16,7 +16,7 @@ export default function SetupPage() {
           </code>{" "}
           avec&nbsp;:
         </p>
-        <pre className="mt-4 overflow-x-auto rounded-xl bg-neutral-900 p-4 text-xs text-neutral-100">
+        <pre className="fs-scroll-x mt-4 rounded-xl bg-neutral-900 p-4 text-xs text-neutral-100">
           {`NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...`}
         </pre>

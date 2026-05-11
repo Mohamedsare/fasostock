@@ -8,6 +8,7 @@ import {
   FsQueryErrorPanel,
   fsInputClass,
 } from "@/components/ui/fs-screen-primitives";
+import { FsHorizontalScroll } from "@/components/ui/fs-horizontal-scroll";
 import { P } from "@/lib/constants/permissions";
 import {
   createCustomer,
@@ -473,7 +474,8 @@ export function CustomersScreen() {
       {!customersQ.isLoading && !customersQ.isError && filtered.length > 0 ? (
         <>
           {isWide ? (
-            <FsCard className="overflow-x-auto p-0" padding="p-0">
+            <FsCard className="p-0" padding="p-0">
+              <FsHorizontalScroll>
               <table className="w-full min-w-[880px] border-collapse text-left text-sm">
                 <thead>
                   <tr className="border-b border-black/[0.06] bg-fs-surface-container/80">
@@ -534,6 +536,7 @@ export function CustomersScreen() {
                   ))}
                 </tbody>
               </table>
+              </FsHorizontalScroll>
             </FsCard>
           ) : (
             <div className="grid grid-cols-1 gap-4 min-[600px]:grid-cols-2">

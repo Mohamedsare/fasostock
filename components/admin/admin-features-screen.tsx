@@ -1,6 +1,7 @@
 "use client";
 
 import { AdminCard, AdminPageHeader } from "@/components/admin/admin-page-header";
+import { FsHorizontalScroll } from "@/components/ui/fs-horizontal-scroll";
 import { adminListCompanies, adminUpdateCompany } from "@/lib/features/admin/api";
 import { queryKeys } from "@/lib/query/query-keys";
 import type { AdminCompany } from "@/lib/features/admin/types";
@@ -109,8 +110,9 @@ export function AdminFeaturesScreen() {
         </button>
       </div>
 
-      <AdminCard padding="p-0" className="overflow-x-auto">
-        <table className="min-w-[1180px] w-full text-left text-sm">
+      <AdminCard padding="p-0">
+        <FsHorizontalScroll>
+          <table className="min-w-[1180px] w-full text-left text-sm">
           <thead className="border-b border-slate-200 bg-slate-50 text-xs font-bold uppercase text-slate-600">
             <tr>
               <th className="p-3">Entreprise</th>
@@ -260,6 +262,7 @@ export function AdminFeaturesScreen() {
         {companies.length === 0 ? (
           <p className="p-6 text-center text-sm text-slate-500">Aucune entreprise.</p>
         ) : null}
+        </FsHorizontalScroll>
       </AdminCard>
     </div>
   );

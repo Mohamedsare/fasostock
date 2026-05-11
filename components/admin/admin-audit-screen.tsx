@@ -1,6 +1,7 @@
 "use client";
 
 import { AdminCard, AdminPageHeader } from "@/components/admin/admin-page-header";
+import { FsHorizontalScroll } from "@/components/ui/fs-horizontal-scroll";
 import { adminListAuditLogs, adminListCompanies } from "@/lib/features/admin/api";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
@@ -61,8 +62,9 @@ export function AdminAuditScreen() {
       ) : logsQ.isError ? (
         <p className="text-red-600">{(logsQ.error as Error).message}</p>
       ) : (
-        <AdminCard padding="p-0" className="overflow-x-auto">
-          <table className="min-w-[960px] w-full text-left text-xs">
+        <AdminCard padding="p-0">
+          <FsHorizontalScroll>
+            <table className="min-w-[960px] w-full text-left text-xs">
             <thead className="border-b border-slate-200 bg-slate-50 font-bold uppercase text-slate-600">
               <tr>
                 <th className="p-2">Date</th>
@@ -87,6 +89,7 @@ export function AdminAuditScreen() {
               ))}
             </tbody>
           </table>
+          </FsHorizontalScroll>
         </AdminCard>
       )}
     </div>

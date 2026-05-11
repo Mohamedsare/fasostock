@@ -1,5 +1,6 @@
 "use client";
 
+import { FsHorizontalScroll } from "@/components/ui/fs-horizontal-scroll";
 import { cn } from "@/lib/utils/cn";
 import type { ReactNode } from "react";
 import { MdClose, MdSearch, MdStore } from "react-icons/md";
@@ -107,14 +108,14 @@ export function WhCategoryChipsRow({
   onSelect: (id: string | null) => void;
 }) {
   return (
-    <div className="h-8 shrink-0 overflow-x-auto overflow-y-hidden min-[900px]:h-10 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+    <FsHorizontalScroll className="h-8 shrink-0 overflow-y-hidden min-[900px]:h-10">
       <div className="flex w-max gap-1 px-2.5 pb-0.5 min-[900px]:gap-2 min-[900px]:px-4 min-[900px]:pb-1">
         <WhCategoryChip label="Tous" selected={selectedId === null} onClick={() => onSelect(null)} />
         {categories.map((c) => (
           <WhCategoryChip key={c.id} label={c.name} selected={selectedId === c.id} onClick={() => onSelect(c.id)} />
         ))}
       </div>
-    </div>
+    </FsHorizontalScroll>
   );
 }
 

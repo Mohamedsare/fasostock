@@ -39,6 +39,7 @@ import {
   printInvoicePdf,
 } from "@/lib/features/invoices/generate-invoice-pdf";
 import type { Store } from "@/lib/features/stores/types";
+import { FsHorizontalScroll } from "@/components/ui/fs-horizontal-scroll";
 import { cn } from "@/lib/utils/cn";
 import { toast, toastMutationError } from "@/lib/toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -865,8 +866,8 @@ export function WarehouseScreen() {
           </button>
         </div>
 
-        <div
-          className="warehouse-tabbar-scroll flex gap-1 overflow-x-auto overscroll-x-contain px-3 pb-1 pt-0.5 sm:px-0 sm:pb-1.5 sm:pt-1"
+        <FsHorizontalScroll
+          className="warehouse-tabbar-scroll flex gap-1 px-3 pb-1 pt-0.5 sm:px-0 sm:pb-1.5 sm:pt-1"
           style={{ WebkitOverflowScrolling: "touch" }}
           role="tablist"
           aria-label="Sections Magasin"
@@ -889,7 +890,7 @@ export function WarehouseScreen() {
               {label}
             </button>
           ))}
-        </div>
+        </FsHorizontalScroll>
       </div>
 
       {companyName ? (
@@ -1170,7 +1171,7 @@ export function WarehouseScreen() {
                     {decisionPanel.topLow.length === 0 ? (
                       <p className="text-xs text-neutral-600">Aucune priorité immédiate. Les seuils sont couverts.</p>
                     ) : (
-                      <div className="overflow-x-auto rounded-xl border border-black/8">
+                      <FsHorizontalScroll className="rounded-xl border border-black/8">
                         <table className="w-full min-w-[660px] text-left text-[12px] [&_thead_th]:whitespace-nowrap [&_tbody_td]:whitespace-nowrap">
                           <thead>
                             <tr className="border-b border-black/10 bg-fs-surface-low/80 text-[10px] uppercase tracking-wide text-neutral-600">
@@ -1193,7 +1194,7 @@ export function WarehouseScreen() {
                             ))}
                           </tbody>
                         </table>
-                      </div>
+                      </FsHorizontalScroll>
                     )}
                   </FsCard>
 
@@ -1704,7 +1705,7 @@ export function WarehouseScreen() {
                     ))}
                   </select>
                 </div>
-                <div className="mt-4 overflow-x-auto">
+                <FsHorizontalScroll className="mt-4">
                   <table className="w-full min-w-[640px] border-collapse text-left text-sm">
                     <thead>
                       <tr className="border-b border-black/8 bg-[#F5F5F5] text-[11px] font-bold uppercase tracking-wide text-neutral-700">
@@ -1753,7 +1754,7 @@ export function WarehouseScreen() {
                       ))}
                     </tbody>
                   </table>
-                </div>
+                </FsHorizontalScroll>
                 <p className="mt-4 text-right text-base font-extrabold text-fs-text">
                   Total {formatCurrency(dispatchEditLines.reduce((s, l) => s + l.quantity * l.unitPrice, 0))}
                 </p>
@@ -2067,7 +2068,7 @@ function StockDepotTab({
       {filtered.length === 0 ? (
         <p className="text-sm text-neutral-600">Aucun produit ne correspond au filtre.</p>
       ) : (
-        <div className="overflow-x-auto rounded-2xl border border-black/8 bg-fs-card">
+        <FsHorizontalScroll className="rounded-2xl border border-black/8 bg-fs-card">
           <table className="w-full min-w-[980px] border-collapse text-left text-[13px] [&_thead_th]:whitespace-nowrap [&_tbody_td]:whitespace-nowrap">
             <thead>
               <tr className="border-b border-black/10 bg-fs-surface-low/80 text-[11px] uppercase tracking-wide text-neutral-700">
@@ -2152,7 +2153,7 @@ function StockDepotTab({
               })}
             </tbody>
           </table>
-        </div>
+        </FsHorizontalScroll>
       )}
       {filteredLen > 0 && stockTotalPages > 1 ? (
         <div className="flex flex-wrap items-center justify-center gap-2 py-2">
@@ -2245,7 +2246,7 @@ function MouvementsTab({
 
   return (
     <div className="space-y-2 pb-6">
-      <div className="overflow-x-auto rounded-2xl border border-black/6 bg-fs-card">
+      <FsHorizontalScroll className="rounded-2xl border border-black/6 bg-fs-card">
         <table className="w-full min-w-[980px] border-collapse text-left text-[13px] [&_thead_th]:whitespace-nowrap [&_tbody_td]:whitespace-nowrap">
           <thead>
             <tr className="border-b border-black/10 bg-fs-surface-low/80 text-[11px] uppercase tracking-wide text-neutral-700">
@@ -2311,7 +2312,7 @@ function MouvementsTab({
             })}
           </tbody>
         </table>
-      </div>
+      </FsHorizontalScroll>
       {movTotalPages > 1 ? (
         <div className="flex flex-wrap items-center justify-center gap-2 py-2">
           <button
@@ -2385,7 +2386,7 @@ function TransfertTab({
         <MdAdd className="h-5 w-5" />
         Nouveau transfert
       </button>
-      <div className="overflow-x-auto rounded-2xl border border-black/6 bg-fs-card">
+      <FsHorizontalScroll className="rounded-2xl border border-black/6 bg-fs-card">
         <table className="w-full min-w-[940px] border-collapse text-left text-[13px] [&_thead_th]:whitespace-nowrap [&_tbody_td]:whitespace-nowrap">
           <thead>
             <tr className="border-b border-black/10 bg-fs-surface-low/80 text-[11px] uppercase tracking-wide text-neutral-700">
@@ -2447,7 +2448,7 @@ function TransfertTab({
             })}
           </tbody>
         </table>
-      </div>
+      </FsHorizontalScroll>
     </div>
   );
 }
@@ -2513,7 +2514,7 @@ function HistoriquesTab({
 
   return (
     <div className="space-y-2 pb-6">
-      <div className="overflow-x-auto rounded-xl border border-black/6 bg-[color-mix(in_srgb,var(--fs-surface-container-low)_100%,transparent)]">
+      <FsHorizontalScroll className="rounded-xl border border-black/6 bg-[color-mix(in_srgb,var(--fs-surface-container-low)_100%,transparent)]">
         <table className="w-full min-w-[980px] border-collapse text-left [&_thead_th]:whitespace-nowrap">
           <thead>
             <tr className="border-b border-black/8 bg-[#F5F5F5] text-[11px] font-bold uppercase tracking-wide text-neutral-700">
@@ -2585,7 +2586,7 @@ function HistoriquesTab({
             })}
           </tbody>
         </table>
-      </div>
+      </FsHorizontalScroll>
       {totalPages > 1 ? (
         <div className="flex flex-wrap items-center justify-center gap-2 py-2">
           <span className="w-full text-center text-xs text-neutral-600">

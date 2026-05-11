@@ -1,6 +1,7 @@
 "use client";
 
 import { CustomerFormDialog } from "@/components/customers/customer-form-dialog";
+import { FsHorizontalScroll } from "@/components/ui/fs-horizontal-scroll";
 import { fsInputClass } from "@/components/ui/fs-screen-primitives";
 import { createCustomer } from "@/lib/features/customers/api";
 import { P } from "@/lib/constants/permissions";
@@ -1449,9 +1450,9 @@ export function PosScreen({
               )}
             </div>
 
-            <div
+            <FsHorizontalScroll
               className={cn(
-                "shrink-0 overflow-x-auto overflow-y-hidden [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+                "shrink-0 overflow-y-hidden",
                 mode === "a4-table"
                   ? "h-12 px-3 py-0"
                   : "px-3 py-1 sm:px-4",
@@ -1474,7 +1475,7 @@ export function PosScreen({
                   />
                 ))}
               </div>
-            </div>
+            </FsHorizontalScroll>
 
             {mode === "a4-table" ? <div className="h-1.5 shrink-0" aria-hidden /> : null}
 
@@ -1501,7 +1502,7 @@ export function PosScreen({
                   </p>
                 </div>
               ) : mode === "a4-table" ? (
-                <div className="min-h-0 flex-1 overflow-x-auto overflow-y-hidden [-ms-overflow-style:auto] [scrollbar-width:thin]">
+                <FsHorizontalScroll className="min-h-0 flex-1 overflow-y-hidden">
                   <div
                     className="grid h-full min-h-0 grid-flow-col grid-rows-2 content-start gap-2.5 px-3 py-1"
                     style={{ gridAutoColumns: stripMainExtent }}
@@ -1557,7 +1558,7 @@ export function PosScreen({
                       );
                     })}
                   </div>
-                </div>
+                </FsHorizontalScroll>
               ) : (
                 <div className="grid grid-cols-2 gap-2 pb-3 @[420px]:grid-cols-3 @[560px]:grid-cols-4 @[820px]:grid-cols-5 min-[1200px]:grid-cols-6">
                   {filtered.map((p) => {
@@ -2455,14 +2456,14 @@ function PosCartPanel({
           cartLayout === "table"
             ? mergeScroll
               ? "overflow-x-hidden pb-3"
-              : "min-h-[120px] overflow-x-auto"
+              : "min-h-[120px] fs-scroll-x"
             : "overflow-x-hidden",
         )}
       >
         {cart.length === 0 ? (
           <div className="flex flex-1 items-center justify-center py-12 text-[#1F2937]">Panier vide</div>
         ) : cartLayout === "table" ? (
-          <div className="min-w-0 overflow-x-auto pb-2">
+          <FsHorizontalScroll className="min-w-0 pb-2">
             {/*
              * Aligné `pos_invoice_table_cart.dart` : colonnes Flex 3 / 0.85 / 1.1 / 1.25 / 1.0 + 52px,
              * en-têtes Article · Unité · Qté · P.U. · Total · (suppr), bordures comme TableBorder.all.
@@ -2587,7 +2588,7 @@ function PosCartPanel({
                 })}
               </tbody>
             </table>
-          </div>
+          </FsHorizontalScroll>
         ) : (
           <ul className="space-y-2 pb-2">
             {cart.map((c) => {

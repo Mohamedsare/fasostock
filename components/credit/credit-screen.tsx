@@ -29,6 +29,7 @@ import {
   FsScreenHeader,
   fsInputClass,
 } from "@/components/ui/fs-screen-primitives";
+import { FsHorizontalScroll } from "@/components/ui/fs-horizontal-scroll";
 import { ROUTES } from "@/lib/config/routes";
 import { P } from "@/lib/constants/permissions";
 import { listCreditSales } from "@/lib/features/credit/api";
@@ -1051,7 +1052,7 @@ export function CreditScreen() {
         {topRelanceRows.length === 0 ? (
           <p className="text-xs text-neutral-600">Aucun client à relancer pour la période sélectionnée.</p>
         ) : (
-          <div className="overflow-x-auto rounded-xl border border-black/8">
+          <FsHorizontalScroll className="rounded-xl border border-black/8">
             <table className="w-full min-w-[680px] text-left text-[12px] [&_thead_th]:whitespace-nowrap [&_tbody_td]:whitespace-nowrap">
               <thead>
                 <tr className="border-b border-black/10 bg-fs-surface-low/80 text-[10px] uppercase tracking-wide text-neutral-600">
@@ -1086,7 +1087,7 @@ export function CreditScreen() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </FsHorizontalScroll>
         )}
       </FsCard>
 
@@ -1174,7 +1175,7 @@ export function CreditScreen() {
             </span>
           </div>
         </div>
-        <div className="mt-3 -mx-1 overflow-x-auto px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <FsHorizontalScroll className="mt-3 -mx-1 px-1">
           <div className="flex w-max items-center gap-1.5 pb-0.5">
           {(
             [
@@ -1206,7 +1207,7 @@ export function CreditScreen() {
             </button>
           ))}
           </div>
-        </div>
+        </FsHorizontalScroll>
         {chip === "soldes" ? (
           <p className="mt-2 text-xs text-neutral-600">
             Ventes passées à crédit (ligne POS « à crédit ») et bons dépôt à crédit entièrement soldés sur la période — ouvrez « Voir » pour l&apos;historique des paiements.
@@ -1220,7 +1221,7 @@ export function CreditScreen() {
             <div className="h-9 w-9 animate-spin rounded-full border-2 border-fs-accent border-t-transparent" />
           </div>
         ) : view === "sale" ? (
-          <div className="overflow-x-auto">
+          <FsHorizontalScroll>
             <table
               className={cn(
                 "w-full min-w-[1120px] border-collapse text-left text-[13px]",
@@ -1405,9 +1406,9 @@ export function CreditScreen() {
               )}
             </tbody>
           </table>
-          </div>
+          </FsHorizontalScroll>
         ) : (
-          <div className="overflow-x-auto">
+          <FsHorizontalScroll>
             <table
               className={cn(
                 "w-full min-w-[800px] border-collapse text-left text-[13px]",
@@ -1492,7 +1493,7 @@ export function CreditScreen() {
               )}
             </tbody>
           </table>
-          </div>
+          </FsHorizontalScroll>
         )}
       </FsCard>
       {view === "sale" && salePageCount > 1 ? (
