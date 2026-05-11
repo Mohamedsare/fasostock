@@ -144,6 +144,8 @@ async function fetchAppContext(): Promise<AppContextData | null> {
       warehouseFeatureEnabled: true,
       storeQuotaIncreaseEnabled: true,
       aiPredictionsEnabled: true,
+      warehouseKpiShowPurchaseValue: true,
+      warehouseKpiShowSaleValue: true,
     };
   }
 
@@ -151,7 +153,7 @@ async function fetchAppContext(): Promise<AppContextData | null> {
   const { data: companyRow, error: cErr } = await supabase
     .from("companies")
     .select(
-      "id, name, logo_url, business_type_slug, warehouse_feature_enabled, store_quota_increase_enabled, ai_predictions_enabled",
+      "id, name, logo_url, business_type_slug, warehouse_feature_enabled, store_quota_increase_enabled, ai_predictions_enabled, warehouse_kpi_show_purchase_value, warehouse_kpi_show_sale_value",
     )
     .eq("id", primaryCompanyId)
     .maybeSingle();
@@ -179,6 +181,8 @@ async function fetchAppContext(): Promise<AppContextData | null> {
       warehouseFeatureEnabled: true,
       storeQuotaIncreaseEnabled: true,
       aiPredictionsEnabled: true,
+      warehouseKpiShowPurchaseValue: true,
+      warehouseKpiShowSaleValue: true,
     };
   }
 
@@ -196,10 +200,14 @@ async function fetchAppContext(): Promise<AppContextData | null> {
     warehouse_feature_enabled?: boolean | null;
     store_quota_increase_enabled?: boolean | null;
     ai_predictions_enabled?: boolean | null;
+    warehouse_kpi_show_purchase_value?: boolean | null;
+    warehouse_kpi_show_sale_value?: boolean | null;
   };
   const warehouseFeatureEnabled = cr.warehouse_feature_enabled !== false;
   const storeQuotaIncreaseEnabled = cr.store_quota_increase_enabled !== false;
   const aiPredictionsEnabled = cr.ai_predictions_enabled === true;
+  const warehouseKpiShowPurchaseValue = cr.warehouse_kpi_show_purchase_value !== false;
+  const warehouseKpiShowSaleValue = cr.warehouse_kpi_show_sale_value !== false;
 
   if (isSuperAdmin) {
     const { data: stores } = await supabase
@@ -226,6 +234,8 @@ async function fetchAppContext(): Promise<AppContextData | null> {
       warehouseFeatureEnabled,
       storeQuotaIncreaseEnabled,
       aiPredictionsEnabled,
+      warehouseKpiShowPurchaseValue,
+      warehouseKpiShowSaleValue,
     };
   }
 
@@ -274,6 +284,8 @@ async function fetchAppContext(): Promise<AppContextData | null> {
     warehouseFeatureEnabled,
     storeQuotaIncreaseEnabled,
     aiPredictionsEnabled,
+    warehouseKpiShowPurchaseValue,
+    warehouseKpiShowSaleValue,
   };
 }
 

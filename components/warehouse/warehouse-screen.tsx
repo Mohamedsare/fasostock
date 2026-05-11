@@ -973,18 +973,22 @@ export function WarehouseScreen() {
               {dashboard ? (
                 <>
                   <div className="grid auto-rows-fr grid-cols-1 gap-1.5 min-[340px]:grid-cols-2 min-[640px]:grid-cols-3 sm:gap-2">
-                    <Kpi
-                      title="Valeur au prix d’achat"
-                      value={formatCurrency(dashboard.valueAtPurchasePrice)}
-                      color={ACCENT.emerald}
-                      icon={<MdInventory2 className="h-5 w-5" />}
-                    />
-                    <Kpi
-                      title="Valeur au prix de vente"
-                      value={formatCurrency(dashboard.valueAtSalePrice)}
-                      color={ACCENT.blue}
-                      icon={<MdBarChart className="h-5 w-5" />}
-                    />
+                    {ctx?.warehouseKpiShowPurchaseValue !== false ? (
+                      <Kpi
+                        title="Valeur au prix d’achat"
+                        value={formatCurrency(dashboard.valueAtPurchasePrice)}
+                        color={ACCENT.emerald}
+                        icon={<MdInventory2 className="h-5 w-5" />}
+                      />
+                    ) : null}
+                    {ctx?.warehouseKpiShowSaleValue !== false ? (
+                      <Kpi
+                        title="Valeur au prix de vente"
+                        value={formatCurrency(dashboard.valueAtSalePrice)}
+                        color={ACCENT.blue}
+                        icon={<MdBarChart className="h-5 w-5" />}
+                      />
+                    ) : null}
                     <Kpi
                       title="Références en stock"
                       value={`${dashboard.skuCount}`}

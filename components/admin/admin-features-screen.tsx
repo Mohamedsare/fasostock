@@ -2,11 +2,12 @@
 
 import { AdminCard, AdminPageHeader } from "@/components/admin/admin-page-header";
 import { adminListCompanies, adminUpdateCompany } from "@/lib/features/admin/api";
+import { queryKeys } from "@/lib/query/query-keys";
 import type { AdminCompany } from "@/lib/features/admin/types";
 import { messageFromUnknownError, toast } from "@/lib/toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { MdHomeWork, MdRefresh, MdStorefront, MdToggleOn } from "react-icons/md";
+import { MdHomeWork, MdPayments, MdRefresh, MdStorefront, MdToggleOn, MdTrendingUp } from "react-icons/md";
 
 const QK = ["admin-company-features"] as const;
 
@@ -25,6 +26,8 @@ export function AdminFeaturesScreen() {
       warehouseFeatureEnabled?: boolean;
       aiPredictionsEnabled?: boolean;
       storeQuotaIncreaseEnabled?: boolean;
+      warehouseKpiShowPurchaseValue?: boolean;
+      warehouseKpiShowSaleValue?: boolean;
       storeQuota?: number;
     }) => {
       const { id, ...patch } = p;
@@ -32,6 +35,7 @@ export function AdminFeaturesScreen() {
     },
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: QK });
+      void qc.invalidateQueries({ queryKey: queryKeys.appContext });
       toast.success("Enregistré");
     },
     onError: (e) => toast.error(messageFromUnknownError(e)),
@@ -93,7 +97,7 @@ export function AdminFeaturesScreen() {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <AdminPageHeader
           title="Fonctionnalités"
-          description="Activez ou désactivez des modules pour chaque entreprise (Magasin, prédictions IA, possibilité d’augmenter le quota de boutiques)."
+          description="Activez ou désactivez des modules pour chaque entreprise (Magasin, prédictions IA, quota de boutiques, visibilité des KPIs valeur stock sur le dépôt Magasin)."
         />
         <button
           type="button"
@@ -106,7 +110,7 @@ export function AdminFeaturesScreen() {
       </div>
 
       <AdminCard padding="p-0" className="overflow-x-auto">
-        <table className="min-w-[920px] w-full text-left text-sm">
+        <table className="min-w-[1180px] w-full text-left text-sm">
           <thead className="border-b border-slate-200 bg-slate-50 text-xs font-bold uppercase text-slate-600">
             <tr>
               <th className="p-3">Entreprise</th>
@@ -114,6 +118,18 @@ export function AdminFeaturesScreen() {
                 <span className="inline-flex items-center gap-1">
                   <MdHomeWork className="h-4 w-4 text-slate-500" aria-hidden />
                   Magasin
+                </span>
+              </th>
+              <th className="p-3">
+                <span className="inline-flex items-center gap-1">
+                  <MdPayments className="h-4 w-4 text-slate-500" aria-hidden />
+                  KPI prix achat
+                </span>
+              </th>
+              <th className="p-3">
+                <span className="inline-flex items-center gap-1">
+                  <MdTrendingUp className="h-4 w-4 text-slate-500" aria-hidden />
+                  KPI prix vente
                 </span>
               </th>
               <th className="p-3">
@@ -147,6 +163,40 @@ export function AdminFeaturesScreen() {
                       }
                     />
                     <span className="text-slate-600">{c.warehouseFeatureEnabled ? "Activé" : "Désactivé"}</span>
+                  </label>
+                </td>
+                <td className="p-3">
+                  <label className="inline-flex cursor-pointer items-center gap-2">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-slate-300"
+                      checked={c.warehouseKpiShowPurchaseValue}
+                      disabled={mut.isPending}
+                      onChange={() =>
+                        mut.mutate({
+                          id: c.id,
+                          warehouseKpiShowPurchaseValue: !c.warehouseKpiShowPurchaseValue,
+                        })
+                      }
+                    />
+                    <span className="text-slate-600">{c.warehouseKpiShowPurchaseValue ? "Visible" : "Masqué"}</span>
+                  </label>
+                </td>
+                <td className="p-3">
+                  <label className="inline-flex cursor-pointer items-center gap-2">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-slate-300"
+                      checked={c.warehouseKpiShowSaleValue}
+                      disabled={mut.isPending}
+                      onChange={() =>
+                        mut.mutate({
+                          id: c.id,
+                          warehouseKpiShowSaleValue: !c.warehouseKpiShowSaleValue,
+                        })
+                      }
+                    />
+                    <span className="text-slate-600">{c.warehouseKpiShowSaleValue ? "Visible" : "Masqué"}</span>
                   </label>
                 </td>
                 <td className="p-3">

@@ -32,6 +32,10 @@ export type AppContextData = {
   storeQuotaIncreaseEnabled: boolean;
   /** Prédictions IA — désactivé par la plateforme si false. */
   aiPredictionsEnabled: boolean;
+  /** Carte KPI « Valeur au prix d'achat » sur le dépôt Magasin (plateforme). */
+  warehouseKpiShowPurchaseValue: boolean;
+  /** Carte KPI « Valeur au prix de vente » sur le dépôt Magasin (plateforme). */
+  warehouseKpiShowSaleValue: boolean;
 };
 
 export type AccessHelpers = {

@@ -11,6 +11,10 @@ export type AdminCompany = {
   warehouseFeatureEnabled: boolean;
   /** Autorise l’augmentation du quota de boutiques (plateforme). */
   storeQuotaIncreaseEnabled: boolean;
+  /** Affiche la carte KPI « Valeur au prix d'achat » sur le dépôt Magasin. */
+  warehouseKpiShowPurchaseValue: boolean;
+  /** Affiche la carte KPI « Valeur au prix de vente » sur le dépôt Magasin. */
+  warehouseKpiShowSaleValue: boolean;
   createdAt: string | null;
 };
 

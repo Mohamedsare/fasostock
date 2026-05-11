@@ -40,7 +40,7 @@ export async function adminListCompanies(): Promise<AdminCompany[]> {
   const { data, error } = await supabase
     .from("companies")
     .select(
-      "id, name, slug, is_active, store_quota, ai_predictions_enabled, warehouse_feature_enabled, store_quota_increase_enabled, created_at",
+      "id, name, slug, is_active, store_quota, ai_predictions_enabled, warehouse_feature_enabled, store_quota_increase_enabled, warehouse_kpi_show_purchase_value, warehouse_kpi_show_sale_value, created_at",
     )
     .order("created_at", { ascending: false });
   if (error) throw mapSupabaseError(error);
@@ -55,6 +55,8 @@ export async function adminListCompanies(): Promise<AdminCompany[]> {
       aiPredictionsEnabled: r.ai_predictions_enabled === true,
       warehouseFeatureEnabled: r.warehouse_feature_enabled !== false,
       storeQuotaIncreaseEnabled: r.store_quota_increase_enabled !== false,
+      warehouseKpiShowPurchaseValue: r.warehouse_kpi_show_purchase_value !== false,
+      warehouseKpiShowSaleValue: r.warehouse_kpi_show_sale_value !== false,
       createdAt: r.created_at != null ? String(r.created_at) : null,
     };
   });
@@ -90,6 +92,8 @@ export async function adminUpdateCompany(
     aiPredictionsEnabled?: boolean;
     warehouseFeatureEnabled?: boolean;
     storeQuotaIncreaseEnabled?: boolean;
+    warehouseKpiShowPurchaseValue?: boolean;
+    warehouseKpiShowSaleValue?: boolean;
     storeQuota?: number;
   },
 ): Promise<void> {
@@ -102,6 +106,12 @@ export async function adminUpdateCompany(
   }
   if (patch.storeQuotaIncreaseEnabled !== undefined) {
     row.store_quota_increase_enabled = patch.storeQuotaIncreaseEnabled;
+  }
+  if (patch.warehouseKpiShowPurchaseValue !== undefined) {
+    row.warehouse_kpi_show_purchase_value = patch.warehouseKpiShowPurchaseValue;
+  }
+  if (patch.warehouseKpiShowSaleValue !== undefined) {
+    row.warehouse_kpi_show_sale_value = patch.warehouseKpiShowSaleValue;
   }
   if (patch.storeQuota !== undefined) {
     const n = Math.floor(Number(patch.storeQuota));
