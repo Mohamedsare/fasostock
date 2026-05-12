@@ -40,8 +40,8 @@ type TestimonialsStat = {
 };
 
 const defaultStats: TestimonialsStat[] = [
-  { value: "500+", label: "Commerçants utilisent déjà FasoStock" },
-  { value: "30+", label: "Types de commerces accompagnés" },
+  { value: "2+", label: "Commerçants utilisent déjà FasoStock" },
+  { value: "2+", label: "Types de commerces accompagnés" },
   { value: "98%", label: "De clients satisfaits selon nos retours" },
   { value: "+25%", label: "D'augmentation moyenne de performance" },
 ];
@@ -52,7 +52,7 @@ type TestimonialsSectionProps = {
   ctaSubtitle?: string;
 };
 
-const DEFAULT_CTA_TITLE = "La confiance de centaines de commerçants comme vous";
+const DEFAULT_CTA_TITLE = "La confiance des commerçants comme vous";
 const DEFAULT_CTA_SUBTITLE =
   "Rejoignez la communauté FasoStock et faites passer votre commerce au niveau supérieur.";
 

@@ -8,12 +8,16 @@ export type StoreProductsPdfItem = {
 };
 
 export async function generateStoreProductsPdfBlob(params: {
+  companyId: string;
+  storeId?: string | null;
   companyName: string;
   companyLogoUrl?: string | null;
   storeName: string;
   items: StoreProductsPdfItem[];
 }): Promise<Blob> {
   return fetchStoreProductsPdfBlob({
+    companyId: params.companyId,
+    storeId: params.storeId ?? null,
     companyName: params.companyName,
     companyLogoUrl: params.companyLogoUrl ?? null,
     storeName: params.storeName,
@@ -23,6 +27,8 @@ export async function generateStoreProductsPdfBlob(params: {
 }
 
 export async function downloadStoreProductsPdf(params: {
+  companyId: string;
+  storeId?: string | null;
   companyName: string;
   companyLogoUrl?: string | null;
   storeName: string;

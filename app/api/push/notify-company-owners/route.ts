@@ -1,7 +1,5 @@
 import { listOwnerUserIdsForCompanies, sendWebPushToUsers } from "@/lib/features/push/send-web-push";
 import { createClient } from "@/lib/supabase/server";
-import { normalizeSupabaseUrl } from "@/lib/supabase/normalize-url";
-import { createClient as createSupabaseJs, type SupabaseClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
@@ -27,13 +25,6 @@ function parseBody(raw: unknown): Body | null {
   };
 }
 
-function bearerToken(req: Request): string | null {
-  const h = req.headers.get("authorization");
-  if (!h) return null;
-  const m = /^Bearer\s+(.+)$/i.exec(h.trim());
-  return m?.[1]?.trim() ?? null;
-}
-
 export async function POST(req: Request) {
   let raw: unknown;
   try {
@@ -47,33 +38,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "companyIds et title sont requis" }, { status: 400 });
   }
 
-  const urlRaw = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
-  if (!urlRaw || !anon) {
-    return NextResponse.json({ error: "Configuration Supabase manquante" }, { status: 500 });
-  }
-  const url = normalizeSupabaseUrl(urlRaw);
-
-  const token = bearerToken(req);
-  let supabaseUserClient: SupabaseClient;
-  if (token) {
-    supabaseUserClient = createSupabaseJs(url, anon, {
-      global: { headers: { Authorization: `Bearer ${token}` } },
-      auth: { persistSession: false, autoRefreshToken: false },
-    });
-  } else {
-    supabaseUserClient = await createClient();
-  }
-
+  const supabase = await createClient();
   const {
     data: { user },
-  } = await supabaseUserClient.auth.getUser();
+  } = await supabase.auth.getUser();
   if (!user) {
     return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
   }
 
   const uniqCompanies = [...new Set(companyIds)];
-  const { data: memberships, error: memErr } = await supabaseUserClient
+  const { data: memberships, error: memErr } = await supabase
     .from("user_company_roles")
     .select("company_id")
     .eq("user_id", user.id)
@@ -113,10 +87,8 @@ export async function POST(req: Request) {
     return NextResponse.json({
       ok: true,
       ...result,
-      /** Nombre d’utilisateurs distincts « owner » ciblés */
       owners: ownerIds.length,
       ownerUserCount: ownerIds.length,
-      /** Nombre d’abonnements navigateur en base pour ces utilisateurs (0 = pas d’appareil activé) */
       pushDeviceCount: result.attempted,
     });
   } catch (e) {

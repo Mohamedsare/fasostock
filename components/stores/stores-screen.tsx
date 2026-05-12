@@ -385,6 +385,8 @@ function StoreCard({
               : null,
         }));
       await downloadStoreProductsPdf({
+        companyId,
+        storeId: store.id,
         companyName: companyName || "Entreprise",
         companyLogoUrl,
         storeName: store.name,

@@ -149,7 +149,7 @@ export async function saveLastPrediction(
 
 export async function fetchDeepseekConfigured(): Promise<boolean> {
   try {
-    const res = await fetch("/api/ai/config", { cache: "no-store" });
+    const res = await fetch("/api/ai/config", { cache: "no-store", credentials: "same-origin" });
     if (!res.ok) return false;
     const j = (await res.json()) as { deepseekConfigured?: boolean };
     return j.deepseekConfigured === true;
@@ -169,7 +169,8 @@ export async function runPredictionGeneration(params: {
   const res = await fetch("/api/ai/predictions", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ contextText }),
+    credentials: "same-origin",
+    body: JSON.stringify({ contextText, companyId: params.companyId }),
   });
   const rawText = await res.text();
   if (!res.ok) {

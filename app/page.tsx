@@ -12,6 +12,7 @@ import { NewsletterSubscribeForm } from "@/components/marketing/newsletter-subsc
 import { SiteHeader } from "@/components/marketing/site-header";
 import { ScrollDirectionFab } from "@/components/marketing/scroll-direction-fab";
 import { ScrollProgress } from "@/components/marketing/scroll-progress";
+import { LottiePlayer } from "@/components/marketing/lottie-player";
 import { InstallAppButton } from "@/components/pwa/install-app-button";
 import type { Metadata } from "next";
 import Image from "next/image";
@@ -25,6 +26,7 @@ import {
   MdCardGiftcard,
   MdCheckCircle,
   MdCreditCard,
+  MdDescription,
   MdEmojiEmotions,
   MdGroups,
   MdHeadsetMic,
@@ -36,8 +38,11 @@ import {
   MdOutlinePlayCircleFilled,
   MdPointOfSale,
   MdSecurity,
-  MdSync,
+  MdSpeed,
   MdStorefront,
+  MdSupportAgent,
+  MdSync,
+  MdTaskAlt,
   MdTrendingUp,
   MdVerifiedUser,
   MdWallet,
@@ -69,36 +74,12 @@ export const metadata: Metadata = {
 };
 
 const bannerFeatureStrip = [
-  {
-    icon: MdPointOfSale,
-    title: "Ventes rapides",
-    text: "Encaissez facilement et rapidement",
-  },
-  {
-    icon: MdInventory2,
-    title: "Gestion de stock",
-    text: "Suivez votre stock en temps reel",
-  },
-  {
-    icon: MdCreditCard,
-    title: "Crédits clients",
-    text: "Gérez les dettes et encaissements",
-  },
-  {
-    icon: MdTrendingUp,
-    title: "Rapports clairs",
-    text: "Prenez de meilleures décisions",
-  },
-  {
-    icon: MdGroups,
-    title: "Employés & accès",
-    text: "Gérez vos employés et leurs droits",
-  },
-  {
-    icon: MdWifiOff,
-    title: "Mode offline",
-    text: "Travaillez même sans connexion internet",
-  },
+  { icon: MdPointOfSale, title: "Ventes rapides", subtitle: "Encaissez facilement et rapidement" },
+  { icon: MdInventory2, title: "Gestion de stock", subtitle: "Suivez votre stock en temps réel" },
+  { icon: MdCreditCard, title: "Crédits clients", subtitle: "Gérez les dettes et encaissements" },
+  { icon: MdTrendingUp, title: "Rapports clairs", subtitle: "Prenez de meilleures décisions" },
+  { icon: MdGroups, title: "Employés & accès", subtitle: "Gérez vos employés et leurs droits" },
+  { icon: MdWifiOff, title: "Mode offline", subtitle: "Travaillez même sans connexion internet" },
 ] as const;
 
 const bannerTrustStrip = [
@@ -217,18 +198,56 @@ const solutionCapabilities = [
   },
 ] as const;
 
-const coreFeatures = [
-  { icon: MdPointOfSale, title: "POS caisse rapide", text: "Encaissez rapidement vos clients, imprimez des tickets et suivez toutes vos ventes en temps réel.", tone: "orange" },
-  { icon: MdInventory2, title: "Stock en temps réel", text: "Suivez les entrées, sorties et quantités disponibles de vos produits. Soyez alerté en cas de rupture de stock.", tone: "blue" },
-  { icon: MdCreditCard, title: "Crédits clients", text: "Enregistrez les dettes, paiements partiels et soldes. Suivez facilement vos clients et leurs historiques de paiement.", tone: "green" },
-  { icon: MdTrendingUp, title: "Rapports détaillés", text: "Analysez vos ventes, bénéfices, dépenses, stocks, crédits et performances grâce à des rapports clairs et précis.", tone: "purple" },
-  { icon: MdStorefront, title: "Multi-boutiques", text: "Gérez plusieurs boutiques ou points de vente depuis un seul compte, avec des données centralisées.", tone: "amber" },
-  { icon: MdGroups, title: "Utilisateurs & rôles", text: "Ajoutez vos employés, définissez des rôles et contrôlez leurs accès selon leurs responsabilités.", tone: "pink" },
-  { icon: MdCheckCircle, title: "Tickets & factures", text: "Imprimez des tickets, factures ou reçus professionnels pour vos clients en un clic.", tone: "cyan" },
-  { icon: MdWifiOff, title: "Offline + synchronisation", text: "Travaillez même sans connexion internet et synchronisez automatiquement vos données.", tone: "indigo" },
+const landingFonctionnalitesPrincipales = [
+  {
+    icon: MdPointOfSale,
+    title: "POS caisse rapide",
+    text: "Encaissez rapidement vos clients, imprimez des tickets et suivez toutes vos ventes en temps réel.",
+  },
+  {
+    icon: MdInventory2,
+    title: "Stock en temps réel",
+    text: "Suivez les entrées, sorties et quantités disponibles de vos produits. Soyez alerté en cas de rupture de stock.",
+  },
+  {
+    icon: MdCreditCard,
+    title: "Crédits clients",
+    text: "Enregistrez les dettes, paiements partiels et soldes. Suivez facilement vos clients et leurs historiques de paiement.",
+  },
+  {
+    icon: MdTrendingUp,
+    title: "Rapports détaillés",
+    text: "Analysez vos ventes, bénéfices, dépenses, stocks, crédits et performances grâce à des rapports clairs et précis.",
+  },
+  {
+    icon: MdStorefront,
+    title: "Multi-boutiques",
+    text: "Gérez plusieurs boutiques ou points de vente depuis un seul compte, avec des données centralisées.",
+  },
+  {
+    icon: MdGroups,
+    title: "Utilisateurs & rôles",
+    text: "Ajoutez vos employés, définissez des rôles et contrôlez leurs accès selon leurs responsabilités.",
+  },
+  {
+    icon: MdDescription,
+    title: "Tickets & factures",
+    text: "Imprimez des tickets, factures ou reçus professionnels pour vos clients en un clic.",
+  },
+  {
+    icon: MdSync,
+    title: "Offline + synchronisation",
+    text: "Travaillez même sans connexion internet et synchronisez automatiquement vos données.",
+  },
 ] as const;
 
-
+const landingSimplifierBand = [
+  { icon: MdSpeed, title: "Productivité", text: "Gagnez du temps et concentrez-vous sur l'essentiel." },
+  { icon: MdTaskAlt, title: "Précision", text: "Réduisez les erreurs et améliorez la fiabilité." },
+  { icon: MdSecurity, title: "Sécurité", text: "Vos données sont protégées et sauvegardées." },
+  { icon: MdOfflineBolt, title: "Performance", text: "Une application rapide, fluide et toujours disponible." },
+  { icon: MdSupportAgent, title: "Support dédié", text: "Une équipe disponible pour vous accompagner." },
+] as const;
 
 export default async function Home() {
   if (!hasSupabaseConfig()) redirect("/setup");
@@ -266,15 +285,15 @@ export default async function Home() {
   const footerLinkedinUrl = (landingSettings.footer_linkedin_url ?? "").trim() || "https://linkedin.com";
   const trialDays = Math.max(1, Number.parseInt(landingSettings.pricing_trial_days ?? "7", 10) || 7);
   const monthlyAmount = Math.max(0, Number.parseInt(landingSettings.pricing_monthly_amount ?? "15000", 10) || 15000);
-  const yearlyAmount = Math.max(0, Number.parseInt(landingSettings.pricing_yearly_amount ?? "125000", 10) || 125000);
-  const yearlySavings = Math.max(0, Number.parseInt(landingSettings.pricing_yearly_savings ?? "55000", 10) || 55000);
+  const yearlyAmount = Math.max(0, Number.parseInt(landingSettings.pricing_yearly_amount ?? "150000", 10) || 150000);
+  const yearlySavings = Math.max(0, Number.parseInt(landingSettings.pricing_yearly_savings ?? "30000", 10) || 30000);
   const testimonialsStats = [
     {
-      value: (landingSettings.testimonials_stat_1_value ?? "").trim() || "500+",
+      value: (landingSettings.testimonials_stat_1_value ?? "").trim() || "2+",
       label: (landingSettings.testimonials_stat_1_label ?? "").trim() || "Commerçants utilisent déjà FasoStock",
     },
     {
-      value: (landingSettings.testimonials_stat_2_value ?? "").trim() || "30+",
+      value: (landingSettings.testimonials_stat_2_value ?? "").trim() || "2+",
       label: (landingSettings.testimonials_stat_2_label ?? "").trim() || "Types de commerces accompagnés",
     },
     {
@@ -288,7 +307,7 @@ export default async function Home() {
   ];
   const testimonialsCtaTitle =
     (landingSettings.testimonials_cta_title ?? "").trim() ||
-    "La confiance de centaines de commerçants comme vous";
+    "La confiance des commerçants comme vous";
   const testimonialsCtaSubtitle =
     (landingSettings.testimonials_cta_subtitle ?? "").trim() ||
     "Rejoignez la communauté FasoStock et faites passer votre commerce au niveau supérieur.";
@@ -301,6 +320,7 @@ export default async function Home() {
       <ScrollProgress />
       <SiteHeader />
 
+      {/* ── HERO ── */}
       <section id="accueil" className="mx-auto w-full max-w-7xl scroll-mt-24 px-4 pb-10 pt-5 sm:px-6 sm:pb-14 sm:pt-7">
         <div
           className={cn(
@@ -363,7 +383,7 @@ export default async function Home() {
               </h1>
               <p
                 className={cn(
-                  "mt-4 max-w-xl text-[15px] leading-relaxed sm:text-lg",
+                  "mt-4 max-w-lg text-[15px] leading-relaxed sm:text-base",
                   heroBannerImageUrl ? "text-white/90" : "text-neutral-600",
                 )}
               >
@@ -379,7 +399,7 @@ export default async function Home() {
                   className="inline-flex min-h-10 items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-fs-accent px-4 py-2 text-xs font-extrabold uppercase tracking-wide text-white shadow-[0_18px_36px_-18px_rgba(232,93,44,0.95)] sm:min-h-11 sm:px-5 sm:py-2.5 sm:text-sm"
                 >
                   <MdWhatsapp className="h-5 w-5" aria-hidden />
-                  Demonstration
+                  Démonstration
                 </Link>
                 <Link
                   href="/register/select-activity"
@@ -393,45 +413,29 @@ export default async function Home() {
             </div>
 
             {!heroBannerImageUrl ? (
-              <div className="relative">
-                <div className="relative rounded-[1.5rem] border border-black/10 bg-white p-3 shadow-[0_30px_70px_-35px_rgba(17,24,39,0.45)]">
-                  <div className="rounded-xl border border-black/10 bg-[#f8f8f8] p-2">
-                    <div className="rounded-lg bg-fs-accent px-3 py-1.5 text-[11px] font-bold text-white">
-                      POS Caisse Rapide
-                    </div>
-                    <div className="mt-2 grid grid-cols-3 gap-2">
-                      {Array.from({ length: 9 }).map((_, i) => (
-                        <div key={i} className="rounded-lg border border-black/8 bg-white p-1.5">
-                          <div className="h-8 rounded bg-gradient-to-br from-neutral-100 to-neutral-200" />
-                          <div className="mt-1 h-2 w-4/5 rounded bg-neutral-200" />
-                          <div className="mt-1 h-2 w-2/3 rounded bg-neutral-200" />
-                        </div>
-                      ))}
-                    </div>
-                    <div className="mt-2 rounded-lg border border-black/8 bg-white p-2">
-                      <div className="h-2 w-1/2 rounded bg-neutral-200" />
-                      <div className="mt-2 h-2 w-2/3 rounded bg-neutral-200" />
-                      <div className="mt-2 h-8 rounded bg-fs-accent/90" />
-                    </div>
-                  </div>
-                </div>
+              <div className="relative flex items-center justify-center">
+                <LottiePlayer
+                  src="/animations/hero.json"
+                  className="h-[260px] w-[260px] sm:h-[320px] sm:w-[320px]"
+                />
               </div>
             ) : null}
           </div>
         </div>
       </section>
 
+      {/* ── FEATURE STRIP ── */}
       <section className="mx-auto w-full max-w-7xl px-4 pb-4 sm:px-6">
         <div className="overflow-hidden rounded-[1.2rem] border border-black/10 bg-white">
-          <div data-fs-stagger className="grid grid-cols-2 divide-x divide-y divide-black/8 text-xs min-[700px]:grid-cols-3 lg:grid-cols-6 lg:divide-y-0">
+          <div data-fs-stagger className="grid grid-cols-3 divide-x divide-y divide-black/8 text-xs lg:grid-cols-6 lg:divide-y-0">
             {bannerFeatureStrip.map((item) => (
-              <article key={item.title} className="flex min-h-[82px] items-center gap-2.5 px-3 py-3">
-                <div className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-fs-accent text-white">
-                  <item.icon className="h-5 w-5" aria-hidden />
+              <article key={item.title} className="flex min-h-[64px] items-start gap-2 px-3 py-2.5">
+                <div className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-fs-accent text-white">
+                  <item.icon className="h-4 w-4" aria-hidden />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[12px] font-extrabold uppercase text-neutral-800">{item.title}</p>
-                  <p className="mt-0.5 text-[11px] text-neutral-600">{item.text}</p>
+                  <p className="text-[11px] font-extrabold uppercase leading-tight text-neutral-800">{item.title}</p>
+                  <p className="mt-0.5 text-[10px] font-semibold leading-snug text-neutral-600">{item.subtitle}</p>
                 </div>
               </article>
             ))}
@@ -439,17 +443,18 @@ export default async function Home() {
         </div>
       </section>
 
+      {/* ── TRUST STRIP ── */}
       <section className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6 sm:pb-10">
         <div className="overflow-hidden rounded-[1.2rem] border border-[#eadfd8] bg-[#fff8f3]">
-          <div data-fs-stagger className="grid grid-cols-1 divide-y divide-[#f0e5de] min-[760px]:grid-cols-2 min-[760px]:divide-x min-[760px]:divide-y-0 lg:grid-cols-4">
+          <div data-fs-stagger className="grid grid-cols-2 divide-y divide-[#f0e5de] min-[760px]:grid-cols-4 min-[760px]:divide-x min-[760px]:divide-y-0">
             {bannerTrustStrip.map((item) => (
-              <article key={item.title} className="flex items-center gap-3 px-4 py-4">
-                <div className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-fs-accent text-fs-accent">
-                  <item.icon className="h-5 w-5" aria-hidden />
+              <article key={item.title} className="flex items-center gap-3 px-4 py-3">
+                <div className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 border-fs-accent text-fs-accent">
+                  <item.icon className="h-4 w-4" aria-hidden />
                 </div>
                 <div>
-                  <p className="text-xl font-black uppercase tracking-tight text-[#202935]">{item.title}</p>
-                  <p className="text-xs text-neutral-600">{item.text}</p>
+                  <p className="text-base font-black uppercase tracking-tight text-[#202935]">{item.title}</p>
+                  <p className="text-[11px] text-neutral-500">{item.text}</p>
                 </div>
               </article>
             ))}
@@ -457,6 +462,7 @@ export default async function Home() {
         </div>
       </section>
 
+      {/* ── ACCOMPAGNEMENT ── */}
       <section className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6 sm:pb-12">
         <div className="grid items-center gap-6 rounded-[1.7rem] border border-black/8 bg-[#f8f8f8] p-4 shadow-[0_22px_56px_-36px_rgba(17,24,39,0.38)] sm:p-6 lg:grid-cols-[1fr_1fr] lg:p-8">
           <div className="max-w-[560px]">
@@ -472,7 +478,7 @@ export default async function Home() {
               <span className="text-fs-accent">FasoStock</span>
             </h2>
             <div className="mt-4 h-1 w-14 rounded-full bg-fs-accent/90" />
-            <p className="mt-5 max-w-xl text-[1.02rem] leading-relaxed text-[#4b5563]">
+            <p className="mt-5 max-w-md text-base leading-relaxed text-[#4b5563]">
               Notre équipe vous aide à configurer votre boutique, importer vos produits, former vos utilisateurs et
               démarrer rapidement avec FasoStock.
             </p>
@@ -491,13 +497,22 @@ export default async function Home() {
                 className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-[#3ab88f]/55 bg-[#f8fffb] px-5 py-2.5 text-base font-extrabold text-[#149a71]"
               >
                 <MdWhatsapp className="h-5 w-5" aria-hidden />
-                 WhatsApp
+                WhatsApp
               </Link>
             </div>
             <div className="mt-7 grid gap-3 border-t border-black/10 pt-4 text-[1rem] font-semibold text-[#374151] sm:grid-cols-3">
-              <p className="inline-flex items-center gap-2.5"><MdGroups className="h-5 w-5 text-fs-accent" /> Accompagnement personnalisé</p>
-              <p className="inline-flex items-center gap-2.5"><MdLock className="h-5 w-5 text-fs-accent" /> Support réactif et disponible</p>
-              <p className="inline-flex items-center gap-2.5"><MdTrendingUp className="h-5 w-5 text-fs-accent" /> Votre réussite est notre priorité</p>
+              <p className="inline-flex items-center gap-2.5">
+                <MdGroups className="h-5 w-5 text-fs-accent" />
+                Accompagnement personnalisé
+              </p>
+              <p className="inline-flex items-center gap-2.5">
+                <MdHeadsetMic className="h-5 w-5 text-fs-accent" />
+                Support réactif et disponible
+              </p>
+              <p className="inline-flex items-center gap-2.5">
+                <MdTrendingUp className="h-5 w-5 text-fs-accent" />
+                Votre réussite est notre priorité
+              </p>
             </div>
           </div>
 
@@ -560,22 +575,24 @@ export default async function Home() {
         </div>
       </section>
 
+      {/* ── DÉFIS QUOTIDIENS ── */}
       <section id="demonstration" className="mx-auto w-full max-w-7xl scroll-mt-24 px-4 pb-8 sm:px-6 sm:pb-12">
         <div className="relative overflow-hidden rounded-[1.7rem] border border-black/8 bg-[#fbfbfb] px-4 py-6 sm:px-8 sm:py-8">
           <div className="pointer-events-none absolute -left-12 -top-14 h-40 w-40 rounded-full bg-[#fff1e7]" />
           <div className="pointer-events-none absolute right-6 top-6 text-[11px] tracking-[0.25em] text-fs-accent/25">··············</div>
 
-          <div className="relative text-center">
-            <p className="inline-flex items-center gap-1.5 rounded-full bg-[#fff5ef] px-3 py-1 text-xs font-black uppercase tracking-wide text-fs-accent">
+          <div className="relative flex flex-col items-center text-center">
+            <LottiePlayer src="/animations/alert.json" className="h-20 w-20" />
+            <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-[#fff5ef] px-3 py-1 text-xs font-black uppercase tracking-wide text-fs-accent">
               <MdEmojiEmotions className="h-4 w-4" />
               Les défis quotidiens
             </p>
-            <h3 className="mx-auto mt-3 max-w-4xl text-[2rem] font-black leading-[1.05] tracking-tight text-[#17253a] sm:text-[3.3rem]">
+            <h3 className="mx-auto mt-3 max-w-3xl text-[1.8rem] font-black leading-[1.05] tracking-tight text-[#17253a] sm:text-[3rem]">
               Vous perdez peut-être
               <br />
-              de l&apos;argent <span className="text-fs-accent">sans le savoir</span>
+              <span className="text-fs-accent">de l&apos;argent sans le savoir</span>
             </h3>
-            <p className="mx-auto mt-3 max-w-3xl text-sm text-neutral-600 sm:text-[1.05rem]">
+            <p className="mx-auto mt-4 max-w-2xl text-sm leading-relaxed text-neutral-600 sm:text-[1.05rem]">
               Gérer un commerce sans outil adapté peut entraîner des erreurs, des pertes et un manque de visibilité sur
               votre activité.
             </p>
@@ -607,29 +624,29 @@ export default async function Home() {
                   <span className="absolute right-3 top-3 inline-flex rounded-lg bg-white px-2 py-0.5 text-xs font-black text-fs-accent">
                     {String(i + 1).padStart(2, "0")}
                   </span>
-                  <div className={cn("mx-auto inline-flex h-14 w-14 items-center justify-center rounded-full border bg-white", textClass)}>
-                    <item.icon className="h-7 w-7" aria-hidden />
+                  <div className={cn("mx-auto inline-flex h-12 w-12 items-center justify-center rounded-full border bg-white", textClass)}>
+                    <item.icon className="h-6 w-6" aria-hidden />
                   </div>
-                  <h4 className="mt-3 text-center text-xl font-black leading-tight text-[#1f2937] sm:text-2xl">
+                  <h4 className="mt-3 text-center text-lg font-black leading-tight text-[#1f2937]">
                     {item.title}
                   </h4>
-                  <p className="mt-2 text-center text-sm leading-relaxed text-neutral-700">{item.text}</p>
-                  <div className={cn("mx-auto mt-3 h-1 w-12 rounded-full", textClass.replace("text", "bg"))} />
+                  <p className="mt-1.5 text-center text-xs leading-relaxed text-neutral-600">{item.text}</p>
+                  <div className={cn("mx-auto mt-2.5 h-1 w-10 rounded-full", textClass.replace("text", "bg"))} />
                 </article>
               );
             })}
           </div>
 
-          <div className="mt-4 rounded-xl border border-fs-accent/25 bg-[#fff7f1] px-4 py-3">
-            <div className="flex items-start gap-3">
+          <div className="mt-4 rounded-xl border border-fs-accent/25 bg-[#fff7f1] px-4 py-4">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:gap-3">
               <div className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-fs-accent text-white">
                 <MdEmojiEmotions className="h-5 w-5" />
               </div>
               <div>
-                <p className="text-sm font-black text-[#202938]">La bonne nouvelle ?</p>
-                <p className="text-sm text-neutral-700">
-                  FasoStock a été conçu pour résoudre tous ces problèmes et vous aider à{" "}
-                  <span className="font-bold text-fs-accent">reprendre le contrôle total</span> de votre commerce.
+                <p className="text-lg font-black text-[#202938]">La bonne nouvelle ?</p>
+                <p className="mt-1 text-sm leading-relaxed text-neutral-700">
+                  FasoStock a été conçu pour résoudre tous ces problèmes et vous aider à reprendre le{" "}
+                  <span className="font-black text-fs-accent">contrôle total</span> de votre commerce.
                 </p>
               </div>
             </div>
@@ -637,22 +654,24 @@ export default async function Home() {
         </div>
       </section>
 
+      {/* ── NOTRE SOLUTION ── */}
       <section className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6 sm:pb-12">
         <div className="relative overflow-hidden rounded-[1.7rem] border border-black/8 bg-[#fbfbfb] px-4 py-6 sm:px-8 sm:py-8">
           <div className="pointer-events-none absolute -left-12 -top-14 h-40 w-40 rounded-full bg-[#fff1e7]" />
           <div className="pointer-events-none absolute right-6 top-6 text-[11px] tracking-[0.25em] text-fs-accent/25">··············</div>
 
-          <div className="relative text-center">
-            <p className="inline-flex items-center gap-1.5 rounded-full bg-[#fff5ef] px-3 py-1 text-xs font-black uppercase tracking-wide text-fs-accent">
+          <div className="relative flex flex-col items-center text-center">
+            <LottiePlayer src="/animations/check.json" className="h-20 w-20" />
+            <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-[#fff5ef] px-3 py-1 text-xs font-black uppercase tracking-wide text-fs-accent">
               <MdCheckCircle className="h-4 w-4" />
               Notre solution
             </p>
-            <h3 className="mx-auto mt-3 max-w-4xl text-[2rem] font-black leading-[1.05] tracking-tight text-[#17253a] sm:text-[3.3rem]">
+            <h3 className="mx-auto mt-3 max-w-3xl text-[1.8rem] font-black leading-[1.05] tracking-tight text-[#17253a] sm:text-[3rem]">
               FasoStock centralise toute la
               <br />
               <span className="text-fs-accent">gestion de votre commerce</span>
             </h3>
-            <p className="mx-auto mt-3 max-w-3xl text-sm text-neutral-600 sm:text-[1.05rem]">
+            <p className="mx-auto mt-4 max-w-2xl text-sm leading-relaxed text-neutral-600 sm:text-[1.05rem]">
               Une plateforme simple, complète et intelligente pour gérer tous les aspects de votre activité depuis un
               seul endroit.
             </p>
@@ -681,53 +700,64 @@ export default async function Home() {
                 >
                   <div
                     className={cn(
-                      "inline-flex h-14 w-14 items-center justify-center rounded-full border bg-white",
+                      "inline-flex h-12 w-12 items-center justify-center rounded-full border bg-white",
                       textClass,
                     )}
                   >
-                    <item.icon className="h-7 w-7" aria-hidden />
+                    <item.icon className="h-6 w-6" aria-hidden />
                   </div>
-                  <h4 className="mt-3 text-xl font-black leading-tight text-[#1f2937] sm:text-2xl">{item.title}</h4>
-                  <div className={cn("mt-2 h-1 w-12 rounded-full", textClass.replace("text", "bg"))} />
-                  <p className="mt-3 text-sm leading-relaxed text-neutral-700">{item.text}</p>
+                  <h4 className="mt-3 text-lg font-black leading-tight text-[#1f2937]">{item.title}</h4>
+                  <div className={cn("mt-2 h-1 w-10 rounded-full", textClass.replace("text", "bg"))} />
+                  <p className="mt-2 text-xs leading-relaxed text-neutral-600 sm:text-[13px]">{item.text}</p>
                 </article>
               );
             })}
           </div>
 
+          <p className="relative mx-auto mt-6 max-w-2xl text-center text-base font-black text-[#17253a] sm:text-lg">
+            Tout ce dont vous avez besoin,
+            <br />
+            <span className="text-fs-accent">dans une seule application.</span>
+          </p>
+
           <div className="mt-4 overflow-hidden rounded-xl border border-fs-accent/25 bg-[#fff7f1]">
-            <div className="grid grid-cols-1 divide-y divide-fs-accent/15 min-[860px]:grid-cols-[1.35fr_1fr_1fr_1fr_1fr] min-[860px]:divide-x min-[860px]:divide-y-0">
-              <div className="flex items-center gap-3 px-4 py-3.5">
-                <div className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-fs-accent text-white">
-                  <MdSecurity className="h-6 w-6" />
+            <div className="grid gap-0 divide-y divide-fs-accent/15 sm:grid-cols-2 sm:divide-x sm:divide-y-0 lg:grid-cols-4">
+              {[
+                {
+                  icon: MdSecurity,
+                  title: "Sécurisé",
+                  text: "Vos données sont protégées et confidentielles.",
+                },
+                {
+                  icon: MdOfflineBolt,
+                  title: "Simple & rapide",
+                  text: "Interface intuitive pour gagner du temps.",
+                },
+                {
+                  icon: MdOutlinePhoneAndroid,
+                  title: "Accessible partout",
+                  text: "Utilisez FasoStock sur mobile ou ordinateur.",
+                },
+                {
+                  icon: MdHeadsetMic,
+                  title: "Support local",
+                  text: "Une équipe disponible pour vous accompagner.",
+                },
+              ].map((item) => (
+                <div key={item.title} className="flex gap-3 px-4 py-3.5">
+                  <item.icon className="mt-0.5 h-5 w-5 shrink-0 text-fs-accent" aria-hidden />
+                  <div>
+                    <p className="text-sm font-black text-[#202938]">{item.title}</p>
+                    <p className="mt-0.5 text-xs leading-relaxed text-neutral-600">{item.text}</p>
+                  </div>
                 </div>
-                <p className="text-lg font-black leading-tight text-[#202938]">
-                  Tout ce dont vous avez besoin,
-                  <br />
-                  <span className="text-fs-accent">dans une seule application.</span>
-                </p>
-              </div>
-              <div className="px-4 py-3">
-                <p className="text-sm font-bold text-[#202938]">Sécurisé</p>
-                <p className="text-xs text-neutral-600">Vos données sont protégées et confidentielles.</p>
-              </div>
-              <div className="px-4 py-3">
-                <p className="text-sm font-bold text-[#202938]">Simple & rapide</p>
-                <p className="text-xs text-neutral-600">Interface intuitive pour gagner du temps.</p>
-              </div>
-              <div className="px-4 py-3">
-                <p className="text-sm font-bold text-[#202938]">Accessible partout</p>
-                <p className="text-xs text-neutral-600">Utilisez FasoStock sur mobile ou ordinateur.</p>
-              </div>
-              <div className="px-4 py-3">
-                <p className="text-sm font-bold text-[#202938]">Support local</p>
-                <p className="text-xs text-neutral-600">Une équipe disponible pour vous accompagner.</p>
-              </div>
+              ))}
             </div>
           </div>
         </div>
       </section>
 
+      {/* ── TARIFS ── */}
       <section id="tarifs" className="mx-auto w-full max-w-6xl scroll-mt-24 px-4 pb-8 sm:px-6 sm:pb-12">
         <div className="relative overflow-hidden rounded-[1.7rem] border border-black/8 bg-[#f8fafc] px-4 py-6 sm:px-7 sm:py-8">
           <div className="pointer-events-none absolute -left-14 -top-16 h-44 w-44 rounded-full bg-[#ffe8db]" />
@@ -741,7 +771,7 @@ export default async function Home() {
               <br />
               correspond à <span className="text-fs-accent">votre activité</span>
             </h4>
-            <p className="mx-auto mt-3 max-w-3xl text-sm text-neutral-600 sm:text-[1.05rem]">
+            <p className="mx-auto mt-2 max-w-xl text-sm text-neutral-600 sm:text-[1.05rem]">
               Des formules simples, flexibles et adaptées à tous les types de commerces. Commencez gratuitement, puis
               évoluez selon vos besoins.
             </p>
@@ -828,120 +858,103 @@ export default async function Home() {
           </div>
 
           <div className="mt-5 overflow-hidden rounded-2xl border border-black/8 bg-white">
-            <div className="grid grid-cols-1 divide-y divide-black/8 min-[760px]:grid-cols-2 min-[760px]:divide-x min-[760px]:divide-y-0 lg:grid-cols-4">
-              <div className="flex items-center gap-2.5 px-4 py-3">
-                <MdSecurity className="h-5 w-5 shrink-0 text-[#22a168]" />
-                <div>
-                  <p className="text-sm font-bold text-[#202938]">Sans engagement</p>
-                  <p className="text-xs text-neutral-500">Résiliez à tout moment</p>
+            <div className="grid grid-cols-2 divide-y divide-black/8 min-[760px]:grid-cols-4 min-[760px]:divide-x min-[760px]:divide-y-0">
+              {[
+                {
+                  icon: MdSecurity,
+                  title: "Sans engagement",
+                  subtitle: "Résiliez à tout moment",
+                  color: "text-[#22a168]",
+                },
+                {
+                  icon: MdLock,
+                  title: "Paiement sécurisé",
+                  subtitle: "Vos données sont protégées",
+                  color: "text-fs-accent",
+                },
+                {
+                  icon: MdHeadsetMic,
+                  title: "Support réactif",
+                  subtitle: "Une équipe à votre écoute",
+                  color: "text-[#2f80ed]",
+                },
+                {
+                  icon: MdAutorenew,
+                  title: "Mises à jour incluses",
+                  subtitle: "Toujours la meilleure version",
+                  color: "text-[#7c3aed]",
+                },
+              ].map((cell) => (
+                <div key={cell.title} className="flex items-start gap-2.5 px-4 py-3">
+                  <cell.icon className={cn("mt-0.5 h-5 w-5 shrink-0", cell.color)} aria-hidden />
+                  <div>
+                    <p className="text-sm font-bold text-[#202938]">{cell.title}</p>
+                    <p className="text-xs text-neutral-600">{cell.subtitle}</p>
+                  </div>
                 </div>
-              </div>
-              <div className="flex items-center gap-2.5 px-4 py-3">
-                <MdLock className="h-5 w-5 shrink-0 text-fs-accent" />
-                <div>
-                  <p className="text-sm font-bold text-[#202938]">Paiement sécurisé</p>
-                  <p className="text-xs text-neutral-500">Vos données sont protégées</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2.5 px-4 py-3">
-                <MdHeadsetMic className="h-5 w-5 shrink-0 text-[#2f80ed]" />
-                <div>
-                  <p className="text-sm font-bold text-[#202938]">Support réactif</p>
-                  <p className="text-xs text-neutral-500">Une équipe à votre écoute</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2.5 px-4 py-3">
-                <MdAutorenew className="h-5 w-5 shrink-0 text-[#7c3aed]" />
-                <div>
-                  <p className="text-sm font-bold text-[#202938]">Mises à jour incluses</p>
-                  <p className="text-xs text-neutral-500">Toujours la meilleure version</p>
-                </div>
-              </div>
+              ))}
             </div>
           </div>
         </div>
       </section>
 
       <section id="fonctionnalites-principales" className="mx-auto w-full max-w-7xl scroll-mt-24 px-4 pb-8 sm:px-6 sm:pb-12">
-        <div className="relative overflow-hidden rounded-[1.7rem] border border-black/8 bg-[#fbfbfb] px-4 py-6 sm:px-8 sm:py-8">
+        <div className="relative overflow-hidden rounded-[1.7rem] border border-black/8 bg-white px-4 py-6 shadow-[0_22px_56px_-36px_rgba(17,24,39,0.28)] sm:px-8 sm:py-8">
           <div className="pointer-events-none absolute -left-12 -top-14 h-40 w-40 rounded-full bg-[#fff1e7]" />
           <div className="relative text-center">
             <p className="inline-flex items-center gap-1.5 rounded-full bg-[#fff5ef] px-3 py-1 text-xs font-black uppercase tracking-wide text-fs-accent">
               <MdCheckCircle className="h-4 w-4" />
               Fonctionnalités principales
             </p>
-            <h3 className="mx-auto mt-3 max-w-4xl text-[2rem] font-black leading-[1.05] tracking-tight text-[#17253a] sm:text-[3.1rem]">
+            <h3 className="mx-auto mt-3 max-w-4xl text-[1.85rem] font-black leading-[1.05] tracking-tight text-[#17253a] sm:text-[3.1rem]">
               Toutes les fonctionnalités essentielles
               <br />
-              pour <span className="text-fs-accent">gérer votre activité</span> facilement
+              <span className="text-fs-accent">pour gérer votre activité facilement</span>
             </h3>
-            <p className="mx-auto mt-3 max-w-3xl text-sm text-neutral-600 sm:text-[1.05rem]">
+            <p className="mx-auto mt-3 max-w-3xl text-sm leading-relaxed text-neutral-600 sm:text-[1.05rem]">
               FasoStock regroupe tous les outils dont vous avez besoin pour gérer votre commerce de manière simple,
               efficace et professionnelle.
             </p>
           </div>
 
           <div data-fs-stagger className="relative mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {coreFeatures.map((item) => {
-              const toneMap = {
-                orange: "text-[#f97316] border-[#ffe2d2]",
-                blue: "text-[#2f80ed] border-[#d7e9ff]",
-                green: "text-[#22a168] border-[#d9efdf]",
-                purple: "text-[#7c3aed] border-[#e8defa]",
-                amber: "text-[#d97706] border-[#f3e3c9]",
-                pink: "text-[#db2777] border-[#f8d8ec]",
-                cyan: "text-[#0891b2] border-[#d7f2f6]",
-                indigo: "text-[#2563eb] border-[#d8e3ff]",
-              } as const;
-              const [textClass, borderClass] = toneMap[item.tone].split(" ") as [string, string];
-              return (
-                <article key={item.title} className={cn("rounded-2xl border bg-white p-4 shadow-[0_12px_26px_-22px_rgba(15,23,42,0.45)]", borderClass)}>
-                  <div className={cn("inline-flex h-14 w-14 items-center justify-center rounded-2xl border bg-neutral-50", textClass)}>
-                    <item.icon className="h-7 w-7" aria-hidden />
-                  </div>
-                  <h4 className="mt-3 text-xl font-black leading-tight text-[#1f2937]">{item.title}</h4>
-                  <div className={cn("mt-2 h-1 w-12 rounded-full", textClass.replace("text", "bg"))} />
-                  <p className="mt-3 text-sm leading-relaxed text-neutral-700">{item.text}</p>
-                  <p className={cn("mt-4 text-sm font-bold", textClass)}>
-                    En savoir plus <span aria-hidden>→</span>
-                  </p>
-                </article>
-              );
-            })}
+            {landingFonctionnalitesPrincipales.map((item) => (
+              <article
+                key={item.title}
+                className="flex h-full flex-col rounded-2xl border border-black/10 bg-[#fbfbfb] p-4 shadow-[0_12px_26px_-22px_rgba(15,23,42,0.45)]"
+              >
+                <div className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-fs-accent/25 bg-[#fff5ef] text-fs-accent">
+                  <item.icon className="h-6 w-6" aria-hidden />
+                </div>
+                <h4 className="mt-3 text-lg font-black leading-tight text-[#1f2937]">{item.title}</h4>
+                <p className="mt-2 flex-1 text-xs leading-relaxed text-neutral-600 sm:text-[13px]">{item.text}</p>
+                <Link
+                  href="#demonstration"
+                  className="mt-3 inline-flex items-center gap-1 text-xs font-black text-fs-accent hover:underline"
+                >
+                  En savoir plus
+                  <MdArrowForward className="h-3.5 w-3.5" aria-hidden />
+                </Link>
+              </article>
+            ))}
           </div>
 
-          <div className="mt-4 overflow-hidden rounded-xl border border-fs-accent/25 bg-[#fff7f1]">
-            <div className="grid grid-cols-1 divide-y divide-fs-accent/15 min-[900px]:grid-cols-[1.6fr_1fr_1fr_1fr_1fr_1fr] min-[900px]:divide-x min-[900px]:divide-y-0">
-              <div className="flex items-center gap-3 px-4 py-3.5">
-                <div className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-fs-accent text-white">
-                  <MdSecurity className="h-6 w-6" />
-                </div>
-                <p className="text-lg font-black leading-tight text-[#202938]">
-                  Conçu pour simplifier
-                  <br />
-                  <span className="text-fs-accent">votre quotidien</span>
-                </p>
-              </div>
-              <div className="px-4 py-3">
-                <p className="text-sm font-bold text-[#202938]">Productivité</p>
-                <p className="text-xs text-neutral-600">Gagnez du temps et concentrez-vous sur l’essentiel.</p>
-              </div>
-              <div className="px-4 py-3">
-                <p className="text-sm font-bold text-[#202938]">Précision</p>
-                <p className="text-xs text-neutral-600">Réduisez les erreurs et améliorez la fiabilité.</p>
-              </div>
-              <div className="px-4 py-3">
-                <p className="text-sm font-bold text-[#202938]">Sécurité</p>
-                <p className="text-xs text-neutral-600">Vos données sont protégées et sauvegardées.</p>
-              </div>
-              <div className="px-4 py-3">
-                <p className="text-sm font-bold text-[#202938]">Performance</p>
-                <p className="text-xs text-neutral-600">Une application rapide, fluide et toujours disponible.</p>
-              </div>
-              <div className="px-4 py-3">
-                <p className="text-sm font-bold text-[#202938]">Support dédié</p>
-                <p className="text-xs text-neutral-600">Une équipe disponible pour vous accompagner.</p>
-              </div>
+          <div className="relative mt-8 overflow-hidden rounded-2xl border border-fs-accent/20 bg-[#fff7f1] px-4 py-6 sm:px-6">
+            <p className="text-center text-[1.35rem] font-black leading-tight text-[#17253a] sm:text-3xl">
+              Conçu pour simplifier
+              <br />
+              <span className="text-fs-accent">votre quotidien</span>
+            </p>
+            <div data-fs-stagger className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+              {landingSimplifierBand.map((b) => (
+                <article key={b.title} className="rounded-xl border border-black/8 bg-white/90 p-3 text-center shadow-sm">
+                  <div className="mx-auto inline-flex h-9 w-9 items-center justify-center rounded-full bg-[#fff5ef] text-fs-accent">
+                    <b.icon className="h-5 w-5" aria-hidden />
+                  </div>
+                  <p className="mt-2 text-sm font-black text-[#1f2937]">{b.title}</p>
+                  <p className="mt-1 text-[11px] leading-relaxed text-neutral-600">{b.text}</p>
+                </article>
+              ))}
             </div>
           </div>
         </div>
@@ -1053,7 +1066,7 @@ export default async function Home() {
                   { label: "Tarifs", href: "#tarifs" },
                   { label: "Démonstration", href: "#demonstration" },
                   { label: "Mises à jour", href: "/help" },
-                  { label: "Intégrations", href: "/integrations" },
+                  { label: "Intégrations", href: "/help" },
                 ],
               },
               {
@@ -1106,27 +1119,13 @@ export default async function Home() {
           </div>
 
           <div className="mt-6 rounded-2xl border border-white/10 bg-[#0b1b33] p-4">
-            <div className="grid gap-4 lg:grid-cols-[1.5fr_1fr_1fr_1fr]">
-              <div className="flex items-center gap-3">
-                <div className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-fs-accent/20 text-fs-accent">
-                  <MdOutlinePhoneAndroid className="h-6 w-6" />
-                </div>
-                <div>
-                  <p className="text-2xl font-black">FasoStock sur tous vos appareils</p>
-                  <p className="text-sm text-white/70">Disponible sur Windows, Android et bientôt iOS</p>
-                </div>
+            <div className="flex items-center gap-3">
+              <div className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-fs-accent/20 text-fs-accent">
+                <MdOutlinePhoneAndroid className="h-6 w-6" />
               </div>
               <div>
-                <p className="flex items-center gap-2 text-sm font-bold"><MdSecurity className="h-4 w-4 text-fs-accent" /> Données sécurisées</p>
-                <p className="mt-1 text-xs text-white/70">Vos données sont protégées et sauvegardées en toute sécurité.</p>
-              </div>
-              <div>
-                <p className="flex items-center gap-2 text-sm font-bold"><MdSync className="h-4 w-4 text-fs-accent" /> Synchronisation</p>
-                <p className="mt-1 text-xs text-white/70">Travaillez hors ligne et synchronisez vos données automatiquement.</p>
-              </div>
-              <div>
-                <p className="flex items-center gap-2 text-sm font-bold"><MdHeadsetMic className="h-4 w-4 text-fs-accent" /> Support réactif</p>
-                <p className="mt-1 text-xs text-white/70">Notre équipe est disponible pour vous accompagner à chaque étape.</p>
+                <p className="text-xl font-black">FasoStock sur tous vos appareils</p>
+                <p className="text-sm text-white/70">Disponible sur Windows, Android et bientôt iOS</p>
               </div>
             </div>
             <div className="mt-4 flex flex-wrap items-center gap-2">

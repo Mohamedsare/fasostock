@@ -45,6 +45,7 @@ async function postPdf(path: string, body: string): Promise<Blob> {
   const res = await fetch(path, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
     body,
   });
   if (!res.ok) {
@@ -77,11 +78,13 @@ export async function fetchReceiptThermalPdfBlob(
 export async function fetchReportsPdfBlob(
   data: ReportsPageData,
   meta: { title: string; subtitle: string },
+  scope: { companyId: string } | { asPlatformAdmin: true },
 ): Promise<Blob> {
-  return postPdf(
-    "/api/pdf/reports",
-    JSON.stringify({ data, meta }),
-  );
+  const payload =
+    "asPlatformAdmin" in scope
+      ? { data, meta, companyId: null, asPlatformAdmin: true as const }
+      : { data, meta, companyId: scope.companyId, asPlatformAdmin: false as const };
+  return postPdf("/api/pdf/reports", JSON.stringify(payload));
 }
 
 export async function fetchCreditRepaymentReceiptPdfBlob(
@@ -94,6 +97,8 @@ export async function fetchCreditRepaymentReceiptPdfBlob(
 }
 
 export async function fetchStoreProductsPdfBlob(data: {
+  companyId: string;
+  storeId?: string | null;
   companyName: string;
   companyLogoUrl?: string | null;
   storeName: string;

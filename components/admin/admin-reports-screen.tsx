@@ -426,7 +426,7 @@ export function AdminReportsScreen() {
       const blob = await fetchReportsPdfBlob(pdfData, {
         title: "Rapports & Intelligence Décisionnelle — Super Admin",
         subtitle: `Période: ${rangePreset} • Mode: ${viewMode} • Généré le ${format(new Date(), "dd/MM/yyyy HH:mm")}`,
-      });
+      }, { asPlatformAdmin: true });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;

@@ -2,6 +2,12 @@ import {
   extractJsonFromModelContent,
   parseStructuredFromDeepseekJson,
 } from "@/lib/features/ai/deepseek-parse";
+import {
+  companyAllowsAiPredictions,
+  requireAuthUser,
+  userBelongsToCompany,
+} from "@/lib/server/api-auth";
+import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
 const STRUCTURED_SYSTEM_PROMPT = `Tu es un expert IA senior en pilotage commercial et gestion de stock (FasoStock).
@@ -67,16 +73,37 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Clé API DeepSeek non configurée" }, { status: 503 });
   }
 
-  let body: { contextText?: string };
+  let body: { contextText?: string; companyId?: string };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "Body JSON invalide" }, { status: 400 });
   }
 
+  const companyId = String(body.companyId ?? "").trim();
+  if (!companyId) {
+    return NextResponse.json({ error: "companyId requis" }, { status: 400 });
+  }
+
+  const supabase = await createClient();
+  const auth = await requireAuthUser(supabase);
+  if (!auth.ok) return auth.response;
+
+  const member = await userBelongsToCompany(supabase, auth.user.id, companyId);
+  if (!member) {
+    return NextResponse.json({ error: "Non autorisé" }, { status: 403 });
+  }
+  const aiOk = await companyAllowsAiPredictions(supabase, companyId);
+  if (!aiOk) {
+    return NextResponse.json({ error: "Prédictions IA désactivées pour cette entreprise." }, { status: 403 });
+  }
+
   const contextText = body.contextText?.trim();
   if (!contextText) {
     return NextResponse.json({ error: "contextText requis" }, { status: 400 });
+  }
+  if (contextText.length > 400_000) {
+    return NextResponse.json({ error: "contextText trop volumineux" }, { status: 400 });
   }
 
   const response = await fetch("https://api.deepseek.com/v1/chat/completions", {

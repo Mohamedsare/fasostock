@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { NextResponse } from "next/server";
 import { createHash } from "crypto";
 
@@ -26,7 +26,9 @@ function hashKey(raw: string): string {
 
 async function verifyTurnstile(token: string, ip: string): Promise<boolean> {
   const secret = process.env.TURNSTILE_SECRET_KEY?.trim();
-  if (!secret) return true;
+  if (!secret) {
+    return process.env.NODE_ENV !== "production";
+  }
   if (!token.trim()) return false;
   const body = new URLSearchParams({
     secret,
@@ -47,6 +49,23 @@ async function verifyTurnstile(token: string, ip: string): Promise<boolean> {
 }
 
 export async function POST(req: Request) {
+  if (process.env.NODE_ENV === "production" && !process.env.TURNSTILE_SECRET_KEY?.trim()) {
+    return NextResponse.json(
+      { error: "Inscription newsletter indisponible (configuration anti-bot manquante)." },
+      { status: 503 },
+    );
+  }
+
+  let svc;
+  try {
+    svc = createServiceRoleClient();
+  } catch {
+    return NextResponse.json(
+      { error: "Inscription newsletter indisponible (configuration serveur)." },
+      { status: 503 },
+    );
+  }
+
   let body: SubscribeBody | null = null;
   try {
     body = (await req.json()) as SubscribeBody;
@@ -59,11 +78,9 @@ export async function POST(req: Request) {
   const elapsedMs = Number(body?.elapsedMs ?? 0);
   const turnstileToken = String(body?.turnstileToken ?? "");
 
-  // Honeypot anti-bot.
   if (website.length > 0) {
     return NextResponse.json({ error: "Requête invalide." }, { status: 400 });
   }
-  // Human-like minimum fill time.
   if (!Number.isFinite(elapsedMs) || elapsedMs < 1200) {
     return NextResponse.json({ error: "Soumission trop rapide." }, { status: 429 });
   }
@@ -75,19 +92,16 @@ export async function POST(req: Request) {
   const emailLower = email.toLowerCase();
   const ip = getClientIp(req);
   const ipHash = hashKey(ip);
-  const supabase = await createClient();
 
-  // Optional Turnstile enforcement when TURNSTILE_SECRET_KEY exists.
   const captchaOk = await verifyTurnstile(turnstileToken, ip);
   if (!captchaOk) {
     return NextResponse.json({ error: "Vérification anti-bot échouée." }, { status: 400 });
   }
 
-  // Sliding window rate limit: 6 attempts / 15 minutes per IP.
   const now = Date.now();
   const windowMs = 15 * 60 * 1000;
   const maxAttempts = 6;
-  const { data: rlRow } = await supabase
+  const { data: rlRow } = await svc
     .from("newsletter_rate_limits")
     .select("key, attempts, window_started_at, blocked_until")
     .eq("key", ipHash)
@@ -107,7 +121,7 @@ export async function POST(req: Request) {
   const attempts = inWindow ? Number(row?.attempts ?? 0) + 1 : 1;
   const nextBlockedUntil = attempts > maxAttempts ? new Date(now + windowMs).toISOString() : null;
   const nextWindowStart = inWindow ? new Date(windowStart).toISOString() : new Date(now).toISOString();
-  const { error: rlErr } = await supabase.from("newsletter_rate_limits").upsert(
+  const { error: rlErr } = await svc.from("newsletter_rate_limits").upsert(
     {
       key: ipHash,
       attempts,
@@ -124,7 +138,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Trop de tentatives. Réessayez plus tard." }, { status: 429 });
   }
 
-  const { error } = await supabase.from("newsletter_subscribers").insert({
+  const { error } = await svc.from("newsletter_subscribers").insert({
     email,
     email_lower: emailLower,
     source: "landing_footer",
@@ -134,7 +148,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true });
   }
 
-  // Déjà inscrit: on reste idempotent côté UX.
   if ((error as { code?: string }).code === "23505") {
     return NextResponse.json({ ok: true, alreadySubscribed: true });
   }
@@ -148,4 +161,3 @@ export async function GET() {
     captchaRequired: Boolean(secret),
   });
 }
-

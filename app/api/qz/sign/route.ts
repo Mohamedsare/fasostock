@@ -1,8 +1,14 @@
+import {
+  requireAuthUser,
+  userHasActiveCompanyMembership,
+} from "@/lib/server/api-auth";
 import { createClient } from "@/lib/supabase/server";
 import { createSign } from "crypto";
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
+
+const MAX_REQUEST_CHARS = 120_000;
 
 /**
  * Signature des requêtes QZ Tray (hash côté client).
@@ -10,11 +16,15 @@ export const runtime = "nodejs";
  */
 export async function POST(req: Request) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  const auth = await requireAuthUser(supabase);
+  if (!auth.ok) return auth.response;
+
+  const member = await userHasActiveCompanyMembership(supabase, auth.user.id);
+  if (!member) {
+    return NextResponse.json(
+      { error: "Aucune entreprise active : signature QZ réservée aux comptes rattachés à une entreprise." },
+      { status: 403 },
+    );
   }
 
   const pem = process.env.QZ_PRIVATE_KEY_PEM?.trim();
@@ -44,10 +54,10 @@ export async function POST(req: Request) {
       : null;
 
   if (!requestToSign) {
-    return NextResponse.json(
-      { error: "Champ « request » (string) requis" },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: "Champ « request » (string) requis" }, { status: 400 });
+  }
+  if (requestToSign.length > MAX_REQUEST_CHARS) {
+    return NextResponse.json({ error: "Requête QZ trop volumineuse." }, { status: 400 });
   }
 
   try {
@@ -58,9 +68,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ signature });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    return NextResponse.json(
-      { error: `Échec de la signature : ${msg}` },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: `Échec de la signature : ${msg}` }, { status: 500 });
   }
 }

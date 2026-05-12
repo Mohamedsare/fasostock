@@ -3,6 +3,7 @@
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { FsHorizontalScroll } from "@/components/ui/fs-horizontal-scroll";
 import { adminAskAiAssistant, adminExecuteAiAction, adminListCompanies } from "@/lib/features/admin/api";
+import type { AdminCompany } from "@/lib/features/admin/types";
 import { messageFromUnknownError, toast } from "@/lib/toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -22,10 +23,21 @@ type ChatMsgUi = ChatMsg & { structured?: StructuredAnswerUi };
 type PendingAction = {
   id: string;
   type: "set_company_active" | "set_company_ai_predictions";
+  companyId: string;
   companyName: string;
   value: boolean;
   reason: string;
 };
+
+function resolveCompanyIdByExactName(
+  companies: AdminCompany[],
+  rawName: string,
+): string | null {
+  const want = rawName.trim().toLowerCase();
+  if (!want) return null;
+  const hits = companies.filter((c) => c.name.trim().toLowerCase() === want);
+  return hits.length === 1 ? hits[0]!.id : null;
+}
 
 export function AdminAiScreen() {
   const qc = useQueryClient();
@@ -63,16 +75,28 @@ export function AdminAiScreen() {
         },
       ]);
       if ((res.suggestedActions ?? []).length > 0) {
-        setPendingActions((prev) => [
-          ...prev,
-          ...res.suggestedActions.map((a, i) => ({
-            id: `${Date.now()}-${i}-${a.type}`,
-            type: a.type,
-            companyName: a.company_name,
-            value: a.value,
-            reason: a.reason,
-          })),
-        ]);
+        const list = companiesQ.data ?? [];
+        const mapped = (res.suggestedActions ?? [])
+          .map((a, i) => {
+            const companyId = resolveCompanyIdByExactName(list, a.company_name);
+            if (!companyId) return null;
+            return {
+              id: `${Date.now()}-${i}-${a.type}`,
+              type: a.type,
+              companyId,
+              companyName: a.company_name,
+              value: a.value,
+              reason: a.reason,
+            } satisfies PendingAction;
+          })
+          .filter((x): x is PendingAction => x != null);
+        if (mapped.length > 0) {
+          setPendingActions((prev) => [...prev, ...mapped]);
+        } else if ((res.suggestedActions ?? []).length > 0) {
+          toast.error(
+            "Actions IA non exécutables : nom d'entreprise ambigu ou inconnu. Vérifiez la liste des entreprises.",
+          );
+        }
       }
       setPrompt("");
     },
@@ -105,7 +129,7 @@ export function AdminAiScreen() {
     mutationFn: async (a: PendingAction) =>
       adminExecuteAiAction({
         type: a.type,
-        companyName: a.companyName,
+        companyId: a.companyId,
         value: a.value,
       }),
     onSuccess: (res, action) => {

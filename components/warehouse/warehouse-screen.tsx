@@ -598,6 +598,8 @@ export function WarehouseScreen() {
               : null,
         }));
       await downloadStoreProductsPdf({
+        companyId,
+        storeId: null,
         companyName: companyName || "Entreprise",
         companyLogoUrl,
         storeName: "Depot Centrale",

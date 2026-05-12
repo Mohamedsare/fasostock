@@ -5,7 +5,7 @@ export const runtime = "nodejs";
 
 type Body = {
   type?: "set_company_active" | "set_company_ai_predictions";
-  companyName?: string;
+  companyId?: string;
   value?: boolean;
 };
 
@@ -32,8 +32,8 @@ export async function POST(req: Request) {
   }
 
   const type = body.type;
-  const companyName = typeof body.companyName === "string" ? body.companyName.trim() : "";
-  if (!type || !companyName || typeof body.value !== "boolean") {
+  const companyId = typeof body.companyId === "string" ? body.companyId.trim() : "";
+  if (!type || !companyId || typeof body.value !== "boolean") {
     return NextResponse.json({ error: "Parametres invalides" }, { status: 400 });
   }
 
@@ -41,7 +41,7 @@ export async function POST(req: Request) {
   const { data: company, error: companyErr } = await supabase
     .from("companies")
     .select("id, name")
-    .ilike("name", companyName)
+    .eq("id", companyId)
     .maybeSingle();
   if (companyErr) return NextResponse.json({ error: companyErr.message }, { status: 500 });
   if (!company?.id) return NextResponse.json({ error: "Entreprise introuvable" }, { status: 404 });

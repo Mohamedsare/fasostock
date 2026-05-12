@@ -794,6 +794,7 @@ export async function adminAskAiAssistant(params: {
   const res = await fetch("/api/ai/admin-chat", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
     body: JSON.stringify({
       question: params.question,
       companyId: params.companyId ?? null,
@@ -867,12 +868,13 @@ export async function adminAskAiAssistant(params: {
 
 export async function adminExecuteAiAction(params: {
   type: "set_company_active" | "set_company_ai_predictions";
-  companyName: string;
+  companyId: string;
   value: boolean;
 }): Promise<{ message: string }> {
   const res = await fetch("/api/ai/admin-action", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
     body: JSON.stringify(params),
   });
   const raw = await res.text();

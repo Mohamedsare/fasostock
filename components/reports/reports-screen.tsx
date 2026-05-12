@@ -294,7 +294,7 @@ export function ReportsScreen() {
       const blob = await downloadReportsPdfBlob(d, {
         title: terms.reportsTitle,
         subtitle: description,
-      });
+      }, { companyId });
       const name = `rapports_${new Date().toISOString().slice(0, 10)}.pdf`;
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -306,7 +306,7 @@ export function ReportsScreen() {
     } catch (e) {
       toast.error(messageFromUnknownError(e, "Export PDF impossible."));
     }
-  }, [d, description, terms.reportsTitle]);
+  }, [d, description, terms.reportsTitle, companyId]);
 
   const exportReportsExcelWithToast = useCallback(() => {
     if (!d) return;

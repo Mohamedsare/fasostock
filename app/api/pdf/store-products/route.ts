@@ -1,12 +1,16 @@
 import { NextResponse } from "next/server";
 import { htmlToPdfBufferA4ResilientWithPageNumbers } from "@/lib/server/pdf/html-to-pdf";
 import { renderStoreProductsHtml } from "@/lib/server/pdf/store-products-html";
+import { createClient } from "@/lib/supabase/server";
+import { isAllowedPdfEmbedImageUrl, requireAuthUser, userBelongsToCompany } from "@/lib/server/api-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 type Body = {
+  companyId: string;
+  storeId?: string | null;
   companyName: string;
   companyLogoUrl?: string | null;
   storeName: string;
@@ -17,6 +21,8 @@ type Body = {
 function parseBody(json: unknown): Body {
   if (!json || typeof json !== "object") throw new Error("Corps JSON invalide");
   const o = json as Record<string, unknown>;
+  const companyId = typeof o.companyId === "string" ? o.companyId.trim() : "";
+  if (!companyId) throw new Error("companyId requis");
   const itemsRaw = Array.isArray(o.items) ? o.items : [];
   const items = itemsRaw.map((x) => {
     const r = x as Record<string, unknown>;
@@ -26,6 +32,8 @@ function parseBody(json: unknown): Body {
     };
   });
   return {
+    companyId,
+    storeId: typeof o.storeId === "string" ? o.storeId : o.storeId === null ? null : undefined,
     companyName: String(o.companyName ?? ""),
     companyLogoUrl: o.companyLogoUrl == null ? null : String(o.companyLogoUrl),
     storeName: String(o.storeName ?? ""),
@@ -34,12 +42,14 @@ function parseBody(json: unknown): Body {
   };
 }
 
-async function toDataUrlFromHttp(url: string): Promise<string | null> {
+async function toDataUrlFromHttp(url: string, supabaseUrl: string | undefined): Promise<string | null> {
+  if (!isAllowedPdfEmbedImageUrl(url, supabaseUrl)) return null;
   try {
     const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
     if (!res.ok) return null;
     const ct = res.headers.get("content-type") || "image/jpeg";
     const ab = await res.arrayBuffer();
+    if (ab.byteLength > 2_000_000) return null;
     const b64 = Buffer.from(ab).toString("base64");
     return `data:${ct};base64,${b64}`;
   } catch {
@@ -49,19 +59,56 @@ async function toDataUrlFromHttp(url: string): Promise<string | null> {
 
 export async function POST(req: Request) {
   try {
+    const supabase = await createClient();
+    const auth = await requireAuthUser(supabase);
+    if (!auth.ok) return auth.response;
+
     const json: unknown = await req.json();
     const data = parseBody(json);
+
+    const allowed = await userBelongsToCompany(supabase, auth.user.id, data.companyId);
+    if (!allowed) {
+      return NextResponse.json({ error: "Non autorisé." }, { status: 403 });
+    }
+
+    const storeId = typeof data.storeId === "string" ? data.storeId.trim() : "";
+    if (storeId.length > 0) {
+      const { data: st, error: stErr } = await supabase
+        .from("stores")
+        .select("company_id")
+        .eq("id", storeId)
+        .maybeSingle();
+      if (stErr || !st || String((st as { company_id?: string }).company_id ?? "") !== data.companyId) {
+        return NextResponse.json({ error: "Boutique invalide pour cette entreprise." }, { status: 403 });
+      }
+    }
+
+    const supabasePublicUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+    if (data.companyLogoUrl && !isAllowedPdfEmbedImageUrl(data.companyLogoUrl, supabasePublicUrl)) {
+      return NextResponse.json({ error: "URL de logo non autorisée." }, { status: 400 });
+    }
+    for (const it of data.items) {
+      if (it.imageUrl && !isAllowedPdfEmbedImageUrl(it.imageUrl, supabasePublicUrl)) {
+        return NextResponse.json({ error: "URL d'image produit non autorisée." }, { status: 400 });
+      }
+    }
+
     const itemsWithEmbedded = await Promise.all(
       data.items.map(async (it) => {
         if (!it.imageUrl) return { ...it, imageSrc: null };
-        if (it.imageUrl.startsWith("data:")) return { ...it, imageSrc: it.imageUrl };
-        const embedded = await toDataUrlFromHttp(it.imageUrl);
-        return { ...it, imageSrc: embedded ?? it.imageUrl };
+        if (it.imageUrl.startsWith("data:")) {
+          if (!isAllowedPdfEmbedImageUrl(it.imageUrl, supabasePublicUrl)) {
+            return { ...it, imageSrc: null };
+          }
+          return { ...it, imageSrc: it.imageUrl };
+        }
+        const embedded = await toDataUrlFromHttp(it.imageUrl, supabasePublicUrl);
+        return { ...it, imageSrc: embedded ?? null };
       }),
     );
     const companyLogoSrc =
       data.companyLogoUrl && data.companyLogoUrl.trim().length > 0
-        ? await toDataUrlFromHttp(data.companyLogoUrl).catch(() => null)
+        ? await toDataUrlFromHttp(data.companyLogoUrl, supabasePublicUrl).catch(() => null)
         : null;
     const html = renderStoreProductsHtml({
       ...data,

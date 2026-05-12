@@ -55,6 +55,22 @@ export function parseReportsPayload(json: unknown): {
   };
 }
 
+/** Corps route PDF rapports : périmètre entreprise ou export super admin. */
+export function parseReportsPdfRouteBody(json: unknown): {
+  data: ReportsPageData;
+  meta: { title: string; subtitle: string };
+  companyId: string | null;
+  asPlatformAdmin: boolean;
+} {
+  const base = parseReportsPayload(json);
+  const o = json as Record<string, unknown>;
+  const asPlatformAdmin = o.asPlatformAdmin === true;
+  const raw = o.companyId;
+  const companyId =
+    typeof raw === "string" && raw.trim().length > 0 ? raw.trim() : null;
+  return { ...base, companyId, asPlatformAdmin };
+}
+
 export function parseCreditRepaymentReceiptPayload(
   json: unknown,
 ): CreditRepaymentReceiptData {

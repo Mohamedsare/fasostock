@@ -4,6 +4,7 @@ import { parseCreditRepaymentReceiptPayload } from "@/lib/server/pdf/parse-pdf-p
 import { renderCreditRepaymentReceiptHtml } from "@/lib/server/pdf/credit-repayment-receipt-html";
 import { resolveCompanyNameForReceiptPdf } from "@/lib/server/pdf/resolve-company-name-for-receipt-pdf";
 import { createClient } from "@/lib/supabase/server";
+import { requireAuthUser, userBelongsToCompany } from "@/lib/server/api-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -11,10 +12,22 @@ export const maxDuration = 60;
 
 export async function POST(req: Request) {
   try {
+    const supabase = await createClient();
+    const auth = await requireAuthUser(supabase);
+    if (!auth.ok) return auth.response;
+
     const json: unknown = await req.json();
     const data = parseCreditRepaymentReceiptPayload(json);
-    const supabase = await createClient();
-    const companyName = await resolveCompanyNameForReceiptPdf(supabase, data.companyId, data.companyName);
+    const companyId = String(data.companyId ?? "").trim();
+    if (!companyId) {
+      return NextResponse.json({ error: "companyId manquant." }, { status: 400 });
+    }
+    const allowed = await userBelongsToCompany(supabase, auth.user.id, companyId);
+    if (!allowed) {
+      return NextResponse.json({ error: "Non autorisé." }, { status: 403 });
+    }
+
+    const companyName = await resolveCompanyNameForReceiptPdf(supabase, companyId, data.companyName);
     const html = await renderCreditRepaymentReceiptHtml({ ...data, companyName });
     const buf = await htmlToPdfBufferA4(html);
     return new NextResponse(new Uint8Array(buf), {

@@ -7,15 +7,17 @@ import { downloadProWorkbook } from "@/lib/utils/spreadsheet-export-pro";
 export async function downloadReportsPdfBlob(
   data: ReportsPageData,
   meta: { title: string; subtitle: string },
+  scope: { companyId: string } | { asPlatformAdmin: true },
 ): Promise<Blob> {
-  return fetchReportsPdfBlob(data, meta);
+  return fetchReportsPdfBlob(data, meta, scope);
 }
 
 export function downloadReportsPdf(
   data: ReportsPageData,
   meta: { title: string; subtitle: string },
+  scope: { companyId: string } | { asPlatformAdmin: true },
 ): void {
-  void downloadReportsPdfBlob(data, meta).then((blob) => {
+  void downloadReportsPdfBlob(data, meta, scope).then((blob) => {
     const name = `rapports_${new Date().toISOString().slice(0, 10)}.pdf`;
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
