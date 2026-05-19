@@ -38,6 +38,14 @@ export function AdminCompaniesScreen() {
     return m;
   }, [q.data?.stores]);
 
+  const phoneByCompany = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const [companyId, stores] of storesByCompany) {
+      m.set(companyId, resolveCompanyPhone(stores));
+    }
+    return m;
+  }, [storesByCompany]);
+
   const mutCompany = useMutation({
     mutationFn: async (p: { id: string; isActive?: boolean; aiPredictionsEnabled?: boolean }) => {
       await adminUpdateCompany(p.id, { isActive: p.isActive, aiPredictionsEnabled: p.aiPredictionsEnabled });
@@ -113,14 +121,15 @@ export function AdminCompaniesScreen() {
 
       <AdminCard padding="p-0">
         <FsHorizontalScroll>
-          <table className="min-w-[800px] w-full text-left text-sm">
+          <table className="min-w-[920px] w-full text-left text-sm [&_td]:whitespace-nowrap [&_th]:whitespace-nowrap">
           <thead className="border-b border-slate-200 bg-slate-50 text-xs font-bold uppercase text-slate-600">
             <tr>
               <th className="w-10 p-3" />
               <th className="p-3">Nom</th>
+              <th className="p-3">Téléphone</th>
               <th className="p-3">Slug</th>
               <th className="p-3">Statut</th>
-              <th className="p-3">Préd. IA</th>
+              <th className="p-3">Préd.&nbsp;IA</th>
               <th className="p-3">Quota</th>
               <th className="p-3">Actions</th>
             </tr>
@@ -146,8 +155,19 @@ export function AdminCompaniesScreen() {
                         )}
                       </button>
                     </td>
-                    <td className="p-3 font-medium text-slate-900">{c.name}</td>
-                    <td className="p-3 text-slate-600">{c.slug ?? "—"}</td>
+                    <td className="max-w-[220px] p-3 font-medium text-slate-900">
+                      <span className="block truncate" title={c.name}>
+                        {c.name}
+                      </span>
+                    </td>
+                    <td className="max-w-[160px] p-3 text-slate-600">
+                      <CompanyPhoneCell phone={phoneByCompany.get(c.id) ?? "—"} />
+                    </td>
+                    <td className="max-w-[180px] p-3 text-slate-600">
+                      <span className="block truncate" title={c.slug ?? undefined}>
+                        {c.slug ?? "—"}
+                      </span>
+                    </td>
                     <td className="p-3">
                       <span className={c.isActive ? "text-emerald-600" : "text-slate-500"}>
                         {c.isActive ? "Actif" : "Inactif"}
@@ -160,7 +180,7 @@ export function AdminCompaniesScreen() {
                     </td>
                     <td className="p-3">{c.storeQuota}</td>
                     <td className="p-3">
-                      <div className="flex gap-1">
+                      <div className="flex flex-nowrap gap-1">
                         <button
                           type="button"
                           className="rounded-lg p-2 hover:bg-slate-100"
@@ -194,14 +214,21 @@ export function AdminCompaniesScreen() {
                     ? subs.map((s) => (
                         <tr key={s.id} className="bg-slate-50">
                           <td />
-                          <td colSpan={5} className="px-3 py-2 pl-10 text-slate-700">
-                            <span className="font-semibold">{s.name}</span>
-                            {s.isPrimary ? (
-                              <span className="ml-2 text-xs text-slate-500">Principale</span>
-                            ) : null}
+                          <td colSpan={6} className="max-w-0 px-3 py-2 pl-10 text-slate-700">
+                            <div className="flex min-w-0 flex-nowrap items-center gap-2">
+                              <span className="truncate font-semibold" title={s.name}>
+                                {s.name}
+                              </span>
+                              {s.isPrimary ? (
+                                <span className="shrink-0 text-xs text-slate-500">Principale</span>
+                              ) : null}
+                              {s.phone ? (
+                                <span className="shrink-0 text-xs text-slate-500">{s.phone}</span>
+                              ) : null}
+                            </div>
                           </td>
                           <td className="p-2">
-                            <div className="flex justify-end gap-1">
+                            <div className="flex flex-nowrap items-center justify-end gap-1">
                               <span className={s.isActive ? "text-emerald-600" : "text-slate-500"}>
                                 {s.isActive ? "Actif" : "Inactif"}
                               </span>
@@ -232,5 +259,26 @@ export function AdminCompaniesScreen() {
         </FsHorizontalScroll>
       </AdminCard>
     </div>
+  );
+}
+
+function resolveCompanyPhone(stores: AdminStore[]): string {
+  const primary = stores.find((s) => s.isPrimary && s.phone);
+  if (primary?.phone) return primary.phone;
+  const any = stores.find((s) => s.phone);
+  return any?.phone ?? "—";
+}
+
+function CompanyPhoneCell({ phone }: { phone: string }) {
+  if (phone === "—") return <span>—</span>;
+  const tel = phone.replace(/\s/g, "");
+  return (
+    <a
+      href={`tel:${tel}`}
+      className="block truncate hover:text-orange-600 hover:underline"
+      title={phone}
+    >
+      {phone}
+    </a>
   );
 }

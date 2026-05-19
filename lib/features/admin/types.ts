@@ -23,6 +23,7 @@ export type AdminStore = {
   companyId: string;
   name: string;
   code: string | null;
+  phone: string | null;
   isActive: boolean;
   isPrimary: boolean;
   createdAt: string | null;

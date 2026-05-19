@@ -66,7 +66,7 @@ export async function adminListStores(companyId?: string | null): Promise<AdminS
   const supabase = createClient();
   let q = supabase
     .from("stores")
-    .select("id, company_id, name, code, is_active, is_primary, created_at")
+    .select("id, company_id, name, code, phone, is_active, is_primary, created_at")
     .order("created_at", { ascending: false });
   if (companyId) q = q.eq("company_id", companyId);
   const { data, error } = await q;
@@ -78,6 +78,7 @@ export async function adminListStores(companyId?: string | null): Promise<AdminS
       companyId: String(r.company_id),
       name: String(r.name ?? ""),
       code: (r.code as string | null) ?? null,
+      phone: (r.phone as string | null)?.trim() || null,
       isActive: r.is_active !== false,
       isPrimary: r.is_primary === true,
       createdAt: r.created_at != null ? String(r.created_at) : null,
