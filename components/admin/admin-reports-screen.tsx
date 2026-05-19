@@ -70,7 +70,11 @@ export function AdminReportsScreen() {
     };
   }, [rangePreset, customStart, customEnd]);
 
-  if (q.isLoading) {
+  if (q.isError) {
+    return <div className="p-8 text-red-600">{(q.error as Error).message}</div>;
+  }
+
+  if (q.isPending || !q.data) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center p-8">
         <div className="h-10 w-10 animate-spin rounded-full border-2 border-orange-500 border-t-transparent" />
@@ -78,11 +82,7 @@ export function AdminReportsScreen() {
     );
   }
 
-  if (q.isError) {
-    return <div className="p-8 text-red-600">{(q.error as Error).message}</div>;
-  }
-
-  const data = q.data!;
+  const data = q.data;
   const companies = data.companies ?? [];
   const stores = data.stores ?? [];
   const sales = data.sales ?? [];

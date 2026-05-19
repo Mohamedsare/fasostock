@@ -550,7 +550,7 @@ export function AdminDashboardScreen() {
         </div>
       </div>
 
-      <div className="mx-auto -mt-8 max-w-[1600px] space-y-10 px-4 md:px-8">
+      <div className="relative z-10 mx-auto mt-6 max-w-[1600px] space-y-10 px-4 md:px-8">
         {salesSampleIncomplete ? (
           <div className="rounded-3xl border border-amber-200/90 bg-linear-to-r from-amber-50 to-orange-50/60 px-5 py-4 text-sm text-amber-950 shadow-md ring-1 ring-amber-100/80">
             <span className="font-bold">Échantillon ventes.</span> Les graphiques et classements utilisent les{" "}
