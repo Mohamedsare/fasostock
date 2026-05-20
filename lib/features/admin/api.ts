@@ -755,18 +755,27 @@ export async function adminUpsertCompanySubscription(params: {
   currentPeriodEnd: string | null;
   cancelAtPeriodEnd?: boolean;
 }): Promise<void> {
-  const supabase = createClient();
-  const payload = {
-    company_id: params.companyId,
-    plan_id: params.planId,
-    status: params.status,
-    current_period_start: params.currentPeriodStart,
-    current_period_end: params.currentPeriodEnd,
-    cancel_at_period_end: params.cancelAtPeriodEnd === true,
-    updated_at: new Date().toISOString(),
-  };
-  const { error } = await supabase.from("company_subscriptions").upsert(payload, { onConflict: "company_id" });
-  if (error) throw mapSupabaseError(error);
+  const res = await fetch("/api/admin/company-subscription", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
+    body: JSON.stringify({
+      companyId: params.companyId,
+      planId: params.planId,
+      status: params.status,
+      currentPeriodStart: params.currentPeriodStart,
+      currentPeriodEnd: params.currentPeriodEnd,
+      cancelAtPeriodEnd: params.cancelAtPeriodEnd,
+    }),
+  });
+  const raw = await res.text();
+  let parsed: { error?: string } = {};
+  try {
+    parsed = JSON.parse(raw) as { error?: string };
+  } catch {
+    /* ignore */
+  }
+  if (!res.ok) throw new Error(parsed.error || raw || `Erreur API ${res.status}`);
 }
 
 export async function adminAskAiAssistant(params: {
@@ -915,7 +924,9 @@ export async function adminGetCockpitData(): Promise<AdminCockpitData> {
       .limit(COCKPIT_SALES_LOAD_CAP),
     supabase
       .from("company_subscriptions")
-      .select("id, company_id, plan_code, status, amount_fcfa, started_at, ends_at, trial_ends_at, created_at")
+      .select(
+        "id, company_id, plan_id, status, current_period_start, current_period_end, created_at, plan:subscription_plans(slug, price_cents)",
+      )
       .order("created_at", { ascending: false })
       .limit(5000),
     supabase
@@ -966,17 +977,25 @@ export async function adminGetCockpitData(): Promise<AdminCockpitData> {
 
   const subscriptions: AdminSubscriptionRow[] = subscriptionsRes.error
     ? []
-    : ((subscriptionsRes.data ?? []) as Record<string, unknown>[]).map((r) => ({
-        id: String(r.id ?? ""),
-        companyId: String(r.company_id ?? ""),
-        planCode: r.plan_code != null ? String(r.plan_code) : null,
-        status: (String(r.status ?? "active") as AdminSubscriptionRow["status"]) ?? "active",
-        amountFcfa: toNum(r.amount_fcfa),
-        startedAt: r.started_at != null ? String(r.started_at) : null,
-        endsAt: r.ends_at != null ? String(r.ends_at) : null,
-        trialEndsAt: r.trial_ends_at != null ? String(r.trial_ends_at) : null,
-        createdAt: r.created_at != null ? String(r.created_at) : null,
-      }));
+    : ((subscriptionsRes.data ?? []) as Record<string, unknown>[]).map((r) => {
+        const planRaw = r.plan;
+        const plan = Array.isArray(planRaw)
+          ? (planRaw[0] as Record<string, unknown> | undefined)
+          : (planRaw as Record<string, unknown> | undefined);
+        const status = String(r.status ?? "active") as AdminSubscriptionRow["status"];
+        const periodEnd = r.current_period_end != null ? String(r.current_period_end) : null;
+        return {
+          id: String(r.id ?? ""),
+          companyId: String(r.company_id ?? ""),
+          planCode: plan?.slug != null ? String(plan.slug) : null,
+          status: status ?? "active",
+          amountFcfa: toNum(plan?.price_cents),
+          startedAt: r.current_period_start != null ? String(r.current_period_start) : null,
+          endsAt: periodEnd,
+          trialEndsAt: status === "trialing" ? periodEnd : null,
+          createdAt: r.created_at != null ? String(r.created_at) : null,
+        };
+      });
 
   const audits: AdminAuditLite[] = auditsRes.error
     ? []

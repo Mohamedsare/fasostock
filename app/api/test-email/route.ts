@@ -1,3 +1,4 @@
+import { getAppBaseUrl, getBillingUrl } from "@/lib/email/app-url";
 import { isResendConfigured } from "@/lib/email/resend";
 import {
   sendSubscriptionExpiredEmail,
@@ -89,8 +90,8 @@ export async function POST(req: Request) {
     amountFcfa: 125_000,
     periodEnd: "31/12/2027",
     expiredAt: "01/01/2026",
-    appUrl: process.env.NEXT_PUBLIC_APP_URL?.trim() || "https://app.fasostock.com",
-    billingUrl: process.env.NEXT_PUBLIC_APP_URL?.trim() || "https://app.fasostock.com",
+    appUrl: getAppBaseUrl(),
+    billingUrl: getBillingUrl(),
   };
 
   try {

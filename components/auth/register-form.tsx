@@ -66,7 +66,7 @@ export function RegisterForm() {
       const btSlug = isValidBusinessTypeSlug(businessTypeSlug)
         ? businessTypeSlug!.trim()
         : null;
-      await registerCompany(supabase, {
+      const registered = await registerCompany(supabase, {
         companyName: effectiveCompanyName,
         companySlug: effectiveSlug,
         ownerEmail: ownerEmail.trim(),
@@ -76,6 +76,16 @@ export function RegisterForm() {
         firstStorePhone: firstStorePhone.trim(),
         businessTypeSlug: btSlug,
       });
+      try {
+        await fetch("/api/auth/onboarding-emails", {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ companyId: registered.companyId }),
+        });
+      } catch {
+        /* emails non bloquants */
+      }
       try {
         await supabase.auth.signOut();
       } catch {

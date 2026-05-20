@@ -7,7 +7,31 @@ export type EmailLogInsert = {
   subject: string;
   templateKey?: string | null;
   metadata?: Record<string, unknown>;
+  dedupeKey?: string | null;
 };
+
+/** true si un envoi « sent » existe déjà pour cette clé. */
+export async function hasEmailBeenSent(dedupeKey: string): Promise<boolean> {
+  const key = dedupeKey.trim();
+  if (!key) return false;
+  try {
+    const supabase = createServiceRoleClient();
+    const { data, error } = await supabase
+      .from("email_logs")
+      .select("id")
+      .eq("dedupe_key", key)
+      .eq("status", "sent")
+      .maybeSingle();
+    if (error) {
+      console.error("[email_logs] has sent:", error.message);
+      return false;
+    }
+    return data != null;
+  } catch (e) {
+    console.error("[email_logs] has sent:", e);
+    return false;
+  }
+}
 
 export async function createEmailLog(row: EmailLogInsert): Promise<string | null> {
   try {
@@ -20,11 +44,15 @@ export async function createEmailLog(row: EmailLogInsert): Promise<string | null
         template_key: row.templateKey ?? null,
         status: "pending",
         metadata: row.metadata ?? {},
+        dedupe_key: row.dedupeKey?.trim() || null,
       })
       .select("id")
       .single();
 
     if (error) {
+      if (error.code === "23505" && row.dedupeKey) {
+        return null;
+      }
       console.error("[email_logs] insert pending:", error.message);
       return null;
     }

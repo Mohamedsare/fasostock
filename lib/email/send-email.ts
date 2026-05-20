@@ -1,5 +1,6 @@
 import {
   createEmailLog,
+  hasEmailBeenSent,
   markEmailLogFailed,
   markEmailLogSent,
 } from "@/lib/email/email-logs";
@@ -12,12 +13,15 @@ export type SendEmailParams = {
   html: string;
   templateKey?: EmailTemplateKey | string;
   metadata?: Record<string, unknown>;
+  /** Si présente et déjà envoyée, l’envoi est ignoré. */
+  dedupeKey?: string;
 };
 
 export type SendEmailResult = {
   ok: true;
   resendId: string | null;
   logId: string | null;
+  skipped?: boolean;
 };
 
 function normalizeRecipients(to: string | string[]): string[] {
@@ -51,13 +55,23 @@ export async function sendEmail(params: SendEmailParams): Promise<SendEmailResul
     throw new Error("Sujet email manquant.");
   }
 
+  const dedupeKey = params.dedupeKey?.trim();
+  if (dedupeKey && (await hasEmailBeenSent(dedupeKey))) {
+    return { ok: true, resendId: null, logId: null, skipped: true };
+  }
+
   const recipientLabel = recipients.join(", ");
   const logId = await createEmailLog({
     recipient: recipientLabel,
     subject,
     templateKey: params.templateKey ?? null,
     metadata: params.metadata,
+    dedupeKey: dedupeKey || null,
   });
+
+  if (dedupeKey && !logId) {
+    return { ok: true, resendId: null, logId: null, skipped: true };
+  }
 
   try {
     const resend = getResendClient();
