@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useState, type ReactNode } from "react";
 import { MdErrorOutline, MdRefresh, MdWifiOff } from "react-icons/md";
+import { LoadingExperience } from "@/components/loading/loading-experience";
 import { NoAccessScreen } from "@/components/permissions/no-access-screen";
 import { usePermissions } from "@/lib/features/permissions/use-permissions";
 import { messageFromUnknownError } from "@/lib/toast";
@@ -34,9 +35,12 @@ export function AppRouteGuard({ children }: { children: ReactNode }) {
   /** Premier chargement sans donnée en cache */
   if (isLoading && data === undefined) {
     return (
-      <div className="flex min-h-[40vh] items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-fs-accent border-t-transparent" />
-      </div>
+      <LoadingExperience
+        variant="embedded"
+        message="Vérification de vos accès…"
+        submessage="Chargement du contexte entreprise et des permissions."
+        showTips={false}
+      />
     );
   }
 

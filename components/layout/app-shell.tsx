@@ -2,8 +2,7 @@
 
 import { AppPresenceReporter } from "@/components/presence/app-presence-reporter";
 import { OfflineStrip } from "@/components/offline/offline-strip";
-import { AppShellLoadingOverlay } from "@/components/layout/app-shell-loading-overlay";
-import { AppShellSkeleton } from "@/components/layout/app-shell-skeleton";
+import { LoadingExperience } from "@/components/loading/loading-experience";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { MoreSheet } from "@/components/layout/more-sheet";
 import {
@@ -196,10 +195,11 @@ export function AppShell({ children, userEmail }: AppShellProps) {
 
   if (ctx.isLoading) {
     return (
-      <div className="relative h-dvh max-h-dvh min-h-dvh overflow-hidden bg-fs-surface">
-        <AppShellSkeleton />
-        <AppShellLoadingOverlay />
-      </div>
+      <LoadingExperience
+        variant="fullscreen"
+        message="Ouverture de votre espace FasoStock…"
+        submessage="Connexion sécurisée et chargement de votre entreprise."
+      />
     );
   }
 
