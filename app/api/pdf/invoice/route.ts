@@ -2,6 +2,12 @@ import { NextResponse } from "next/server";
 import { htmlToPdfBufferA4 } from "@/lib/server/pdf/html-to-pdf";
 import { renderInvoiceA4Html } from "@/lib/server/pdf/invoice-a4-html";
 import { parseInvoiceA4Payload } from "@/lib/server/pdf/parse-pdf-payload";
+import {
+  parseInvoicePdfRouteMeta,
+  verifyInvoicePreviewBinding,
+  verifyInvoiceSaleBinding,
+  verifyWarehouseDispatchBinding,
+} from "@/lib/server/pdf/verify-pdf-bindings";
 import { createClient } from "@/lib/supabase/server";
 import { requireAuthUser, userBelongsToCompany } from "@/lib/server/api-auth";
 
@@ -16,11 +22,43 @@ export async function POST(req: Request) {
     if (!auth.ok) return auth.response;
 
     const json: unknown = await req.json();
+    const meta = parseInvoicePdfRouteMeta(json);
     const data = parseInvoiceA4Payload(json);
-    const companyId = String(data.store?.company_id ?? "").trim();
-    if (!companyId) {
-      return NextResponse.json({ error: "Identifiant entreprise (boutique) manquant." }, { status: 400 });
+
+    let companyId = "";
+
+    if (meta.saleId) {
+      const bound = await verifyInvoiceSaleBinding(supabase, meta.saleId, data);
+      if (!bound.ok) {
+        return NextResponse.json({ error: bound.error }, { status: bound.status });
+      }
+      companyId = bound.companyId;
+    } else if (meta.warehouseDispatchId) {
+      const bound = await verifyWarehouseDispatchBinding(
+        supabase,
+        meta.warehouseDispatchId,
+        data,
+      );
+      if (!bound.ok) {
+        return NextResponse.json({ error: bound.error }, { status: bound.status });
+      }
+      companyId = bound.companyId;
+    } else if (meta.previewOnly) {
+      const bound = await verifyInvoicePreviewBinding(supabase, auth.user.id, data);
+      if (!bound.ok) {
+        return NextResponse.json({ error: bound.error }, { status: bound.status });
+      }
+      companyId = bound.companyId;
+    } else {
+      return NextResponse.json(
+        {
+          error:
+            "saleId, warehouseDispatchId ou previewOnly requis pour générer la facture de façon sécurisée.",
+        },
+        { status: 400 },
+      );
     }
+
     const allowed = await userBelongsToCompany(supabase, auth.user.id, companyId);
     if (!allowed) {
       return NextResponse.json({ error: "Non autorisé." }, { status: 403 });

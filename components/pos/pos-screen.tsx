@@ -117,7 +117,10 @@ export function PosScreen({
   const [amountReceivedTouched, setAmountReceivedTouched] = useState(false);
   const [customerId, setCustomerId] = useState<string>("");
   const [cartOpen, setCartOpen] = useState(false);
-  const [invoiceDialog, setInvoiceDialog] = useState<InvoiceA4Data | null>(null);
+  const [invoiceDialog, setInvoiceDialog] = useState<{
+    data: InvoiceA4Data;
+    saleId: string;
+  } | null>(null);
   const [receiptDialog, setReceiptDialog] = useState<ReceiptTicketData | null>(null);
   const [quickAutoPrint, setQuickAutoPrint] = useState(false);
   const [quickSettingsOpen, setQuickSettingsOpen] = useState(false);
@@ -672,7 +675,7 @@ export function PosScreen({
             paymentLines: payLines.length > 0 ? payLines : null,
             logoBytes,
           });
-          setInvoiceDialog(inv);
+          setInvoiceDialog({ data: inv, saleId: res.saleId });
         } catch (e) {
           toast.error(messageFromUnknownError(e, "Facture PDF indisponible."));
         }
@@ -1710,7 +1713,8 @@ export function PosScreen({
 
       {invoiceDialog ? (
         <InvoicePostSaleDialog
-          data={invoiceDialog}
+          data={invoiceDialog.data}
+          pdfMeta={{ saleId: invoiceDialog.saleId }}
           onClose={() => setInvoiceDialog(null)}
         />
       ) : null}

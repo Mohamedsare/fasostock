@@ -744,7 +744,8 @@ export function WarehouseScreen() {
           ? Math.min(total, Math.max(0, Math.round(paymentInfo.paidAmount)))
           : total)
       : 0;
-    return generateInvoicePdfBlob({
+    return generateInvoicePdfBlob(
+      {
       store: effectiveStore,
       saleNumber: params.documentNumber,
       date: new Date(params.createdAt),
@@ -766,7 +767,9 @@ export function WarehouseScreen() {
       paymentLines: [{ label: paymentLabel, amount: encaisseAmount, isImmediateEncaisse }],
       amountInWords: null,
       logoBytes,
-    });
+    },
+      { warehouseDispatchId: params.id },
+    );
   }
 
   async function handleDispatchInvoiceAction(

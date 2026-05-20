@@ -395,7 +395,7 @@ export function EditStoreModal({
         invoicePrefix.trim() || "FAC",
         logoBytes,
       );
-      const blob = await generateInvoicePdfBlob(data);
+      const blob = await generateInvoicePdfBlob(data, { previewOnly: true });
       setInvoicePreviewBlob(blob);
     } catch (e) {
       const msg = messageFromUnknownError(

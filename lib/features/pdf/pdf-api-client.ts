@@ -9,7 +9,16 @@ export function uint8ToBase64(bytes: Uint8Array): string {
   return btoa(binary);
 }
 
-export function invoicePayloadJson(data: InvoiceA4Data): string {
+export type InvoicePdfRequestMeta = {
+  saleId?: string | null;
+  warehouseDispatchId?: string | null;
+  previewOnly?: boolean;
+};
+
+export function invoicePayloadJson(
+  data: InvoiceA4Data,
+  meta?: InvoicePdfRequestMeta,
+): string {
   return JSON.stringify({
     ...data,
     date: data.date instanceof Date ? data.date.toISOString() : data.date,
@@ -17,6 +26,11 @@ export function invoicePayloadJson(data: InvoiceA4Data): string {
       data.logoBytes && data.logoBytes.length > 0
         ? uint8ToBase64(data.logoBytes)
         : null,
+    ...(meta?.saleId ? { saleId: meta.saleId } : {}),
+    ...(meta?.warehouseDispatchId
+      ? { warehouseDispatchId: meta.warehouseDispatchId }
+      : {}),
+    ...(meta?.previewOnly ? { previewOnly: true } : {}),
   });
 }
 
@@ -64,8 +78,11 @@ async function postPdf(path: string, body: string): Promise<Blob> {
   return res.blob();
 }
 
-export async function fetchInvoicePdfBlob(data: InvoiceA4Data): Promise<Blob> {
-  return postPdf("/api/pdf/invoice", invoicePayloadJson(data));
+export async function fetchInvoicePdfBlob(
+  data: InvoiceA4Data,
+  meta?: InvoicePdfRequestMeta,
+): Promise<Blob> {
+  return postPdf("/api/pdf/invoice", invoicePayloadJson(data, meta));
 }
 
 export async function fetchReceiptThermalPdfBlob(

@@ -1,6 +1,6 @@
 import {
   requireAuthUser,
-  userHasActiveCompanyMembership,
+  userCanSignQzRequests,
 } from "@/lib/server/api-auth";
 import { createClient } from "@/lib/supabase/server";
 import { createSign } from "crypto";
@@ -19,10 +19,13 @@ export async function POST(req: Request) {
   const auth = await requireAuthUser(supabase);
   if (!auth.ok) return auth.response;
 
-  const member = await userHasActiveCompanyMembership(supabase, auth.user.id);
-  if (!member) {
+  const canSign = await userCanSignQzRequests(supabase, auth.user.id);
+  if (!canSign) {
     return NextResponse.json(
-      { error: "Aucune entreprise active : signature QZ réservée aux comptes rattachés à une entreprise." },
+      {
+        error:
+          "Signature QZ réservée au propriétaire, au manager ou aux utilisateurs autorisés à gérer les paramètres / imprimantes.",
+      },
       { status: 403 },
     );
   }

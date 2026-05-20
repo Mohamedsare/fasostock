@@ -26,6 +26,10 @@ This project already uses Supabase RLS and admin checks, but keep this checklist
 - Routes `/api/*` (sauf liste publique) : session obligatoire via `proxy.ts` / `update-session.ts`
 - Push : `notify-company-owners` réservé aux owners ; webhook `dispatch` exige `companyId` + membre actif
 - IA : contexte reconstruit côté serveur (`/api/ai/predictions`) — le client n’envoie plus `contextText`
+- PDF facture (`/api/pdf/invoice`) : `saleId`, `warehouseDispatchId` ou `previewOnly` + vérification en base
+- PDF reçu crédit (`/api/pdf/credit-repayment-receipt`) : `paymentId` obligatoire, montants/ids validés en base
+- QZ (`/api/qz/sign`) : owner, `store_manager` ou permission `settings.manage` uniquement
+- Routes app : garde serveur (`ServerRouteGuard` + `x-pathname`) en complément de la garde client
 - Newsletter endpoint now has:
   - email validation
   - honeypot anti-bot

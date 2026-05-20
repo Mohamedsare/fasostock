@@ -1,5 +1,6 @@
 import { AppShell } from "@/components/layout/app-shell";
 import { AppRouteGuard } from "@/components/permissions/app-route-guard";
+import { ServerRouteGuard } from "@/components/permissions/server-route-guard";
 import { hasSupabaseConfig } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
@@ -17,7 +18,9 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
 
   return (
     <AppShell userEmail={user.email}>
-      <AppRouteGuard>{children}</AppRouteGuard>
+      <ServerRouteGuard>
+        <AppRouteGuard>{children}</AppRouteGuard>
+      </ServerRouteGuard>
     </AppShell>
   );
 }

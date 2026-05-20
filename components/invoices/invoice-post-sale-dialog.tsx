@@ -8,22 +8,25 @@ import {
   printInvoicePdf,
 } from "@/lib/features/invoices/generate-invoice-pdf";
 import type { InvoiceA4Data } from "@/lib/features/invoices/invoice-a4-types";
+import type { InvoicePdfRequestMeta } from "@/lib/features/pdf/pdf-api-client";
 import { messageFromUnknownError, toast } from "@/lib/toast";
 import { MdDownload, MdPictureAsPdf, MdPrint } from "react-icons/md";
 import { cn } from "@/lib/utils/cn";
 
 export function InvoicePostSaleDialog({
   data,
+  pdfMeta,
   onClose,
 }: {
   data: InvoiceA4Data;
+  pdfMeta?: InvoicePdfRequestMeta;
   onClose: () => void;
 }) {
   const [previewBlob, setPreviewBlob] = useState<Blob | null>(null);
   const [busy, setBusy] = useState<null | "view" | "print" | "download">(null);
 
   async function makeBlob() {
-    return generateInvoicePdfBlob(data);
+    return generateInvoicePdfBlob(data, pdfMeta);
   }
 
   async function handleView() {

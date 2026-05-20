@@ -3,6 +3,7 @@ import { htmlToPdfBufferA4 } from "@/lib/server/pdf/html-to-pdf";
 import { parseCreditRepaymentReceiptPayload } from "@/lib/server/pdf/parse-pdf-payload";
 import { renderCreditRepaymentReceiptHtml } from "@/lib/server/pdf/credit-repayment-receipt-html";
 import { resolveCompanyNameForReceiptPdf } from "@/lib/server/pdf/resolve-company-name-for-receipt-pdf";
+import { verifyCreditRepaymentBinding } from "@/lib/server/pdf/verify-pdf-bindings";
 import { createClient } from "@/lib/supabase/server";
 import { requireAuthUser, userBelongsToCompany } from "@/lib/server/api-auth";
 
@@ -18,16 +19,22 @@ export async function POST(req: Request) {
 
     const json: unknown = await req.json();
     const data = parseCreditRepaymentReceiptPayload(json);
-    const companyId = String(data.companyId ?? "").trim();
-    if (!companyId) {
-      return NextResponse.json({ error: "companyId manquant." }, { status: 400 });
+
+    const bound = await verifyCreditRepaymentBinding(supabase, data);
+    if (!bound.ok) {
+      return NextResponse.json({ error: bound.error }, { status: bound.status });
     }
-    const allowed = await userBelongsToCompany(supabase, auth.user.id, companyId);
+
+    const allowed = await userBelongsToCompany(supabase, auth.user.id, bound.companyId);
     if (!allowed) {
       return NextResponse.json({ error: "Non autorisé." }, { status: 403 });
     }
 
-    const companyName = await resolveCompanyNameForReceiptPdf(supabase, companyId, data.companyName);
+    const companyName = await resolveCompanyNameForReceiptPdf(
+      supabase,
+      bound.companyId,
+      data.companyName,
+    );
     const html = await renderCreditRepaymentReceiptHtml({ ...data, companyName });
     const buf = await htmlToPdfBufferA4(html);
     return new NextResponse(new Uint8Array(buf), {

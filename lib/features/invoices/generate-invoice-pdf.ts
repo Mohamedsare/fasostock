@@ -1,7 +1,10 @@
 "use client";
 
 import type { InvoiceA4Data } from "./invoice-a4-types";
-import { fetchInvoicePdfBlob } from "@/lib/features/pdf/pdf-api-client";
+import {
+  fetchInvoicePdfBlob,
+  type InvoicePdfRequestMeta,
+} from "@/lib/features/pdf/pdf-api-client";
 
 export async function fetchLogoBytes(
   url: string | null | undefined,
@@ -17,8 +20,11 @@ export async function fetchLogoBytes(
   }
 }
 
-export async function generateInvoicePdfBlob(data: InvoiceA4Data): Promise<Blob> {
-  return fetchInvoicePdfBlob(data);
+export async function generateInvoicePdfBlob(
+  data: InvoiceA4Data,
+  meta?: InvoicePdfRequestMeta,
+): Promise<Blob> {
+  return fetchInvoicePdfBlob(data, meta);
 }
 
 export function downloadInvoicePdf(blob: Blob, saleNumber: string): void {

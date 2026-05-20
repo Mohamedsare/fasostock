@@ -117,7 +117,7 @@ export function SaleDetailModal({
     if (!sale || !storeFull) throw new Error("Données manquantes.");
     const logoBytes = await fetchLogoBytes(storeFull.logo_url);
     const data = buildInvoiceA4FromSaleDetail(sale, storeFull, logoBytes);
-    return generateInvoicePdfBlob(data);
+    return generateInvoicePdfBlob(data, { saleId: sale.id });
   }
 
   async function handleViewPdf() {
