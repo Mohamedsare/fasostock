@@ -1,11 +1,13 @@
-import { createClient } from "@/lib/supabase/server";
 import { listOwnerUserIds, sendWebPushToUsers } from "@/lib/features/push/send-web-push";
+import { createClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
 type BodyUser = {
   userId?: string;
+  companyId?: string;
   allOwners?: boolean;
   title?: string;
   body?: string | null;
@@ -17,6 +19,7 @@ function parseBody(raw: unknown): BodyUser | null {
   const o = raw as Record<string, unknown>;
   return {
     userId: typeof o.userId === "string" ? o.userId : undefined,
+    companyId: typeof o.companyId === "string" ? o.companyId : undefined,
     allOwners: o.allOwners === true,
     title: typeof o.title === "string" ? o.title : undefined,
     body: typeof o.body === "string" || o.body === null ? (o.body as string | null) : undefined,
@@ -85,6 +88,36 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: msg }, { status: 500 });
     }
   } else if (body.userId) {
+    if (webhookOk) {
+      const companyId = String(body.companyId ?? "").trim();
+      if (!companyId) {
+        return NextResponse.json(
+          { error: "companyId requis avec userId pour le webhook push." },
+          { status: 400 },
+        );
+      }
+      try {
+        const svc = createServiceRoleClient();
+        const { data: link, error: linkErr } = await svc
+          .from("user_company_roles")
+          .select("user_id")
+          .eq("user_id", body.userId)
+          .eq("company_id", companyId)
+          .eq("is_active", true)
+          .maybeSingle();
+        if (linkErr || !link) {
+          return NextResponse.json(
+            { error: "Utilisateur non membre actif de cette entreprise." },
+            { status: 403 },
+          );
+        }
+      } catch {
+        return NextResponse.json(
+          { error: "Validation push webhook indisponible (service role)." },
+          { status: 503 },
+        );
+      }
+    }
     userIds = [body.userId];
   }
 

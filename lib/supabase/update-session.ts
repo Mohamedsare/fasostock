@@ -1,6 +1,7 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+import { isPublicApiRoute } from "@/lib/auth/public-api-routes";
 import { normalizeSupabaseUrl } from "@/lib/supabase/normalize-url";
 
 /** Rafraîchit la session Supabase (cookies) — invoqué depuis `proxy.ts` à chaque requête matchée. */
@@ -42,7 +43,14 @@ export async function updateSession(request: NextRequest) {
     },
   });
 
-  await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const pathname = request.nextUrl.pathname;
+  if (pathname.startsWith("/api/") && !isPublicApiRoute(pathname) && !user) {
+    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  }
 
   return supabaseResponse;
 }

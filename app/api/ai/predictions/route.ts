@@ -1,7 +1,9 @@
+import { buildPredictionContextText } from "@/lib/features/ai/build-prediction-context-text";
 import {
   extractJsonFromModelContent,
   parseStructuredFromDeepseekJson,
 } from "@/lib/features/ai/deepseek-parse";
+import { fetchPredictionContextWithSupabase } from "@/lib/features/dashboard/prediction-context-data";
 import {
   companyAllowsAiPredictions,
   requireAuthUser,
@@ -73,7 +75,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Clé API DeepSeek non configurée" }, { status: 503 });
   }
 
-  let body: { contextText?: string; companyId?: string };
+  let body: {
+    companyId?: string;
+    storeId?: string | null;
+    companyName?: string;
+    storeName?: string | null;
+  };
   try {
     body = await req.json();
   } catch {
@@ -84,6 +91,11 @@ export async function POST(req: Request) {
   if (!companyId) {
     return NextResponse.json({ error: "companyId requis" }, { status: 400 });
   }
+
+  const storeId =
+    body.storeId === null || body.storeId === undefined
+      ? null
+      : String(body.storeId).trim() || null;
 
   const supabase = await createClient();
   const auth = await requireAuthUser(supabase);
@@ -98,12 +110,49 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Prédictions IA désactivées pour cette entreprise." }, { status: 403 });
   }
 
-  const contextText = body.contextText?.trim();
-  if (!contextText) {
-    return NextResponse.json({ error: "contextText requis" }, { status: 400 });
+  let companyName = String(body.companyName ?? "").trim();
+  let storeName: string | null =
+    body.storeName === null || body.storeName === undefined
+      ? null
+      : String(body.storeName).trim() || null;
+
+  if (!companyName) {
+    const { data: companyRow } = await supabase
+      .from("companies")
+      .select("name")
+      .eq("id", companyId)
+      .maybeSingle();
+    companyName = String((companyRow as { name?: string } | null)?.name ?? "Entreprise");
   }
+
+  if (storeId && !storeName) {
+    const { data: storeRow } = await supabase
+      .from("stores")
+      .select("name")
+      .eq("id", storeId)
+      .eq("company_id", companyId)
+      .maybeSingle();
+    storeName = (storeRow as { name?: string } | null)?.name
+      ? String((storeRow as { name: string }).name)
+      : null;
+  }
+
+  let contextText: string;
+  try {
+    const ctx = await fetchPredictionContextWithSupabase(supabase, {
+      companyId,
+      companyName,
+      storeId,
+      storeName,
+    });
+    contextText = buildPredictionContextText(ctx);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "Impossible de charger les données pour l’IA.";
+    return NextResponse.json({ error: msg }, { status: 500 });
+  }
+
   if (contextText.length > 400_000) {
-    return NextResponse.json({ error: "contextText trop volumineux" }, { status: 400 });
+    return NextResponse.json({ error: "Contexte IA trop volumineux" }, { status: 400 });
   }
 
   const response = await fetch("https://api.deepseek.com/v1/chat/completions", {

@@ -1,4 +1,5 @@
 import { listOwnerUserIdsForCompanies, sendWebPushToUsers } from "@/lib/features/push/send-web-push";
+import { requireAuthUser, userIsCompanyOwner } from "@/lib/server/api-auth";
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
@@ -39,27 +40,17 @@ export async function POST(req: Request) {
   }
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-  }
+  const auth = await requireAuthUser(supabase);
+  if (!auth.ok) return auth.response;
 
   const uniqCompanies = [...new Set(companyIds)];
-  const { data: memberships, error: memErr } = await supabase
-    .from("user_company_roles")
-    .select("company_id")
-    .eq("user_id", user.id)
-    .eq("is_active", true)
-    .in("company_id", uniqCompanies);
-  if (memErr) {
-    return NextResponse.json({ error: memErr.message }, { status: 400 });
-  }
-  const allowed = new Set((memberships ?? []).map((r) => r.company_id as string));
   for (const cid of uniqCompanies) {
-    if (!allowed.has(cid)) {
-      return NextResponse.json({ error: "Accès refusé pour une ou plusieurs entreprises." }, { status: 403 });
+    const isOwner = await userIsCompanyOwner(supabase, auth.user.id, cid);
+    if (!isOwner) {
+      return NextResponse.json(
+        { error: "Seul le propriétaire peut envoyer une notification aux owners." },
+        { status: 403 },
+      );
     }
   }
 

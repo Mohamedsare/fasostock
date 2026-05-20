@@ -1,0 +1,353 @@
+import { getDefaultDateRange } from "@/lib/features/dashboard/date-range";
+import type {
+  PurchasesSummary,
+  SalesByDay,
+  SalesSummary,
+  StockValue,
+  TopProduct,
+} from "@/lib/features/dashboard/types";
+import { countLowStockAlerts } from "@/lib/features/inventory/stock-alert-count";
+import type {
+  PredictionContext,
+  PurchasesSummaryForPrediction,
+  SalesByDayPrediction,
+  SalesSummaryForPrediction,
+  TopProductPrediction,
+} from "@/lib/features/ai/prediction-types";
+import { format } from "date-fns";
+import type { SupabaseClient } from "@supabase/supabase-js";
+
+const toEndOfDay = (d: string) => `${d}T23:59:59.999Z`;
+
+function emptySummary(): SalesSummary {
+  return { totalAmount: 0, count: 0, itemsSold: 0, margin: 0 };
+}
+
+async function fetchSalesIdsInRange(
+  supabase: SupabaseClient,
+  companyId: string,
+  storeId: string | null,
+  fromDate: string,
+  toDate: string,
+): Promise<string[]> {
+  let q = supabase
+    .from("sales")
+    .select("id")
+    .eq("company_id", companyId)
+    .eq("status", "completed")
+    .gte("created_at", fromDate)
+    .lte("created_at", toEndOfDay(toDate));
+  if (storeId) q = q.eq("store_id", storeId);
+  const { data, error } = await q;
+  if (error) throw error;
+  return (data ?? []).map((r) => r.id as string);
+}
+
+async function computeSalesSummaryFromIds(
+  supabase: SupabaseClient,
+  saleIds: string[],
+): Promise<SalesSummary> {
+  if (saleIds.length === 0) return emptySummary();
+  const { data: sales, error: sErr } = await supabase
+    .from("sales")
+    .select("id, total")
+    .in("id", saleIds);
+  if (sErr) throw sErr;
+  let totalAmount = 0;
+  for (const s of sales ?? []) {
+    totalAmount += Number((s as { total?: number }).total ?? 0);
+  }
+  const { data: items, error: iErr } = await supabase
+    .from("sale_items")
+    .select("quantity, total, product:products(id, purchase_price)")
+    .in("sale_id", saleIds);
+  if (iErr) throw iErr;
+  let itemsSold = 0;
+  let margin = 0;
+  for (const row of items ?? []) {
+    const m = row as {
+      quantity?: number;
+      total?: number;
+      product?: { purchase_price?: number } | null;
+    };
+    const qty = Number(m.quantity ?? 0);
+    const lineTotal = Number(m.total ?? 0);
+    const purchasePrice = Number(m.product?.purchase_price ?? 0);
+    itemsSold += qty;
+    margin += lineTotal - purchasePrice * qty;
+  }
+  return {
+    totalAmount,
+    count: saleIds.length,
+    itemsSold,
+    margin,
+  };
+}
+
+function computeSalesByDay(
+  sales: Array<{ created_at: string; total: number }>,
+): SalesByDay[] {
+  const byDay = new Map<string, { total: number; count: number }>();
+  for (const s of sales) {
+    const date = (s.created_at ?? "").slice(0, 10);
+    if (!date) continue;
+    const cur = byDay.get(date) ?? { total: 0, count: 0 };
+    byDay.set(date, {
+      total: cur.total + Number(s.total ?? 0),
+      count: cur.count + 1,
+    });
+  }
+  return [...byDay.entries()]
+    .map(([date, v]) => ({ date, total: v.total, count: v.count }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
+
+async function aggregateProductsFromSales(
+  supabase: SupabaseClient,
+  saleIds: string[],
+): Promise<TopProduct[]> {
+  if (saleIds.length === 0) return [];
+  const { data: items, error } = await supabase
+    .from("sale_items")
+    .select("product_id, quantity, total, product:products(id, name, purchase_price)")
+    .in("sale_id", saleIds);
+  if (error) throw error;
+  const agg = new Map<
+    string,
+    { name: string; qty: number; revenue: number; cost: number }
+  >();
+  for (const row of items ?? []) {
+    const m = row as {
+      product_id?: string;
+      quantity?: number;
+      total?: number;
+      product?: { id?: string; name?: string; purchase_price?: number } | null;
+    };
+    const pid = m.product_id;
+    if (!pid) continue;
+    const name = m.product?.name ?? "—";
+    const purchasePrice = Number(m.product?.purchase_price ?? 0);
+    const qty = Number(m.quantity ?? 0);
+    const total = Number(m.total ?? 0);
+    const cur = agg.get(pid) ?? { name, qty: 0, revenue: 0, cost: 0 };
+    agg.set(pid, {
+      name,
+      qty: cur.qty + qty,
+      revenue: cur.revenue + total,
+      cost: cur.cost + purchasePrice * qty,
+    });
+  }
+  return [...agg.entries()].map(([productId, v]) => ({
+    productId,
+    productName: v.name,
+    quantitySold: v.qty,
+    revenue: v.revenue,
+    margin: v.revenue - v.cost,
+  }));
+}
+
+async function getTopProducts(
+  supabase: SupabaseClient,
+  saleIds: string[],
+  limit: number,
+): Promise<TopProduct[]> {
+  const list = await aggregateProductsFromSales(supabase, saleIds);
+  list.sort((a, b) => b.revenue - a.revenue);
+  return list.slice(0, limit);
+}
+
+async function getPurchasesSummary(
+  supabase: SupabaseClient,
+  companyId: string,
+  storeId: string | null,
+  fromDate: string,
+  toDate: string,
+): Promise<PurchasesSummary> {
+  let q = supabase
+    .from("purchases")
+    .select("id, total")
+    .eq("company_id", companyId)
+    .in("status", ["confirmed", "received", "partially_received"])
+    .gte("created_at", fromDate)
+    .lte("created_at", toEndOfDay(toDate));
+  if (storeId) q = q.eq("store_id", storeId);
+  const { data, error } = await q;
+  if (error) throw error;
+  let totalAmount = 0;
+  for (const row of data ?? []) {
+    totalAmount += Number((row as { total?: number }).total ?? 0);
+  }
+  return { totalAmount, count: (data ?? []).length };
+}
+
+async function getStockValue(
+  supabase: SupabaseClient,
+  companyId: string,
+  storeId: string | null,
+): Promise<StockValue> {
+  if (storeId) {
+    const { data: inv, error } = await supabase
+      .from("store_inventory")
+      .select("product_id, quantity, product:products(id, sale_price)")
+      .eq("store_id", storeId);
+    if (error) throw error;
+    let totalValue = 0;
+    for (const row of inv ?? []) {
+      const m = row as {
+        quantity?: number;
+        product?: { sale_price?: number } | null;
+      };
+      const qty = Number(m.quantity ?? 0);
+      const price = Number(m.product?.sale_price ?? 0);
+      totalValue += qty * price;
+    }
+    return { totalValue, productCount: (inv ?? []).length };
+  }
+  const { data: stores, error: e1 } = await supabase
+    .from("stores")
+    .select("id")
+    .eq("company_id", companyId)
+    .eq("is_active", true);
+  if (e1) throw e1;
+  const storeIds = (stores ?? []).map((s) => s.id as string);
+  if (storeIds.length === 0) return { totalValue: 0, productCount: 0 };
+  const { data: inv, error } = await supabase
+    .from("store_inventory")
+    .select("store_id, product_id, quantity, product:products(id, sale_price)")
+    .in("store_id", storeIds);
+  if (error) throw error;
+  const seen = new Set<string>();
+  let totalValue = 0;
+  for (const row of inv ?? []) {
+    const m = row as {
+      store_id?: string;
+      product_id?: string;
+      quantity?: number;
+      product?: { sale_price?: number } | null;
+    };
+    const qty = Number(m.quantity ?? 0);
+    const price = Number(m.product?.sale_price ?? 0);
+    totalValue += qty * price;
+    if (m.store_id && m.product_id) {
+      seen.add(`${m.store_id}-${m.product_id}`);
+    }
+  }
+  return { totalValue, productCount: seen.size };
+}
+
+function getPreviousMonthRange(): { from: string; to: string } {
+  const now = new Date();
+  const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const to = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+  return { from: format(prev, "yyyy-MM-dd"), to: format(to, "yyyy-MM-dd") };
+}
+
+function formatPeriodFr(from: string, to: string): string {
+  const a = new Date(`${from}T12:00:00`);
+  const b = new Date(`${to}T12:00:00`);
+  const o = { day: "2-digit" as const, month: "short" as const, year: "numeric" as const };
+  return `${a.toLocaleDateString("fr-FR", o)} → ${b.toLocaleDateString("fr-FR", o)}`;
+}
+
+/** Contexte agrégé pour l’IA (serveur ou client — passer le client Supabase adapté). */
+export async function fetchPredictionContextWithSupabase(
+  supabase: SupabaseClient,
+  params: {
+    companyId: string;
+    companyName: string;
+    storeId: string | null;
+    storeName: string | null;
+  },
+): Promise<PredictionContext> {
+  const range = getDefaultDateRange("month");
+  const prevRange = getPreviousMonthRange();
+  const { companyId, storeId, companyName, storeName } = params;
+
+  const saleIds = await fetchSalesIdsInRange(
+    supabase,
+    companyId,
+    storeId,
+    range.from,
+    range.to,
+  );
+  const prevSaleIds = await fetchSalesIdsInRange(
+    supabase,
+    companyId,
+    storeId,
+    prevRange.from,
+    prevRange.to,
+  );
+
+  let salesByDayComputed: SalesByDay[] = [];
+  if (saleIds.length > 0) {
+    const { data: salesRows, error: salesErr } = await supabase
+      .from("sales")
+      .select("created_at, total")
+      .in("id", saleIds);
+    if (salesErr) throw salesErr;
+    salesByDayComputed = computeSalesByDay(
+      (salesRows ?? []) as Array<{ created_at: string; total: number }>,
+    );
+  }
+
+  const [
+    salesSummary,
+    topProducts,
+    prevSalesSummary,
+    purchasesSummary,
+    stockResult,
+    lowStockCount,
+  ] = await Promise.all([
+    computeSalesSummaryFromIds(supabase, saleIds),
+    getTopProducts(supabase, saleIds, 15),
+    computeSalesSummaryFromIds(supabase, prevSaleIds),
+    getPurchasesSummary(supabase, companyId, storeId, range.from, range.to),
+    getStockValue(supabase, companyId, storeId),
+    countLowStockAlerts(supabase, companyId, storeId).then((r) => r.count),
+  ]);
+
+  const marginRatePercent =
+    salesSummary.totalAmount > 0
+      ? (salesSummary.margin / salesSummary.totalAmount) * 100
+      : 0;
+
+  const previousMonthSummary =
+    prevSalesSummary.totalAmount > 0 || prevSalesSummary.count > 0
+      ? {
+          totalAmount: prevSalesSummary.totalAmount,
+          count: prevSalesSummary.count,
+          margin: prevSalesSummary.margin,
+        }
+      : null;
+
+  return {
+    companyName,
+    storeName,
+    period: formatPeriodFr(range.from, range.to),
+    salesSummary: {
+      totalAmount: salesSummary.totalAmount,
+      count: salesSummary.count,
+      itemsSold: salesSummary.itemsSold,
+      margin: salesSummary.margin,
+    },
+    previousMonthSummary,
+    salesByDay: salesByDayComputed.map((d) => ({
+      date: d.date,
+      total: d.total,
+      count: d.count,
+    })),
+    topProducts: topProducts.map((p) => ({
+      productName: p.productName,
+      quantitySold: p.quantitySold,
+      revenue: p.revenue,
+      margin: p.margin,
+    })),
+    purchasesSummary: {
+      totalAmount: purchasesSummary.totalAmount,
+      count: purchasesSummary.count,
+    },
+    stockValue: stockResult.totalValue,
+    lowStockCount,
+    marginRatePercent,
+  };
+}

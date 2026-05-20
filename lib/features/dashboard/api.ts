@@ -26,13 +26,8 @@ import {
   isLowStockAlert,
 } from "@/lib/features/inventory/stock-alert-rules";
 import { format } from "date-fns";
-import type {
-  PredictionContext,
-  PurchasesSummaryForPrediction,
-  SalesByDayPrediction,
-  SalesSummaryForPrediction,
-  TopProductPrediction,
-} from "@/lib/features/ai/prediction-types";
+import { fetchPredictionContextWithSupabase } from "@/lib/features/dashboard/prediction-context-data";
+import type { PredictionContext } from "@/lib/features/ai/prediction-types";
 
 const toEndOfDay = (d: string) => `${d}T23:59:59.999Z`;
 
@@ -871,20 +866,6 @@ export async function fetchDashboardData(params: {
   };
 }
 
-function getPreviousMonthRange(): { from: string; to: string } {
-  const now = new Date();
-  const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  const to = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
-  return { from: format(prev, "yyyy-MM-dd"), to: format(to, "yyyy-MM-dd") };
-}
-
-function formatPeriodFr(from: string, to: string): string {
-  const a = new Date(`${from}T12:00:00`);
-  const b = new Date(`${to}T12:00:00`);
-  const o = { day: "2-digit" as const, month: "short" as const, year: "numeric" as const };
-  return `${a.toLocaleDateString("fr-FR", o)} → ${b.toLocaleDateString("fr-FR", o)}`;
-}
-
 /** Contexte agrégé pour l’IA — aligné `fetchPredictionContext` (Flutter / `predictions_repository.dart`). */
 export async function fetchPredictionContext(params: {
   companyId: string;
@@ -892,104 +873,5 @@ export async function fetchPredictionContext(params: {
   storeId: string | null;
   storeName: string | null;
 }): Promise<PredictionContext> {
-  const supabase = createClient();
-  const range = getDefaultDateRange("month");
-  const prevRange = getPreviousMonthRange();
-  const { companyId, storeId, companyName, storeName } = params;
-
-  const saleIds = await fetchSalesIdsInRange(
-    supabase,
-    companyId,
-    storeId,
-    range.from,
-    range.to,
-  );
-  const prevSaleIds = await fetchSalesIdsInRange(
-    supabase,
-    companyId,
-    storeId,
-    prevRange.from,
-    prevRange.to,
-  );
-
-  let salesByDayComputed: SalesByDay[] = [];
-  if (saleIds.length > 0) {
-    const { data: salesRows, error: salesErr } = await supabase
-      .from("sales")
-      .select("created_at, total")
-      .in("id", saleIds);
-    if (salesErr) throw salesErr;
-    salesByDayComputed = computeSalesByDay(
-      (salesRows ?? []) as Array<{ created_at: string; total: number }>,
-    );
-  }
-
-  const [
-    salesSummary,
-    topProducts,
-    prevSalesSummary,
-    purchasesSummary,
-    stockResult,
-    lowStockCount,
-  ] = await Promise.all([
-    computeSalesSummaryFromIds(supabase, saleIds),
-    getTopProducts(supabase, saleIds, 15),
-    computeSalesSummaryFromIds(supabase, prevSaleIds),
-    getPurchasesSummary(supabase, companyId, storeId, range.from, range.to),
-    getStockValue(supabase, companyId, storeId),
-    fetchDashboardLowStock(supabase, companyId, storeId).then((r) => r.lowStockCount),
-  ]);
-
-  const marginRatePercent =
-    salesSummary.totalAmount > 0
-      ? (salesSummary.margin / salesSummary.totalAmount) * 100
-      : 0;
-
-  const salesSummaryPred: SalesSummaryForPrediction = {
-    totalAmount: salesSummary.totalAmount,
-    count: salesSummary.count,
-    itemsSold: salesSummary.itemsSold,
-    margin: salesSummary.margin,
-  };
-
-  const previousMonthSummary =
-    prevSalesSummary.totalAmount > 0 || prevSalesSummary.count > 0
-      ? {
-          totalAmount: prevSalesSummary.totalAmount,
-          count: prevSalesSummary.count,
-          margin: prevSalesSummary.margin,
-        }
-      : null;
-
-  const topPred: TopProductPrediction[] = topProducts.map((p) => ({
-    productName: p.productName,
-    quantitySold: p.quantitySold,
-    revenue: p.revenue,
-    margin: p.margin,
-  }));
-
-  const purchasesPred: PurchasesSummaryForPrediction = {
-    totalAmount: purchasesSummary.totalAmount,
-    count: purchasesSummary.count,
-  };
-
-  const salesByDayPred: SalesByDayPrediction[] = salesByDayComputed.map((d) => ({
-    date: d.date,
-    total: d.total,
-    count: d.count,
-  }));
-
-  return {
-    companyName,
-    storeName,
-    period: formatPeriodFr(range.from, range.to),
-    salesSummary: salesSummaryPred,
-    previousMonthSummary,
-    salesByDay: salesByDayPred,
-    topProducts: topPred,
-    purchasesSummary: purchasesPred,
-    stockValue: stockResult.totalValue,
-    lowStockCount,
-    marginRatePercent,
-  };
+  return fetchPredictionContextWithSupabase(createClient(), params);
 }

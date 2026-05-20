@@ -16,8 +16,16 @@ This project already uses Supabase RLS and admin checks, but keep this checklist
 - Keep RLS enabled on all business tables.
 - Validate policies after each migration (`anon`, `authenticated`, `service_role` behaviors).
 - Audit super-admin RPC/functions for least privilege.
+- **Migration `00114_security_hardening_core.sql`** (apply on every environment):
+  - Trigger `profiles` : blocage auto-promotion `is_super_admin`
+  - `user_company_roles` : UPDATE réservé aux owners ; INSERT direct limité au premier membre
+  - `companies` : plus d’INSERT client libre (RPC `create_company_with_owner` uniquement)
+  - `log_app_error` : `company_id` / `store_id` validés pour l’appelant
 
 ## 3) API Protection
+- Routes `/api/*` (sauf liste publique) : session obligatoire via `proxy.ts` / `update-session.ts`
+- Push : `notify-company-owners` réservé aux owners ; webhook `dispatch` exige `companyId` + membre actif
+- IA : contexte reconstruit côté serveur (`/api/ai/predictions`) — le client n’envoie plus `contextText`
 - Newsletter endpoint now has:
   - email validation
   - honeypot anti-bot
