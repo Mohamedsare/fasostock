@@ -39,7 +39,7 @@ html.dark {
   --color-fs-card: var(--fs-card);
   --color-fs-text: var(--fs-text);
   --color-fs-on-surface-variant: var(--fs-on-surface-variant);
-  --font-sans: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
 }
 
 html {
@@ -49,7 +49,7 @@ html {
 body {
   background: var(--fs-surface);
   color: var(--fs-text);
-  font-family: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
 }
 
 /* Tableau de bord propriétaire : pas d’ajustement agressif du texte mobile, lisible à 100 % de zoom. */

@@ -1,10 +1,10 @@
 import type { ReactNode } from "react";
 
 /**
- * Hauteur = viewport ; scroll vertical seulement si le contenu dépasse (erreurs longues, petits écrans).
- * Padding réduit + my-auto pour éviter le scroll inutile sur la page login.
+ * Layout commun login / inscription / mot de passe oublié.
+ * (Routes explicites sous `app/login`, `app/register`, etc.)
  */
-export default function AuthLayout({ children }: { children: ReactNode }) {
+export function AuthRouteShell({ children }: { children: ReactNode }) {
   return (
     <div className="flex h-dvh max-h-dvh flex-col overflow-hidden bg-neutral-100 text-fs-text">
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden overscroll-y-contain [scrollbar-gutter:stable]">
