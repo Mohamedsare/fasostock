@@ -62,15 +62,16 @@ function polarFromTop(cx: number, cy: number, r: number, angleDeg: number) {
   return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
 }
 
+/** Anneau 100 % : deux demi-cercles (pas d’arc « presque fermé » → évite la déformation en haut). */
 function donutFullRing(cx: number, cy: number, rInner: number, rOuter: number): string {
-  const e = 0.02;
   return [
     `M ${cx} ${cy - rOuter}`,
-    `A ${rOuter} ${rOuter} 0 1 1 ${cx - e} ${cy - rOuter}`,
+    `A ${rOuter} ${rOuter} 0 1 1 ${cx} ${cy + rOuter}`,
     `A ${rOuter} ${rOuter} 0 1 1 ${cx} ${cy - rOuter}`,
     `M ${cx} ${cy - rInner}`,
-    `A ${rInner} ${rInner} 0 1 0 ${cx + e} ${cy - rInner}`,
+    `A ${rInner} ${rInner} 0 1 0 ${cx} ${cy + rInner}`,
     `A ${rInner} ${rInner} 0 1 0 ${cx} ${cy - rInner}`,
+    "Z",
   ].join(" ");
 }
 
@@ -574,43 +575,59 @@ export function DashboardPieChart({
           aria-label={`Répartition du chiffre d'affaires par catégorie, total ${formatCurrency(sum)}.`}
         >
           <title>Ventes par catégorie</title>
-          {segments.map((seg, i) => {
-            const d = donutSlicePath(
-              cx,
-              cy,
-              rInner,
-              rOuter,
-              seg.startPct,
-              seg.endPct,
-            );
-            const isFull = seg.endPct - seg.startPct >= 99.98;
-            const dim =
-              hoverIdx !== null && hoverIdx !== i ? 0.42 : 1;
-            return (
-              <path
-                key={seg.key}
-                d={d}
-                fill={seg.color}
-                fillRule={isFull ? "evenodd" : "nonzero"}
-                stroke="var(--fs-card)"
-                strokeWidth={2}
-                paintOrder="stroke fill"
-                opacity={dim}
-                className="cursor-pointer transition-[opacity,filter] duration-200 ease-out"
-                style={{
-                  filter:
-                    hoverIdx === i
-                      ? "brightness(1.06) saturate(1.05)"
-                      : undefined,
-                }}
-                onMouseEnter={() => setHoverIdx(i)}
-              >
-                <title>
-                  {`${seg.name} — ${formatCurrency(seg.revenue)} (${seg.pct.toFixed(1)}%)`}
-                </title>
-              </path>
-            );
-          })}
+          {segments.length === 1 ? (
+            <circle
+              cx={cx}
+              cy={cy}
+              r={(rOuter + rInner) / 2}
+              fill="none"
+              stroke={segments[0]!.color}
+              strokeWidth={rOuter - rInner}
+              className="cursor-default"
+            >
+              <title>
+                {`${segments[0]!.name} — ${formatCurrency(segments[0]!.revenue)} (${segments[0]!.pct.toFixed(1)}%)`}
+              </title>
+            </circle>
+          ) : (
+            segments.map((seg, i) => {
+              const d = donutSlicePath(
+                cx,
+                cy,
+                rInner,
+                rOuter,
+                seg.startPct,
+                seg.endPct,
+              );
+              const isFull = seg.endPct - seg.startPct >= 99.98;
+              const dim =
+                hoverIdx !== null && hoverIdx !== i ? 0.42 : 1;
+              return (
+                <path
+                  key={seg.key}
+                  d={d}
+                  fill={seg.color}
+                  fillRule={isFull ? "evenodd" : "nonzero"}
+                  stroke="var(--fs-card)"
+                  strokeWidth={2}
+                  paintOrder="stroke fill"
+                  opacity={dim}
+                  className="cursor-pointer transition-[opacity,filter] duration-200 ease-out"
+                  style={{
+                    filter:
+                      hoverIdx === i
+                        ? "brightness(1.06) saturate(1.05)"
+                        : undefined,
+                  }}
+                  onMouseEnter={() => setHoverIdx(i)}
+                >
+                  <title>
+                    {`${seg.name} — ${formatCurrency(seg.revenue)} (${seg.pct.toFixed(1)}%)`}
+                  </title>
+                </path>
+              );
+            })
+          )}
 
           {centerHint ? (
             <text

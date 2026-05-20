@@ -12,25 +12,16 @@ function toNum(v: unknown): number {
   return Number.isFinite(n) ? n : 0;
 }
 
-/** Aligné Flutter `Product.isAvailableInBoutiqueStock`. */
-function isBoutiqueScope(scope: string | null | undefined): boolean {
-  const s = scope ?? "both";
-  return s === "both" || s === "boutique_only";
-}
-
-/** Comme Flutter `_effectiveMin`. */
-function effectiveMin(
-  productStockMin: number,
-  override: number | null | undefined,
-  defaultThreshold: number,
-): number {
-  const base = override != null ? override : productStockMin;
-  return base > 0 ? base : defaultThreshold;
-}
+import {
+  effectiveStockAlertThreshold,
+  isBoutiqueProductScope,
+  isLowStockAlert,
+  parseDefaultStockAlertThreshold,
+} from "@/lib/features/inventory/stock-alert-rules";
 
 function computeStatus(availableQuantity: number, alertThreshold: number): InventoryStatus {
   if (availableQuantity <= 0) return "out";
-  if (alertThreshold > 0 && availableQuantity <= alertThreshold) return "low";
+  if (isLowStockAlert(availableQuantity, alertThreshold)) return "low";
   return "ok";
 }
 
@@ -45,13 +36,7 @@ async function fetchDefaultStockAlertThreshold(
     .eq("key", "default_stock_alert_threshold")
     .maybeSingle();
   if (!data) return 5;
-  const raw = (data as { value?: unknown }).value;
-  if (typeof raw === "number" && raw >= 0) return Math.trunc(raw);
-  if (typeof raw === "string") {
-    const n = parseInt(raw, 10);
-    if (!Number.isNaN(n) && n >= 0) return n;
-  }
-  return 5;
+  return parseDefaultStockAlertThreshold((data as { value?: unknown }).value);
 }
 
 async function fetchStockMinOverrides(
@@ -97,7 +82,7 @@ export async function fetchInventoryScreenData(params: {
     params.storeId != null ? await fetchStockMinOverrides(supabase, params.storeId) : new Map<string, number | null>();
 
   const boutiqueProducts = products.filter(
-    (p) => p.is_active !== false && isBoutiqueScope(p.product_scope ?? undefined),
+    (p) => p.is_active !== false && isBoutiqueProductScope(p.product_scope ?? undefined),
   );
 
   const rows: InventoryRow[] = boutiqueProducts.map((p) => {
@@ -106,7 +91,11 @@ export async function fetchInventoryScreenData(params: {
     const availableQuantity = quantity - reservedQuantity;
     const stockMin = typeof p.stock_min === "number" ? p.stock_min : toNum(p.stock_min);
     const override = overrideMap.get(p.id);
-    const alertThreshold = effectiveMin(stockMin, override ?? null, defaultThreshold);
+    const alertThreshold = effectiveStockAlertThreshold(
+      stockMin,
+      override ?? null,
+      defaultThreshold,
+    );
     const status = computeStatus(availableQuantity, alertThreshold);
 
     return {
@@ -132,8 +121,8 @@ export async function fetchInventoryScreenData(params: {
   });
 
   /** Flutter `_lowStock` : seuil > 0 et qté <= seuil (inclut la rupture). */
-  const lowStockCount = rows.filter(
-    (r) => r.alertThreshold > 0 && r.availableQuantity <= r.alertThreshold,
+  const lowStockCount = rows.filter((r) =>
+    isLowStockAlert(r.availableQuantity, r.alertThreshold),
   ).length;
   const outOfStockCount = rows.filter((r) => r.availableQuantity <= 0).length;
 

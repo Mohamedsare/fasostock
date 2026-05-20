@@ -20,6 +20,11 @@ import type {
   StockWatchSample,
   TopProduct,
 } from "@/lib/features/dashboard/types";
+import { countLowStockAlerts } from "@/lib/features/inventory/stock-alert-count";
+import {
+  effectiveStockAlertThreshold,
+  isLowStockAlert,
+} from "@/lib/features/inventory/stock-alert-rules";
 import { format } from "date-fns";
 import type {
   PredictionContext,
@@ -296,140 +301,23 @@ async function getStockValue(
   return { totalValue, productCount: seen.size };
 }
 
-async function getLowStockCount(
+/** Aligné page Inventaire (`fetchInventoryScreenData.stats.lowStockCount`). */
+async function fetchDashboardLowStock(
   supabase: ReturnType<typeof createClient>,
   companyId: string,
   storeId: string | null,
-): Promise<number> {
-  let storeIds: string[];
-  if (storeId) {
-    storeIds = [storeId];
-  } else {
-    const { data: stores, error } = await supabase
-      .from("stores")
-      .select("id")
-      .eq("company_id", companyId)
-      .eq("is_active", true);
-    if (error) throw error;
-    storeIds = (stores ?? []).map((s) => s.id as string);
-  }
-  if (storeIds.length === 0) return 0;
-  const { data: inv, error: invErr } = await supabase
-    .from("store_inventory")
-    .select("store_id, product_id, quantity, product:products(id, stock_min)")
-    .in("store_id", storeIds);
-  if (invErr) throw invErr;
-  const { data: overrides, error: oErr } = await supabase
-    .from("product_store_settings")
-    .select("store_id, product_id, stock_min_override")
-    .in("store_id", storeIds);
-  if (oErr) throw oErr;
-  const overrideMap = new Map<string, number | null>();
-  for (const o of overrides ?? []) {
-    const m = o as {
-      store_id?: string;
-      product_id?: string;
-      stock_min_override?: number | null;
-    };
-    if (m.store_id && m.product_id) {
-      overrideMap.set(
-        `${m.store_id}-${m.product_id}`,
-        m.stock_min_override != null
-          ? Number(m.stock_min_override)
-          : null,
-      );
-    }
-  }
-  const alertKeys = new Set<string>();
-  for (const row of inv ?? []) {
-    const m = row as {
-      store_id?: string;
-      product_id?: string;
-      quantity?: number;
-      product?: { stock_min?: number } | null;
-    };
-    const sid = m.store_id;
-    const pid = m.product_id;
-    if (!sid || !pid) continue;
-    const qty = Number(m.quantity ?? 0);
-    const min =
-      overrideMap.get(`${sid}-${pid}`) ??
-      Number(m.product?.stock_min ?? 0);
-    if (qty <= min) alertKeys.add(`${sid}-${pid}`);
-  }
-  return alertKeys.size;
-}
-
-async function getLowStockSamples(
-  supabase: ReturnType<typeof createClient>,
-  companyId: string,
-  storeId: string | null,
-  limit: number,
-): Promise<StockWatchSample[]> {
-  let storeIds: string[];
-  if (storeId) {
-    storeIds = [storeId];
-  } else {
-    const { data: stores, error } = await supabase
-      .from("stores")
-      .select("id")
-      .eq("company_id", companyId)
-      .eq("is_active", true);
-    if (error) throw error;
-    storeIds = (stores ?? []).map((s) => s.id as string);
-  }
-  if (storeIds.length === 0) return [];
-  const { data: inv, error: invErr } = await supabase
-    .from("store_inventory")
-    .select("store_id, product_id, quantity, product:products(id, name, stock_min)")
-    .in("store_id", storeIds);
-  if (invErr) throw invErr;
-  const { data: overrides, error: oErr } = await supabase
-    .from("product_store_settings")
-    .select("store_id, product_id, stock_min_override")
-    .in("store_id", storeIds);
-  if (oErr) throw oErr;
-  const overrideMap = new Map<string, number | null>();
-  for (const o of overrides ?? []) {
-    const m = o as {
-      store_id?: string;
-      product_id?: string;
-      stock_min_override?: number | null;
-    };
-    if (m.store_id && m.product_id) {
-      overrideMap.set(
-        `${m.store_id}-${m.product_id}`,
-        m.stock_min_override != null
-          ? Number(m.stock_min_override)
-          : null,
-      );
-    }
-  }
-  const samples: StockWatchSample[] = [];
-  for (const row of inv ?? []) {
-    const m = row as {
-      store_id?: string;
-      product_id?: string;
-      quantity?: number;
-      product?: { name?: string; stock_min?: number } | null;
-    };
-    const sid = m.store_id;
-    const pid = m.product_id;
-    if (!sid || !pid) continue;
-    const qty = Number(m.quantity ?? 0);
-    const min =
-      overrideMap.get(`${sid}-${pid}`) ??
-      Number(m.product?.stock_min ?? 0);
-    if (qty <= min) {
-      samples.push({
-        productName: m.product?.name ?? "—",
-        quantity: qty,
-        threshold: min,
-      });
-    }
-  }
-  samples.sort((a, b) => a.quantity - b.quantity);
-  return samples.slice(0, limit);
+  sampleLimit = 12,
+): Promise<{ lowStockCount: number; stockWatchSamples: StockWatchSample[] }> {
+  const { count, lines } = await countLowStockAlerts(supabase, companyId, storeId);
+  return {
+    lowStockCount: count,
+    stockWatchSamples: lines.slice(0, sampleLimit).map((l) => ({
+      productName: l.productName,
+      quantity: l.quantity,
+      threshold: l.threshold,
+      storeName: l.storeName,
+    })),
+  };
 }
 
 const CHUNK = 800;
@@ -687,11 +575,12 @@ async function fetchStockReportForStore(params: {
     const qty = Number(m.quantity ?? 0);
     const p = m.product;
     const name = p?.name ?? "—";
-    const min =
-      overrideMap.get(pid) ??
-      Number(p?.stock_min ?? 0);
-    const threshold =
-      min > 0 ? min : defaultThreshold;
+    const stockMin = Number(p?.stock_min ?? 0);
+    const threshold = effectiveStockAlertThreshold(
+      stockMin,
+      overrideMap.get(pid) ?? null,
+      defaultThreshold,
+    );
     if (qty <= 0) {
       outOfStock.push({
         productId: pid,
@@ -699,7 +588,7 @@ async function fetchStockReportForStore(params: {
         quantity: qty,
         threshold,
       });
-    } else if (threshold > 0 && qty <= threshold) {
+    } else if (isLowStockAlert(qty, threshold)) {
       lowStock.push({
         productId: pid,
         productName: name,
@@ -810,8 +699,7 @@ export async function fetchReportsPageData(params: {
   );
   const salesByCategory = aggregateCategoriesFromItems(filteredItems, 12);
 
-  const [purchasesSummary, stockValue, lowStockCount, stockReport] =
-    await Promise.all([
+  const [purchasesSummary, stockValue, lowStock, stockReport] = await Promise.all([
       getPurchasesSummary(
         supabase,
         companyId,
@@ -820,7 +708,7 @@ export async function fetchReportsPageData(params: {
         toDate,
       ),
       getStockValue(supabase, companyId, storeId),
-      getLowStockCount(supabase, companyId, storeId),
+      fetchDashboardLowStock(supabase, companyId, storeId),
       storeId
         ? fetchStockReportForStore({
             supabase,
@@ -831,6 +719,8 @@ export async function fetchReportsPageData(params: {
           })
         : Promise.resolve(null),
     ]);
+
+  const { lowStockCount } = lowStock;
 
   return {
     salesSummary,
@@ -903,8 +793,7 @@ export async function fetchDashboardData(params: {
     purchasesSummary,
     previousPurchasesSummary,
     stockValue,
-    lowStockCount,
-    stockWatchSamples,
+    lowStock,
   ] = await Promise.all([
     computeSalesSummaryFromIds(supabase, saleIds),
     productAggP,
@@ -925,9 +814,10 @@ export async function fetchDashboardData(params: {
       prevRange.to,
     ),
     getStockValue(supabase, params.companyId, effectiveStoreId),
-    getLowStockCount(supabase, params.companyId, effectiveStoreId),
-    getLowStockSamples(supabase, params.companyId, effectiveStoreId, 5),
+    fetchDashboardLowStock(supabase, params.companyId, effectiveStoreId),
   ]);
+
+  const { lowStockCount, stockWatchSamples } = lowStock;
 
   const byRev = [...productAgg].sort((a, b) => b.revenue - a.revenue);
   const topProducts = byRev.slice(0, 5);
@@ -1047,7 +937,7 @@ export async function fetchPredictionContext(params: {
     computeSalesSummaryFromIds(supabase, prevSaleIds),
     getPurchasesSummary(supabase, companyId, storeId, range.from, range.to),
     getStockValue(supabase, companyId, storeId),
-    getLowStockCount(supabase, companyId, storeId),
+    fetchDashboardLowStock(supabase, companyId, storeId).then((r) => r.lowStockCount),
   ]);
 
   const marginRatePercent =

@@ -1,14 +1,14 @@
 import { AppProviders } from "@/components/providers/app-providers";
 import { RegisterServiceWorker } from "@/components/pwa/register-sw";
 import type { Metadata, Viewport } from "next";
-import { Roboto } from "next/font/google";
+import { Poppins } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
 
-const roboto = Roboto({
-  subsets: ["latin"],
+const poppins = Poppins({
+  subsets: ["latin", "latin-ext"],
   weight: ["400", "500", "600", "700"],
-  variable: "--font-roboto",
+  variable: "--font-poppins",
   display: "swap",
 });
 
@@ -136,7 +136,7 @@ export default function RootLayout({
   };
 
   return (
-    <html lang="fr" className={`${roboto.variable} h-full`} suppressHydrationWarning>
+    <html lang="fr" className={`${poppins.variable} h-full`} suppressHydrationWarning>
       <body className="min-h-dvh bg-fs-surface font-sans text-fs-text antialiased">
         <Script
           id="fs-theme-init"

@@ -30,6 +30,8 @@ export type StockWatchSample = {
   productName: string;
   quantity: number;
   threshold: number;
+  /** Renseigné en vue entreprise (plusieurs boutiques). */
+  storeName?: string;
 };
 
 export type DashboardData = {

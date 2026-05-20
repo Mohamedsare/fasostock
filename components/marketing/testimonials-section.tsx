@@ -85,7 +85,7 @@ export function TestimonialsSection({
                 className="flex min-h-[320px] w-[min(82vw,300px)] shrink-0 flex-col rounded-2xl border border-black/10 bg-white p-4 shadow-[0_12px_26px_-22px_rgba(15,23,42,0.45)] sm:w-[min(44vw,320px)] lg:w-[320px]"
               >
                 <p className="text-fs-accent">❝</p>
-                <p className="mt-1 font-['Inter',ui-sans-serif,system-ui,sans-serif] text-[0.9rem] font-medium italic leading-[1.72] tracking-[0.003em] text-[#17253a]">
+                <p className="mt-1 text-[0.9rem] font-medium italic leading-[1.72] tracking-[0.003em] text-[#17253a]">
                   {t.quote}
                 </p>
                 <p className="mt-3 text-sm text-fs-accent">★★★★★</p>
