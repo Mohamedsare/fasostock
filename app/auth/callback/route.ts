@@ -22,6 +22,7 @@ function redirectTo(path: string, query?: Record<string, string>) {
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const code = searchParams.get("code");
+  const nextPath = searchParams.get("next");
   const authError = searchParams.get("error_description") ?? searchParams.get("error");
 
   if (authError) {
@@ -36,6 +37,15 @@ export async function GET(request: Request) {
   const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
   if (exchangeError) {
     return redirectTo(ROUTES.login, { auth_error: "exchange_failed" });
+  }
+
+  const resetNext =
+    nextPath === ROUTES.resetPassword ||
+    nextPath === "/reset-password" ||
+    nextPath?.endsWith("/reset-password");
+
+  if (resetNext) {
+    return redirectTo(ROUTES.resetPassword);
   }
 
   try {

@@ -5,12 +5,14 @@ import { ROUTES } from "@/lib/config/routes";
 import { reportHandledClientError } from "@/lib/monitoring/remote-error-logger";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 
 export function ResetPasswordForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [ready, setReady] = useState(false);
+  const [linkError, setLinkError] = useState<string | null>(null);
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -18,22 +20,52 @@ export function ResetPasswordForm() {
 
   useEffect(() => {
     const supabase = createClient();
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "PASSWORD_RECOVERY") {
+    let cancelled = false;
+    let unsubscribe: (() => void) | undefined;
+
+    async function bootstrapSession() {
+      const code = searchParams.get("code");
+      if (code) {
+        const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+        if (cancelled) return;
+        if (exchangeError) {
+          setLinkError("Ce lien a expiré ou est invalide. Demandez un nouveau lien de réinitialisation.");
+          return;
+        }
+        router.replace(ROUTES.resetPassword);
         setReady(true);
+        return;
+      }
+
+      const {
+        data: { subscription },
+      } = supabase.auth.onAuthStateChange((event) => {
+        if (event === "PASSWORD_RECOVERY") {
+          setReady(true);
+        }
+      });
+      unsubscribe = () => subscription.unsubscribe();
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!cancelled && session) {
+        setReady(true);
+      }
+    }
+
+    void bootstrapSession().catch((e) => {
+      reportHandledClientError(e, { source: "auth:reset-password-bootstrap" });
+      if (!cancelled) {
+        setLinkError("Impossible de valider le lien. Réessayez depuis l’email.");
       }
     });
 
-    void supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) setReady(true);
-    });
-
     return () => {
-      subscription.unsubscribe();
+      cancelled = true;
+      unsubscribe?.();
     };
-  }, []);
+  }, [router, searchParams]);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -62,6 +94,22 @@ export function ResetPasswordForm() {
     } finally {
       setLoading(false);
     }
+  }
+
+  if (linkError) {
+    return (
+      <AuthPageShell title="Lien invalide" subtitle="Ce lien de réinitialisation ne fonctionne plus.">
+        <AuthCard className="text-center">
+          <p className="text-sm text-neutral-600">{linkError}</p>
+          <Link
+            href={ROUTES.forgotPassword}
+            className="mt-6 inline-block text-sm font-semibold text-fs-accent underline-offset-4 hover:underline"
+          >
+            Demander un nouveau lien
+          </Link>
+        </AuthCard>
+      </AuthPageShell>
+    );
   }
 
   if (!ready) {

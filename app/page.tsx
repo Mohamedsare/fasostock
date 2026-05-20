@@ -249,8 +249,22 @@ const landingSimplifierBand = [
   { icon: MdSupportAgent, title: "Support dédié", text: "Une équipe disponible pour vous accompagner." },
 ] as const;
 
-export default async function Home() {
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<{ code?: string; next?: string; type?: string }>;
+}) {
   if (!hasSupabaseConfig()) redirect("/setup");
+
+  const sp = await searchParams;
+  if (sp.code) {
+    const q = new URLSearchParams({ code: sp.code });
+    const next =
+      sp.next ??
+      (sp.type === "recovery" ? "/reset-password" : undefined);
+    if (next) q.set("next", next);
+    redirect(`/auth/callback?${q.toString()}`);
+  }
 
   const supabase = await createClient();
   // Auth + données publiques en parallèle (les données publiques sont mises en cache).

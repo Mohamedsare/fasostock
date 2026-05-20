@@ -1,10 +1,8 @@
 "use client";
 
 import { authSimpleFieldClass } from "@/components/auth/auth-page-shell";
-import { authErrorToMessage } from "@/lib/auth/auth-errors";
 import { ROUTES } from "@/lib/config/routes";
 import { reportHandledClientError } from "@/lib/monitoring/remote-error-logger";
-import { createClient } from "@/lib/supabase/client";
 import { AlertCircle, Mail } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -18,6 +16,7 @@ export function ForgotPasswordForm() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
+  const [lastRemainingAttempts, setLastRemainingAttempts] = useState<number | null>(null);
 
   const hasEnv =
     typeof process.env.NEXT_PUBLIC_SUPABASE_URL === "string" &&
@@ -32,20 +31,32 @@ export function ForgotPasswordForm() {
     setError(null);
     setLoading(true);
     try {
-      const supabase = createClient();
-      const origin =
-        typeof window !== "undefined" ? window.location.origin : "";
-      const { error: err } = await supabase.auth.resetPasswordForEmail(
-        email.trim(),
-        {
-          redirectTo:
-            origin.length > 0 ? `${origin}/reset-password` : undefined,
-        },
-      );
-      if (err) {
-        setError(authErrorToMessage(err));
+      const res = await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim() }),
+      });
+      const data = (await res.json()) as {
+        ok?: boolean;
+        error?: string;
+        remainingAttempts?: number;
+      };
+
+      if (res.status === 429) {
+        setError(data.error ?? "Trop de demandes. Réessayez demain.");
+        setLoading(false);
         return;
       }
+
+      if (!res.ok) {
+        setError(data.error ?? "Envoi impossible. Réessayez.");
+        setLoading(false);
+        return;
+      }
+
+      const remaining =
+        typeof data.remainingAttempts === "number" ? data.remainingAttempts : null;
+      setLastRemainingAttempts(remaining);
       setSent(true);
     } catch (e) {
       reportHandledClientError(e, { source: "auth:forgot-password" });
@@ -92,6 +103,16 @@ export function ForgotPasswordForm() {
             <p className="text-center text-sm leading-relaxed text-neutral-600">
               Vérifiez votre boîte de réception (et les spams).
             </p>
+            {lastRemainingAttempts === 0 ? (
+              <p className="mt-3 text-center text-sm font-medium text-amber-800">
+                Limite atteinte (5 demandes). Attendez 24 heures avant de redemander un lien.
+              </p>
+            ) : lastRemainingAttempts != null ? (
+              <p className="mt-3 text-center text-sm text-neutral-500">
+                {lastRemainingAttempts} demande{lastRemainingAttempts > 1 ? "s" : ""} restante
+                {lastRemainingAttempts > 1 ? "s" : ""} avant blocage temporaire (24 h).
+              </p>
+            ) : null}
             <Link
               href={ROUTES.login}
               className="fs-touch-target mt-6 flex w-full items-center justify-center rounded-lg bg-fs-accent py-3 text-base font-semibold text-white transition-opacity hover:opacity-[0.96]"

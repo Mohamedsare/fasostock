@@ -10,9 +10,11 @@ Les fichiers HTML de ce dossier reprennent le même style que les emails transac
 
 - Cocher **Confirm email**
 - **Site URL** : `https://fasostock.com`
-- **Redirect URLs** :
+- **Redirect URLs** (toutes obligatoires pour reset + inscription) :
   - `https://fasostock.com/auth/callback`
+  - `https://fasostock.com/reset-password`
   - `http://localhost:3000/auth/callback`
+  - `http://localhost:3000/reset-password`
 
 ## 2. Coller les templates HTML
 
@@ -52,7 +54,10 @@ Le domaine `fasostock.com` doit être **vérifié** dans Resend (comme pour les 
 1. Créer un compte test sur `/register`.
 2. Vérifier la boîte mail (et **spams**).
 3. Le mail doit afficher l’en-tête orange FasoStock + bouton **Confirmer mon email**.
-4. Le lien doit rediriger vers `https://fasostock.com/auth/callback` puis le tableau de bord.
+4. Inscription : le lien doit rediriger vers `https://fasostock.com/auth/callback` puis le tableau de bord.
+5. Mot de passe oublié : demander un lien sur `/forgot-password`, cliquer l’email → page **Nouveau mot de passe** (`/reset-password`), pas la landing `/`.
+   - Si vous arrivez sur `/` avec `?code=…` dans l’URL, le site doit vous renvoyer vers `/reset-password` (code déployé + URLs Supabase ci-dessus).
+   - **Demandez un nouvel email** après chaque changement de config ou de déploiement (l’ancien lien garde l’ancienne URL).
 
 ## 5. Aperçu local (optionnel)
 
