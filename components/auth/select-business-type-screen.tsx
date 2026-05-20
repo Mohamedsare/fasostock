@@ -8,15 +8,12 @@ import { ChevronLeft } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
 
 export function SelectBusinessTypeScreen() {
   const router = useRouter();
-  const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
 
-  function onContinue() {
-    if (!selectedSlug) return;
-    const q = new URLSearchParams({ businessType: selectedSlug });
+  function onSelectType(slug: string) {
+    const q = new URLSearchParams({ businessType: slug });
     router.push(`${ROUTES.register}?${q.toString()}`);
   }
 
@@ -62,35 +59,21 @@ export function SelectBusinessTypeScreen() {
             <BusinessTypeCard
               key={option.slug}
               option={option}
-              selected={selectedSlug === option.slug}
-              onSelect={() => setSelectedSlug(option.slug)}
+              selected={false}
+              onSelect={() => onSelectType(option.slug)}
             />
           ))}
         </div>
 
-        <div className="mt-8 flex flex-col items-stretch gap-3 sm:mt-10">
-          <button
-            type="button"
-            disabled={!selectedSlug}
-            onClick={onContinue}
-            className={cn(
-              "fs-touch-target flex w-full items-center justify-center rounded-xl bg-fs-accent py-3.5 text-base font-semibold text-white shadow-sm transition-all",
-              "hover:opacity-[0.97] active:scale-[0.99]",
-              "disabled:cursor-not-allowed disabled:bg-neutral-300 disabled:text-neutral-500 disabled:shadow-none dark:disabled:bg-neutral-600",
-            )}
+        <p className="mt-8 text-center text-sm text-neutral-500 dark:text-neutral-400 sm:mt-10">
+          Déjà un compte ?{" "}
+          <Link
+            href={ROUTES.login}
+            className="font-semibold text-fs-accent underline-offset-4 hover:underline"
           >
-            Continuer
-          </button>
-          <p className="text-center text-sm text-neutral-500 dark:text-neutral-400">
-            Déjà un compte ?{" "}
-            <Link
-              href={ROUTES.login}
-              className="font-semibold text-fs-accent underline-offset-4 hover:underline"
-            >
-              Se connecter
-            </Link>
-          </p>
-        </div>
+            Se connecter
+          </Link>
+        </p>
       </div>
     </div>
   );
