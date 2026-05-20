@@ -1,3 +1,4 @@
+import { getBillingUrl } from "@/lib/email/app-url";
 import { ctaButton, emailLayout, escapeHtml } from "@/lib/email/templates/layout";
 
 export type TrialEndingTemplateParams = {
@@ -14,7 +15,7 @@ export function renderTrialEndingEmail(params: TrialEndingTemplateParams): strin
     params.daysLeft != null && Number.isFinite(params.daysLeft)
       ? Math.max(0, Math.round(params.daysLeft))
       : null;
-  const billingUrl = params.billingUrl?.trim() || "https://app.fasostock.com";
+  const billingUrl = params.billingUrl?.trim() || getBillingUrl();
 
   const bodyHtml = `
     <p style="margin:0 0 16px;">Bonjour,</p>

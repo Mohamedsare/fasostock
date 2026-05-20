@@ -1,3 +1,4 @@
+import { getBillingUrl } from "@/lib/email/app-url";
 import { ctaButton, emailLayout, escapeHtml } from "@/lib/email/templates/layout";
 
 export type SubscriptionExpiredTemplateParams = {
@@ -9,7 +10,7 @@ export type SubscriptionExpiredTemplateParams = {
 export function renderSubscriptionExpiredEmail(params: SubscriptionExpiredTemplateParams): string {
   const company = params.companyName?.trim() || "votre entreprise";
   const expiredAt = params.expiredAt?.trim();
-  const billingUrl = params.billingUrl?.trim() || "https://app.fasostock.com";
+  const billingUrl = params.billingUrl?.trim() || getBillingUrl();
 
   const bodyHtml = `
     <p style="margin:0 0 16px;">Bonjour,</p>

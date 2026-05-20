@@ -1,3 +1,4 @@
+import { DEFAULT_APP_URL } from "@/lib/email/app-url";
 import { ctaButton, emailLayout, escapeHtml } from "@/lib/email/templates/layout";
 
 export type SubscriptionPaidTemplateParams = {
@@ -15,7 +16,7 @@ function formatFcfa(amount: number): string {
 export function renderSubscriptionPaidEmail(params: SubscriptionPaidTemplateParams): string {
   const company = params.companyName?.trim() || "votre entreprise";
   const plan = params.planLabel?.trim() || "Abonnement FasoStock";
-  const appUrl = params.appUrl?.trim() || "https://app.fasostock.com";
+  const appUrl = params.appUrl?.trim() || DEFAULT_APP_URL;
   const amount =
     params.amountFcfa != null && Number.isFinite(params.amountFcfa)
       ? formatFcfa(params.amountFcfa)

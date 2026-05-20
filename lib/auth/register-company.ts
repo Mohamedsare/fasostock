@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { getAuthRedirectUrl } from "@/lib/auth/auth-redirect-url";
 import { defaultSlugFromCompanyName } from "./slug";
 
 export type RegisterCompanyInput = {
@@ -13,11 +14,38 @@ export type RegisterCompanyInput = {
   businessTypeSlug?: string | null;
 };
 
+export type RegisterCompanyResult = {
+  userId: string;
+  companyId?: string;
+  storeId?: string;
+  /** Compte auth créé ; l’utilisateur doit confirmer son email avant création entreprise. */
+  needsEmailConfirmation: boolean;
+};
+
+/** Pas de session JWT → email à confirmer ou attente (Supabase « Confirm email »). */
+function signupNeedsEmailConfirmation(session: unknown): boolean {
+  return session == null;
+}
+
+function isUnauthorizedDataError(error: { code?: string; status?: number; message?: string }): boolean {
+  const code = String(error.code ?? "");
+  const status = error.status;
+  const msg = String(error.message ?? "").toLowerCase();
+  return (
+    status === 401 ||
+    code === "42501" ||
+    code === "PGRST301" ||
+    msg.includes("row-level security") ||
+    msg.includes("jwt") ||
+    msg.includes("not authenticated")
+  );
+}
+
 /** Aligné sur `AuthService.registerCompany` (Flutter). */
 export async function registerCompany(
   supabase: SupabaseClient,
   input: RegisterCompanyInput,
-): Promise<{ userId: string; companyId: string; storeId: string }> {
+): Promise<RegisterCompanyResult> {
   const companySlug =
     input.companySlug.trim() ||
     defaultSlugFromCompanyName(input.companyName.trim());
@@ -26,7 +54,17 @@ export async function registerCompany(
     email: input.ownerEmail.trim(),
     password: input.ownerPassword,
     options: {
-      data: { full_name: input.ownerFullName.trim() },
+      emailRedirectTo: getAuthRedirectUrl("/auth/callback"),
+      data: {
+        full_name: input.ownerFullName.trim(),
+        pending_registration: {
+          companyName: input.companyName.trim(),
+          companySlug,
+          firstStoreName: input.firstStoreName.trim(),
+          firstStorePhone: input.firstStorePhone.trim(),
+          businessTypeSlug: input.businessTypeSlug ?? null,
+        },
+      },
     },
   });
 
@@ -34,13 +72,24 @@ export async function registerCompany(
   const user = authData.user;
   if (!user) throw new Error("Inscription échouée.");
 
+  if (signupNeedsEmailConfirmation(authData.session)) {
+    return { userId: user.id, needsEmailConfirmation: true };
+  }
+
+  await supabase.auth.refreshSession();
+
   const { error: profileError } = await supabase.from("profiles").upsert({
     id: user.id,
     full_name: input.ownerFullName.trim(),
     is_super_admin: false,
     is_active: true,
   });
-  if (profileError) throw profileError;
+  if (profileError) {
+    if (isUnauthorizedDataError(profileError)) {
+      return { userId: user.id, needsEmailConfirmation: true };
+    }
+    throw profileError;
+  }
 
   const phone = input.firstStorePhone.trim();
   const businessSlug =
@@ -59,7 +108,12 @@ export async function registerCompany(
     },
   );
 
-  if (rpcError) throw rpcError;
+  if (rpcError) {
+    if (isUnauthorizedDataError(rpcError)) {
+      return { userId: user.id, needsEmailConfirmation: true };
+    }
+    throw rpcError;
+  }
   if (rpcData == null || typeof rpcData !== "object") {
     throw new Error("Création entreprise échouée.");
   }
@@ -68,5 +122,14 @@ export async function registerCompany(
   const storeId = map.store_id as string;
   if (!companyId || !storeId) throw new Error("Création entreprise échouée.");
 
-  return { userId: user.id, companyId, storeId };
+  await supabase.auth.updateUser({
+    data: { pending_registration: null },
+  });
+
+  return {
+    userId: user.id,
+    companyId,
+    storeId,
+    needsEmailConfirmation: false,
+  };
 }

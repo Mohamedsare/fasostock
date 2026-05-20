@@ -2,7 +2,9 @@
 
 import { AccountLockedScreen } from "@/components/auth/account-locked-screen";
 import { authSimpleFieldClass } from "@/components/auth/auth-page-shell";
+import { getAuthRedirectUrl } from "@/lib/auth/auth-redirect-url";
 import { authErrorToMessage } from "@/lib/auth/auth-errors";
+import { completePendingRegistration } from "@/lib/auth/complete-pending-registration";
 import {
   getLoginLockStatus,
   recordFailedLogin,
@@ -45,14 +47,18 @@ export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const registered = searchParams.get("registered") === "1";
+  const confirmEmail = searchParams.get("confirm_email") === "1";
+  const authCallbackError = searchParams.get("auth_error");
 
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(() => searchParams.get("email")?.trim() ?? "");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [remainingAttempts, setRemainingAttempts] = useState<number | null>(
     null,
   );
   const [loading, setLoading] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendOk, setResendOk] = useState(false);
   const [loadingLabel, setLoadingLabel] = useState("Connexion…");
   const [isLocked, setIsLocked] = useState(false);
   const [lockedEmail, setLockedEmail] = useState("");
@@ -130,6 +136,28 @@ export function LoginForm() {
       }
 
       await resetLoginAttempts(supabase);
+
+      try {
+        const pendingDone = await completePendingRegistration(supabase);
+        if (pendingDone.completed && pendingDone.companyId) {
+          try {
+            await fetch("/api/auth/onboarding-emails", {
+              method: "POST",
+              credentials: "include",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ companyId: pendingDone.companyId }),
+            });
+          } catch {
+            /* non bloquant */
+          }
+        }
+      } catch (pendingErr) {
+        reportHandledClientError(pendingErr, { source: "auth:complete-pending-registration" });
+        setError("Connexion réussie mais finalisation du compte impossible. Contactez le support.");
+        setLoading(false);
+        return;
+      }
+
       try {
         const { data: companyIds } = await supabase.rpc("staff_login_notify_company_owners");
         const ids = (Array.isArray(companyIds) ? companyIds : []).filter(
@@ -154,6 +182,35 @@ export function LoginForm() {
       reportHandledClientError(err, { source: "auth:login-submit" });
       setError(loginRuntimeErrorToMessage(err));
       setLoading(false);
+    }
+  }
+
+  async function resendConfirmationEmail() {
+    const em = email.trim();
+    if (!em) {
+      setError("Indiquez votre email pour renvoyer le lien de confirmation.");
+      return;
+    }
+    setResendLoading(true);
+    setResendOk(false);
+    setError(null);
+    try {
+      const supabase = createClient();
+      const { error: err } = await supabase.auth.resend({
+        type: "signup",
+        email: em,
+        options: { emailRedirectTo: getAuthRedirectUrl("/auth/callback") },
+      });
+      if (err) {
+        setError(authErrorToMessage(err));
+        return;
+      }
+      setResendOk(true);
+    } catch (e) {
+      reportHandledClientError(e, { source: "auth:resend-confirmation" });
+      setError("Impossible de renvoyer l’email. Réessayez.");
+    } finally {
+      setResendLoading(false);
     }
   }
 
@@ -192,7 +249,40 @@ export function LoginForm() {
         </div>
 
         <div className="mt-5">
-          {registered ? (
+          {confirmEmail ? (
+            <div
+              className="mb-4 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-950"
+              role="status"
+            >
+              <p>
+                Un email de confirmation a été envoyé à votre adresse. Cliquez sur le lien pour
+                activer votre compte — sans cela, la connexion sera refusée.
+              </p>
+              <button
+                type="button"
+                disabled={resendLoading}
+                onClick={() => void resendConfirmationEmail()}
+                className="mt-2 text-sm font-semibold text-fs-accent underline-offset-4 hover:underline disabled:opacity-60"
+              >
+                {resendLoading ? "Envoi…" : "Renvoyer l’email de confirmation"}
+              </button>
+              {resendOk ? (
+                <p className="mt-2 text-xs text-emerald-800">Email renvoyé. Vérifiez vos spams.</p>
+              ) : null}
+            </div>
+          ) : null}
+
+          {authCallbackError ? (
+            <div
+              className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-950"
+              role="alert"
+            >
+              Lien de confirmation invalide ou expiré. Reconnectez-vous ou renvoyez un email de
+              confirmation.
+            </div>
+          ) : null}
+
+          {registered && !confirmEmail ? (
             <div
               className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900"
               role="status"

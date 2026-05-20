@@ -1,11 +1,12 @@
 "use client";
 
 import { authSimpleFieldClass } from "@/components/auth/auth-page-shell";
-import { authErrorToMessage } from "@/lib/auth/auth-errors";
+import { registerErrorToMessage } from "@/lib/auth/auth-errors";
 import { registerCompany } from "@/lib/auth/register-company";
 import { slugFromName } from "@/lib/auth/slug";
 import { ROUTES } from "@/lib/config/routes";
 import { reportHandledClientError } from "@/lib/monitoring/remote-error-logger";
+import { toast } from "@/lib/toast";
 import { createClient } from "@/lib/supabase/client";
 import { AlertCircle } from "lucide-react";
 import Image from "next/image";
@@ -76,29 +77,47 @@ export function RegisterForm() {
         firstStorePhone: firstStorePhone.trim(),
         businessTypeSlug: btSlug,
       });
-      try {
-        await fetch("/api/auth/onboarding-emails", {
-          method: "POST",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ companyId: registered.companyId }),
-        });
-      } catch {
-        /* emails non bloquants */
+
+      if (registered.needsEmailConfirmation) {
+        try {
+          await supabase.auth.signOut();
+        } catch {
+          /* pas de session */
+        }
+        toast.success(
+          "Compte créé ! Ouvrez l’email de confirmation (vérifiez les spams), cliquez sur le lien, puis connectez-vous.",
+          7000,
+        );
+        router.push(
+          `${ROUTES.login}?confirm_email=1&email=${encodeURIComponent(ownerEmail.trim())}`,
+        );
+        return;
+      }
+
+      if (registered.companyId) {
+        try {
+          await fetch("/api/auth/onboarding-emails", {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ companyId: registered.companyId }),
+          });
+        } catch {
+          /* emails non bloquants */
+        }
       }
       try {
         await supabase.auth.signOut();
       } catch {
-        /* session parfois absente si confirmation email */
+        /* session parfois absente */
       }
+      toast.success("Entreprise créée ! Connectez-vous avec votre email et votre mot de passe.", 5000);
       router.push(`${ROUTES.login}?registered=1`);
     } catch (err: unknown) {
       reportHandledClientError(err, { source: "auth:register" });
-      const msg =
-        err && typeof err === "object" && "message" in err
-          ? String((err as { message: string }).message)
-          : "";
-      setError(msg ? authErrorToMessage({ message: msg }) : "Inscription impossible.");
+      const msg = registerErrorToMessage(err);
+      setError(null);
+      toast.error(msg, 6500);
     } finally {
       setLoading(false);
     }

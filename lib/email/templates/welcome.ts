@@ -1,3 +1,4 @@
+import { DEFAULT_APP_URL } from "@/lib/email/app-url";
 import { ctaButton, emailLayout, escapeHtml } from "@/lib/email/templates/layout";
 
 export type WelcomeTemplateParams = {
@@ -9,7 +10,7 @@ export type WelcomeTemplateParams = {
 export function renderWelcomeEmail(params: WelcomeTemplateParams): string {
   const name = params.userName?.trim() || "Bonjour";
   const company = params.companyName?.trim();
-  const appUrl = params.appUrl?.trim() || "https://app.fasostock.com";
+  const appUrl = params.appUrl?.trim() || DEFAULT_APP_URL;
 
   const bodyHtml = `
     <p style="margin:0 0 16px;">${escapeHtml(name)},</p>
