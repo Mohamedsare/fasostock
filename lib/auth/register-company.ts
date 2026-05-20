@@ -1,5 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getAuthRedirectUrl } from "@/lib/auth/auth-redirect-url";
+import {
+  isRegisterEmailAlreadyUsedError,
+  RegisterEmailAlreadyUsedError,
+} from "@/lib/auth/register-errors";
 import { defaultSlugFromCompanyName } from "./slug";
 
 export type RegisterCompanyInput = {
@@ -68,9 +72,20 @@ export async function registerCompany(
     },
   });
 
-  if (signUpError) throw signUpError;
+  if (signUpError) {
+    if (isRegisterEmailAlreadyUsedError(signUpError)) {
+      throw new RegisterEmailAlreadyUsedError();
+    }
+    throw signUpError;
+  }
   const user = authData.user;
   if (!user) throw new Error("Inscription échouée.");
+
+  // Supabase + « Confirm email » : email déjà pris → user sans identité (anti-énumération).
+  const identities = user.identities ?? [];
+  if (identities.length === 0) {
+    throw new RegisterEmailAlreadyUsedError();
+  }
 
   if (signupNeedsEmailConfirmation(authData.session)) {
     return { userId: user.id, needsEmailConfirmation: true };

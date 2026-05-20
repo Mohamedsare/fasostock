@@ -1,3 +1,9 @@
+import {
+  isRegisterEmailAlreadyUsedError,
+  REGISTER_EMAIL_ALREADY_USED_MESSAGE,
+  RegisterEmailAlreadyUsedError,
+} from "@/lib/auth/register-errors";
+
 function extractErrorFields(err: unknown): { message: string; code: string; status?: number } {
   if (err == null || typeof err !== "object") {
     return { message: "", code: "" };
@@ -12,8 +18,16 @@ function extractErrorFields(err: unknown): { message: string; code: string; stat
 
 /** Messages inscription — toasts UX (jamais le générique « Une erreur s'est produite »). */
 export function registerErrorToMessage(err: unknown): string {
+  if (err instanceof RegisterEmailAlreadyUsedError) {
+    return REGISTER_EMAIL_ALREADY_USED_MESSAGE;
+  }
+
   const { message, code, status } = extractErrorFields(err);
   const raw = message.toLowerCase();
+
+  if (isRegisterEmailAlreadyUsedError(err)) {
+    return REGISTER_EMAIL_ALREADY_USED_MESSAGE;
+  }
 
   if (
     status === 401 ||
@@ -23,10 +37,6 @@ export function registerErrorToMessage(err: unknown): string {
     raw.includes("not authenticated")
   ) {
     return "Vérifiez votre boîte mail : ouvrez le lien de confirmation FasoStock, puis connectez-vous pour finaliser votre entreprise.";
-  }
-
-  if (raw.includes("user already registered") || raw.includes("already been registered")) {
-    return "Un compte existe déjà avec cet email. Connectez-vous ou utilisez « Mot de passe oublié ».";
   }
 
   if (raw.includes("password") && (raw.includes("weak") || raw.includes("short"))) {
@@ -55,8 +65,7 @@ export function registerErrorToMessage(err: unknown): string {
 
 /** Messages utilisateur (FR) — proches de `ErrorMessages` / `AppErrorHandler` Flutter. */
 export function authErrorToMessage(err: { message?: string } | null): string {
-  const raw = (err?.message ?? "").toLowerCase();
-  if (
+  const raw = (err?.message ?? "").toLowerCase();  if (
     raw.includes("failed to fetch") ||
     raw.includes("networkerror") ||
     raw.includes("network request failed") ||
@@ -72,7 +81,7 @@ export function authErrorToMessage(err: { message?: string } | null): string {
     return "Confirmez votre adresse email via le lien reçu par mail avant de vous connecter.";
   }
   if (raw.includes("user already registered") || raw.includes("already been registered")) {
-    return "Un compte existe déjà avec cet email.";
+    return REGISTER_EMAIL_ALREADY_USED_MESSAGE;
   }
   if (raw.includes("signup is disabled")) {
     return "Les inscriptions sont temporairement désactivées.";
