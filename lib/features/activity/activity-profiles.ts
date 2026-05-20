@@ -1,5 +1,3 @@
-"use client";
-
 import { ROUTES } from "@/lib/config/routes";
 import type { NavItem } from "@/lib/config/navigation";
 

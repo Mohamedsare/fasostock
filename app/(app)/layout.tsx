@@ -17,10 +17,10 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   if (!user) redirect("/login");
 
   return (
-    <AppShell userEmail={user.email}>
-      <ServerRouteGuard>
+    <ServerRouteGuard>
+      <AppShell userEmail={user.email}>
         <AppRouteGuard>{children}</AppRouteGuard>
-      </ServerRouteGuard>
-    </AppShell>
+      </AppShell>
+    </ServerRouteGuard>
   );
 }

@@ -149,9 +149,13 @@ export async function userCanAccessPathnameOnServer(
   if (companyIds.length === 0) return true;
 
   for (const companyId of companyIds) {
-    const ctx = await fetchAppContextForCompany(supabase, userId, companyId, false);
-    const h = buildAccessHelpers(ctx);
-    if (h && canAccessPathname(pathname, h, ctx?.businessTypeSlug)) return true;
+    try {
+      const ctx = await fetchAppContextForCompany(supabase, userId, companyId, false);
+      const h = buildAccessHelpers(ctx);
+      if (h && canAccessPathname(pathname, h, ctx?.businessTypeSlug)) return true;
+    } catch {
+      /* entreprise suivante */
+    }
   }
   return false;
 }

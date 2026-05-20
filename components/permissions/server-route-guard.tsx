@@ -10,23 +10,31 @@ import { createClient } from "@/lib/supabase/server";
  * n’est autorisé pour aucune entreprise active de l’utilisateur.
  */
 export async function ServerRouteGuard({ children }: { children: ReactNode }) {
-  const pathname = (await headers()).get("x-pathname")?.trim() ?? "";
-  if (!pathname || pathname === "/") {
+  try {
+    const pathname = (await headers()).get("x-pathname")?.trim() ?? "";
+    if (!pathname || pathname === "/") {
+      return <>{children}</>;
+    }
+
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user?.id) {
+      return <>{children}</>;
+    }
+
+    const allowed = await userCanAccessPathnameOnServer(supabase, user.id, pathname);
+    if (!allowed) {
+      return <NoAccessScreen />;
+    }
+
+    return <>{children}</>;
+  } catch (e) {
+    if (process.env.NODE_ENV !== "production") {
+      console.error("[ServerRouteGuard]", e);
+    }
+    /* Ne pas bloquer l’app si la garde serveur échoue (réseau, RPC, etc.). */
     return <>{children}</>;
   }
-
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user?.id) {
-    return <>{children}</>;
-  }
-
-  const allowed = await userCanAccessPathnameOnServer(supabase, user.id, pathname);
-  if (!allowed) {
-    return <NoAccessScreen />;
-  }
-
-  return <>{children}</>;
 }
