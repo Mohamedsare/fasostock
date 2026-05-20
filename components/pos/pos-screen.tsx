@@ -2385,7 +2385,7 @@ function PosCartPanel({
           onClick={onClear}
           className="flex-1 rounded-xl border border-[#E5E7EB] bg-[#F8F9FA] py-2.5 text-sm font-semibold text-[#1F2937]"
         >
-          {mode === "quick" ? "Annuler vente" : "Vider panier"}
+          {mode === "quick" ? "Annuler" : "Vider panier"}
         </button>
         <button
           type="button"
@@ -2409,7 +2409,7 @@ function PosCartPanel({
               ) : (
                 <MdPrint className="h-5 w-5" aria-hidden />
               )}
-              {createMut.isPending ? "Enregistrement..." : "VALIDER ET IMPRIMER"}
+              {createMut.isPending ? "Enregistrement..." : "VALIDER"}
             </>
           ) : (
             <>

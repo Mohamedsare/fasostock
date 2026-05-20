@@ -68,6 +68,7 @@ export function AppShell({ children, userEmail }: AppShellProps) {
   const isPosRoute = /^\/stores\/[^/]+\/(pos(-quick)?|facture-tab)\/?$/.test(
     pathname,
   );
+  const isPosQuickRoute = /^\/stores\/[^/]+\/pos-quick\/?$/.test(pathname);
   const [moreOpen, setMoreOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -303,7 +304,7 @@ export function AppShell({ children, userEmail }: AppShellProps) {
                 </button>
               </div>
             </header>
-          ) : (
+          ) : isPosQuickRoute ? null : (
             <header
               className={cn(
                 "sticky top-0 z-40 flex h-[58px] shrink-0 items-center justify-between gap-2",

@@ -441,15 +441,25 @@ export default async function Home({
       {/* ── FEATURE STRIP ── */}
       <section className="mx-auto w-full max-w-7xl px-4 pb-4 sm:px-6">
         <div className="overflow-hidden rounded-[1.2rem] border border-black/10 bg-white">
-          <div data-fs-stagger className="grid grid-cols-3 divide-x divide-y divide-black/8 text-xs lg:grid-cols-6 lg:divide-y-0">
+          <div
+            data-fs-stagger
+            className="grid grid-cols-2 gap-px bg-black/8 lg:grid-cols-6"
+          >
             {bannerFeatureStrip.map((item) => (
-              <article key={item.title} className="flex min-h-[64px] items-start gap-2 px-3 py-2.5">
-                <div className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-fs-accent text-white">
+              <article
+                key={item.title}
+                className="flex min-h-[72px] items-start gap-2.5 bg-white px-4 py-3 sm:min-h-[64px] sm:gap-2 sm:px-3 sm:py-2.5"
+              >
+                <div className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-fs-accent text-white sm:h-7 sm:w-7">
                   <item.icon className="h-4 w-4" aria-hidden />
                 </div>
-                <div className="min-w-0">
-                  <p className="text-[11px] font-extrabold uppercase leading-tight text-neutral-800">{item.title}</p>
-                  <p className="mt-0.5 text-[10px] font-semibold leading-snug text-neutral-600">{item.subtitle}</p>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-extrabold uppercase leading-tight text-neutral-800 sm:text-[11px]">
+                    {item.title}
+                  </p>
+                  <p className="mt-0.5 text-[11px] font-semibold leading-snug text-neutral-600 sm:text-[10px]">
+                    {item.subtitle}
+                  </p>
                 </div>
               </article>
             ))}
@@ -460,15 +470,23 @@ export default async function Home({
       {/* ── TRUST STRIP ── */}
       <section className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6 sm:pb-10">
         <div className="overflow-hidden rounded-[1.2rem] border border-[#eadfd8] bg-[#fff8f3]">
-          <div data-fs-stagger className="grid grid-cols-2 divide-y divide-[#f0e5de] min-[760px]:grid-cols-4 min-[760px]:divide-x min-[760px]:divide-y-0">
+          <div
+            data-fs-stagger
+            className="grid grid-cols-2 gap-px bg-[#f0e5de] lg:grid-cols-4"
+          >
             {bannerTrustStrip.map((item) => (
-              <article key={item.title} className="flex items-center gap-3 px-4 py-3">
-                <div className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 border-fs-accent text-fs-accent">
+              <article
+                key={item.title}
+                className="flex min-h-[72px] items-start gap-2.5 bg-[#fff8f3] px-3 py-3 sm:min-h-0 sm:gap-3 sm:px-4"
+              >
+                <div className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 border-fs-accent text-fs-accent sm:h-9 sm:w-9">
                   <item.icon className="h-4 w-4" aria-hidden />
                 </div>
-                <div>
-                  <p className="text-base font-black uppercase tracking-tight text-[#202935]">{item.title}</p>
-                  <p className="text-[11px] text-neutral-500">{item.text}</p>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-black uppercase leading-tight tracking-tight text-[#202935] sm:text-sm lg:text-base">
+                    {item.title}
+                  </p>
+                  <p className="mt-0.5 text-[11px] leading-snug text-neutral-500">{item.text}</p>
                 </div>
               </article>
             ))}
@@ -953,20 +971,28 @@ export default async function Home({
             ))}
           </div>
 
-          <div className="relative mt-8 overflow-hidden rounded-2xl border border-fs-accent/20 bg-[#fff7f1] px-4 py-6 sm:px-6">
-            <p className="text-center text-[1.35rem] font-black leading-tight text-[#17253a] sm:text-3xl">
+          <div className="relative mt-8 overflow-hidden rounded-2xl border border-fs-accent/20 bg-[#fff7f1] px-3 py-5 sm:px-6 sm:py-6">
+            <p className="text-center text-xl font-black leading-[1.12] tracking-tight text-[#17253a] sm:text-[1.35rem] lg:text-3xl">
               Conçu pour simplifier
               <br />
               <span className="text-fs-accent">votre quotidien</span>
             </p>
-            <div data-fs-stagger className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            <div
+              data-fs-stagger
+              className="mt-4 grid grid-cols-2 gap-2 sm:mt-5 sm:gap-3 lg:grid-cols-5"
+            >
               {landingSimplifierBand.map((b) => (
-                <article key={b.title} className="rounded-xl border border-black/8 bg-white/90 p-3 text-center shadow-sm">
-                  <div className="mx-auto inline-flex h-9 w-9 items-center justify-center rounded-full bg-[#fff5ef] text-fs-accent">
-                    <b.icon className="h-5 w-5" aria-hidden />
+                <article
+                  key={b.title}
+                  className="flex h-full flex-col rounded-xl border border-black/8 bg-white/90 p-2.5 text-left shadow-sm sm:p-3 sm:text-center"
+                >
+                  <div className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#fff5ef] text-fs-accent sm:mx-auto sm:h-9 sm:w-9">
+                    <b.icon className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden />
                   </div>
-                  <p className="mt-2 text-sm font-black text-[#1f2937]">{b.title}</p>
-                  <p className="mt-1 text-[11px] leading-relaxed text-neutral-600">{b.text}</p>
+                  <p className="mt-2 text-xs font-black leading-tight text-[#1f2937] sm:text-sm">{b.title}</p>
+                  <p className="mt-1 flex-1 text-[10px] leading-snug text-neutral-600 sm:text-[11px] sm:leading-relaxed">
+                    {b.text}
+                  </p>
                 </article>
               ))}
             </div>
