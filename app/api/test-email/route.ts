@@ -7,6 +7,8 @@ import {
   sendTrialStartedEmail,
   sendWelcomeEmail,
 } from "@/lib/email/notifications";
+import { requireAuthUser, requireSuperAdmin } from "@/lib/server/api-auth";
+import { isTestEmailRouteEnabled } from "@/lib/server/test-email-access";
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
@@ -25,32 +27,15 @@ const TEMPLATES = [
   "subscription_expired",
 ] as const;
 
-async function requireSuperAdmin() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return { ok: false as const, response: NextResponse.json({ error: "Non authentifié" }, { status: 401 }) };
-  }
-  const { data: isSa, error } = await supabase.rpc("is_super_admin");
-  if (error) {
-    return {
-      ok: false as const,
-      response: NextResponse.json({ error: error.message }, { status: 500 }),
-    };
-  }
-  if (!isSa) {
-    return { ok: false as const, response: NextResponse.json({ error: "Non autorisé" }, { status: 403 }) };
-  }
-  return { ok: true as const };
-}
-
 function isValidEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
 export async function POST(req: Request) {
+  if (!isTestEmailRouteEnabled()) {
+    return NextResponse.json({ error: "Non trouvé" }, { status: 404 });
+  }
+
   if (!isResendConfigured()) {
     return NextResponse.json(
       { error: "RESEND_API_KEY non configurée sur le serveur." },
@@ -58,8 +43,11 @@ export async function POST(req: Request) {
     );
   }
 
-  const auth = await requireSuperAdmin();
-  if (!auth.ok) return auth.response;
+  const supabase = await createClient();
+  const authUser = await requireAuthUser(supabase);
+  if (!authUser.ok) return authUser.response;
+  const sa = await requireSuperAdmin(supabase);
+  if (!sa.ok) return sa.response;
 
   let body: TestEmailBody;
   try {

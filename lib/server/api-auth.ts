@@ -35,6 +35,27 @@ export async function userBelongsToCompany(
   return !error && data != null;
 }
 
+/** Propriétaire actif de l’entreprise (rôle `owner`). */
+export async function userIsCompanyOwner(
+  supabase: SupabaseClient,
+  userId: string,
+  companyId: string,
+): Promise<boolean> {
+  const id = companyId.trim();
+  if (!id) return false;
+  const { data, error } = await supabase
+    .from("user_company_roles")
+    .select("company_id, roles!inner(slug)")
+    .eq("user_id", userId)
+    .eq("company_id", id)
+    .eq("is_active", true)
+    .maybeSingle();
+  if (error || !data) return false;
+  const rolesRaw = (data as { roles?: { slug?: string } | { slug?: string }[] }).roles;
+  const role = Array.isArray(rolesRaw) ? rolesRaw[0] : rolesRaw;
+  return role?.slug === "owner";
+}
+
 export async function requireSuperAdmin(
   supabase: SupabaseClient,
 ): Promise<{ ok: true } | { ok: false; response: NextResponse }> {

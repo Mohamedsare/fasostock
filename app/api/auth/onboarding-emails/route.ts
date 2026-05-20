@@ -1,6 +1,6 @@
 import { sendOnboardingEmails } from "@/lib/email/onboarding-emails";
 import { isResendConfigured } from "@/lib/email/resend";
-import { requireAuthUser, userBelongsToCompany } from "@/lib/server/api-auth";
+import { requireAuthUser, userIsCompanyOwner } from "@/lib/server/api-auth";
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
@@ -31,9 +31,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "companyId requis." }, { status: 400 });
   }
 
-  const belongs = await userBelongsToCompany(supabase, auth.user.id, companyId);
-  if (!belongs) {
-    return NextResponse.json({ error: "Non autorisé pour cette entreprise." }, { status: 403 });
+  const isOwner = await userIsCompanyOwner(supabase, auth.user.id, companyId);
+  if (!isOwner) {
+    return NextResponse.json(
+      { error: "Seul le propriétaire peut déclencher les emails d’inscription." },
+      { status: 403 },
+    );
   }
 
   const { data: company, error: cErr } = await supabase
