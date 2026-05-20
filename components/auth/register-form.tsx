@@ -1,12 +1,16 @@
 "use client";
 
+import { PhoneCountryField } from "@/components/auth/phone-country-field";
 import { authSimpleFieldClass } from "@/components/auth/auth-page-shell";
 import { registerErrorToMessage } from "@/lib/auth/auth-errors";
 import { registerCompany } from "@/lib/auth/register-company";
 import { slugFromName } from "@/lib/auth/slug";
 import { ROUTES } from "@/lib/config/routes";
 import { reportHandledClientError } from "@/lib/monitoring/remote-error-logger";
+import { DEFAULT_PHONE_COUNTRY } from "@/lib/phone/phone-countries";
+import { validatePhoneForCountry } from "@/lib/phone/validate-phone";
 import { toast } from "@/lib/toast";
+import type { CountryCode } from "libphonenumber-js";
 import { createClient } from "@/lib/supabase/client";
 import { AlertCircle } from "lucide-react";
 import Image from "next/image";
@@ -28,6 +32,7 @@ export function RegisterForm() {
   const [companyName, setCompanyName] = useState("");
   const [companySlug, setCompanySlug] = useState("");
   const [firstStorePhone, setFirstStorePhone] = useState("");
+  const [phoneCountry, setPhoneCountry] = useState<CountryCode>(DEFAULT_PHONE_COUNTRY);
   const [ownerFullName, setOwnerFullName] = useState("");
   const [ownerEmail, setOwnerEmail] = useState("");
   const [ownerPassword, setOwnerPassword] = useState("");
@@ -59,6 +64,11 @@ export function RegisterForm() {
       );
       return;
     }
+    const phoneCheck = validatePhoneForCountry(firstStorePhone, phoneCountry);
+    if (!phoneCheck.ok) {
+      toast.error(phoneCheck.message, 6000);
+      return;
+    }
     setLoading(true);
     try {
       const supabase = createClient();
@@ -74,7 +84,7 @@ export function RegisterForm() {
         ownerPassword,
         ownerFullName: ownerFullName.trim(),
         firstStoreName: storeName,
-        firstStorePhone: firstStorePhone.trim(),
+        firstStorePhone: phoneCheck.international,
         businessTypeSlug: btSlug,
       });
 
@@ -219,22 +229,13 @@ export function RegisterForm() {
             aria-hidden
           />
 
-          <div>
-            <label htmlFor="reg-phone" className="sr-only">
-              Téléphone
-            </label>
-            <input
-              id="reg-phone"
-              className={authSimpleFieldClass}
-              type="tel"
-              value={firstStorePhone}
-              onChange={(e) => setFirstStorePhone(e.target.value)}
-              required
-              minLength={8}
-              autoComplete="tel"
-              placeholder="Téléphone *"
-            />
-          </div>
+          <PhoneCountryField
+            country={phoneCountry}
+            onCountryChange={setPhoneCountry}
+            phone={firstStorePhone}
+            onPhoneChange={setFirstStorePhone}
+            disabled={loading}
+          />
 
           <div>
             <label htmlFor="reg-name" className="sr-only">
