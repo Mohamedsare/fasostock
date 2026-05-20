@@ -1,6 +1,7 @@
 "use client";
 
 import type { QueryClient } from "@tanstack/react-query";
+import { clearInitialAppLoadSession } from "@/lib/features/common/initial-app-load";
 import { createClient } from "@/lib/supabase/client";
 
 type RouterLike = {
@@ -22,6 +23,7 @@ export async function signOutAndRedirect(
     console.error("[signOut]", error.message);
   }
   options?.queryClient?.clear();
+  clearInitialAppLoadSession();
   router.refresh();
   router.replace(options?.redirectTo ?? "/login");
 }

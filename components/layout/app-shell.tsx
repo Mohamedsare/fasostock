@@ -2,6 +2,7 @@
 
 import { AppPresenceReporter } from "@/components/presence/app-presence-reporter";
 import { OfflineStrip } from "@/components/offline/offline-strip";
+import { AppShellSkeleton } from "@/components/layout/app-shell-skeleton";
 import { LoadingExperience } from "@/components/loading/loading-experience";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { MoreSheet } from "@/components/layout/more-sheet";
@@ -34,6 +35,10 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import {
+  hasSeenInitialAppLoad,
+  markInitialAppLoadDone,
+} from "@/lib/features/common/initial-app-load";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 const BOTTOM_PATHS = [ROUTES.dashboard, ROUTES.products, ROUTES.sales];
@@ -76,6 +81,8 @@ export function AppShell({ children, userEmail }: AppShellProps) {
   const [clock, setClock] = useState("--:--:--");
   const [clockIso, setClockIso] = useState("");
   const [clockTitle, setClockTitle] = useState("Heure locale");
+  /** Splash immersif : première arrivée dans l'onglet uniquement (sessionStorage). */
+  const [showImmersiveSplash, setShowImmersiveSplash] = useState<boolean | null>(null);
 
   const data = ctx.data;
   const isOwner = data?.roleSlug === "owner";
@@ -83,6 +90,14 @@ export function AppShell({ children, userEmail }: AppShellProps) {
   useEffect(() => {
     if (data?.isSuperAdmin) router.replace("/admin");
   }, [data?.isSuperAdmin, router]);
+
+  useEffect(() => {
+    setShowImmersiveSplash(!hasSeenInitialAppLoad());
+  }, []);
+
+  useEffect(() => {
+    if (!ctx.isLoading) markInitialAppLoadDone();
+  }, [ctx.isLoading]);
 
   useEffect(() => {
     const saved = localStorage.getItem("fs_sidebar_collapsed");
@@ -194,13 +209,16 @@ export function AppShell({ children, userEmail }: AppShellProps) {
   }
 
   if (ctx.isLoading) {
-    return (
-      <LoadingExperience
-        variant="fullscreen"
-        message="Ouverture de votre espace FasoStock…"
-        submessage="Connexion sécurisée et chargement de votre entreprise."
-      />
-    );
+    if (showImmersiveSplash === true) {
+      return (
+        <LoadingExperience
+          variant="fullscreen"
+          message="Ouverture de votre espace FasoStock…"
+          submessage="Connexion sécurisée et chargement de votre entreprise."
+        />
+      );
+    }
+    return <AppShellSkeleton />;
   }
 
   if (ctx.isError) {

@@ -1,13 +1,6 @@
-import { LoadingExperience } from "@/components/loading/loading-experience";
+import { AppShellSkeleton } from "@/components/layout/app-shell-skeleton";
 
-/** Transition entre pages de l'espace connecté (shell déjà visible). */
+/** Transition rapide entre pages — pas le splash d'arrivée. */
 export default function AppLoading() {
-  return (
-    <LoadingExperience
-      variant="embedded"
-      message="Chargement de la page…"
-      submessage="Récupération des données de votre commerce."
-      showTips
-    />
-  );
+  return <AppShellSkeleton />;
 }
