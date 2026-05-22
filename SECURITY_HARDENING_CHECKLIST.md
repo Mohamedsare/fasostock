@@ -30,6 +30,7 @@ This project already uses Supabase RLS and admin checks, but keep this checklist
 - PDF reçu crédit (`/api/pdf/credit-repayment-receipt`) : `paymentId` obligatoire, montants/ids validés en base
 - QZ (`/api/qz/sign`) : owner, `store_manager` ou permission `settings.manage` uniquement
 - Routes app : garde serveur (`ServerRouteGuard` + `x-pathname`) en complément de la garde client
+- Emails plateforme : `PLATFORM_ADMIN_EMAIL` + cron `/api/cron/platform-digest` (22h UTC) + alerte nouvelle entreprise à l'inscription
 - Newsletter endpoint now has:
   - email validation
   - honeypot anti-bot

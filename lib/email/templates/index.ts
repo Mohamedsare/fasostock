@@ -14,4 +14,6 @@ export type EmailTemplateKey =
   | "trial_started"
   | "trial_ending"
   | "subscription_paid"
-  | "subscription_expired";
+  | "subscription_expired"
+  | "platform_new_company"
+  | "platform_daily_digest";

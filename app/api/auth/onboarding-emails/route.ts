@@ -78,6 +78,11 @@ export async function POST(req: Request) {
       ok: true,
       welcome: result.welcome?.skipped ? "skipped" : result.welcome ? "sent" : "none",
       trialStarted: result.trialStarted?.skipped ? "skipped" : result.trialStarted ? "sent" : "none",
+      platformNewCompany: result.platformNewCompany?.skipped
+        ? "skipped"
+        : result.platformNewCompany
+          ? "sent"
+          : "none",
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Échec envoi emails.";
