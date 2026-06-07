@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { MdClose, MdDarkMode, MdLightMode, MdMenu } from "react-icons/md";
+import { MdClose, MdDarkMode, MdLightMode, MdMenu, MdPhone } from "react-icons/md";
 import { FaWhatsapp } from "react-icons/fa6";
 import { persistAndApplyFsTheme } from "@/lib/theme/fs-theme";
 
@@ -102,6 +102,9 @@ export function SiteHeader({ sectionHrefPrefix = "" }: SiteHeaderProps) {
           <Link href={section("temoignages")} className="rounded-xl px-3 py-2.5 text-sm font-semibold text-neutral-800 hover:bg-black/5">
             Témoignages
           </Link>
+          <Link href={section("faq")} className="rounded-xl px-3 py-2.5 text-sm font-semibold text-neutral-800 hover:bg-black/5">
+            FAQ
+          </Link>
           <Link
             href="/login"
             className="mt-2 rounded-xl border border-fs-accent/45 bg-fs-accent/8 px-3 py-2.5 text-sm font-extrabold text-fs-accent shadow-[0_10px_24px_-18px_rgba(232,93,44,0.85)]"
@@ -111,6 +114,15 @@ export function SiteHeader({ sectionHrefPrefix = "" }: SiteHeaderProps) {
           <Link href="/register/select-activity" className="rounded-xl bg-fs-accent px-3 py-2.5 text-sm font-bold text-white">
             Essai gratuit
           </Link>
+          <a
+            href="tel:+22603079618"
+            className="inline-flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold text-neutral-700 hover:bg-black/5"
+            aria-label="Appeler FasoStock au +226 03 07 96 18"
+            title="Appeler +226 03 07 96 18"
+          >
+            <MdPhone className="h-4 w-4 text-fs-accent" />
+            +226 03 07 96 18
+          </a>
           <a
             href={`https://wa.me/22603079618?text=${encodeURIComponent(
               "Bonjour FasoStock, je souhaite avoir plus d'informations sur votre solution.",
