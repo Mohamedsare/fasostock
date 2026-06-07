@@ -3,6 +3,7 @@ import {
   docLabels,
   formatDateFr,
   formatMoney,
+  hasConversion,
   lineTotal,
   type FdDocument,
 } from "@/lib/tools/invoice-quote";
@@ -162,6 +163,16 @@ export function InvoiceQuoteDocument({ doc }: { doc: FdDocument }) {
               <span className="text-sm font-bold uppercase tracking-wide">Total</span>
               <span className="text-base font-black tabular-nums">{fmt(totals.total)}</span>
             </div>
+            {hasConversion(doc) ? (
+              <div className="flex items-center justify-between px-1 pt-1 text-[12px] text-[#4b5563]">
+                <span>
+                  Soit (1 {doc.currency} = {doc.exchangeRate} {doc.secondaryCurrency})
+                </span>
+                <span className="font-semibold tabular-nums text-[#111827]">
+                  ≈ {formatMoney(totals.total * doc.exchangeRate, doc.secondaryCurrency)}
+                </span>
+              </div>
+            ) : null}
           </div>
         </div>
 
@@ -170,6 +181,27 @@ export function InvoiceQuoteDocument({ doc }: { doc: FdDocument }) {
           <div className="mt-8 rounded-xl border border-black/[0.07] bg-[#fafafa] p-4">
             <p className="text-[10px] font-bold uppercase tracking-wider text-[#9ca3af]">Notes & conditions</p>
             <p className="mt-1 whitespace-pre-line text-[12px] leading-relaxed text-[#4b5563]">{doc.notes.trim()}</p>
+          </div>
+        ) : null}
+
+        {/* Signature / cachet */}
+        {doc.signatureDataUrl || doc.signatureLabel.trim() ? (
+          <div className="mt-8 flex justify-end">
+            <div className="w-56 text-center">
+              {doc.signatureDataUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={doc.signatureDataUrl}
+                  alt=""
+                  className="mx-auto h-20 w-auto max-w-full object-contain"
+                />
+              ) : (
+                <div className="h-20" />
+              )}
+              <div className="mt-1 border-t border-[#1f2937]/30 pt-1.5 text-[12px] font-semibold text-[#374151]">
+                {doc.signatureLabel.trim() || "Signature & cachet"}
+              </div>
+            </div>
           </div>
         ) : null}
 

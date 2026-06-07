@@ -5,6 +5,8 @@ import { fsInputClass } from "@/components/ui/fs-screen-primitives";
 import { cn } from "@/lib/utils/cn";
 import {
   FD_CURRENCIES,
+  normalizeDraft,
+  pdfFileName,
   suggestNumber,
   type FdDiscountMode,
   type FdDocType,
@@ -14,9 +16,10 @@ import {
 import {
   MdAdd,
   MdDeleteOutline,
+  MdDownload,
   MdImage,
-  MdPrint,
   MdRefresh,
+  MdSave,
 } from "react-icons/md";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 
@@ -57,8 +60,14 @@ function emptyDoc(): FdDocument {
     discountMode: "amount",
     discountValue: 0,
     notes: "",
+    signatureDataUrl: null,
+    signatureLabel: "",
+    secondaryCurrency: "",
+    exchangeRate: 0,
   };
 }
+
+const DRAFT_KEY = "fd_draft_v1";
 
 /* ---------- Champs (module-scope pour éviter de recréer des composants au render) ---------- */
 
@@ -83,18 +92,69 @@ function SectionCard({ title, children }: { title: string; children: ReactNode }
   );
 }
 
+/** Lit un fichier image en data URL (validations type + taille). */
+function readImageFile(file: File | null, onOk: (url: string) => void, onErr: (msg: string) => void) {
+  if (!file) return;
+  if (!file.type.startsWith("image/")) {
+    onErr("Choisissez un fichier image.");
+    return;
+  }
+  if (file.size > MAX_LOGO_BYTES) {
+    onErr("Image trop lourde (max 1,5 Mo).");
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = () => onOk(typeof reader.result === "string" ? reader.result : "");
+  reader.onerror = () => onErr("Impossible de lire l’image.");
+  reader.readAsDataURL(file);
+}
+
 export function InvoiceQuoteGenerator() {
   const [doc, setDoc] = useState<FdDocument>(emptyDoc);
+  const [hydrated, setHydrated] = useState(false);
   const logoInputRef = useRef<HTMLInputElement | null>(null);
+  const signatureInputRef = useRef<HTMLInputElement | null>(null);
   const logoErrorId = useId();
   const [logoError, setLogoError] = useState<string | null>(null);
+  const [signatureError, setSignatureError] = useState<string | null>(null);
 
-  // Valeurs dépendantes du client (date du jour, numéro aléatoire) : renseignées
-  // au montage pour éviter tout écart d'hydratation SSR.
+  // Au montage : recharge le brouillon local s'il existe, puis garantit date/numéro
+  // (valeurs dépendantes du client → évite tout écart d'hydratation SSR).
   useEffect(() => {
     const today = new Date().toISOString().slice(0, 10);
-    setDoc((d) => (d.date ? d : { ...d, date: today, number: d.number || suggestNumber(d.docType, today) }));
+    let loaded: FdDocument | null = null;
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (raw) loaded = normalizeDraft(JSON.parse(raw), emptyDoc());
+    } catch {
+      /* brouillon illisible → ignoré */
+    }
+    setDoc((d) => {
+      const base = loaded ?? d;
+      return base.date
+        ? base
+        : { ...base, date: today, number: base.number || suggestNumber(base.docType, today) };
+    });
+    setHydrated(true);
   }, []);
+
+  // Sauvegarde automatique du brouillon (après hydratation pour ne pas écraser le brouillon chargé).
+  useEffect(() => {
+    if (!hydrated) return;
+    try {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(doc));
+    } catch {
+      // Quota dépassé (souvent à cause des images) → on persiste sans les images.
+      try {
+        localStorage.setItem(
+          DRAFT_KEY,
+          JSON.stringify({ ...doc, logoDataUrl: null, signatureDataUrl: null }),
+        );
+      } catch {
+        /* abandon silencieux */
+      }
+    }
+  }, [doc, hydrated]);
 
   const set = <K extends keyof FdDocument>(key: K, value: FdDocument[K]) =>
     setDoc((d) => ({ ...d, [key]: value }));
@@ -120,27 +180,38 @@ export function InvoiceQuoteGenerator() {
 
   const onPickLogo = (file: File | null) => {
     setLogoError(null);
-    if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      setLogoError("Choisissez un fichier image.");
-      return;
-    }
-    if (file.size > MAX_LOGO_BYTES) {
-      setLogoError("Image trop lourde (max 1,5 Mo).");
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () => set("logoDataUrl", typeof reader.result === "string" ? reader.result : null);
-    reader.onerror = () => setLogoError("Impossible de lire l’image.");
-    reader.readAsDataURL(file);
+    readImageFile(file, (url) => set("logoDataUrl", url), setLogoError);
+  };
+
+  const onPickSignature = (file: File | null) => {
+    setSignatureError(null);
+    readImageFile(file, (url) => set("signatureDataUrl", url), setSignatureError);
   };
 
   const reset = () => {
     setLogoError(null);
+    setSignatureError(null);
     if (logoInputRef.current) logoInputRef.current.value = "";
+    if (signatureInputRef.current) signatureInputRef.current.value = "";
+    try {
+      localStorage.removeItem(DRAFT_KEY);
+    } catch {
+      /* ignore */
+    }
     const today = new Date().toISOString().slice(0, 10);
     const fresh = emptyDoc();
     setDoc({ ...fresh, date: today, number: suggestNumber(fresh.docType, today) });
+  };
+
+  const downloadPdf = () => {
+    const previousTitle = document.title;
+    document.title = pdfFileName(doc);
+    const restore = () => {
+      document.title = previousTitle;
+      window.removeEventListener("afterprint", restore);
+    };
+    window.addEventListener("afterprint", restore);
+    window.print();
   };
 
   const isFacture = doc.docType === "facture";
@@ -179,14 +250,19 @@ export function InvoiceQuoteGenerator() {
           </button>
           <button
             type="button"
-            onClick={() => window.print()}
+            onClick={downloadPdf}
             className="inline-flex items-center gap-2 rounded-xl bg-fs-accent px-4 py-2 text-sm font-bold text-white shadow-[0_8px_22px_-8px_rgba(232,93,44,0.7)] transition-transform active:scale-95"
           >
-            <MdPrint className="h-4.5 w-4.5" aria-hidden />
-            Imprimer / Télécharger PDF
+            <MdDownload className="h-4.5 w-4.5" aria-hidden />
+            Télécharger / Imprimer PDF
           </button>
         </div>
       </div>
+
+      <p className="-mt-2 flex items-center gap-1.5 text-[12px] text-fs-on-surface-variant print:hidden">
+        <MdSave className="h-3.5 w-3.5 text-fs-accent" aria-hidden />
+        Brouillon enregistré automatiquement sur cet appareil.
+      </p>
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
         {/* Formulaire */}
@@ -430,6 +506,88 @@ export function InvoiceQuoteGenerator() {
                 placeholder={"Conditions de paiement, mentions légales, message de remerciement…"}
               />
             </Field>
+          </SectionCard>
+
+          <SectionCard title="Conversion (devise secondaire)">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Field label="Devise secondaire" hint="Affiche le total converti sur le document.">
+                <select
+                  className={fsInputClass()}
+                  value={doc.secondaryCurrency}
+                  onChange={(e) => set("secondaryCurrency", e.target.value)}
+                >
+                  <option value="">Aucune</option>
+                  {FD_CURRENCIES.filter((c) => c.code !== doc.currency).map((c) => (
+                    <option key={c.code} value={c.code}>
+                      {c.label}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field
+                label="Taux de change"
+                hint={
+                  doc.secondaryCurrency
+                    ? `1 ${doc.currency} = ? ${doc.secondaryCurrency}`
+                    : "Choisissez d’abord une devise secondaire."
+                }
+              >
+                <input
+                  type="number"
+                  min={0}
+                  step="any"
+                  inputMode="decimal"
+                  disabled={!doc.secondaryCurrency}
+                  className={fsInputClass("disabled:opacity-50")}
+                  value={doc.exchangeRate || ""}
+                  onChange={(e) => set("exchangeRate", Math.max(0, Number(e.target.value) || 0))}
+                  placeholder="Ex. 0.00152"
+                />
+              </Field>
+            </div>
+          </SectionCard>
+
+          <SectionCard title="Signature & cachet">
+            <Field label="Libellé sous la signature">
+              <input
+                className={fsInputClass()}
+                value={doc.signatureLabel}
+                onChange={(e) => set("signatureLabel", e.target.value)}
+                placeholder="Ex. Le gérant · Awa Traoré"
+              />
+            </Field>
+            <div className="flex flex-wrap items-center gap-3">
+              <input
+                ref={signatureInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => onPickSignature(e.target.files?.[0] ?? null)}
+              />
+              <button
+                type="button"
+                onClick={() => signatureInputRef.current?.click()}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-black/[0.08] bg-fs-surface-container px-3 py-2 text-sm font-semibold text-fs-text hover:bg-black/5"
+              >
+                <MdImage className="h-4 w-4 text-fs-accent" aria-hidden />
+                {doc.signatureDataUrl ? "Changer l’image" : "Importer signature / cachet"}
+              </button>
+              {doc.signatureDataUrl ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    set("signatureDataUrl", null);
+                    if (signatureInputRef.current) signatureInputRef.current.value = "";
+                  }}
+                  className="text-sm font-semibold text-red-600 hover:underline"
+                >
+                  Retirer
+                </button>
+              ) : null}
+            </div>
+            {signatureError ? (
+              <p className="text-[12px] font-semibold text-red-600">{signatureError}</p>
+            ) : null}
           </SectionCard>
         </div>
 

@@ -39,6 +39,14 @@ export type FdDocument = {
   /** Valeur de la remise (montant absolu ou %). */
   discountValue: number;
   notes: string;
+  /** Image de signature / cachet (data URL). */
+  signatureDataUrl: string | null;
+  /** Libellé sous la signature (ex. « Le gérant »). */
+  signatureLabel: string;
+  /** Devise secondaire pour conversion (ISO 4217). "" = désactivée. */
+  secondaryCurrency: string;
+  /** Taux : 1 [devise principale] = exchangeRate [devise secondaire]. */
+  exchangeRate: number;
 };
 
 export type FdTotals = {
@@ -145,4 +153,67 @@ export function suggestNumber(docType: FdDocType, date: string): string {
   const compact = (date || new Date().toISOString().slice(0, 10)).replace(/-/g, "");
   const rand = Math.floor(100 + Math.random() * 900);
   return `${numberPrefix}-${compact}-${rand}`;
+}
+
+/** Conversion active ? (devise secondaire renseignée + taux > 0) */
+export function hasConversion(doc: FdDocument): boolean {
+  return Boolean(doc.secondaryCurrency) && Number.isFinite(doc.exchangeRate) && doc.exchangeRate > 0;
+}
+
+/** Nom de fichier proposé pour l'export PDF. */
+export function pdfFileName(doc: FdDocument): string {
+  const base = doc.docType === "facture" ? "Facture" : "Devis";
+  const num = (doc.number || "").replace(/[^a-zA-Z0-9_-]/g, "") || new Date().toISOString().slice(0, 10);
+  return `${base}_${num}`;
+}
+
+/* ---------- Brouillon : normalisation d'un JSON inconnu (localStorage) ---------- */
+
+const str = (v: unknown, fallback = ""): string => (typeof v === "string" ? v : fallback);
+const num = (v: unknown, fallback = 0): number =>
+  typeof v === "number" && Number.isFinite(v) ? v : fallback;
+const numOrNull = (v: unknown): number | null =>
+  typeof v === "number" && Number.isFinite(v) ? v : null;
+
+/**
+ * Reconstruit un `FdDocument` valide à partir d'un objet potentiellement partiel
+ * ou corrompu (relecture du brouillon localStorage), en s'appuyant sur `fallback`.
+ */
+export function normalizeDraft(parsed: unknown, fallback: FdDocument): FdDocument {
+  if (!parsed || typeof parsed !== "object") return fallback;
+  const p = parsed as Record<string, unknown>;
+
+  const items: FdLineItem[] = Array.isArray(p.items)
+    ? p.items
+        .filter((it): it is Record<string, unknown> => Boolean(it) && typeof it === "object")
+        .map((it, i) => ({
+          id: str(it.id) || `it_${i}_${Math.random().toString(36).slice(2, 8)}`,
+          designation: str(it.designation),
+          quantity: numOrNull(it.quantity),
+          unitPrice: numOrNull(it.unitPrice),
+        }))
+    : fallback.items;
+
+  return {
+    docType: p.docType === "devis" ? "devis" : "facture",
+    currency: str(p.currency, fallback.currency),
+    number: str(p.number, fallback.number),
+    date: str(p.date, fallback.date),
+    dueDate: str(p.dueDate),
+    logoDataUrl: typeof p.logoDataUrl === "string" ? p.logoDataUrl : null,
+    senderName: str(p.senderName),
+    senderDetails: str(p.senderDetails),
+    clientName: str(p.clientName),
+    clientDetails: str(p.clientDetails),
+    items: items.length > 0 ? items : fallback.items,
+    taxEnabled: p.taxEnabled === true,
+    taxRate: num(p.taxRate, fallback.taxRate),
+    discountMode: p.discountMode === "percent" ? "percent" : "amount",
+    discountValue: num(p.discountValue),
+    notes: str(p.notes),
+    signatureDataUrl: typeof p.signatureDataUrl === "string" ? p.signatureDataUrl : null,
+    signatureLabel: str(p.signatureLabel),
+    secondaryCurrency: str(p.secondaryCurrency),
+    exchangeRate: num(p.exchangeRate),
+  };
 }
