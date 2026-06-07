@@ -15,7 +15,7 @@ import { fireAndForgetCompanyOwnersPush } from "@/lib/features/push/company-owne
 import { reportHandledClientError } from "@/lib/monitoring/remote-error-logger";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils/cn";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, ArrowLeft } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -229,6 +229,14 @@ export function LoginForm() {
 
   return (
     <div className="mx-auto w-full max-w-md">
+      <Link
+        href="/"
+        aria-label="Retour à l’accueil"
+        title="Retour à l’accueil"
+        className="group mb-4 inline-flex h-11 w-11 items-center justify-center rounded-full border border-neutral-200/80 bg-white text-neutral-700 shadow-[0_4px_16px_rgba(0,0,0,0.06)] transition-all duration-200 hover:-translate-x-0.5 hover:border-fs-accent/40 hover:bg-fs-accent/6 hover:text-fs-accent hover:shadow-[0_8px_22px_-8px_rgba(249,115,22,0.45)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fs-accent/50 focus-visible:ring-offset-2 active:scale-95"
+      >
+        <ArrowLeft className="h-5 w-5 transition-transform duration-200 group-hover:-translate-x-0.5" aria-hidden />
+      </Link>
       <div className="rounded-2xl border border-neutral-200/80 bg-white p-5 shadow-[0_8px_32px_rgba(0,0,0,0.06)] sm:p-6">
         <div className="flex flex-col items-center text-center">
           <Image
