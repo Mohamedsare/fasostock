@@ -273,7 +273,7 @@ export function PosScreen({
     };
   }, [mode, store, posQ.isLoading, posQ.isError]);
 
-  const products = posQ.data?.products ?? [];
+  const products = useMemo(() => posQ.data?.products ?? [], [posQ.data?.products]);
   const rawStockByProductId = useMemo(
     () => ensureStringNumberMap(posQ.data?.stockByProductId),
     [posQ.data?.stockByProductId],
@@ -1537,6 +1537,7 @@ export function PosScreen({
                         >
                           <div className="mx-auto flex size-[clamp(3rem,52%,4.5rem)] max-h-[72px] max-w-[72px] shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[#F8F9FA]">
                             {thumb ? (
+                              // eslint-disable-next-line @next/next/no-img-element
                               <img src={thumb} alt="" className="h-full w-full object-cover" />
                             ) : (
                               <MdInventory2
@@ -1592,6 +1593,7 @@ export function PosScreen({
                       >
                         <div className="mx-auto flex h-[72px] w-[72px] shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[#F8F9FA] sm:h-[76px] sm:w-[76px]">
                           {thumb ? (
+                            // eslint-disable-next-line @next/next/no-img-element
                             <img src={thumb} alt="" className="h-full w-full object-cover" />
                           ) : (
                             <MdInventory2
@@ -1907,7 +1909,9 @@ function PosCartQtyInput({
   const draftRef = useRef(quantity === 0 ? "" : String(quantity));
   const inputRef = useRef<HTMLInputElement | null>(null);
   const quantityRef = useRef(quantity);
-  quantityRef.current = quantity;
+  useEffect(() => {
+    quantityRef.current = quantity;
+  });
   const lastStockToastAt = useRef(0);
 
   const [display, setDisplay] = useState(() =>
@@ -2042,7 +2046,9 @@ function PosCartUnitPriceInput({
   const draftRef = useRef(String(Math.round(unitPrice)));
   const inputRef = useRef<HTMLInputElement | null>(null);
   const unitPriceRef = useRef(unitPrice);
-  unitPriceRef.current = unitPrice;
+  useEffect(() => {
+    unitPriceRef.current = unitPrice;
+  });
   const [display, setDisplay] = useState(() => String(Math.round(unitPrice)));
 
   useLayoutEffect(() => {
@@ -2605,6 +2611,7 @@ function PosCartPanel({
                 >
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[#F8F9FA]">
                     {c.imageUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
                       <img src={c.imageUrl} alt="" className="h-full w-full object-cover" />
                     ) : (
                       <MdInventory2 className="h-5 w-5 text-[#F97316]/70" aria-hidden />

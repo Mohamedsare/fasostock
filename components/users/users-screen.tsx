@@ -24,7 +24,7 @@ import {
 import type { CompanyUser } from "@/lib/features/users/types";
 import { usePermissions } from "@/lib/features/permissions/use-permissions";
 import { queryKeys } from "@/lib/query/query-keys";
-import { messageFromUnknownError, toast, toastMutationError } from "@/lib/toast";
+import { toast, toastMutationError } from "@/lib/toast";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils/cn";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -100,7 +100,7 @@ export function UsersScreen() {
   });
   const currentUserId = meQ.data ?? null;
 
-  const rows = usersQ.data ?? [];
+  const rows = useMemo(() => usersQ.data ?? [], [usersQ.data]);
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
     if (!needle) return rows;

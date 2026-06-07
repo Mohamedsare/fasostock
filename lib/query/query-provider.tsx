@@ -8,7 +8,9 @@ import {
 } from "@/lib/offline";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
+
+const noopSubscribe = () => () => {};
 
 function makeClient() {
   const client = new QueryClient({
@@ -37,11 +39,8 @@ function makeClient() {
 
 export function QueryProvider({ children }: { children: ReactNode }) {
   const [client] = useState(makeClient);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  // false côté serveur (SSR), true après hydratation — sans setState dans un effet.
+  const mounted = useSyncExternalStore(noopSubscribe, () => true, () => false);
 
   const persister = useMemo(() => {
     if (!mounted || typeof window === "undefined") return null;

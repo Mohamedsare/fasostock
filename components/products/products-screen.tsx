@@ -271,7 +271,7 @@ export function ProductsScreen() {
     onError: (e) => toast.error(messageFromUnknownError(e)),
   });
 
-  const products = productsQ.data ?? [];
+  const products = useMemo(() => productsQ.data ?? [], [productsQ.data]);
   const categories = categoriesQ.data ?? [];
   const brands = brandsQ.data ?? [];
   const stockByProduct = useMemo(

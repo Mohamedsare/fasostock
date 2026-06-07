@@ -50,6 +50,17 @@ export function AppSidebar({
     () => items.filter((item) => item.kind === "section").map((item) => item.href),
     [items],
   );
+  // Section parente de chaque item (par index), calculée hors render pour éviter
+  // une variable mutable réassignée pendant le rendu.
+  const parentSectionHrefs = useMemo(() => {
+    const out: (string | null)[] = [];
+    let current: string | null = null;
+    for (const item of items) {
+      if (item.kind === "section") current = item.href;
+      out.push(current);
+    }
+    return out;
+  }, [items]);
 
   useEffect(() => {
     setOpenSections((prev) => {
@@ -122,6 +133,7 @@ export function AppSidebar({
             aria-hidden
           >
             {companyLogoUrl && !brandLogoErr ? (
+              // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={companyLogoUrl}
                 alt=""
@@ -151,12 +163,9 @@ export function AppSidebar({
         )}
         aria-label="Sections de l’application"
       >
-        {(() => {
-          let currentSectionHref: string | null = null;
-          return items.map((item) => {
+        {items.map((item, index) => {
             const Icon = item.icon;
             if (item.kind === "section") {
-              currentSectionHref = item.href;
               const isOpen = sectionExpanded(item.href);
               return (
                 <button
@@ -183,6 +192,7 @@ export function AppSidebar({
               );
             }
 
+            const currentSectionHref = parentSectionHrefs[index];
             if (item.child && currentSectionHref && !sectionExpanded(currentSectionHref)) {
               return null;
             }
@@ -236,8 +246,7 @@ export function AppSidebar({
                 ) : null}
               </Link>
             );
-          });
-        })()}
+          })}
       </nav>
 
       <div className="relative z-[1] mt-auto space-y-2 border-t border-black/[0.06] p-2.5 dark:border-white/[0.08]">

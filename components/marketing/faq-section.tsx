@@ -9,7 +9,6 @@ import {
   MdChevronLeft,
   MdChat,
   MdHeadsetMic,
-  MdLock,
   MdShield,
   MdTag,
   MdWifi,

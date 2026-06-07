@@ -28,7 +28,7 @@ export default function RestaurantPlaceholderPage({
       />
       <FsCard padding="p-5">
         <p className="text-sm text-neutral-700">
-          Cette page sera livree dans les prochaines etapes de l'adaptation restaurant.
+          Cette page sera livree dans les prochaines etapes de l&apos;adaptation restaurant.
         </p>
       </FsCard>
     </FsPage>

@@ -98,12 +98,12 @@ export function dueBadgeVariant(
   return "ok";
 }
 
-export function isDueToday(sale: CreditSaleRow, now = new Date()): boolean {
+export function isDueToday(sale: CreditSaleRow, _now = new Date()): boolean {
   if (remainingTotal(sale) <= EPS) return false;
   return isToday(effectiveDueDate(sale));
 }
 
-export function isDueThisWeek(sale: CreditSaleRow, now = new Date()): boolean {
+export function isDueThisWeek(sale: CreditSaleRow, _now = new Date()): boolean {
   if (remainingTotal(sale) <= EPS) return false;
   const d = effectiveDueDate(sale);
   if (isToday(d)) return true;

@@ -2,7 +2,6 @@
 
 import { createClient } from "@/lib/supabase/client";
 import {
-  getDefaultDateRange,
   getPreviousComparableRange,
   resolveDashboardRange,
   type DashboardPeriod,
@@ -25,7 +24,6 @@ import {
   effectiveStockAlertThreshold,
   isLowStockAlert,
 } from "@/lib/features/inventory/stock-alert-rules";
-import { format } from "date-fns";
 import { fetchPredictionContextWithSupabase } from "@/lib/features/dashboard/prediction-context-data";
 import type { PredictionContext } from "@/lib/features/ai/prediction-types";
 
@@ -162,16 +160,6 @@ async function aggregateProductsFromSales(
     revenue: v.revenue,
     margin: v.revenue - v.cost,
   }));
-}
-
-async function getTopProducts(
-  supabase: ReturnType<typeof createClient>,
-  saleIds: string[],
-  limit: number,
-): Promise<TopProduct[]> {
-  const list = await aggregateProductsFromSales(supabase, saleIds);
-  list.sort((a, b) => b.revenue - a.revenue);
-  return list.slice(0, limit);
 }
 
 async function getSalesByCategory(

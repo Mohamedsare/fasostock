@@ -7,13 +7,7 @@ import type {
   TopProduct,
 } from "@/lib/features/dashboard/types";
 import { countLowStockAlerts } from "@/lib/features/inventory/stock-alert-count";
-import type {
-  PredictionContext,
-  PurchasesSummaryForPrediction,
-  SalesByDayPrediction,
-  SalesSummaryForPrediction,
-  TopProductPrediction,
-} from "@/lib/features/ai/prediction-types";
+import type { PredictionContext } from "@/lib/features/ai/prediction-types";
 import { format } from "date-fns";
 import type { SupabaseClient } from "@supabase/supabase-js";
 

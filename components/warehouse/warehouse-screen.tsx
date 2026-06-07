@@ -353,11 +353,11 @@ export function WarehouseScreen() {
     enabled: Boolean(dispatchEditId),
   });
 
-  const inventory = invQ.data ?? [];
-  const movements = movQ.data ?? [];
-  const dispatchRows = dispatchQ.data ?? [];
-  const warehouseTransfers = whTransfersQ.data ?? [];
-  const customers = customersQ.data ?? [];
+  const inventory = useMemo(() => invQ.data ?? [], [invQ.data]);
+  const movements = useMemo(() => movQ.data ?? [], [movQ.data]);
+  const dispatchRows = useMemo(() => dispatchQ.data ?? [], [dispatchQ.data]);
+  const warehouseTransfers = useMemo(() => whTransfersQ.data ?? [], [whTransfersQ.data]);
+  const customers = useMemo(() => customersQ.data ?? [], [customersQ.data]);
 
   const warehouseQtyByProductId = useMemo(() => {
     const m: Record<string, number> = {};

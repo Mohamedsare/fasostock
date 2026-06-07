@@ -42,7 +42,7 @@ export function NotificationsScreen() {
     staleTime: 15_000,
   });
 
-  const items = notificationsQ.data ?? [];
+  const items = useMemo(() => notificationsQ.data ?? [], [notificationsQ.data]);
   const unreadCount = useMemo(
     () => items.filter((n) => n.read_at == null).length,
     [items],

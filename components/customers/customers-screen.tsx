@@ -207,7 +207,7 @@ export function CustomersScreen() {
   const [editing, setEditing] = useState<Customer | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Customer | null>(null);
 
-  const rows = customersQ.data ?? [];
+  const rows = useMemo(() => customersQ.data ?? [], [customersQ.data]);
 
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();

@@ -258,7 +258,7 @@ export function InventoryScreen() {
     onError: (e) => toastMutationError("inventory", e),
   });
 
-  const rows = dataQ.data?.rows ?? [];
+  const rows = useMemo(() => dataQ.data?.rows ?? [], [dataQ.data?.rows]);
   const categories: ProductCategory[] = dataQ.data?.categories ?? [];
 
   /** Après recherche + catégorie uniquement (KPI Flutter lignes 578–580). */
@@ -358,7 +358,7 @@ export function InventoryScreen() {
   const refreshAll = useCallback(async () => {
     await dataQ.refetch();
     if (tab === "moves") await movementsQ.refetch();
-  }, [dataQ.refetch, movementsQ.refetch, tab]);
+  }, [dataQ, movementsQ, tab]);
 
   if (permLoading) {
     return (

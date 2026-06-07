@@ -311,7 +311,7 @@ export async function adminDeleteUser(userId: string): Promise<void> {
   const {
     data: { session },
   } = await supabase.auth.getSession();
-  let token = session?.access_token ?? "";
+  const token = session?.access_token ?? "";
 
   const invoke = async (accessToken: string) => {
     const { data, error } = await supabase.functions.invoke("admin-delete-user", {

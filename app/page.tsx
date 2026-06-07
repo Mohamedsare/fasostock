@@ -721,7 +721,7 @@ export default async function Home({
                 cyan: "text-[#0891b2] bg-[#f3fbfc] border-[#d7f2f6]",
                 indigo: "text-[#2563eb] bg-[#f3f7ff] border-[#d8e3ff]",
               } as const;
-              const [textClass, bgClass, borderClass] = toneMap[item.tone].split(" ") as [string, string, string];
+              const [textClass, _bgClass, borderClass] = toneMap[item.tone].split(" ") as [string, string, string];
               return (
                 <article
                   key={item.title}

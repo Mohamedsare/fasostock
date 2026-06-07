@@ -97,7 +97,7 @@ export function CreateUserDialog({
         </div>
 
         <p className="mt-3 text-xs text-neutral-600">
-          L'utilisateur pourra se connecter avec cet email et ce mot de passe.
+          L&apos;utilisateur pourra se connecter avec cet email et ce mot de passe.
           Communiquez-les de facon securisee.
         </p>
 

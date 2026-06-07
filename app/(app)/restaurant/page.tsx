@@ -11,7 +11,7 @@ export default function RestaurantPlaceholderIndexPage() {
       />
       <FsCard padding="p-5">
         <p className="text-sm text-neutral-700">
-          Cette section sert de point d'entree pour les sous-modules Restaurant.
+          Cette section sert de point d&apos;entree pour les sous-modules Restaurant.
         </p>
       </FsCard>
     </FsPage>

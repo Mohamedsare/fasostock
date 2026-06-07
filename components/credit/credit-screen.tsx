@@ -1,6 +1,6 @@
 "use client";
 
-import { useDeferredValue, useEffect, useMemo, useRef, useState, type ComponentType } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, type ComponentType } from "react";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, subMonths } from "date-fns";
@@ -334,21 +334,21 @@ export function CreditScreen() {
     staleTime: 15_000,
   });
 
-  const rawRows = creditQ.data ?? [];
+  const rawRows = useMemo(() => creditQ.data ?? [], [creditQ.data]);
   const legacyQ = useQuery({
     queryKey: queryKeys.legacyCredits(creditParams),
     queryFn: () => listLegacyCredits(creditParams),
     enabled: !!companyId && !!h?.canCredit,
     staleTime: 15_000,
   });
-  const legacyRows = legacyQ.data ?? [];
+  const legacyRows = useMemo(() => legacyQ.data ?? [], [legacyQ.data]);
   const dispatchQ = useQuery({
     queryKey: ["credit-warehouse-dispatch", companyId, from, to],
     queryFn: () => listWarehouseDispatchInvoices(companyId, 500),
     enabled: !!companyId && !!h?.canCredit,
     staleTime: 15_000,
   });
-  const dispatchRowsRaw = dispatchQ.data ?? [];
+  const dispatchRowsRaw = useMemo(() => dispatchQ.data ?? [], [dispatchQ.data]);
   const dispatchDetailQ = useQuery({
     queryKey: dispatchDetailId ? ["credit-dispatch-detail", dispatchDetailId] : ["credit-dispatch-detail-none"],
     queryFn: () => getWarehouseDispatchInvoiceDetails(dispatchDetailId as string),
@@ -593,7 +593,7 @@ export function CreditScreen() {
    * Filtres rapides : basés sur encaissements réels vs reste (pas uniquement le statut affiché,
    * car « en retard » + partiel peut aussi matcher « Partiels » / « Non payés »).
    */
-  const matchesChip = (s: CreditSaleRow): boolean => {
+  const matchesChip = useCallback((s: CreditSaleRow): boolean => {
     const rem = remainingTotal(s);
     const paid = paidTotal(s);
     const hasBalance = rem > CREDIT_AMOUNT_EPS;
@@ -617,7 +617,7 @@ export function CreditScreen() {
       default:
         return true;
     }
-  };
+  }, [chip]);
 
   const salesTableSource = useMemo(
     () => (chip === "soldes" ? rawRows : openRows),
@@ -654,7 +654,7 @@ export function CreditScreen() {
       return remainingTotal(b) - remainingTotal(a);
     });
     return rows;
-  }, [salesTableSource, deferredSearch, sellerId, chip]);
+  }, [salesTableSource, deferredSearch, sellerId, matchesChip]);
 
   const filteredDispatchCredits = useMemo(() => {
     const q = deferredSearch.trim().toLowerCase();
@@ -1034,7 +1034,7 @@ export function CreditScreen() {
             En retard: <span className="font-bold">{formatCurrency(kpiBase.overdue)}</span>
           </div>
           <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-amber-700">
-            À relancer aujourd'hui: <span className="font-bold">{formatCurrency(kpiBase.dueToday)}</span>
+            À relancer aujourd&apos;hui: <span className="font-bold">{formatCurrency(kpiBase.dueToday)}</span>
           </div>
           <div className="rounded-lg border border-teal-200 bg-teal-50 px-3 py-2 text-teal-700">
             Échéance semaine: <span className="font-bold">{formatCurrency(kpiBase.dueWeek)}</span>

@@ -54,6 +54,7 @@ export function ReceiptTicketPreview({ data }: { data: ReceiptTicketData }) {
       <div style={{ fontSize: 9.5, lineHeight: 1.22 }}>
         {logoUrl && !logoErr ? (
           <div className="mb-2 flex justify-center">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={logoUrl}
               alt=""

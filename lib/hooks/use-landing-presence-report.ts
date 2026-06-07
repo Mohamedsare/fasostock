@@ -57,7 +57,9 @@ async function trackLanding(
 export function useLandingPresenceReport() {
   const pathname = usePathname() ?? "";
   const pathRef = useRef(pathname);
-  pathRef.current = pathname;
+  useEffect(() => {
+    pathRef.current = pathname;
+  });
 
   const active = hasSupabaseConfig() && shouldReportLandingPresence(pathname);
 

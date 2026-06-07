@@ -3,8 +3,6 @@
 import { fsInputClass } from "@/components/ui/fs-screen-primitives";
 import { createStockTransfer } from "@/lib/features/transfers/api";
 import type { CreateTransferLineInput } from "@/lib/features/transfers/types";
-import { createCustomer, listCustomers } from "@/lib/features/customers/api";
-import type { Customer } from "@/lib/features/customers/types";
 import { ProductListThumbnail } from "@/components/products/product-list-thumbnail";
 import { listCategories, listProducts } from "@/lib/features/products/api";
 import { firstProductImageUrl } from "@/lib/features/products/product-images";
@@ -12,13 +10,11 @@ import type { ProductItem } from "@/lib/features/products/types";
 import { listSales } from "@/lib/features/sales/api";
 import type { SaleItem } from "@/lib/features/sales/types";
 import {
-  warehouseCreateDispatchInvoice,
   warehouseRegisterAdjustment,
   warehouseRegisterExitForSale,
   warehouseRegisterManualEntry,
   warehouseSetStockMinWarehouse,
 } from "@/lib/features/warehouse/api";
-import type { WarehouseDispatchLineInput } from "@/lib/features/warehouse/types";
 import type { WarehouseStockLine } from "@/lib/features/warehouse/types";
 import { WAREHOUSE_PACKAGING_LABELS } from "@/lib/features/warehouse/types";
 import { createClient } from "@/lib/supabase/client";
@@ -27,11 +23,9 @@ import { toast, toastMutationError } from "@/lib/toast";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
-  MdAdd,
   MdClose,
   MdDeleteOutline,
   MdInventory2,
-  MdPersonAdd,
   MdReceiptLong,
 } from "react-icons/md";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
@@ -112,7 +106,7 @@ export function WarehouseEntryDialog({
     setNotes("");
   }, [open]);
 
-  const products = productsQ.data ?? [];
+  const products = useMemo(() => productsQ.data ?? [], [productsQ.data]);
   const categories = categoriesQ.data ?? [];
   const listLoading = productsQ.isLoading && products.length === 0;
   const listError = productsQ.isError ? productsQ.error : null;
@@ -266,6 +260,7 @@ export function WarehouseEntryDialog({
                 >
                   <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-md bg-[#F8F9FA] min-[900px]:h-12 min-[900px]:w-12 min-[900px]:rounded-lg">
                     {thumb ? (
+                      // eslint-disable-next-line @next/next/no-img-element
                       <img src={thumb} alt="" className="h-full w-full object-cover" />
                     ) : (
                       <MdInventory2 className="h-5 w-5 text-[#F97316]/80 min-[900px]:h-7 min-[900px]:w-7" aria-hidden />

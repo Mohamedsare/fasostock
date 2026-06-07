@@ -345,6 +345,7 @@ export function AppShell({ children, userEmail }: AppShellProps) {
                     aria-hidden
                   >
                     {data?.companyLogoUrl && !mobileBrandLogoErr ? (
+                      // eslint-disable-next-line @next/next/no-img-element
                       <img
                         src={data.companyLogoUrl}
                         alt=""

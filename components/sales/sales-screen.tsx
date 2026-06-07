@@ -150,7 +150,7 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
   const [detailId, setDetailId] = useState<string | null>(null);
 
   const companyId = ctx.data?.companyId ?? "";
-  const stores = ctx.data?.stores ?? [];
+  const stores = useMemo(() => ctx.data?.stores ?? [], [ctx.data?.stores]);
   const currentStoreId = ctx.data?.storeId ?? null;
   const uiTerms = activityUiTerms(ctx.data?.businessTypeSlug);
   const isRestaurant = ctx.data?.businessTypeSlug === "restaurant-fast-food";
@@ -246,7 +246,7 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
     onError: (e) => toast.error(messageFromUnknownError(e, "Impossible de supprimer cette vente.")),
   });
 
-  const sales = salesQ.data ?? [];
+  const sales = useMemo(() => salesQ.data ?? [], [salesQ.data]);
   const scopedSales = useMemo(() => {
     if (!isRestaurant || preset === "default") return sales;
     const isDelivery = (s: SaleItem) =>

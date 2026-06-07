@@ -44,15 +44,12 @@ const FIELD =
 const LABEL = "text-[11px] font-bold uppercase tracking-wide text-slate-500";
 const BTN_PRIMARY =
   "inline-flex min-h-12 w-full shrink-0 items-center justify-center gap-2 rounded-2xl bg-orange-600 px-5 text-base font-bold text-white shadow-lg shadow-orange-600/20 transition active:scale-[0.98] disabled:opacity-50 sm:w-auto";
-const BTN_SECONDARY =
-  "inline-flex min-h-12 w-full shrink-0 items-center justify-center gap-2 rounded-2xl border-2 border-slate-200 bg-white px-5 text-base font-semibold text-slate-800 transition active:scale-[0.98] disabled:opacity-50 sm:w-auto";
 
 export function AdminGPubliqueScreen() {
   const qc = useQueryClient();
   const [name, setName] = useState("");
   const [sortOrder, setSortOrder] = useState("0");
   const [logoDataUrl, setLogoDataUrl] = useState("");
-  const [supportImageDataUrl, setSupportImageDataUrl] = useState("");
   const [heroBannerImageDataUrl, setHeroBannerImageDataUrl] = useState("");
   const [landingSettings, setLandingSettings] = useState<Record<string, string>>({
     hero_banner_image_url: "",
@@ -138,19 +135,6 @@ export function AdminGPubliqueScreen() {
     },
     onError: (e) => toast.error(messageFromUnknownError(e)),
   });
-  const mediaMut = useMutation({
-    mutationFn: ({ key, imageUrl }: { key: string; imageUrl: string }) =>
-      adminSetPublicLandingMediaImage(key, imageUrl),
-    onSuccess: async () => {
-      toast.success("Image landing mise à jour.");
-      setSupportImageDataUrl("");
-      await Promise.all([
-        qc.invalidateQueries({ queryKey: ["admin-public-landing-media"] }),
-        revalidateLandingCache(),
-      ]);
-    },
-    onError: (e) => toast.error(messageFromUnknownError(e)),
-  });
   const settingsMut = useMutation({
     mutationFn: adminSetPublicLandingSettings,
     onSuccess: async () => {
@@ -190,10 +174,8 @@ export function AdminGPubliqueScreen() {
     setUploadingSupport(true);
     try {
       const url = await adminUploadLandingImage(file, "support");
-      setSupportImageDataUrl(url);
       // Auto-save : on persiste tout de suite l'URL Storage (la Data URL géante en base est écrasée).
       await adminSetPublicLandingMediaImage("support_section_image", url);
-      setSupportImageDataUrl("");
       await Promise.all([
         qc.invalidateQueries({ queryKey: ["admin-public-landing-media"] }),
         revalidateLandingCache(),

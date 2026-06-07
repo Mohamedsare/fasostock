@@ -29,7 +29,7 @@
     "libphonenumber-js": "^1.13.2",
     "lottie-react": "^2.4.1",
     "lucide-react": "^0.483.0",
-    "next": "16.2.1",
+    "next": "16.2.7",
     "puppeteer-core": "24.40.0",
     "qrcode": "^1.5.4",
     "qz-tray": "^2.2.5",
@@ -41,8 +41,11 @@
     "recharts": "^3.8.1",
     "resend": "^6.12.3",
     "tailwind-merge": "^3.0.2",
-    "web-push": "^3.6.7",
-    "xlsx": "^0.18.5"
+    "web-push": "^3.6.7"
+  },
+  "overrides": {
+    "postcss": "^8.5.10",
+    "uuid": "^11.1.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -53,7 +56,7 @@
     "@types/react-dom": "^19",
     "@types/web-push": "^3.6.4",
     "eslint": "^9",
-    "eslint-config-next": "16.2.1",
+    "eslint-config-next": "16.2.7",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

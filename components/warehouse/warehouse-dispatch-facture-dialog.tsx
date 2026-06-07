@@ -160,8 +160,8 @@ export function WarehouseDispatchDialog({
     setMobileProvider(null);
   }, [editing, editInvoiceQ.data]);
 
-  const products = productsQ.data ?? [];
-  const serverCustomers = customersQ.data ?? [];
+  const products = useMemo(() => productsQ.data ?? [], [productsQ.data]);
+  const serverCustomers = useMemo(() => customersQ.data ?? [], [customersQ.data]);
   const categories = categoriesQ.data ?? [];
 
   const customersForUi = useMemo(() => {
@@ -992,7 +992,9 @@ function WhDispatchQtyInput({
   const draftRef = useRef(quantity === 0 ? "" : String(quantity));
   const inputRef = useRef<HTMLInputElement | null>(null);
   const quantityRef = useRef(quantity);
-  quantityRef.current = quantity;
+  useEffect(() => {
+    quantityRef.current = quantity;
+  });
   const lastStockToastAt = useRef(0);
   const [display, setDisplay] = useState(() => (quantity === 0 ? "" : String(quantity)));
 

@@ -70,7 +70,7 @@ export function AdminSubscriptionsScreen() {
     onError: (e) => toast.error(messageFromUnknownError(e)),
   });
 
-  const plans = q.data?.plans ?? [];
+  const plans = useMemo(() => q.data?.plans ?? [], [q.data?.plans]);
   const defaultPlanId = useMemo(() => plans[0]?.id ?? "", [plans]);
 
   function getRowEdit(r: AdminCompanySubscriptionRow) {

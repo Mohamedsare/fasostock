@@ -79,7 +79,9 @@ async function trackIfReady(
 export function useAppPresenceReport() {
   const pathname = usePathname() ?? "";
   const pathRef = useRef(pathname);
-  pathRef.current = pathname;
+  useEffect(() => {
+    pathRef.current = pathname;
+  });
 
   const { data } = useAppContext();
   /** Tout utilisateur métier web (hors super-admin), même sans `company_id` chargé encore. */

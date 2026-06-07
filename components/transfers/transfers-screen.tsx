@@ -138,7 +138,7 @@ export function TransfersScreen() {
     return stores.find((s) => s.id === id)?.name ?? id.slice(0, 8);
   };
 
-  const rows = listQ.data ?? [];
+  const rows = useMemo(() => listQ.data ?? [], [listQ.data]);
 
   /** Uniquement boutique → boutique (origine et destination boutiques différentes). */
   const allBoutique = useMemo(
@@ -194,7 +194,7 @@ export function TransfersScreen() {
 
   const refreshTransfers = useCallback(async () => {
     await listQ.refetch();
-  }, [listQ.refetch]);
+  }, [listQ]);
 
   const approveMut = useMutation({
     mutationFn: approveStockTransfer,

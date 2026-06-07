@@ -179,7 +179,7 @@ export function StockCashierScreen() {
     staleTime: 20_000,
   });
 
-  const rows = dataQ.data?.rows ?? [];
+  const rows = useMemo(() => dataQ.data?.rows ?? [], [dataQ.data?.rows]);
   const defaultThreshold = dataQ.data?.defaultThreshold ?? 5;
 
   const rupture = useMemo(() => {
@@ -220,7 +220,7 @@ export function StockCashierScreen() {
 
   const refresh = useCallback(async () => {
     await dataQ.refetch();
-  }, [dataQ.refetch]);
+  }, [dataQ]);
 
   /** Padding écran Flutter `fromLTRB(20,20,20,16)` + mobile first. */
   const pageShell = cn(

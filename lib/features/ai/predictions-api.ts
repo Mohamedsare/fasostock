@@ -4,7 +4,6 @@ import { fetchPredictionContext } from "@/lib/features/dashboard/api";
 import { createClient } from "@/lib/supabase/client";
 import { parseStructuredFromDeepseekJson } from "@/lib/features/ai/deepseek-parse";
 import type {
-  ContextSummary,
   LastPredictionPayload,
   PredictionContext,
   PredictionStructured,

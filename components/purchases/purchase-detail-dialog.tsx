@@ -49,6 +49,9 @@ export function PurchaseDetailDialog({
 
   useEffect(() => {
     if (detail) setRefInput(detail.reference ?? "");
+    // Resync volontairement limité à l'id/référence : éviter d'écraser la saisie
+    // en cours si l'objet `detail` change d'identité lors d'un refetch.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [detail?.id, detail?.reference]);
 
   if (!open) return null;

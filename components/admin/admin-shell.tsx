@@ -64,7 +64,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     await signOutAndRedirect(router, { queryClient });
   }
 
-  const NavBody = () => (
+  const navBody = (
     <>
       <div className="border-b border-white/10 px-4 py-5">
         <div className="flex items-center gap-3">
@@ -120,7 +120,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         className="sticky top-0 hidden h-dvh w-[204px] shrink-0 flex-col md:flex"
         style={{ backgroundColor: SIDEBAR_BG }}
       >
-        <NavBody />
+        {navBody}
       </aside>
 
       <header className="sticky top-0 z-40 flex h-14 items-center gap-3 border-b border-slate-200 bg-[#FAFBFC] px-3 md:hidden">
@@ -152,7 +152,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             className="absolute left-0 top-0 flex h-full w-[min(100%,280px)] flex-col shadow-xl"
             style={{ backgroundColor: SIDEBAR_BG }}
           >
-            <NavBody />
+            {navBody}
           </div>
         </div>
       ) : null}

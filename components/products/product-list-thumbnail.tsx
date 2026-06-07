@@ -51,6 +51,7 @@ export function ProductListThumbnail({
               className="h-full w-full"
               aria-label="Agrandir la miniature"
             >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={imageUrl!}
                 alt=""
@@ -61,6 +62,7 @@ export function ProductListThumbnail({
               />
             </button>
           ) : (
+            // eslint-disable-next-line @next/next/no-img-element
             <img
               src={imageUrl!}
               alt=""
@@ -90,6 +92,7 @@ export function ProductListThumbnail({
             className="h-[140px] w-[140px] overflow-hidden rounded-xl border border-black/10 bg-white shadow-xl sm:h-[170px] sm:w-[170px]"
             onClick={(e) => e.stopPropagation()}
           >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={imageUrl!}
               alt=""

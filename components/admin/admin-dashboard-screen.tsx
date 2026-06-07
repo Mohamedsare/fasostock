@@ -98,10 +98,10 @@ export function AdminDashboardScreen() {
 
   const data = q.data;
   const companies = data?.companies ?? [];
-  const stores = data?.stores ?? [];
+  const stores = useMemo(() => data?.stores ?? [], [data?.stores]);
   const userRoles = data?.userRoles ?? [];
-  const sales = data?.sales ?? [];
-  const subscriptions = data?.subscriptions ?? [];
+  const sales = useMemo(() => data?.sales ?? [], [data?.sales]);
+  const subscriptions = useMemo(() => data?.subscriptions ?? [], [data?.subscriptions]);
   const audits = data?.audits ?? [];
   const appErrors = data?.appErrors ?? [];
   const platformMetrics = data?.platformMetrics ?? null;
@@ -158,23 +158,20 @@ export function AdminDashboardScreen() {
       }),
     [stores, selectedCompanyId, selectedStoreId, selectedCity],
   );
-  const storeIdSet = new Set(storesFiltered.map((s) => s.id));
-  const companyIdSet = new Set(
-    selectedCompanyId === "all" ? storesFiltered.map((s) => s.companyId) : [selectedCompanyId],
-  );
-
-  const salesFiltered = useMemo(
-    () =>
-      sales.filter((s) => {
-        const dt = new Date(s.createdAt);
-        if (dt < range.start || dt > range.end) return false;
-        if (!companyIdSet.has(s.companyId)) return false;
-        if (selectedStoreId !== "all" && s.storeId !== selectedStoreId) return false;
-        if (selectedStoreId === "all" && s.storeId && !storeIdSet.has(s.storeId)) return false;
-        return true;
-      }),
-    [sales, range.start, range.end, companyIdSet, selectedStoreId, storeIdSet],
-  );
+  const salesFiltered = useMemo(() => {
+    const storeIdSet = new Set(storesFiltered.map((s) => s.id));
+    const companyIdSet = new Set(
+      selectedCompanyId === "all" ? storesFiltered.map((s) => s.companyId) : [selectedCompanyId],
+    );
+    return sales.filter((s) => {
+      const dt = new Date(s.createdAt);
+      if (dt < range.start || dt > range.end) return false;
+      if (!companyIdSet.has(s.companyId)) return false;
+      if (selectedStoreId !== "all" && s.storeId !== selectedStoreId) return false;
+      if (selectedStoreId === "all" && s.storeId && !storeIdSet.has(s.storeId)) return false;
+      return true;
+    });
+  }, [sales, range.start, range.end, storesFiltered, selectedCompanyId, selectedStoreId]);
 
   const subscriptionsFiltered = useMemo(
     () =>
@@ -187,11 +184,17 @@ export function AdminDashboardScreen() {
   );
 
   const companyName = (id: string) => companies.find((c) => c.id === id)?.name ?? "—";
-  const now = new Date();
-  const oneDayAgo = subDays(now, 1);
-  const sevenDaysAgo = subDays(now, 7);
-  const sevenDaysAhead = addDays(now, 7);
-  const thirtyDaysAgo = subDays(now, 30);
+  // Fenêtre temporelle figée au montage (références stables pour les useMemo en aval).
+  const { now, oneDayAgo, sevenDaysAgo, sevenDaysAhead, thirtyDaysAgo } = useMemo(() => {
+    const now = new Date();
+    return {
+      now,
+      oneDayAgo: subDays(now, 1),
+      sevenDaysAgo: subDays(now, 7),
+      sevenDaysAhead: addDays(now, 7),
+      thirtyDaysAgo: subDays(now, 30),
+    };
+  }, []);
 
   const companiesActiveToday = new Set(
     sales.filter((s) => new Date(s.createdAt) >= oneDayAgo).map((s) => s.companyId),

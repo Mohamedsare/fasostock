@@ -4,7 +4,6 @@ import { SupplierFormDialog } from "@/components/suppliers/supplier-form-dialog"
 import {
   FsCard,
   FsQueryErrorPanel,
-  fsInputClass,
 } from "@/components/ui/fs-screen-primitives";
 import { FsHorizontalScroll } from "@/components/ui/fs-horizontal-scroll";
 import { P } from "@/lib/constants/permissions";
@@ -196,7 +195,7 @@ export function SuppliersScreen() {
     staleTime: 20_000,
   });
 
-  const rows = suppliersQ.data ?? [];
+  const rows = useMemo(() => suppliersQ.data ?? [], [suppliersQ.data]);
   const [currentPage, setCurrentPage] = useState(0);
   const syncOnceRef = useRef(false);
 

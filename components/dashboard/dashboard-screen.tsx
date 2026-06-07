@@ -117,7 +117,7 @@ export function DashboardScreen() {
   );
 
   const companyId = ctx.data?.companyId ?? "";
-  const stores = ctx.data?.stores ?? [];
+  const stores = useMemo(() => ctx.data?.stores ?? [], [ctx.data?.stores]);
   const ctxStoreId = ctx.data?.storeId ?? null;
 
   useEffect(() => {

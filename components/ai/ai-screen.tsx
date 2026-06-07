@@ -205,7 +205,7 @@ export function AiScreen() {
   const handlePullRefresh = useCallback(async () => {
     await Promise.all([configQ.refetch(), companyAiQ.refetch()]);
     await loadLast();
-  }, [configQ.refetch, companyAiQ.refetch, loadLast]);
+  }, [configQ, companyAiQ, loadLast]);
 
   async function onGenerate() {
     if (!companyId) return;

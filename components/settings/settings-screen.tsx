@@ -820,6 +820,7 @@ export function SettingsScreen() {
                 {uploadingCompanyLogo ? (
                   <span className="h-7 w-7 animate-spin rounded-full border-2 border-fs-accent border-t-transparent" />
                 ) : companyLogoUrl && !companyLogoImgError ? (
+                  // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={companyLogoUrl}
                     alt=""

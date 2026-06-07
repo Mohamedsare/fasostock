@@ -114,7 +114,7 @@ export function applySetShowQuantityInput(
 ): PosCartQtyUi {
   const cur = readPosCartQtyUiForMode(mode);
   if (cur.showQuantityInput === value) return cur;
-  let showQuantityInput = value;
+  const showQuantityInput = value;
   let showQuantityButtons = cur.showQuantityButtons;
   if (showQuantityInput) showQuantityButtons = false;
   else if (!showQuantityButtons) showQuantityButtons = true;
@@ -130,7 +130,7 @@ export function applySetShowQuantityButtons(
   const cur = readPosCartQtyUiForMode(mode);
   if (cur.showQuantityButtons === value) return cur;
   let showQuantityInput = cur.showQuantityInput;
-  let showQuantityButtons = value;
+  const showQuantityButtons = value;
   if (showQuantityButtons) showQuantityInput = false;
   else if (!showQuantityInput) showQuantityInput = true;
   const n = normalizePosCartQtyUi(showQuantityInput, showQuantityButtons);
