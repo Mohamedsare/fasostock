@@ -153,6 +153,7 @@ html.dark .fs-owner-dashboard {
   }
 
   html.dark .bg-white,
+  html.dark .bg-white\/90,
   html.dark .bg-white\/95,
   html.dark .bg-white\/96 {
     background-color: var(--fs-card);
