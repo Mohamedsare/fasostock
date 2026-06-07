@@ -111,7 +111,7 @@ export function SiteHeader({ sectionHrefPrefix = "" }: SiteHeaderProps) {
           >
             Se connecter
           </Link>
-          <Link href="/register/select-activity" className="rounded-xl bg-fs-accent px-3 py-2.5 text-sm font-bold text-white">
+          <Link href="/register/select-activity" className="mt-1.5 rounded-xl bg-fs-accent px-3 py-2.5 text-sm font-bold text-white">
             Essai gratuit
           </Link>
           <a
