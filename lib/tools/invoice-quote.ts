@@ -155,6 +155,42 @@ export function suggestNumber(docType: FdDocType, date: string): string {
   return `${numberPrefix}-${compact}-${rand}`;
 }
 
+/** Crée une ligne d'article vierge (id unique). */
+export function createLineItem(): FdLineItem {
+  return {
+    id: `it_${Math.random().toString(36).slice(2, 10)}`,
+    designation: "",
+    quantity: 1,
+    unitPrice: null,
+  };
+}
+
+/** Document vierge par défaut (source unique pour le générateur et la route PDF). */
+export function createEmptyDocument(): FdDocument {
+  return {
+    docType: "facture",
+    currency: "XOF",
+    number: "",
+    date: "",
+    dueDate: "",
+    logoDataUrl: null,
+    senderName: "",
+    senderDetails: "",
+    clientName: "",
+    clientDetails: "",
+    items: [createLineItem()],
+    taxEnabled: false,
+    taxRate: 18,
+    discountMode: "amount",
+    discountValue: 0,
+    notes: "",
+    signatureDataUrl: null,
+    signatureLabel: "",
+    secondaryCurrency: "",
+    exchangeRate: 0,
+  };
+}
+
 /** Conversion active ? (devise secondaire renseignée + taux > 0) */
 export function hasConversion(doc: FdDocument): boolean {
   return Boolean(doc.secondaryCurrency) && Number.isFinite(doc.exchangeRate) && doc.exchangeRate > 0;

@@ -4,6 +4,8 @@ import { InvoiceQuoteDocument } from "@/components/tools/invoice-quote-document"
 import { fsInputClass } from "@/components/ui/fs-screen-primitives";
 import { cn } from "@/lib/utils/cn";
 import {
+  createEmptyDocument,
+  createLineItem,
   FD_CURRENCIES,
   normalizeDraft,
   pdfFileName,
@@ -18,21 +20,14 @@ import {
   MdDeleteOutline,
   MdDownload,
   MdImage,
+  MdPrint,
   MdRefresh,
   MdSave,
 } from "react-icons/md";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 
 const MAX_LOGO_BYTES = 1_500_000; // 1,5 Mo
-
-function newItem(): FdLineItem {
-  return {
-    id: `it_${Math.random().toString(36).slice(2, 10)}`,
-    designation: "",
-    quantity: 1,
-    unitPrice: null,
-  };
-}
+const DRAFT_KEY = "fd_draft_v1";
 
 /** Saisie numérique : vide → null, sinon nombre positif (négatifs ramenés à 0). */
 function parseNonNeg(raw: string): number | null {
@@ -41,33 +36,6 @@ function parseNonNeg(raw: string): number | null {
   if (!Number.isFinite(n)) return null;
   return n < 0 ? 0 : n;
 }
-
-function emptyDoc(): FdDocument {
-  return {
-    docType: "facture",
-    currency: "XOF",
-    number: "",
-    date: "",
-    dueDate: "",
-    logoDataUrl: null,
-    senderName: "",
-    senderDetails: "",
-    clientName: "",
-    clientDetails: "",
-    items: [newItem()],
-    taxEnabled: false,
-    taxRate: 18,
-    discountMode: "amount",
-    discountValue: 0,
-    notes: "",
-    signatureDataUrl: null,
-    signatureLabel: "",
-    secondaryCurrency: "",
-    exchangeRate: 0,
-  };
-}
-
-const DRAFT_KEY = "fd_draft_v1";
 
 /* ---------- Champs (module-scope pour éviter de recréer des composants au render) ---------- */
 
@@ -110,13 +78,15 @@ function readImageFile(file: File | null, onOk: (url: string) => void, onErr: (m
 }
 
 export function InvoiceQuoteGenerator() {
-  const [doc, setDoc] = useState<FdDocument>(emptyDoc);
+  const [doc, setDoc] = useState<FdDocument>(createEmptyDocument);
   const [hydrated, setHydrated] = useState(false);
   const logoInputRef = useRef<HTMLInputElement | null>(null);
   const signatureInputRef = useRef<HTMLInputElement | null>(null);
   const logoErrorId = useId();
   const [logoError, setLogoError] = useState<string | null>(null);
   const [signatureError, setSignatureError] = useState<string | null>(null);
+  const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
 
   // Au montage : recharge le brouillon local s'il existe, puis garantit date/numéro
   // (valeurs dépendantes du client → évite tout écart d'hydratation SSR).
@@ -125,7 +95,7 @@ export function InvoiceQuoteGenerator() {
     let loaded: FdDocument | null = null;
     try {
       const raw = localStorage.getItem(DRAFT_KEY);
-      if (raw) loaded = normalizeDraft(JSON.parse(raw), emptyDoc());
+      if (raw) loaded = normalizeDraft(JSON.parse(raw), createEmptyDocument());
     } catch {
       /* brouillon illisible → ignoré */
     }
@@ -170,7 +140,7 @@ export function InvoiceQuoteGenerator() {
   const updateItem = (id: string, patch: Partial<FdLineItem>) =>
     setDoc((d) => ({ ...d, items: d.items.map((it) => (it.id === id ? { ...it, ...patch } : it)) }));
 
-  const addItem = () => setDoc((d) => ({ ...d, items: [...d.items, newItem()] }));
+  const addItem = () => setDoc((d) => ({ ...d, items: [...d.items, createLineItem()] }));
 
   const removeItem = (id: string) =>
     setDoc((d) => ({
@@ -199,11 +169,46 @@ export function InvoiceQuoteGenerator() {
       /* ignore */
     }
     const today = new Date().toISOString().slice(0, 10);
-    const fresh = emptyDoc();
+    const fresh = createEmptyDocument();
     setDoc({ ...fresh, date: today, number: suggestNumber(fresh.docType, today) });
   };
 
-  const downloadPdf = () => {
+  // Vrai téléchargement PDF en un clic : rendu serveur (Puppeteer) renvoyé en pièce jointe.
+  const downloadPdf = async () => {
+    if (downloading) return;
+    setDownloadError(null);
+    setDownloading(true);
+    try {
+      const res = await fetch("/api/tools/invoice-quote-pdf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(doc),
+      });
+      if (!res.ok) {
+        const msg = await res
+          .json()
+          .then((j) => (j as { error?: string }).error)
+          .catch(() => undefined);
+        throw new Error(msg || `Erreur ${res.status}`);
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${pdfFileName(doc)}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setDownloadError(e instanceof Error ? e.message : "Téléchargement impossible.");
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  // Impression directe (option) : ouvre la boîte d'impression du navigateur.
+  const printDoc = () => {
     const previousTitle = document.title;
     document.title = pdfFileName(doc);
     const restore = () => {
@@ -250,19 +255,40 @@ export function InvoiceQuoteGenerator() {
           </button>
           <button
             type="button"
-            onClick={downloadPdf}
-            className="inline-flex items-center gap-2 rounded-xl bg-fs-accent px-4 py-2 text-sm font-bold text-white shadow-[0_8px_22px_-8px_rgba(232,93,44,0.7)] transition-transform active:scale-95"
+            onClick={printDoc}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-black/[0.08] bg-fs-card px-3 py-2 text-sm font-semibold text-fs-text transition-colors hover:bg-black/5"
           >
-            <MdDownload className="h-4.5 w-4.5" aria-hidden />
-            Télécharger / Imprimer PDF
+            <MdPrint className="h-4 w-4" aria-hidden />
+            Imprimer
+          </button>
+          <button
+            type="button"
+            onClick={downloadPdf}
+            disabled={downloading}
+            aria-busy={downloading}
+            className="inline-flex items-center gap-2 rounded-xl bg-fs-accent px-4 py-2 text-sm font-bold text-white shadow-[0_8px_22px_-8px_rgba(232,93,44,0.7)] transition-transform active:scale-95 disabled:opacity-70"
+          >
+            {downloading ? (
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" aria-hidden />
+            ) : (
+              <MdDownload className="h-4.5 w-4.5" aria-hidden />
+            )}
+            {downloading ? "Génération…" : "Télécharger le PDF"}
           </button>
         </div>
       </div>
 
-      <p className="-mt-2 flex items-center gap-1.5 text-[12px] text-fs-on-surface-variant print:hidden">
-        <MdSave className="h-3.5 w-3.5 text-fs-accent" aria-hidden />
-        Brouillon enregistré automatiquement sur cet appareil.
-      </p>
+      <div className="-mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 print:hidden">
+        <p className="flex items-center gap-1.5 text-[12px] text-fs-on-surface-variant">
+          <MdSave className="h-3.5 w-3.5 text-fs-accent" aria-hidden />
+          Brouillon enregistré automatiquement sur cet appareil.
+        </p>
+        {downloadError ? (
+          <p className="text-[12px] font-semibold text-red-600" role="alert">
+            {downloadError}
+          </p>
+        ) : null}
+      </div>
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
         {/* Formulaire */}
