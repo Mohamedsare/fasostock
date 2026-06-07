@@ -866,3 +866,41 @@ html.dark .fs-owner-dashboard {
   }
 }
 
+/*
+ * Impression / export PDF du générateur Facture & Devis.
+ * On masque toute l'interface et on n'imprime que le document A4 (`#fd-print-area`),
+ * positionné en haut de page. `window.print()` permet d'imprimer ou « Enregistrer en PDF ».
+ */
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+
+  html,
+  body {
+    background: #fff !important;
+  }
+
+  /* Tout est masqué… */
+  body * {
+    visibility: hidden !important;
+  }
+
+  /* …sauf le document et son contenu. */
+  #fd-print-area,
+  #fd-print-area * {
+    visibility: visible !important;
+  }
+
+  #fd-print-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    /* Forcer le rendu des aplats de couleur (bandeau accent, en-tête de tableau). */
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+

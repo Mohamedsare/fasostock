@@ -99,8 +99,8 @@ export function SiteHeader({ sectionHrefPrefix = "" }: SiteHeaderProps) {
           <Link href={section("tarifs")} className="rounded-xl px-3 py-2.5 text-sm font-semibold text-neutral-800 hover:bg-black/5">
             Tarifs
           </Link>
-          <Link href={section("temoignages")} className="rounded-xl px-3 py-2.5 text-sm font-semibold text-neutral-800 hover:bg-black/5">
-            Témoignages
+          <Link href="/facture-devis" className="rounded-xl px-3 py-2.5 text-sm font-semibold text-neutral-800 hover:bg-black/5">
+            Facture &amp; Devis
           </Link>
           <Link href={section("faq")} className="rounded-xl px-3 py-2.5 text-sm font-semibold text-neutral-800 hover:bg-black/5">
             FAQ
@@ -171,8 +171,8 @@ export function SiteHeader({ sectionHrefPrefix = "" }: SiteHeaderProps) {
             <Link href={section("tarifs")} className="text-[13px] font-semibold text-neutral-800 hover:text-fs-accent">
               Tarifs
             </Link>
-            <Link href={section("temoignages")} className="text-[13px] font-semibold text-neutral-800 hover:text-fs-accent">
-              Témoignages
+            <Link href="/facture-devis" className="text-[13px] font-semibold text-neutral-800 hover:text-fs-accent">
+              Facture &amp; Devis
             </Link>
           </nav>
 
