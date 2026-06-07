@@ -27,8 +27,16 @@ function newItem(): FdLineItem {
     id: `it_${Math.random().toString(36).slice(2, 10)}`,
     designation: "",
     quantity: 1,
-    unitPrice: 0,
+    unitPrice: null,
   };
+}
+
+/** Saisie numérique : vide → null, sinon nombre positif (négatifs ramenés à 0). */
+function parseNonNeg(raw: string): number | null {
+  if (raw.trim() === "") return null;
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return null;
+  return n < 0 ? 0 : n;
 }
 
 function emptyDoc(): FdDocument {
@@ -333,8 +341,9 @@ export function InvoiceQuoteGenerator() {
                         step="any"
                         inputMode="decimal"
                         className={fsInputClass()}
-                        value={Number.isFinite(it.quantity) ? it.quantity : ""}
-                        onChange={(e) => updateItem(it.id, { quantity: Number(e.target.value) })}
+                        value={it.quantity ?? ""}
+                        onChange={(e) => updateItem(it.id, { quantity: parseNonNeg(e.target.value) })}
+                        placeholder="0"
                       />
                     </Field>
                     <Field label="Prix unitaire">
@@ -344,8 +353,9 @@ export function InvoiceQuoteGenerator() {
                         step="any"
                         inputMode="decimal"
                         className={fsInputClass()}
-                        value={Number.isFinite(it.unitPrice) ? it.unitPrice : ""}
-                        onChange={(e) => updateItem(it.id, { unitPrice: Number(e.target.value) })}
+                        value={it.unitPrice ?? ""}
+                        onChange={(e) => updateItem(it.id, { unitPrice: parseNonNeg(e.target.value) })}
+                        placeholder="0"
                       />
                     </Field>
                   </div>
@@ -373,7 +383,7 @@ export function InvoiceQuoteGenerator() {
                     inputMode="decimal"
                     className={fsInputClass()}
                     value={doc.discountValue || ""}
-                    onChange={(e) => set("discountValue", Number(e.target.value))}
+                    onChange={(e) => set("discountValue", Math.max(0, Number(e.target.value) || 0))}
                   />
                   <select
                     className={fsInputClass("w-24")}
@@ -405,7 +415,7 @@ export function InvoiceQuoteGenerator() {
                     disabled={!doc.taxEnabled}
                     className={fsInputClass("disabled:opacity-50")}
                     value={doc.taxRate || ""}
-                    onChange={(e) => set("taxRate", Number(e.target.value))}
+                    onChange={(e) => set("taxRate", Math.max(0, Number(e.target.value) || 0))}
                     aria-label="Taux de TVA en %"
                   />
                   <span className="text-sm font-semibold text-fs-on-surface-variant">%</span>

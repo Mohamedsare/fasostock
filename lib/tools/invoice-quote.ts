@@ -8,10 +8,10 @@ export type FdDocType = "facture" | "devis";
 export type FdLineItem = {
   id: string;
   designation: string;
-  /** Quantité (≥ 0). */
-  quantity: number;
-  /** Prix unitaire HT dans la devise choisie. */
-  unitPrice: number;
+  /** Quantité (≥ 0). `null` = champ laissé vide (compté comme 0). */
+  quantity: number | null;
+  /** Prix unitaire HT dans la devise choisie. `null` = champ vide (compté comme 0). */
+  unitPrice: number | null;
 };
 
 export type FdDiscountMode = "amount" | "percent";
@@ -52,8 +52,8 @@ export type FdTotals = {
 const round2 = (n: number): number => Math.round((n + Number.EPSILON) * 100) / 100;
 
 export function lineTotal(item: FdLineItem): number {
-  const q = Number.isFinite(item.quantity) ? item.quantity : 0;
-  const p = Number.isFinite(item.unitPrice) ? item.unitPrice : 0;
+  const q = typeof item.quantity === "number" && Number.isFinite(item.quantity) ? item.quantity : 0;
+  const p = typeof item.unitPrice === "number" && Number.isFinite(item.unitPrice) ? item.unitPrice : 0;
   return round2(Math.max(0, q) * Math.max(0, p));
 }
 
