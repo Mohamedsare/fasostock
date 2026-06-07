@@ -2,7 +2,6 @@ import { AppProviders } from "@/components/providers/app-providers";
 import { RegisterServiceWorker } from "@/components/pwa/register-sw";
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
-import Script from "next/script";
 import "./globals.css";
 
 const inter = Inter({
@@ -136,28 +135,21 @@ export default function RootLayout({
 
   return (
     <html lang="fr" className={`${inter.variable} h-full`} suppressHydrationWarning>
-      <body className="min-h-dvh bg-fs-surface font-sans text-fs-text antialiased">
-        <Script
-          id="fs-theme-init"
-          strategy="beforeInteractive"
-          dangerouslySetInnerHTML={{
-            __html: `(function(){try{var k='fs_theme_mode';var m=localStorage.getItem(k);var d=document.documentElement;var dark=false;if(m==='dark'){dark=true;}else if(m==='light'){dark=false;}else{if(m==='system'||m===null){dark=window.matchMedia('(prefers-color-scheme: dark)').matches;}else{dark=false;}}if(dark){d.classList.add('dark');}else{d.classList.remove('dark');}d.setAttribute('data-theme',m||'system');d.style.colorScheme=dark?'dark':'light';}catch(e){}})();`,
-          }}
+      <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
         />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareJsonLd) }}
+        />
+      </head>
+      <body className="min-h-dvh bg-fs-surface font-sans text-fs-text antialiased">
         <AppProviders>
           {children}
           <RegisterServiceWorker />
         </AppProviders>
-        <Script
-          id="org-jsonld"
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
-        />
-        <Script
-          id="software-jsonld"
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareJsonLd) }}
-        />
       </body>
     </html>
   );

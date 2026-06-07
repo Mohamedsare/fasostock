@@ -1,13 +1,13 @@
 "use client";
 
 import { applyFsThemeToDocument, getStoredFsThemePref } from "@/lib/theme/fs-theme";
-import { useEffect, type ReactNode } from "react";
+import { useLayoutEffect, type ReactNode } from "react";
 
 /**
  * Réapplique le thème au montage, suit le mode système si « Système » est choisi, synchronise les autres onglets.
  */
 export function FsThemeProvider({ children }: { children: ReactNode }) {
-  useEffect(() => {
+  useLayoutEffect(() => {
     applyFsThemeToDocument();
 
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
