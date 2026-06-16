@@ -40,7 +40,7 @@ export async function adminListCompanies(): Promise<AdminCompany[]> {
   const { data, error } = await supabase
     .from("companies")
     .select(
-      "id, name, slug, is_active, store_quota, ai_predictions_enabled, warehouse_feature_enabled, store_quota_increase_enabled, warehouse_kpi_show_purchase_value, warehouse_kpi_show_sale_value, created_at",
+      "id, name, slug, is_active, store_quota, ai_predictions_enabled, warehouse_feature_enabled, store_quota_increase_enabled, warehouse_kpi_show_purchase_value, warehouse_kpi_show_sale_value, warehouse_quota, created_at",
     )
     .order("created_at", { ascending: false });
   if (error) throw mapSupabaseError(error);
@@ -57,6 +57,7 @@ export async function adminListCompanies(): Promise<AdminCompany[]> {
       storeQuotaIncreaseEnabled: r.store_quota_increase_enabled !== false,
       warehouseKpiShowPurchaseValue: r.warehouse_kpi_show_purchase_value !== false,
       warehouseKpiShowSaleValue: r.warehouse_kpi_show_sale_value !== false,
+      warehouseQuota: (() => { const q = toNum(r.warehouse_quota); return q > 0 ? q : 1; })(),
       createdAt: r.created_at != null ? String(r.created_at) : null,
     };
   });
@@ -96,6 +97,7 @@ export async function adminUpdateCompany(
     warehouseKpiShowPurchaseValue?: boolean;
     warehouseKpiShowSaleValue?: boolean;
     storeQuota?: number;
+    warehouseQuota?: number;
   },
 ): Promise<void> {
   const supabase = createClient();
@@ -121,9 +123,25 @@ export async function adminUpdateCompany(
     }
     row.store_quota = n;
   }
+  if (patch.warehouseQuota !== undefined) {
+    const n = Math.floor(Number(patch.warehouseQuota));
+    if (!Number.isFinite(n) || n < 1) {
+      throw new Error("Quota de dépôts invalide (minimum 1).");
+    }
+    row.warehouse_quota = n;
+  }
   if (Object.keys(row).length === 0) return;
   const { error } = await supabase.from("companies").update(row).eq("id", id);
   if (error) throw mapSupabaseError(error);
+
+  // Synchronise les dépôts physiques après un changement de quota
+  if (patch.warehouseQuota !== undefined) {
+    const { error: syncErr } = await supabase.rpc("sync_warehouses_to_quota", {
+      p_company_id: id,
+      p_quota: Math.floor(Number(patch.warehouseQuota)),
+    });
+    if (syncErr) throw mapSupabaseError(syncErr);
+  }
 }
 
 export async function adminUpdateStore(id: string, isActive: boolean): Promise<void> {

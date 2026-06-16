@@ -1,3 +1,14 @@
+/** Un dépôt (magasin) — table `warehouses`, gérée par `create_warehouse` RPC. */
+export type Warehouse = {
+  id: string;
+  companyId: string;
+  name: string;
+  code: string | null;
+  isPrimary: boolean;
+  isActive: boolean;
+  createdAt: string | null;
+};
+
 /** Aligné `WarehouseStockLine` / `WarehouseMovement` / factures dépôt (Flutter). */
 
 export type WarehouseStockLine = {

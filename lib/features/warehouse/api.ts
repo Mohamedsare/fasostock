@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/client";
 import { firstProductImageUrlFromNestedRows } from "@/lib/features/products/product-images";
 import { mapSupabaseError } from "@/lib/supabase/map-error";
 import type {
+  Warehouse,
   WarehouseDispatchInvoiceDetails,
   WarehouseDispatchInvoiceSummary,
   WarehouseDispatchLineInput,
@@ -102,13 +103,42 @@ function mapMovement(row: Record<string, unknown>): WarehouseMovement {
   };
 }
 
-export async function listWarehouseInventory(companyId: string): Promise<WarehouseStockLine[]> {
+export async function listWarehouses(companyId: string): Promise<Warehouse[]> {
   const supabase = createClient();
   const { data, error } = await supabase
-    .from("warehouse_inventory")
-    .select(invSelect)
+    .from("warehouses")
+    .select("id, company_id, name, code, is_primary, is_active, created_at")
     .eq("company_id", companyId)
-    .order("updated_at", { ascending: false });
+    .eq("is_active", true)
+    .order("is_primary", { ascending: false })
+    .order("name", { ascending: true });
+  if (error) throw mapSupabaseError(error);
+  return (data ?? []).map((r) => {
+    const row = r as Record<string, unknown>;
+    return {
+      id: String(row.id),
+      companyId: String(row.company_id),
+      name: String(row.name ?? ""),
+      code: (row.code as string | null) ?? null,
+      isPrimary: row.is_primary === true,
+      isActive: row.is_active !== false,
+      createdAt: row.created_at != null ? String(row.created_at) : null,
+    };
+  });
+}
+
+export async function listWarehouseInventory(
+  companyId: string,
+  warehouseId?: string | null,
+): Promise<WarehouseStockLine[]> {
+  const supabase = createClient();
+  let q = supabase.from("warehouse_inventory").select(invSelect);
+  if (warehouseId) {
+    q = q.eq("warehouse_id", warehouseId);
+  } else {
+    q = q.eq("company_id", companyId);
+  }
+  const { data, error } = await q.order("updated_at", { ascending: false });
   if (error) throw mapSupabaseError(error);
   return (data ?? [])
     .map((r) => mapStockLine(r as Record<string, unknown>))
@@ -118,12 +148,16 @@ export async function listWarehouseInventory(companyId: string): Promise<Warehou
 export async function listWarehouseMovements(
   companyId: string,
   limit = 200,
+  warehouseId?: string | null,
 ): Promise<WarehouseMovement[]> {
   const supabase = createClient();
-  const { data, error } = await supabase
-    .from("warehouse_movements")
-    .select(movSelect)
-    .eq("company_id", companyId)
+  let q = supabase.from("warehouse_movements").select(movSelect);
+  if (warehouseId) {
+    q = q.eq("warehouse_id", warehouseId);
+  } else {
+    q = q.eq("company_id", companyId);
+  }
+  const { data, error } = await q
     .order("created_at", { ascending: false })
     .limit(limit);
   if (error) throw mapSupabaseError(error);
@@ -138,6 +172,7 @@ export async function warehouseRegisterManualEntry(params: {
   packagingType: string;
   packsQuantity: number;
   notes: string | null;
+  warehouseId?: string | null;
 }): Promise<void> {
   const supabase = createClient();
   const { error } = await supabase.rpc("warehouse_register_manual_entry", {
@@ -148,6 +183,7 @@ export async function warehouseRegisterManualEntry(params: {
     p_packaging_type: params.packagingType,
     p_packs_quantity: params.packsQuantity,
     p_notes: params.notes,
+    p_warehouse_id: params.warehouseId ?? null,
   });
   if (error) throw mapSupabaseError(error);
 }
@@ -156,12 +192,14 @@ export async function warehouseSetStockMinWarehouse(params: {
   companyId: string;
   productId: string;
   minValue: number;
+  warehouseId?: string | null;
 }): Promise<void> {
   const supabase = createClient();
   const { error } = await supabase.rpc("warehouse_set_stock_min_warehouse", {
     p_company_id: params.companyId,
     p_product_id: params.productId,
     p_min: params.minValue,
+    p_warehouse_id: params.warehouseId ?? null,
   });
   if (error) throw mapSupabaseError(error);
 }
@@ -172,6 +210,7 @@ export async function warehouseRegisterAdjustment(params: {
   delta: number;
   unitCost: number | null;
   reason: string | null;
+  warehouseId?: string | null;
 }): Promise<void> {
   const supabase = createClient();
   const { error } = await supabase.rpc("warehouse_register_adjustment", {
@@ -180,6 +219,7 @@ export async function warehouseRegisterAdjustment(params: {
     p_delta: params.delta,
     p_unit_cost: params.unitCost,
     p_reason: params.reason,
+    p_warehouse_id: params.warehouseId ?? null,
   });
   if (error) throw mapSupabaseError(error);
 }
@@ -187,11 +227,13 @@ export async function warehouseRegisterAdjustment(params: {
 export async function warehouseRegisterExitForSale(params: {
   companyId: string;
   saleId: string;
+  warehouseId?: string | null;
 }): Promise<void> {
   const supabase = createClient();
   const { error } = await supabase.rpc("warehouse_register_exit_for_sale", {
     p_company_id: params.companyId,
     p_sale_id: params.saleId,
+    p_warehouse_id: params.warehouseId ?? null,
   });
   if (error) throw mapSupabaseError(error);
 }
@@ -201,6 +243,7 @@ export async function warehouseCreateDispatchInvoice(params: {
   customerId: string;
   notes: string | null;
   lines: WarehouseDispatchLineInput[];
+  warehouseId?: string | null;
 }): Promise<{ id: string; documentNumber: string }> {
   const supabase = createClient();
   const { data, error } = await supabase.rpc("warehouse_create_dispatch_invoice", {
@@ -212,6 +255,7 @@ export async function warehouseCreateDispatchInvoice(params: {
       quantity: l.quantity,
       unit_price: l.unitPrice,
     })),
+    p_warehouse_id: params.warehouseId ?? null,
   });
   if (error) throw mapSupabaseError(error);
   const raw = data as Record<string, unknown> | null;
@@ -229,14 +273,20 @@ export async function warehouseCreateDispatchInvoice(params: {
 export async function listWarehouseDispatchInvoices(
   companyId: string,
   limit = 120,
+  warehouseId?: string | null,
 ): Promise<WarehouseDispatchInvoiceSummary[]> {
   const supabase = createClient();
-  const { data, error } = await supabase
+  let q = supabase
     .from("warehouse_dispatch_invoices")
     .select(
       "id, company_id, customer_id, created_by, document_number, notes, created_at, customer:customers(name), items:warehouse_dispatch_items(quantity, unit_price)",
-    )
-    .eq("company_id", companyId)
+    );
+  if (warehouseId) {
+    q = q.eq("warehouse_id", warehouseId);
+  } else {
+    q = q.eq("company_id", companyId);
+  }
+  const { data, error } = await q
     .order("created_at", { ascending: false })
     .limit(limit);
   if (error) throw mapSupabaseError(error);

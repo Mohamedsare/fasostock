@@ -14,7 +14,7 @@ import type { AdminCompany, AdminStore } from "@/lib/features/admin/types";
 import { messageFromUnknownError, toast } from "@/lib/toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Fragment, useMemo, useState } from "react";
-import { MdDelete, MdExpandMore, MdChevronRight, MdAutoAwesome, MdPowerSettingsNew } from "react-icons/md";
+import { MdDelete, MdExpandMore, MdChevronRight, MdAutoAwesome, MdPowerSettingsNew, MdWarehouse, MdAdd, MdRemove } from "react-icons/md";
 
 export function AdminCompaniesScreen() {
   const qc = useQueryClient();
@@ -47,8 +47,8 @@ export function AdminCompaniesScreen() {
   }, [storesByCompany]);
 
   const mutCompany = useMutation({
-    mutationFn: async (p: { id: string; isActive?: boolean; aiPredictionsEnabled?: boolean }) => {
-      await adminUpdateCompany(p.id, { isActive: p.isActive, aiPredictionsEnabled: p.aiPredictionsEnabled });
+    mutationFn: async (p: { id: string; isActive?: boolean; aiPredictionsEnabled?: boolean; warehouseQuota?: number }) => {
+      await adminUpdateCompany(p.id, { isActive: p.isActive, aiPredictionsEnabled: p.aiPredictionsEnabled, warehouseQuota: p.warehouseQuota });
     },
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["admin-companies"] });
@@ -130,7 +130,8 @@ export function AdminCompaniesScreen() {
               <th className="p-3">Slug</th>
               <th className="p-3">Statut</th>
               <th className="p-3">Préd.&nbsp;IA</th>
-              <th className="p-3">Quota</th>
+              <th className="p-3">Boutiques</th>
+              <th className="p-3">Dépôts</th>
               <th className="p-3">Actions</th>
             </tr>
           </thead>
@@ -179,6 +180,31 @@ export function AdminCompaniesScreen() {
                       </span>
                     </td>
                     <td className="p-3">{c.storeQuota}</td>
+                    <td className="p-3">
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          className="rounded p-0.5 hover:bg-slate-100 disabled:opacity-30"
+                          title="Réduire quota dépôts"
+                          disabled={c.warehouseQuota <= 1}
+                          onClick={() => mutCompany.mutate({ id: c.id, warehouseQuota: c.warehouseQuota - 1 })}
+                        >
+                          <MdRemove className="h-4 w-4" />
+                        </button>
+                        <span className="flex w-6 items-center justify-center gap-1 font-semibold">
+                          <MdWarehouse className="h-3.5 w-3.5 text-slate-400" />
+                          {c.warehouseQuota}
+                        </span>
+                        <button
+                          type="button"
+                          className="rounded p-0.5 hover:bg-slate-100"
+                          title="Augmenter quota dépôts"
+                          onClick={() => mutCompany.mutate({ id: c.id, warehouseQuota: c.warehouseQuota + 1 })}
+                        >
+                          <MdAdd className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </td>
                     <td className="p-3">
                       <div className="flex flex-nowrap gap-1">
                         <button

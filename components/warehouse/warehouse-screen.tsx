@@ -10,6 +10,7 @@ import {
   listWarehouseDispatchInvoices,
   listWarehouseInventory,
   listWarehouseMovements,
+  listWarehouses,
   warehouseUpdateDispatchInvoice,
   voidWarehouseDispatchInvoice,
 } from "@/lib/features/warehouse/api";
@@ -17,7 +18,7 @@ import { listCustomers } from "@/lib/features/customers/api";
 import { listProducts } from "@/lib/features/products/api";
 import { listStores as listStoresFull } from "@/lib/features/stores/api";
 import { downloadStoreProductsPdf } from "@/lib/features/stores/generate-store-products-pdf";
-import type { WarehouseDispatchInvoiceSummary, WarehouseMovement, WarehouseStockLine } from "@/lib/features/warehouse/types";
+import type { Warehouse, WarehouseDispatchInvoiceSummary, WarehouseMovement, WarehouseStockLine } from "@/lib/features/warehouse/types";
 import { WAREHOUSE_PACKAGING_LABELS } from "@/lib/features/warehouse/types";
 import {
   approveStockTransfer,
@@ -274,6 +275,8 @@ export function WarehouseScreen() {
 
   const [tab, setTab] = useState(0);
   const [actionMenuOpen, setActionMenuOpen] = useState(false);
+  const [selectedWarehouseId, setSelectedWarehouseId] = useState<string | null>(null);
+  const [pendingWarehouseId, setPendingWarehouseId] = useState<string | null>(null);
   const [entryOpen, setEntryOpen] = useState(false);
   const [dispatchOpen, setDispatchOpen] = useState(false);
   const [exitSaleOpen, setExitSaleOpen] = useState(false);
@@ -305,19 +308,28 @@ export function WarehouseScreen() {
   }>(null);
   const [dispatchPreviewBlob, setDispatchPreviewBlob] = useState<Blob | null>(null);
 
+  const warehousesQ = useQuery({
+    queryKey: ["warehouses", companyId] as const,
+    queryFn: () => listWarehouses(companyId),
+    enabled: Boolean(companyId) && canWarehouse,
+  });
+  const warehouses: Warehouse[] = warehousesQ.data ?? [];
+  const activeWarehouseId = selectedWarehouseId ?? warehouses.find((w) => w.isPrimary)?.id ?? warehouses[0]?.id ?? null;
+  const activeWarehouseName = warehouses.find((w) => w.id === activeWarehouseId)?.name ?? "Principal";
+
   const invQ = useQuery({
-    queryKey: queryKeys.warehouseInventory(companyId),
-    queryFn: () => listWarehouseInventory(companyId),
+    queryKey: [...queryKeys.warehouseInventory(companyId), activeWarehouseId],
+    queryFn: () => listWarehouseInventory(companyId, activeWarehouseId),
     enabled: Boolean(companyId) && canWarehouse,
   });
   const movQ = useQuery({
-    queryKey: queryKeys.warehouseMovements(companyId),
-    queryFn: () => listWarehouseMovements(companyId, 500),
+    queryKey: [...queryKeys.warehouseMovements(companyId), activeWarehouseId],
+    queryFn: () => listWarehouseMovements(companyId, 500, activeWarehouseId),
     enabled: Boolean(companyId) && canWarehouse,
   });
   const dispatchQ = useQuery({
-    queryKey: queryKeys.warehouseDispatch(companyId),
-    queryFn: () => listWarehouseDispatchInvoices(companyId),
+    queryKey: [...queryKeys.warehouseDispatch(companyId), activeWarehouseId],
+    queryFn: () => listWarehouseDispatchInvoices(companyId, 120, activeWarehouseId),
     enabled: Boolean(companyId) && canWarehouse,
   });
   const whTransfersQ = useQuery({
@@ -898,16 +910,81 @@ export function WarehouseScreen() {
         </FsHorizontalScroll>
       </div>
 
-      {companyName ? (
-        <div className="mt-3 rounded-xl border border-black/6 bg-[color-mix(in_srgb,var(--fs-surface-container-highest)_55%,transparent)] px-3 py-1.5 sm:rounded-2xl sm:py-2">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-neutral-500 sm:text-[11px]">
-            Dépôt central
-          </p>
-          <p className="mt-0.5 truncate text-[13px] font-bold leading-tight text-fs-text sm:text-sm">
-            {companyName}
-          </p>
+      <div className="mt-3 rounded-md border border-black/6 bg-[color-mix(in_srgb,var(--fs-surface-container-highest)_55%,transparent)] px-3 py-1.5">
+        {warehouses.length > 1 ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-neutral-500">
+              Dépôt actif
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {warehouses.map((wh) => (
+                <button
+                  key={wh.id}
+                  type="button"
+                  onClick={() => {
+                    if (wh.id !== activeWarehouseId) setPendingWarehouseId(wh.id);
+                  }}
+                  className={cn(
+                    "rounded-[4px] border px-2.5 py-0.5 text-[11px] font-semibold transition-colors",
+                    activeWarehouseId === wh.id
+                      ? "border-[#F97316] bg-[#F97316] text-white"
+                      : "border-black/15 bg-white text-fs-text hover:border-[#F97316]/50 hover:text-[#F97316]",
+                  )}
+                >
+                  {wh.name}
+                  {wh.isPrimary ? (
+                    <span className="ml-1 text-[9px] opacity-60">principal</span>
+                  ) : null}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <>
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-neutral-500">
+              Dépôt central
+            </p>
+            <p className="mt-0.5 truncate text-[13px] font-bold leading-tight text-fs-text">
+              {activeWarehouseName}{companyName ? ` — ${companyName}` : ""}
+            </p>
+          </>
+        )}
+      </div>
+
+      {/* Dialog de confirmation de changement de dépôt */}
+      {pendingWarehouseId != null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-sm rounded-lg bg-fs-surface p-5 shadow-xl">
+            <p className="text-[15px] font-bold text-fs-text">Changer de dépôt ?</p>
+            <p className="mt-1.5 text-[13px] text-neutral-500">
+              Vous allez basculer vers{" "}
+              <span className="font-semibold text-fs-text">
+                {warehouses.find((w) => w.id === pendingWarehouseId)?.name ?? "ce dépôt"}
+              </span>
+              . Toutes les opérations (entrées, sorties, ajustements) s&apos;appliqueront à ce dépôt.
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setPendingWarehouseId(null)}
+                className="rounded-[4px] border border-black/10 px-4 py-1.5 text-[13px] font-semibold text-fs-text hover:bg-black/5"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedWarehouseId(pendingWarehouseId);
+                  setPendingWarehouseId(null);
+                }}
+                className="rounded-[4px] bg-[#F97316] px-4 py-1.5 text-[13px] font-semibold text-white hover:bg-[#ea6c10]"
+              >
+                Confirmer
+              </button>
+            </div>
+          </div>
         </div>
-      ) : null}
+      )}
 
       {listLoading ? (
         <div className="mt-3 flex min-h-[40vh] items-center justify-center py-16">
@@ -1504,6 +1581,7 @@ export function WarehouseScreen() {
         open={entryOpen}
         onClose={() => setEntryOpen(false)}
         companyId={companyId}
+        warehouseId={activeWarehouseId}
         onSuccess={refreshAll}
       />
       <WarehouseDispatchDialog
@@ -1513,6 +1591,7 @@ export function WarehouseScreen() {
           setDispatchDialogInvoiceId(null);
         }}
         companyId={companyId}
+        warehouseId={activeWarehouseId}
         warehouseQtyByProductId={warehouseQtyByProductId}
         editInvoiceId={dispatchDialogInvoiceId}
         onSuccess={refreshAll}
@@ -1521,6 +1600,7 @@ export function WarehouseScreen() {
         open={exitSaleOpen}
         onClose={() => setExitSaleOpen(false)}
         companyId={companyId}
+        warehouseId={activeWarehouseId}
         onSuccess={refreshAll}
       />
       <WarehouseCreateTransferFromDepotDialog
@@ -1536,6 +1616,7 @@ export function WarehouseScreen() {
         open={adjustLine != null}
         onClose={() => setAdjustLine(null)}
         companyId={companyId}
+        warehouseId={activeWarehouseId}
         line={adjustLine}
         onSuccess={refreshAll}
       />
@@ -1543,6 +1624,7 @@ export function WarehouseScreen() {
         open={thresholdLine != null}
         onClose={() => setThresholdLine(null)}
         companyId={companyId}
+        warehouseId={activeWarehouseId}
         line={thresholdLine}
         onSuccess={refreshAll}
       />

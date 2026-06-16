@@ -66,6 +66,7 @@ export function WarehouseDispatchDialog({
   open,
   onClose,
   companyId,
+  warehouseId,
   warehouseQtyByProductId,
   editInvoiceId = null,
   onSuccess,
@@ -73,6 +74,7 @@ export function WarehouseDispatchDialog({
   open: boolean;
   onClose: () => void;
   companyId: string;
+  warehouseId?: string | null;
   warehouseQtyByProductId: Record<string, number>;
   editInvoiceId?: string | null;
   onSuccess: () => void;
@@ -441,6 +443,7 @@ export function WarehouseDispatchDialog({
           customerId,
           notes: `${DISPATCH_PAYMENT_NOTE_PREFIX}${JSON.stringify(paymentInfo)}`,
           lines: out,
+          warehouseId: warehouseId ?? null,
         });
         toast.success(`Bon enregistré : ${res.documentNumber}`);
       }

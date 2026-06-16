@@ -57,11 +57,13 @@ export function WarehouseEntryDialog({
   open,
   onClose,
   companyId,
+  warehouseId,
   onSuccess,
 }: {
   open: boolean;
   onClose: () => void;
   companyId: string;
+  warehouseId?: string | null;
   onSuccess: () => void;
 }) {
   const qc = useQueryClient();
@@ -180,6 +182,7 @@ export function WarehouseEntryDialog({
         packagingType: packaging,
         packsQuantity: packsNum,
         notes: notes.trim() || null,
+        warehouseId: warehouseId ?? null,
       });
       const shouldBackfill = (selected.purchase_price ?? 0) <= 0 && unitCost > 0;
       if (shouldBackfill) {
@@ -468,12 +471,14 @@ export function WarehouseAdjustmentDialog({
   open,
   onClose,
   companyId,
+  warehouseId,
   line,
   onSuccess,
 }: {
   open: boolean;
   onClose: () => void;
   companyId: string;
+  warehouseId?: string | null;
   line: WarehouseStockLine | null;
   onSuccess: () => void;
 }) {
@@ -522,6 +527,7 @@ export function WarehouseAdjustmentDialog({
         delta: d,
         unitCost: d > 0 ? unitCost : null,
         reason: reason.trim() || null,
+        warehouseId: warehouseId ?? null,
       });
       toast.success("Stock dépôt mis à jour.");
       onSuccess();
@@ -593,12 +599,14 @@ export function WarehouseThresholdDialog({
   open,
   onClose,
   companyId,
+  warehouseId,
   line,
   onSuccess,
 }: {
   open: boolean;
   onClose: () => void;
   companyId: string;
+  warehouseId?: string | null;
   line: WarehouseStockLine | null;
   onSuccess: () => void;
 }) {
@@ -626,6 +634,7 @@ export function WarehouseThresholdDialog({
         companyId,
         productId: row.productId,
         minValue: n,
+        warehouseId: warehouseId ?? null,
       });
       toast.success("Seuil enregistré");
       onSuccess();
@@ -668,11 +677,13 @@ export function WarehouseExitSaleDialog({
   open,
   onClose,
   companyId,
+  warehouseId,
   onSuccess,
 }: {
   open: boolean;
   onClose: () => void;
   companyId: string;
+  warehouseId?: string | null;
   onSuccess: () => void;
 }) {
   const [saleId, setSaleId] = useState("");
@@ -709,7 +720,7 @@ export function WarehouseExitSaleDialog({
     }
     setSaving(true);
     try {
-      await warehouseRegisterExitForSale({ companyId, saleId });
+      await warehouseRegisterExitForSale({ companyId, saleId, warehouseId: warehouseId ?? null });
       toast.success("Sortie magasin enregistrée pour cette vente.");
       onSuccess();
       onClose();

@@ -15,6 +15,8 @@ export type AdminCompany = {
   warehouseKpiShowPurchaseValue: boolean;
   /** Affiche la carte KPI « Valeur au prix de vente » sur le dépôt Magasin. */
   warehouseKpiShowSaleValue: boolean;
+  /** Nombre maximum de dépôts (magasins) autorisés — modifiable uniquement par le super admin. */
+  warehouseQuota: number;
   createdAt: string | null;
 };
 
