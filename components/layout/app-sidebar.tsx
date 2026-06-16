@@ -213,8 +213,8 @@ export function AppSidebar({
                     : cn("gap-3 px-3 py-2.5", item.child && "pl-6"),
                   active
                     ? [
-                        "bg-[color-mix(in_srgb,var(--fs-accent)_13%,transparent)] text-[var(--fs-accent)] dark:bg-[#f97316]/35 dark:text-white",
-                        "shadow-[0_1px_2px_rgba(0,0,0,0.04),inset_0_1px_0_rgba(255,255,255,0.45)]",
+                        "bg-black/5.5 text-fs-text dark:bg-white/12 dark:text-white",
+                        "shadow-[0_1px_2px_rgba(0,0,0,0.05),inset_0_1px_0_rgba(255,255,255,0.45)]",
                         "dark:shadow-[0_1px_3px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.06)]",
                       ]
                     : [
@@ -231,15 +231,18 @@ export function AppSidebar({
                 ) : null}
                 <span
                   className={cn(
-                    "flex shrink-0 items-center justify-center rounded-xl transition-colors duration-200",
-                    active
-                      ? "bg-[color-mix(in_srgb,var(--fs-accent)_18%,transparent)] text-[var(--fs-accent)] dark:bg-[#f97316]/28 dark:text-white"
-                      : "bg-[color-mix(in_srgb,#f97316_16%,white)] text-black group-hover/nav:bg-[color-mix(in_srgb,#f97316_24%,white)] group-hover/nav:text-black dark:bg-white/[0.08] dark:text-neutral-100 dark:group-hover/nav:bg-white/[0.13] dark:group-hover/nav:text-white",
+                    "flex shrink-0 items-center justify-center rounded-xl transition-[opacity,box-shadow] duration-200",
                     effectiveCollapsed ? "h-10 w-10" : "h-9 w-9",
+                    !active && "opacity-85 group-hover/nav:opacity-100",
+                    active && "shadow-[0_2px_8px_rgba(0,0,0,0.22)]",
                   )}
+                  style={item.iconBg ? { background: item.iconBg } : undefined}
                   aria-hidden
                 >
-                  <Icon className="h-5 w-5" strokeWidth={active ? 2.35 : 2} />
+                  <Icon
+                    className={cn("h-5 w-5", item.iconBg ? "text-white" : active ? "text-[var(--fs-accent)]" : "text-black dark:text-neutral-100")}
+                    strokeWidth={active ? 2.35 : 2}
+                  />
                 </span>
                 {!effectiveCollapsed ? (
                   <span className="min-w-0 flex-1 truncate">{item.label}</span>

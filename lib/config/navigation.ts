@@ -35,6 +35,8 @@ export type NavItem = {
   href: string;
   label: string;
   icon: LucideIcon;
+  /** Couleur de fond de l'icône (hex). Icône blanche sur fond coloré. */
+  iconBg?: string;
   /** Masqué du menu latéral si false (ex. Intégrations accessibles depuis Paramètres). */
   showInSidebar?: boolean;
   /** Petit retrait visuel pour les sous-éléments (menu hiérarchique). */
@@ -43,37 +45,39 @@ export type NavItem = {
 
 /** Ordre et libellés alignés sur `app_shell.dart` (Flutter). */
 export const NAV_ITEMS: NavItem[] = [
-  { href: ROUTES.dashboard, label: "Tableau de bord", icon: LayoutDashboard },
-  { href: ROUTES.products, label: "Produits", icon: Package },
-  { href: ROUTES.barcodes, label: "Code Barre", icon: Barcode },
-  { href: ROUTES.sales, label: "Ventes", icon: ShoppingCart },
-  { href: ROUTES.stores, label: "Boutiques", icon: Store },
-  { href: ROUTES.inventory, label: "Stock", icon: Warehouse },
+  { href: ROUTES.dashboard, label: "Tableau de bord", icon: LayoutDashboard, iconBg: "#F97316" },
+  { href: ROUTES.products, label: "Produits", icon: Package, iconBg: "#7C2D12" },
+  { href: ROUTES.barcodes, label: "Code Barre", icon: Barcode, iconBg: "#9A3412" },
+  { href: ROUTES.sales, label: "Ventes", icon: ShoppingCart, iconBg: "#EA580C" },
+  { href: ROUTES.stores, label: "Boutiques", icon: Store, iconBg: "#C2410C" },
+  { href: ROUTES.inventory, label: "Stock", icon: Warehouse, iconBg: "#78350F" },
   {
     href: ROUTES.stockCashier,
     label: "Stock (alertes)",
     icon: AlertTriangle,
+    iconBg: "#B45309",
   },
-  { href: ROUTES.purchases, label: "Achats", icon: Truck },
-  { href: ROUTES.warehouse, label: "Magasin", icon: Boxes },
-  { href: ROUTES.transfers, label: "Transferts", icon: ArrowLeftRight },
-  { href: ROUTES.customers, label: "Clients", icon: Users },
-  { href: ROUTES.credit, label: "Crédit", icon: CreditCard },
-  { href: ROUTES.suppliers, label: "Fournisseurs", icon: Building2 },
-  { href: ROUTES.reports, label: "Rapports", icon: BarChart3 },
-  { href: ROUTES.ai, label: "Prédictions IA", icon: Sparkles },
-  { href: ROUTES.users, label: "Utilisateurs", icon: UserCog },
-  { href: ROUTES.audit, label: "Journal d'audit", icon: ScrollText },
+  { href: ROUTES.purchases, label: "Achats", icon: Truck, iconBg: "#92400E" },
+  { href: ROUTES.warehouse, label: "Magasin", icon: Boxes, iconBg: "#7C2D12" },
+  { href: ROUTES.transfers, label: "Transferts", icon: ArrowLeftRight, iconBg: "#EA580C" },
+  { href: ROUTES.customers, label: "Clients", icon: Users, iconBg: "#9A3412" },
+  { href: ROUTES.credit, label: "Crédit", icon: CreditCard, iconBg: "#D97706" },
+  { href: ROUTES.suppliers, label: "Fournisseurs", icon: Building2, iconBg: "#C2410C" },
+  { href: ROUTES.reports, label: "Rapports", icon: BarChart3, iconBg: "#F97316" },
+  { href: ROUTES.ai, label: "Prédictions IA", icon: Sparkles, iconBg: "#78350F" },
+  { href: ROUTES.users, label: "Utilisateurs", icon: UserCog, iconBg: "#92400E" },
+  { href: ROUTES.audit, label: "Journal d'audit", icon: ScrollText, iconBg: "#7C2D12" },
   {
     href: ROUTES.integrations,
     label: "Intégrations API",
     icon: KeyRound,
+    iconBg: "#9A3412",
     showInSidebar: false,
   },
-  { href: ROUTES.printers, label: "Imprimantes", icon: Printer },
-  { href: ROUTES.settings, label: "Paramètres", icon: Settings },
-  { href: ROUTES.help, label: "Aide", icon: HelpCircle },
-  { href: ROUTES.notifications, label: "Notifications", icon: Bell },
+  { href: ROUTES.printers, label: "Imprimantes", icon: Printer, iconBg: "#B45309" },
+  { href: ROUTES.settings, label: "Paramètres", icon: Settings, iconBg: "#92400E" },
+  { href: ROUTES.help, label: "Aide", icon: HelpCircle, iconBg: "#D97706" },
+  { href: ROUTES.notifications, label: "Notifications", icon: Bell, iconBg: "#EA580C" },
 ];
 
 /** Navigation restaurant hiérarchique (phase 1: existants + placeholders). */
