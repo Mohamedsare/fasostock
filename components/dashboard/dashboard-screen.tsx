@@ -50,6 +50,7 @@ import {
   peekInvoiceTablePosEnabled,
 } from "@/lib/features/settings/invoice-table-pos";
 import { activityUiTerms } from "@/lib/features/activity/activity-profiles";
+import { PharmacyExpiryCard } from "@/components/dashboard/pharmacy-expiry-card";
 import { formatCurrency } from "@/lib/utils/currency";
 import { cn } from "@/lib/utils/cn";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
@@ -358,6 +359,11 @@ export function DashboardScreen() {
           subtitleClassName="min-[900px]:text-base min-[900px]:leading-normal"
         />
       </div>
+
+      <PharmacyExpiryCard
+        companyId={companyId}
+        businessTypeSlug={ctx.data?.businessTypeSlug}
+      />
 
       <section
         id="dashboard-vue-periode"

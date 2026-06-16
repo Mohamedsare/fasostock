@@ -112,6 +112,8 @@ export function PosScreen({
   const [cart, setCart] = useState<CartRow[]>([]);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
   const [quickPayment, setQuickPayment] = useState<QuickPayment>("cash");
+  const isPharmacy = ctx?.businessTypeSlug === "pharmacie";
+  const [prescriptionNumber, setPrescriptionNumber] = useState("");
   const [discount, setDiscount] = useState("0");
   const [amountReceived, setAmountReceived] = useState("");
   const [amountReceivedTouched, setAmountReceivedTouched] = useState(false);
@@ -583,6 +585,7 @@ export function PosScreen({
         payments,
         saleMode: mode === "quick" ? "quick_pos" : "invoice_pos",
         documentType: mode === "quick" ? "thermal_receipt" : "a4_invoice",
+        prescriptionNumber: isPharmacy ? prescriptionNumber.trim() || null : null,
       });
       return {
         kind: "create" as const,
@@ -620,6 +623,7 @@ export function PosScreen({
       setAmountReceived("");
       setAmountReceivedTouched(false);
       setCustomerId("");
+      setPrescriptionNumber("");
       if (res.saleId.startsWith("offline:")) {
         toast.success(
           "Vente enregistrée localement. Synchronisation à la reconnexion.",
@@ -1067,6 +1071,7 @@ export function PosScreen({
         setDiscount("0");
         setAmountReceived("");
         setAmountReceivedTouched(false);
+        setPrescriptionNumber("");
       }}
       onPay={() => {
         const pre = getPosPayValidationError();
@@ -1078,6 +1083,9 @@ export function PosScreen({
       }}
       hideCartTitle={!isWide}
       currencyLabel={currencyLabel}
+      showPrescription={isPharmacy}
+      prescriptionNumber={prescriptionNumber}
+      setPrescriptionNumber={setPrescriptionNumber}
     />
   );
 
@@ -1529,12 +1537,20 @@ export function PosScreen({
                               addToCart(p.id, p.name, p.unit, thumb);
                           }}
                           className={cn(
-                            "flex min-h-0 w-full min-w-0 flex-col items-center justify-center rounded-[14px] border bg-white px-2 py-1.5 text-center transition active:scale-[0.98]",
+                            "relative flex min-h-0 w-full min-w-0 flex-col items-center justify-center rounded-[14px] border bg-white px-2 py-1.5 text-center transition active:scale-[0.98]",
                             noStock
                               ? "border-[#E5E7EB] opacity-45"
                               : "border-[1.5px] border-[#F97316]/35 shadow-[0_2px_8px_rgba(249,115,22,0.1)]",
                           )}
                         >
+                          {p.prescription_required ? (
+                            <span
+                              className="absolute right-1 top-1 z-10 rounded bg-red-600 px-1 py-0.5 text-[8px] font-bold leading-none text-white"
+                              title="Délivrance sur ordonnance"
+                            >
+                              Ord.
+                            </span>
+                          ) : null}
                           <div className="mx-auto flex size-[clamp(3rem,52%,4.5rem)] max-h-[72px] max-w-[72px] shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[#F8F9FA]">
                             {thumb ? (
                               // eslint-disable-next-line @next/next/no-img-element
@@ -1586,11 +1602,19 @@ export function PosScreen({
                           )
                         }
                         className={cn(
-                          "flex min-h-0 w-full min-w-0 flex-col items-center overflow-hidden rounded-xl bg-white px-2 py-1.5 text-center transition active:scale-[0.98]",
+                          "relative flex min-h-0 w-full min-w-0 flex-col items-center overflow-hidden rounded-xl bg-white px-2 py-1.5 text-center transition active:scale-[0.98]",
                           "aspect-[0.82] @[400px]:aspect-[0.88] @[600px]:aspect-[0.93]",
                           "border border-[#F97316]/35 shadow-[0_1px_6px_rgba(249,115,22,0.08)]",
                         )}
                       >
+                        {p.prescription_required ? (
+                          <span
+                            className="absolute right-1 top-1 z-10 rounded bg-red-600 px-1 py-0.5 text-[8px] font-bold leading-none text-white"
+                            title="Délivrance sur ordonnance"
+                          >
+                            Ord.
+                          </span>
+                        ) : null}
                         <div className="mx-auto flex h-[72px] w-[72px] shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[#F8F9FA] sm:h-[76px] sm:w-[76px]">
                           {thumb ? (
                             // eslint-disable-next-line @next/next/no-img-element
@@ -2179,6 +2203,9 @@ function PosCartPanel({
   onPay,
   hideCartTitle,
   currencyLabel,
+  showPrescription,
+  prescriptionNumber,
+  setPrescriptionNumber,
 }: {
   mode: PosMode;
   cartLayout?: "cards" | "table";
@@ -2217,6 +2244,10 @@ function PosCartPanel({
   onPay: () => void | Promise<void>;
   hideCartTitle?: boolean;
   currencyLabel: string;
+  /** Pharmacie : afficher le champ n° d'ordonnance. */
+  showPrescription?: boolean;
+  prescriptionNumber?: string;
+  setPrescriptionNumber?: (v: string) => void;
 }) {
   const isA4Cart = mode !== "quick";
   /** Aligné `PosCartPanel` Flutter : `scrollBodyWithFooter` + `cartListBody` (vue tableau). */
@@ -2249,6 +2280,23 @@ function PosCartPanel({
           </span>
         </div>
       </div>
+
+      {showPrescription ? (
+        <div className="mx-0 mt-2 min-[900px]:mx-3">
+          <label className="block">
+            <span className="mb-1 block text-[11px] font-semibold text-[#6B7280]">
+              N° d&apos;ordonnance (optionnel)
+            </span>
+            <input
+              value={prescriptionNumber ?? ""}
+              onChange={(e) => setPrescriptionNumber?.(e.target.value)}
+              placeholder="Ex. ORD-2026-00123"
+              autoComplete="off"
+              className="w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#1F2937] outline-none focus:border-[#F97316]"
+            />
+          </label>
+        </div>
+      ) : null}
 
       {mode === "quick" ? (
         <div className="mt-3 grid grid-cols-3 gap-2 px-0 min-[900px]:px-3">

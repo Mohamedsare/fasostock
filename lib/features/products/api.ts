@@ -11,7 +11,27 @@ import type {
 } from "./types";
 
 const productSelect =
-  "id, company_id, name, sku, barcode, unit, purchase_price, sale_price, wholesale_price, wholesale_qty, stock_min, description, is_active, category_id, brand_id, product_scope, category:categories(id, name), brand:brands(id, name), product_images(id, product_id, url, position)";
+  "id, company_id, name, sku, barcode, unit, purchase_price, sale_price, wholesale_price, wholesale_qty, stock_min, description, is_active, category_id, brand_id, product_scope, dci, dosage_form, therapeutic_class, laboratory, prescription_required, storage_conditions, category:categories(id, name), brand:brands(id, name), product_images(id, product_id, url, position)";
+
+/**
+ * Convertit les champs métier du formulaire (ex. pharmacie) en colonnes SQL.
+ * Renvoie `{}` quand le métier n'a pas de champs spécifiques → aucune colonne
+ * additionnelle envoyée (comportement historique préservé).
+ */
+function activityFieldColumns(
+  input: ProductFormInput,
+): Record<string, string | boolean | null> {
+  const a = input.activityFields;
+  if (!a) return {};
+  return {
+    dci: a.dci.trim() || null,
+    dosage_form: a.dosage_form.trim() || null,
+    therapeutic_class: a.therapeutic_class.trim() || null,
+    laboratory: a.laboratory.trim() || null,
+    prescription_required: a.prescription_required,
+    storage_conditions: a.storage_conditions.trim() || null,
+  };
+}
 
 export async function listProducts(companyId: string): Promise<ProductItem[]> {
   const supabase = createClient();
@@ -116,6 +136,7 @@ export async function createProduct(
     category_id: input.categoryId || null,
     brand_id: input.brandId || null,
     product_scope: input.productScope,
+    ...activityFieldColumns(input),
   };
   const supabase = createClient();
   if (!navigator.onLine) {
@@ -146,6 +167,7 @@ export async function updateProduct(
     brand_id: input.brandId || null,
     is_active: input.isActive,
     product_scope: input.productScope,
+    ...activityFieldColumns(input),
   };
   const supabase = createClient();
   if (!navigator.onLine) {

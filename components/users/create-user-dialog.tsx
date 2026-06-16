@@ -11,11 +11,14 @@ export function CreateUserDialog({
   roles,
   stores,
   onCreate,
+  roleOverrides = {},
 }: {
   open: boolean;
   onClose: () => void;
   roles: RoleOption[];
   stores: Array<{ id: string; name: string }>;
+  /** Renommage des rôles selon le métier (libellés uniquement). */
+  roleOverrides?: Record<string, string>;
   onCreate: (payload: {
     email: string;
     password: string;
@@ -89,7 +92,7 @@ export function CreateUserDialog({
             <select className={fsInputClass()} value={roleSlug} onChange={(e) => setRoleSlug(e.target.value)}>
               {roles.map((r) => (
                 <option key={r.id} value={r.slug}>
-                  {r.name}
+                  {roleOverrides[r.slug] ?? r.name}
                 </option>
               ))}
             </select>

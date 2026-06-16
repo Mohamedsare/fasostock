@@ -23,6 +23,7 @@ import {
 } from "@/lib/features/users/api";
 import type { CompanyUser } from "@/lib/features/users/types";
 import { usePermissions } from "@/lib/features/permissions/use-permissions";
+import { activityRoleLabels } from "@/lib/features/activity/activity-profiles";
 import { queryKeys } from "@/lib/query/query-keys";
 import { toast, toastMutationError } from "@/lib/toast";
 import { createClient } from "@/lib/supabase/client";
@@ -40,7 +41,11 @@ import {
   MdToggleOn,
 } from "react-icons/md";
 
-function roleLabelFr(slug: string, fallback: string) {
+function roleLabelFr(
+  slug: string,
+  fallback: string,
+  overrides: Record<string, string> = {},
+) {
   const m: Record<string, string> = {
     super_admin: "Super administrateur",
     owner: "Proprietaire",
@@ -51,7 +56,7 @@ function roleLabelFr(slug: string, fallback: string) {
     accountant: "Comptable",
     viewer: "Lecture seule",
   };
-  return m[slug] ?? fallback;
+  return overrides[slug] ?? m[slug] ?? fallback;
 }
 
 function nameInitial(name: string | null): string {
@@ -65,6 +70,7 @@ export function UsersScreen() {
   const companyId = ctx?.companyId ?? "";
   const roleSlug = ctx?.roleSlug ?? null;
   const stores = ctx?.stores ?? [];
+  const roleOverrides = activityRoleLabels(ctx?.businessTypeSlug);
 
   const canManage = hasPermission(P.usersManage) || roleSlug === "owner";
   const isOwner = roleSlug === "owner";
@@ -333,7 +339,7 @@ export function UsersScreen() {
                   ) : null}
                 </div>
                 <p className="mt-0.5 text-[11px] text-neutral-600">
-                  {roleLabelFr(u.roleSlug, u.roleName)}
+                  {roleLabelFr(u.roleSlug, u.roleName, roleOverrides)}
                 </p>
                 <span
                   className={cn(
@@ -364,7 +370,7 @@ export function UsersScreen() {
                 >
                   {(rolesQ.data ?? []).map((r) => (
                     <option key={r.id} value={r.id}>
-                      {r.name}
+                      {roleLabelFr(r.slug, r.name, roleOverrides)}
                     </option>
                   ))}
                 </select>
@@ -428,7 +434,7 @@ export function UsersScreen() {
               {rightsEligible.map((u) => (
                 <option key={u.userId} value={u.userId}>
                   {(u.fullName?.trim() || "Sans nom") +
-                    ` (${roleLabelFr(u.roleSlug, u.roleName)})`}
+                    ` (${roleLabelFr(u.roleSlug, u.roleName, roleOverrides)})`}
                 </option>
               ))}
             </select>
@@ -488,6 +494,7 @@ export function UsersScreen() {
         onClose={() => setOpenCreate(false)}
         roles={rolesQ.data ?? []}
         stores={stores}
+        roleOverrides={roleOverrides}
         onCreate={(payload) => createMut.mutateAsync(payload)}
       />
     </FsPage>

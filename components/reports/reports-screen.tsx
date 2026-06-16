@@ -21,6 +21,7 @@ import { fetchReportsPageData } from "@/lib/features/dashboard/api";
 import { getDefaultDateRange } from "@/lib/features/dashboard/date-range";
 import type { StockMovementByDay } from "@/lib/features/dashboard/types";
 import { activityUiTerms } from "@/lib/features/activity/activity-profiles";
+import { PharmacyReportsCard } from "@/components/reports/pharmacy-reports-card";
 import { usePermissions } from "@/lib/features/permissions/use-permissions";
 import { listCategories, listProducts } from "@/lib/features/products/api";
 import {
@@ -405,6 +406,14 @@ export function ReportsScreen() {
         title={terms.reportsTitle}
         subtitle={description}
         titleClassName="min-[900px]:text-2xl min-[900px]:font-bold min-[900px]:tracking-tight"
+      />
+
+      <PharmacyReportsCard
+        companyId={companyId}
+        businessTypeSlug={ctx?.businessTypeSlug}
+        storeId={effectiveStoreId}
+        fromDate={fromDate}
+        toDate={toDate}
       />
 
       <FsPullToRefresh onRefresh={refreshAll}>

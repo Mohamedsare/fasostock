@@ -44,6 +44,8 @@ export async function createPosSale(params: {
   payments: Array<{ method: "cash" | "mobile_money" | "card" | "other"; amount: number; reference?: string | null }>;
   saleMode: "quick_pos" | "invoice_pos";
   documentType: "thermal_receipt" | "a4_invoice";
+  /** Pharmacie : n° d'ordonnance (optionnel) — écrit après création (non bloquant). */
+  prescriptionNumber?: string | null;
 }): Promise<{ saleId: string; saleNumber: string }> {
   const supabase = createClient();
   const {
@@ -65,6 +67,7 @@ export async function createPosSale(params: {
       payments: params.payments,
       saleMode: params.saleMode,
       documentType: params.documentType,
+      prescriptionNumber: params.prescriptionNumber ?? null,
       p_client_request_id: clientRequestId,
     });
     return {
@@ -98,6 +101,19 @@ export async function createPosSale(params: {
 
   const id = String(saleId ?? "");
   if (!id) throw new Error("Vente non creee.");
+
+  // Pharmacie : n° d'ordonnance — écrit après coup (policy `sales_update`), best-effort.
+  const presc = params.prescriptionNumber?.trim();
+  if (presc) {
+    const { error: pErr } = await supabase
+      .from("sales")
+      .update({ prescription_number: presc })
+      .eq("id", id);
+    if (pErr) {
+      // Non bloquant : la vente est déjà validée, on n'échoue pas la dispensation.
+      console.error("Échec écriture n° ordonnance:", pErr);
+    }
+  }
 
   const { data: saleRow, error: sErr } = await supabase
     .from("sales")

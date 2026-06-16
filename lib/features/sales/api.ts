@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import type { SaleItem, SaleStatus } from "./types";
 
 const saleSelect =
-  "id, company_id, store_id, customer_id, sale_number, status, subtotal, discount, tax, total, created_by, created_at, updated_at, sale_mode, document_type, store:stores(id, name), customer:customers(id, name, phone)";
+  "id, company_id, store_id, customer_id, sale_number, status, subtotal, discount, tax, total, created_by, created_at, updated_at, sale_mode, document_type, prescription_number, store:stores(id, name), customer:customers(id, name, phone)";
 
 function fallbackCreatorLabel(userId: string): string {
   if (userId.length >= 8) return `Utilisateur ${userId.slice(0, 8)}…`;

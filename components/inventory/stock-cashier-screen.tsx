@@ -8,6 +8,7 @@ import { P } from "@/lib/constants/permissions";
 import { fetchInventoryScreenData } from "@/lib/features/inventory/api";
 import type { InventoryRow } from "@/lib/features/inventory/types";
 import { usePermissions } from "@/lib/features/permissions/use-permissions";
+import { activityUiTerms } from "@/lib/features/activity/activity-profiles";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { queryKeys } from "@/lib/query/query-keys";
 import { formatCurrency } from "@/lib/utils/currency";
@@ -162,6 +163,8 @@ export function StockCashierScreen() {
   const companyId = ctx?.companyId ?? "";
   const storeId = ctx?.storeId ?? null;
   const storeName = ctx?.stores?.find((s) => s.id === storeId)?.name ?? null;
+  const terms = activityUiTerms(ctx?.businessTypeSlug);
+  const stockTitle = terms.stockCashierTitle ?? terms.inventoryTitle ?? "Stock";
 
   const narrowPagination = useMediaQuery("(max-width: 499px)");
 
@@ -257,7 +260,7 @@ export function StockCashierScreen() {
     return (
       <FsPage className={pageShell}>
         <h1 className="text-xl font-bold leading-tight tracking-tight text-fs-text min-[900px]:text-2xl">
-          Stock
+          {stockTitle}
         </h1>
         <p className="mt-1 text-sm leading-relaxed text-neutral-600">
           Sélectionnez une boutique pour voir les ruptures et alertes.
@@ -282,7 +285,7 @@ export function StockCashierScreen() {
           {/* En-tête : headlineSmall + bodyMedium (Flutter). */}
           <header className="pb-4">
             <h1 className="text-xl font-bold leading-tight tracking-tight text-fs-text min-[900px]:text-2xl">
-              Stock
+              {stockTitle}
             </h1>
             <p className="mt-1 text-sm leading-relaxed text-neutral-600">
               {storeName != null ? `Ruptures et alertes — ${storeName}` : "Ruptures et alertes"}

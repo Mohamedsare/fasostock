@@ -6,10 +6,12 @@ import {
   createCategory,
 } from "@/lib/features/products/api";
 import type {
+  ActivityProductFieldValues,
   ProductFormSavePayload,
   ProductItem,
   ProductScope,
 } from "@/lib/features/products/types";
+import { activityConfig } from "@/lib/features/activity/activity-config";
 import { cn } from "@/lib/utils/cn";
 import { toNumber } from "@/lib/utils/currency";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -62,11 +64,26 @@ type Props = {
   brands: { id: string; name: string }[];
   initial: ProductItem | null;
   loading: boolean;
+  /** Type d'activité de l'entreprise → champs métier (ex. pharmacie). */
+  businessTypeSlug?: string | null;
   onClose: () => void;
   onSubmit: (payload: ProductFormSavePayload) => void | Promise<void>;
   onCategoriesChanged: () => void;
   onBrandsChanged: () => void;
 };
+
+function initialActivityFields(
+  initial: ProductItem | null,
+): ActivityProductFieldValues {
+  return {
+    dci: initial?.dci ?? "",
+    dosage_form: initial?.dosage_form ?? "",
+    therapeutic_class: initial?.therapeutic_class ?? "",
+    laboratory: initial?.laboratory ?? "",
+    prescription_required: initial?.prescription_required ?? false,
+    storage_conditions: initial?.storage_conditions ?? "",
+  };
+}
 
 export function ProductFormDialog({
   companyId,
@@ -75,6 +92,7 @@ export function ProductFormDialog({
   brands,
   initial,
   loading,
+  businessTypeSlug,
   onClose,
   onSubmit,
   onCategoriesChanged,
@@ -82,6 +100,17 @@ export function ProductFormDialog({
 }: Props) {
   const isEdit = initial != null;
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const config = useMemo(() => activityConfig(businessTypeSlug), [businessTypeSlug]);
+  const [activityFields, setActivityFields] = useState<ActivityProductFieldValues>(
+    () => initialActivityFields(initial),
+  );
+
+  const setActivityField = useCallback(
+    (key: keyof ActivityProductFieldValues, value: string | boolean) => {
+      setActivityFields((prev) => ({ ...prev, [key]: value }));
+    },
+    [],
+  );
 
   const [name, setName] = useState(initial?.name ?? "");
   const [sku, setSku] = useState(initial?.sku ?? "");
@@ -229,6 +258,8 @@ export function ProductFormDialog({
       brandId,
       productScope,
       isActive,
+      activityFields:
+        config.productFields.length > 0 ? activityFields : undefined,
     };
     return {
       input,
@@ -358,17 +389,94 @@ export function ProductFormDialog({
                   className={fsInputClass()}
                 />
               </label>
-              <label className="min-w-0 flex-1">
-                <span className="mb-1 block text-xs font-medium text-neutral-600">
-                  Code-barres
-                </span>
-                <input
-                  value={barcode}
-                  onChange={(e) => setBarcode(e.target.value)}
-                  className={fsInputClass()}
-                />
-              </label>
+              {config.showBarcodeField ? (
+                <label className="min-w-0 flex-1">
+                  <span className="mb-1 block text-xs font-medium text-neutral-600">
+                    Code-barres
+                  </span>
+                  <input
+                    value={barcode}
+                    onChange={(e) => setBarcode(e.target.value)}
+                    className={fsInputClass()}
+                  />
+                </label>
+              ) : null}
             </div>
+
+            {config.productFields.length > 0 ? (
+              <fieldset className="rounded-xl border border-fs-accent/30 bg-fs-accent/[0.04] p-3">
+                <legend className="px-1 text-xs font-semibold text-fs-accent">
+                  {config.productFieldsSectionTitle ?? "Informations métier"}
+                </legend>
+                <div className="space-y-3">
+                  {(() => {
+                    const fields = config.productFields;
+                    const rows: typeof fields[] = [];
+                    let i = 0;
+                    while (i < fields.length) {
+                      const f = fields[i]!;
+                      const next = fields[i + 1];
+                      if (f.type === "text" && f.half && next?.type === "text" && next.half) {
+                        rows.push([f, next]);
+                        i += 2;
+                      } else {
+                        rows.push([f]);
+                        i += 1;
+                      }
+                    }
+                    return rows.map((row, idx) => (
+                      <div
+                        key={idx}
+                        className={cn(
+                          "flex flex-col gap-3",
+                          row.length === 2 &&
+                            "min-[401px]:flex-row min-[401px]:gap-3",
+                        )}
+                      >
+                        {row.map((field) => {
+                          if (field.type === "bool") {
+                            return (
+                              <label
+                                key={field.key}
+                                className="flex flex-1 cursor-pointer items-center gap-2 py-1"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={activityFields[field.key] === true}
+                                  onChange={(e) =>
+                                    setActivityField(field.key, e.target.checked)
+                                  }
+                                  className="h-4 w-4 rounded border-black/[0.2] text-fs-accent focus:ring-fs-accent"
+                                />
+                                <span className="text-sm text-fs-text">
+                                  {field.label}
+                                </span>
+                              </label>
+                            );
+                          }
+                          return (
+                            <label key={field.key} className="block min-w-0 flex-1">
+                              <span className="mb-1 block text-xs font-medium text-neutral-600">
+                                {field.label}
+                              </span>
+                              <input
+                                value={String(activityFields[field.key] ?? "")}
+                                onChange={(e) =>
+                                  setActivityField(field.key, e.target.value)
+                                }
+                                className={fsInputClass()}
+                                placeholder={field.hint}
+                                autoComplete="off"
+                              />
+                            </label>
+                          );
+                        })}
+                      </div>
+                    ));
+                  })()}
+                </div>
+              </fieldset>
+            ) : null}
 
             <label className="block">
               <span className="mb-1 block text-xs font-medium text-neutral-600">

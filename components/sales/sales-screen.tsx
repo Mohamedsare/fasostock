@@ -670,7 +670,17 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
                 <tbody>
                   {paged.map((s) => (
                     <tr key={s.id} className="border-t border-black/[0.06]">
-                      <td className="px-3 py-2 font-semibold">{s.sale_number}</td>
+                      <td className="px-3 py-2 font-semibold">
+                        {s.sale_number}
+                        {s.prescription_number ? (
+                          <span
+                            className="ml-1.5 inline-flex items-center rounded-md bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold text-red-700"
+                            title={`Ordonnance ${s.prescription_number}`}
+                          >
+                            Ord. {s.prescription_number}
+                          </span>
+                        ) : null}
+                      </td>
                       <td className="px-3 py-2">
                         <DocumentTypeChip sale={s} />
                       </td>
@@ -994,6 +1004,11 @@ function SaleCard({
           <p className="text-left text-sm font-bold leading-tight text-fs-text">
             {sale.sale_number}
           </p>
+          {sale.prescription_number ? (
+            <span className="mt-0.5 inline-flex items-center rounded-md bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold text-red-700">
+              Ordonnance {sale.prescription_number}
+            </span>
+          ) : null}
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <DocumentTypeChip sale={sale} />

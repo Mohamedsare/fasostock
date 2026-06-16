@@ -22,13 +22,17 @@ const DEFAULT_PROFILE: ActivityProfile = {
 const ACTIVITY_PROFILES: ActivityProfile[] = [
   {
     slug: "pharmacie",
-    hiddenNavHrefs: [],
+    // Officine unique : pas de dépôt central, ni transferts inter-boutiques,
+    // ni code-barres (peu utilisé au comptoir). Réactivables pour une chaîne.
+    hiddenNavHrefs: [ROUTES.warehouse, ROUTES.transfers, ROUTES.barcodes],
     navLabelOverrides: {
       [ROUTES.products]: "Médicaments",
       [ROUTES.inventory]: "Stock pharmacie",
       [ROUTES.purchases]: "Approvisionnements",
       [ROUTES.customers]: "Patients",
       [ROUTES.sales]: "Dispensation",
+      [ROUTES.stores]: "Pharmacies",
+      [ROUTES.suppliers]: "Laboratoires",
     },
   },
   {
@@ -148,15 +152,57 @@ export type ActivityUiTerms = {
   customersTitle: string;
   customersDescription: string;
   inventoryTitle: string;
+  /**
+   * Champs optionnels (ajout progressif). Les écrans consomment avec un
+   * fallback (`?? "valeur générique"`) → métiers sans override = inchangés.
+   */
+  suppliersTitle?: string;
+  suppliersDescription?: string;
+  suppliersCreateLabel?: string;
+  suppliersEntitySingular?: string;
+  /** Caisse / point de vente. */
+  posTitle?: string;
+  posCartTitle?: string;
+  posCheckoutLabel?: string;
+  /** Stock caisse (vue caissier). */
+  stockCashierTitle?: string;
 };
+
+/**
+ * Renommage des rôles selon le métier (libellés uniquement — les permissions et
+ * les slugs sous-jacents restent identiques). Vide pour les métiers non listés.
+ */
+export function activityRoleLabels(
+  businessTypeSlug: string | null | undefined,
+): Record<string, string> {
+  if (businessTypeSlug === "pharmacie") {
+    return {
+      owner: "Pharmacien titulaire",
+      manager: "Pharmacien adjoint",
+      store_manager: "Responsable d'officine",
+      cashier: "Préparateur / Vendeur",
+      stock_manager: "Gestionnaire de stock",
+    };
+  }
+  if (businessTypeSlug === "restaurant-fast-food") {
+    return {
+      owner: "Gérant",
+      manager: "Manager",
+      store_manager: "Responsable de salle",
+      cashier: "Serveur / Caissier",
+      stock_manager: "Responsable cuisine",
+    };
+  }
+  return {};
+}
 
 export function activityUiTerms(
   businessTypeSlug: string | null | undefined,
 ): ActivityUiTerms {
   if (businessTypeSlug === "pharmacie") {
     return {
-      storeSingular: "Boutique",
-      storesPlural: "Boutiques",
+      storeSingular: "Pharmacie",
+      storesPlural: "Pharmacies",
       dashboardTitle: "Tableau de bord",
       reportsTitle: "Rapports pharmacie",
       productsTitle: "Médicaments",
@@ -174,6 +220,14 @@ export function activityUiTerms(
       customersTitle: "Patients",
       customersDescription: "Gérer vos patients (particuliers et entreprises de santé)",
       inventoryTitle: "Stock pharmacie",
+      suppliersTitle: "Laboratoires / Grossistes",
+      suppliersDescription: "Gérer vos laboratoires et grossistes répartiteurs",
+      suppliersCreateLabel: "Nouveau laboratoire",
+      suppliersEntitySingular: "laboratoire",
+      posTitle: "Dispensation",
+      posCartTitle: "Ordonnance / Panier",
+      posCheckoutLabel: "Valider la dispensation",
+      stockCashierTitle: "Stock pharmacie",
     };
   }
   if (businessTypeSlug === "restaurant-fast-food") {

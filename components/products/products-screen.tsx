@@ -28,6 +28,8 @@ import { usePermissions } from "@/lib/features/permissions/use-permissions";
 import type { AccessHelpers } from "@/lib/features/permissions/access";
 import type { ProductFormSavePayload, ProductItem } from "@/lib/features/products/types";
 import { ProductFormDialog } from "@/components/products/product-form-dialog";
+import { ProductBatchesDialog } from "@/components/products/product-batches-dialog";
+import { activityConfig } from "@/lib/features/activity/activity-config";
 import { ROUTES } from "@/lib/config/routes";
 import { queryKeys } from "@/lib/query/query-keys";
 import { activityUiTerms } from "@/lib/features/activity/activity-profiles";
@@ -45,6 +47,7 @@ import {
 } from "@/components/ui/fs-screen-primitives";
 import {
   MdArrowBack,
+  MdCalendarToday,
   MdCategory,
   MdDeleteOutline,
   MdEdit,
@@ -96,6 +99,7 @@ export function ProductsScreen() {
   const [showForm, setShowForm] = useState(false);
   const [showImportCsv, setShowImportCsv] = useState(false);
   const [editing, setEditing] = useState<ProductItem | null>(null);
+  const [batchesProduct, setBatchesProduct] = useState<ProductItem | null>(null);
   const [newCategory, setNewCategory] = useState("");
   const [newBrand, setNewBrand] = useState("");
 
@@ -110,6 +114,7 @@ export function ProductsScreen() {
   const companyId = ctx.data?.companyId ?? "";
   const storeId = ctx.data?.storeId ?? null;
   const uiTerms = activityUiTerms(ctx.data?.businessTypeSlug);
+  const activityCfg = activityConfig(ctx.data?.businessTypeSlug);
   const productEntityLabel = uiTerms.productsTitle === "Menu" ? "Élément du menu" : "Produit";
 
   const productsQ = useQuery({
@@ -523,6 +528,20 @@ export function ProductsScreen() {
                       >
                         {p.name}
                       </h3>
+                      {p.prescription_required || p.dosage_form ? (
+                        <div className="mt-0.5 flex flex-wrap items-center gap-1">
+                          {p.prescription_required ? (
+                            <span className="inline-flex items-center rounded-md bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold text-red-700">
+                              Sur ordonnance
+                            </span>
+                          ) : null}
+                          {p.dosage_form ? (
+                            <span className="inline-flex items-center rounded-md bg-fs-accent/10 px-1.5 py-0.5 text-[10px] font-medium text-fs-accent">
+                              {p.dosage_form}
+                            </span>
+                          ) : null}
+                        </div>
+                      ) : null}
                       <p className="mt-0.5 line-clamp-2 text-xs text-neutral-500">
                         {p.sku || "—"} · {formatCurrency(p.sale_price)} ·{" "}
                         {p.category?.name ?? "—"} · {p.brand?.name ?? "—"}
@@ -548,6 +567,17 @@ export function ProductsScreen() {
                           aria-label="Modifier"
                         >
                           <MdEdit className="h-4 w-4" aria-hidden />
+                        </button>
+                      ) : null}
+                      {activityCfg.batchTracking ? (
+                        <button
+                          type="button"
+                          onClick={() => setBatchesProduct(p)}
+                          className="rounded-lg border border-black/[0.08] bg-fs-card px-2 py-1 text-xs font-semibold text-fs-accent"
+                          aria-label="Lots & péremption"
+                          title="Lots & péremption"
+                        >
+                          <MdCalendarToday className="h-4 w-4" aria-hidden />
                         </button>
                       ) : null}
                       {canUpdateProduct ? (
@@ -833,6 +863,7 @@ export function ProductsScreen() {
           brands={brands}
           initial={editing}
           loading={mutateSaveProduct.isPending}
+          businessTypeSlug={ctx.data?.businessTypeSlug}
           onClose={() => {
             setShowForm(false);
             setEditing(null);
@@ -849,6 +880,16 @@ export function ProductsScreen() {
               payload,
             });
           }}
+        />
+      ) : null}
+
+      {batchesProduct ? (
+        <ProductBatchesDialog
+          companyId={companyId}
+          productId={batchesProduct.id}
+          productName={batchesProduct.name}
+          stores={ctx.data?.stores ?? []}
+          onClose={() => setBatchesProduct(null)}
         />
       ) : null}
 

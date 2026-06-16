@@ -3,6 +3,7 @@
 import { AdjustStockDialog } from "@/components/inventory/adjust-stock-dialog";
 import { ProductListThumbnail } from "@/components/products/product-list-thumbnail";
 import { StockRangeIndicator } from "@/components/products/stock-range-indicator";
+import { ProductBatchesDialog } from "@/components/products/product-batches-dialog";
 import { FsPullToRefresh } from "@/components/ui/fs-pull-to-refresh";
 import {
   FsCard,
@@ -25,6 +26,7 @@ import type { ProductCategory } from "@/lib/features/products/types";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { queryKeys } from "@/lib/query/query-keys";
 import { activityUiTerms } from "@/lib/features/activity/activity-profiles";
+import { activityConfig } from "@/lib/features/activity/activity-config";
 import { messageFromUnknownError, toast, toastMutationError } from "@/lib/toast";
 import { downloadProSpreadsheet } from "@/lib/utils/spreadsheet-export-pro";
 import { formatCurrency } from "@/lib/utils/currency";
@@ -32,6 +34,7 @@ import { cn } from "@/lib/utils/cn";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  MdCalendarToday,
   MdCancel,
   MdChevronLeft,
   MdChevronRight,
@@ -200,6 +203,10 @@ export function InventoryScreen() {
   const storeId = ctx?.storeId ?? null;
   const storeName = ctx?.stores?.find((s) => s.id === storeId)?.name ?? null;
   const uiTerms = activityUiTerms(ctx?.businessTypeSlug);
+  const activityCfg = activityConfig(ctx?.businessTypeSlug);
+  const [batchesTarget, setBatchesTarget] = useState<{ id: string; name: string } | null>(
+    null,
+  );
 
   const isWide = useMediaQuery("(min-width: 900px)");
   const narrowHeader = useMediaQuery("(max-width: 559px)");
@@ -744,19 +751,34 @@ export function InventoryScreen() {
                                 />
                               </td>
                               <td className="px-4 py-2">
-                                {canAdjust ? (
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setAdjustTarget(r);
-                                      setAdjustOpen(true);
-                                    }}
-                                    className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-fs-accent hover:bg-fs-accent/10"
-                                    aria-label="Ajuster"
-                                  >
-                                    <MdEdit className="h-5 w-5" aria-hidden />
-                                  </button>
-                                ) : null}
+                                <div className="flex items-center gap-1">
+                                  {canAdjust ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setAdjustTarget(r);
+                                        setAdjustOpen(true);
+                                      }}
+                                      className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-fs-accent hover:bg-fs-accent/10"
+                                      aria-label="Ajuster"
+                                    >
+                                      <MdEdit className="h-5 w-5" aria-hidden />
+                                    </button>
+                                  ) : null}
+                                  {activityCfg.batchTracking ? (
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        setBatchesTarget({ id: r.productId, name: r.name })
+                                      }
+                                      className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-fs-accent hover:bg-fs-accent/10"
+                                      aria-label="Lots & péremption"
+                                      title="Lots & péremption"
+                                    >
+                                      <MdCalendarToday className="h-5 w-5" aria-hidden />
+                                    </button>
+                                  ) : null}
+                                </div>
                               </td>
                             </tr>
                         ))}
@@ -841,6 +863,16 @@ export function InventoryScreen() {
           });
         }}
       />
+
+      {batchesTarget ? (
+        <ProductBatchesDialog
+          companyId={companyId}
+          productId={batchesTarget.id}
+          productName={batchesTarget.name}
+          stores={ctx?.stores ?? []}
+          onClose={() => setBatchesTarget(null)}
+        />
+      ) : null}
     </FsPage>
   );
 }

@@ -20,6 +20,8 @@ import {
 import { purchasesToSpreadsheetMatrix } from "@/lib/features/purchases/csv";
 import type { PurchaseDetail, PurchaseListItem, PurchaseStatus } from "@/lib/features/purchases/types";
 import { activityUiTerms } from "@/lib/features/activity/activity-profiles";
+import { activityConfig } from "@/lib/features/activity/activity-config";
+import { PurchaseReceiveBatchesDialog } from "@/components/purchases/purchase-receive-batches-dialog";
 import { usePermissions } from "@/lib/features/permissions/use-permissions";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { queryKeys } from "@/lib/query/query-keys";
@@ -181,6 +183,8 @@ export function PurchasesScreen() {
   const ctxStoreId = ctx?.storeId ?? null;
   const stores = ctx?.stores ?? [];
   const terms = activityUiTerms(ctx?.businessTypeSlug);
+  const batchTracking = activityConfig(ctx?.businessTypeSlug).batchTracking;
+  const [batchCaptureOpen, setBatchCaptureOpen] = useState(false);
 
   /** Aligné `PurchasesPage` Flutter (l.216–219) — pas de cas super-admin séparé. */
   const canAccess =
@@ -702,7 +706,22 @@ export function PurchasesScreen() {
           setDetailId(null);
           if (id) setDeleteTarget({ id, label });
         }}
+        showBatchCapture={batchTracking && canManage}
+        onCaptureBatches={() => setBatchCaptureOpen(true)}
       />
+
+      {batchCaptureOpen && detailQ.data ? (
+        <PurchaseReceiveBatchesDialog
+          companyId={companyId}
+          storeId={detailQ.data.storeId ?? ctxStoreId}
+          items={detailQ.data.items.map((it) => ({
+            productId: it.productId,
+            productName: it.productName,
+            quantity: it.quantity,
+          }))}
+          onClose={() => setBatchCaptureOpen(false)}
+        />
+      ) : null}
 
       <ConfirmCancelPurchaseDialog
         open={cancelTarget != null}

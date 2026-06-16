@@ -21,6 +21,8 @@ export type SaleItem = {
   /** Après migration Supabase `credit_due_at` (page Crédit). */
   credit_due_at?: string | null;
   credit_internal_note?: string | null;
+  /** Pharmacie : n° d'ordonnance associé à la dispensation. */
+  prescription_number?: string | null;
   store?: { id: string; name: string } | null;
   customer?: { id: string; name: string; phone: string | null; address?: string | null } | null;
 };

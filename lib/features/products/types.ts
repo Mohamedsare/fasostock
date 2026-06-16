@@ -47,6 +47,26 @@ export type ProductItem = {
   brand?: { id: string; name: string } | null;
   /** Tri par `position` asc. — première = miniature liste (comme Flutter). */
   product_images?: ProductImageRow[] | null;
+  /**
+   * Champs métier additionnels (ex. pharmacie). Colonnes nullables ajoutées par
+   * migration additive — `null`/absent pour les métiers qui ne les utilisent pas.
+   */
+  dci?: string | null;
+  dosage_form?: string | null;
+  therapeutic_class?: string | null;
+  laboratory?: string | null;
+  prescription_required?: boolean | null;
+  storage_conditions?: string | null;
+};
+
+/** Champs produit propres à un métier — saisis dans une section dédiée du formulaire. */
+export type ActivityProductFieldValues = {
+  dci: string;
+  dosage_form: string;
+  therapeutic_class: string;
+  laboratory: string;
+  prescription_required: boolean;
+  storage_conditions: string;
 };
 
 export type ProductFormInput = {
@@ -64,6 +84,11 @@ export type ProductFormInput = {
   brandId: string;
   productScope: ProductScope;
   isActive: boolean;
+  /**
+   * Champs métier additionnels (ex. pharmacie). `undefined` = métier sans champs
+   * spécifiques → la couche API n'envoie alors aucune colonne supplémentaire.
+   */
+  activityFields?: ActivityProductFieldValues;
 };
 
 /** Soumission formulaire produit — aligné `ProductFormDialog` Flutter. */

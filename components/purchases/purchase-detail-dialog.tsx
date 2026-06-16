@@ -33,6 +33,8 @@ export function PurchaseDetailDialog({
   onSaveReference,
   onCancelDraft,
   onDeleteDraft,
+  showBatchCapture,
+  onCaptureBatches,
 }: {
   open: boolean;
   onClose: () => void;
@@ -41,6 +43,9 @@ export function PurchaseDetailDialog({
   onSaveReference: (reference: string | null) => Promise<void> | void;
   onCancelDraft: () => Promise<void> | void;
   onDeleteDraft: () => Promise<void> | void;
+  /** Pharmacie : proposer la saisie des lots/péremption reçus. */
+  showBatchCapture?: boolean;
+  onCaptureBatches?: () => void;
 }) {
   const [refInput, setRefInput] = useState("");
   const [savingRef, setSavingRef] = useState(false);
@@ -184,6 +189,17 @@ export function PurchaseDetailDialog({
               ) : null}
 
               <div className="mt-6 flex flex-col gap-2 border-t border-black/6 pt-4">
+                {showBatchCapture &&
+                p.status !== "draft" &&
+                p.items.length > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => onCaptureBatches?.()}
+                    className="min-h-[44px] w-full rounded-[10px] bg-fs-accent py-2.5 text-sm font-semibold text-white"
+                  >
+                    Saisir les lots reçus & péremption
+                  </button>
+                ) : null}
                 <button
                   type="button"
                   onClick={onClose}
