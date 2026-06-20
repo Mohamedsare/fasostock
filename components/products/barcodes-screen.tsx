@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import JsBarcode from "jsbarcode";
+import QRCode from "react-qr-code";
 import { MdInventory2, MdLocalPrintshop, MdSearch } from "react-icons/md";
 import { FsCard, FsPage, FsScreenHeader, fsInputClass } from "@/components/ui/fs-screen-primitives";
 import { useAppContext } from "@/lib/features/common/app-context";
@@ -18,7 +19,7 @@ import { messageFromUnknownError, toast } from "@/lib/toast";
 import { cn } from "@/lib/utils/cn";
 
 type SelectedMap = Record<string, number>;
-const CODE_HEIGHT = 42;
+const CODE_HEIGHT = 26;
 type LabelPreset = "a4_3x8" | "40x25" | "50x30";
 type LabelConfig = { cols: number; widthMm: number; heightMm: number };
 const LABEL_CONFIGS: Record<LabelPreset, LabelConfig> = {
@@ -71,7 +72,7 @@ function barcodeSvg(value: string): string | null {
     JsBarcode(svg, value, {
       format: "CODE128",
       displayValue: false,
-      width: 1.25,
+      width: 1.5,
       height: CODE_HEIGHT,
       margin: 0,
     });
@@ -142,19 +143,13 @@ export function BarcodesScreen() {
     return out;
   }, [products, selected]);
   const previewLabels = useMemo(() => {
-    const items: Array<{ name: string; barcode: string; svg: string }> = [];
+    const items: Array<{ name: string; barcode: string }> = [];
     for (const row of selectedRows) {
-      const svg = barcodeSvg(row.barcode);
-      if (!svg) continue;
       const price = Number(row.product.sale_price ?? 0);
       const name = showPrice
         ? `${row.product.name} (${price.toLocaleString("fr-FR")} FCFA)`
         : row.product.name;
-      items.push({
-        name,
-        barcode: row.barcode,
-        svg,
-      });
+      items.push({ name, barcode: row.barcode });
       if (items.length >= 12) break;
     }
     return items;
@@ -241,6 +236,23 @@ export function BarcodesScreen() {
       toast.error("Le navigateur a bloqué la fenêtre d'impression.");
       return;
     }
+
+    // Auto-sauvegarde : les produits sans barcode enregistré reçoivent leur code généré.
+    // Fait en arrière-plan (non-bloquant) pour ne pas retarder l'impression.
+    const toSave = selectedRows.filter((r) => !(r.product.barcode ?? "").trim());
+    if (toSave.length > 0) {
+      void (async () => {
+        try {
+          for (const row of toSave) {
+            await setProductBarcode(row.product.id, row.barcode);
+          }
+          await qc.invalidateQueries({ queryKey: queryKeys.products(companyId) });
+        } catch {
+          /* non-bloquant */
+        }
+      })();
+    }
+
     setPrinting(true);
     try {
       const labels: Array<{ name: string; barcode: string; svg: string }> = [];
@@ -470,16 +482,15 @@ export function BarcodesScreen() {
               {previewLabels.map((item, idx) => (
                 <div
                   key={`${item.barcode}-${idx}`}
-                  className="min-h-[84px] overflow-hidden rounded-lg border border-dashed border-neutral-300 bg-white p-2"
+                  className="overflow-hidden rounded-lg border border-dashed border-neutral-300 bg-white p-2"
                 >
-                  <div className="truncate text-[10px] font-bold text-neutral-800">
+                  <div className="wrap-break-word text-[8px] font-bold leading-tight text-neutral-800">
                     {item.name}
                   </div>
-                  <div
-                    className="mt-1 [&>svg]:h-7 [&>svg]:w-full"
-                    dangerouslySetInnerHTML={{ __html: item.svg }}
-                  />
-                  <div className="truncate text-[10px] text-neutral-600">{item.barcode}</div>
+                  <div className="mt-1 flex justify-center">
+                    <QRCode value={item.barcode} size={52} level="M" />
+                  </div>
+                  <div className="truncate text-[8px] text-neutral-600 text-center mt-1">{item.barcode}</div>
                 </div>
               ))}
             </div>
