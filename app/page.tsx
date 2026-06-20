@@ -11,6 +11,7 @@ import { FaqSection } from "@/components/marketing/faq-section";
 import { NewsletterSubscribeForm } from "@/components/marketing/newsletter-subscribe-form";
 import { SiteHeader } from "@/components/marketing/site-header";
 import { ScrollDirectionFab } from "@/components/marketing/scroll-direction-fab";
+import { LandingChatbot } from "@/components/marketing/landing-chatbot";
 import { ScrollProgress } from "@/components/marketing/scroll-progress";
 import { LottiePlayer } from "@/components/marketing/lottie-player";
 import { InstallAppButton } from "@/components/pwa/install-app-button";
@@ -1265,6 +1266,7 @@ export default async function Home({
         </div>
       </footer>
       <ScrollDirectionFab />
+      <LandingChatbot />
     </main>
   );
 }
