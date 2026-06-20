@@ -305,7 +305,7 @@ export function PosScreen({
       return (
         p.name.toLowerCase().includes(q) ||
         (p.sku ?? "").toLowerCase().includes(q) ||
-        (p.barcode ?? "").includes(q)
+        (p.barcode ?? "").toLowerCase().includes(q)
       );
     });
   }, [products, stockByProductId, categoryId, search]);
