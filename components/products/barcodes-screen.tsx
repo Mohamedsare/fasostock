@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import JsBarcode from "jsbarcode";
 import QRCode from "react-qr-code";
-import { MdInventory2, MdLocalPrintshop, MdSearch } from "react-icons/md";
+import { MdDeleteSweep, MdInventory2, MdLocalPrintshop, MdSearch } from "react-icons/md";
 import { FsCard, FsPage, FsScreenHeader, fsInputClass } from "@/components/ui/fs-screen-primitives";
 import { useAppContext } from "@/lib/features/common/app-context";
 import { usePermissions } from "@/lib/features/permissions/use-permissions";
@@ -107,6 +107,7 @@ export function BarcodesScreen() {
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<SelectedMap>({});
   const [printing, setPrinting] = useState(false);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [preset, setPreset] = useState<LabelPreset>("a4_3x8");
   const [pageMarginMm, setPageMarginMm] = useState(10);
   const [gapMm, setGapMm] = useState(3);
@@ -166,6 +167,28 @@ export function BarcodesScreen() {
       selectedRows.filter((r) => !(r.product.barcode ?? "").trim()),
     [selectedRows],
   );
+  const productsWithBarcodes = useMemo(
+    () => products.filter((p) => (p.barcode ?? "").trim().length > 0),
+    [products],
+  );
+
+  const clearAllBarcodesMut = useMutation({
+    mutationFn: async () => {
+      for (const p of productsWithBarcodes) {
+        await setProductBarcode(p.id, "");
+      }
+    },
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: queryKeys.products(companyId) });
+      setShowClearConfirm(false);
+      toast.success(`${productsWithBarcodes.length} code(s)-barres supprimé(s) avec succès.`);
+    },
+    onError: (e) => {
+      toast.error(messageFromUnknownError(e));
+      setShowClearConfirm(false);
+    },
+  });
+
   const saveMissingMut = useMutation({
     mutationFn: async () => {
       const used = new Set(
@@ -421,6 +444,16 @@ export function BarcodesScreen() {
             ? "Enregistrement..."
             : `Enregistrer codes manquants (${selectedMissing.length})`}
         </button>
+        <button
+          type="button"
+          title="Vider tous les codes-barres"
+          aria-label="Vider tous les codes-barres"
+          onClick={() => setShowClearConfirm(true)}
+          disabled={productsWithBarcodes.length === 0}
+          className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 disabled:opacity-40 dark:border-red-800/50 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/30"
+        >
+          <MdDeleteSweep className="h-5 w-5" aria-hidden />
+        </button>
       </div>
       <FsCard padding="p-4" className="mt-3">
         <div className="grid gap-3 min-[900px]:grid-cols-4">
@@ -581,6 +614,43 @@ export function BarcodesScreen() {
           ) : null}
         </div>
       </FsCard>
+      {showClearConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4">
+          <div className="w-full max-w-sm rounded-2xl bg-fs-card p-6 shadow-2xl">
+            <div className="flex items-start gap-4">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30">
+                <MdDeleteSweep className="h-6 w-6 text-red-600 dark:text-red-400" aria-hidden />
+              </div>
+              <div>
+                <h3 className="font-black text-fs-text">Vider tous les codes-barres ?</h3>
+                <p className="mt-1 text-sm text-neutral-600">
+                  Cette action supprimera définitivement les codes-barres de{" "}
+                  <span className="font-bold text-red-600">{productsWithBarcodes.length} produit(s)</span>.
+                  Elle est irréversible.
+                </p>
+              </div>
+            </div>
+            <div className="mt-5 flex gap-3">
+              <button
+                type="button"
+                onClick={() => setShowClearConfirm(false)}
+                disabled={clearAllBarcodesMut.isPending}
+                className="flex-1 rounded-xl border border-black/10 bg-fs-surface px-4 py-2.5 text-sm font-semibold text-neutral-700 hover:bg-fs-surface-container disabled:opacity-50"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={() => clearAllBarcodesMut.mutate()}
+                disabled={clearAllBarcodesMut.isPending}
+                className="flex-1 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-black text-white hover:bg-red-700 disabled:opacity-50"
+              >
+                {clearAllBarcodesMut.isPending ? "Suppression..." : "Oui, tout vider"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </FsPage>
   );
 }
