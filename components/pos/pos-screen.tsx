@@ -780,15 +780,15 @@ export function PosScreen({
     });
   }
 
-  /** Aligné `PosQuickPage._addByBarcode` : correspondance exacte sur `barcode` trim, puis `isProductShownOnStoreTill`. */
+  /** Aligné `PosQuickPage._addByBarcode` : barcode exact en priorité, puis SKU exact en fallback. */
   function addByBarcode(code: string) {
     const trimmed = code.replace(/\r|\n/g, "").trim();
     if (!trimmed) return;
-    const p = products.find(
-      (x) => x.is_active && x.barcode && x.barcode.trim() === trimmed,
-    );
+    const p =
+      products.find((x) => x.is_active && x.barcode && x.barcode.trim() === trimmed) ??
+      products.find((x) => x.is_active && x.sku && x.sku.trim() === trimmed);
     if (!p) {
-      toast.error("Aucun produit avec ce code-barres.");
+      toast.error("Aucun produit avec ce code-barres ou référence.");
       return;
     }
     const stock = stockByProductId.get(p.id) ?? 0;
