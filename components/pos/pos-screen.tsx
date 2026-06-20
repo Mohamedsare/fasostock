@@ -138,6 +138,7 @@ export function PosScreen({
   );
   const saleEditBootstrapKey = useRef<string | null>(null);
   const activeEditSaleIdRef = useRef<string | null>(null);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
   const router = useRouter();
   const [clock, setClock] = useState(() =>
     new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }),
@@ -784,16 +785,19 @@ export function PosScreen({
   function addByBarcode(code: string) {
     const trimmed = code.replace(/\r|\n/g, "").trim();
     if (!trimmed) return;
+    const lower = trimmed.toLowerCase();
     const p =
-      products.find((x) => x.is_active && x.barcode && x.barcode.trim() === trimmed) ??
-      products.find((x) => x.is_active && x.sku && x.sku.trim() === trimmed);
+      products.find((x) => x.is_active && x.barcode && x.barcode.trim().toLowerCase() === lower) ??
+      products.find((x) => x.is_active && x.sku && x.sku.trim().toLowerCase() === lower);
     if (!p) {
       toast.error("Aucun produit avec ce code-barres ou référence.");
+      searchInputRef.current?.focus();
       return;
     }
     const stock = stockByProductId.get(p.id) ?? 0;
     if (stock <= 0) {
       toast.error("Produit indisponible (stock épuisé).");
+      searchInputRef.current?.focus();
       return;
     }
     addToCart(
@@ -803,6 +807,8 @@ export function PosScreen({
       p.product_images?.[0]?.url ?? null,
     );
     setSearch("");
+    // Re-focus pour permettre le scan immédiat du produit suivant.
+    searchInputRef.current?.focus();
   }
 
   function updateQty(productId: string, delta: number) {
@@ -1299,6 +1305,7 @@ export function PosScreen({
                     aria-hidden
                   />
                   <input
+                    ref={searchInputRef}
                     className={fsInputClass(
                       // fsInputClass inclut `sm:px-3` : sans `sm:pl-*` explicite, le padding gauche
                       // repasse à ~12px au breakpoint sm et le placeholder chevauche l’icône scanner.
