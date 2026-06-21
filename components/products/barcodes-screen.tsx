@@ -20,11 +20,12 @@ import { cn } from "@/lib/utils/cn";
 
 type SelectedMap = Record<string, number>;
 const CODE_HEIGHT = 26;
-type LabelPreset = "a4_3x8" | "40x25" | "50x30";
+type LabelPreset = "a4_3x8" | "40x25" | "40x30" | "50x30";
 type LabelConfig = { cols: number; widthMm: number; heightMm: number };
 const LABEL_CONFIGS: Record<LabelPreset, LabelConfig> = {
   a4_3x8: { cols: 3, widthMm: 63, heightMm: 33 },
   "40x25": { cols: 4, widthMm: 40, heightMm: 25 },
+  "40x30": { cols: 4, widthMm: 40, heightMm: 30 },
   "50x30": { cols: 3, widthMm: 50, heightMm: 30 },
 };
 
@@ -465,8 +466,9 @@ export function BarcodesScreen() {
               className={fsInputClass()}
             >
               <option value="a4_3x8">A4 3x8 (63x33 mm)</option>
-              <option value="40x25">40x25 mm (4 colonnes)</option>
-              <option value="50x30">50x30 mm (3 colonnes)</option>
+              <option value="40x25">40×25 mm (4 colonnes)</option>
+              <option value="40x30">40×30 mm (4 colonnes)</option>
+              <option value="50x30">50×30 mm (3 colonnes)</option>
             </select>
           </label>
           <label className="flex flex-col gap-1 text-sm">
