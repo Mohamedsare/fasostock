@@ -27,7 +27,7 @@ const LABEL_CONFIGS: Record<LabelPreset, LabelConfig> = {
   "40x25": { cols: 4, widthMm: 40, heightMm: 25 },
   "40x30": { cols: 4, widthMm: 40, heightMm: 30 },
   "50x30": { cols: 3, widthMm: 50, heightMm: 30 },
-  thermal_30x40: { cols: 1, widthMm: 30, heightMm: 40, thermal: true },
+  thermal_30x40: { cols: 1, widthMm: 40, heightMm: 30, thermal: true },
 };
 
 function normalizedBarcode(product: ProductItem): string {
@@ -547,7 +547,7 @@ ${labelsHtml}
               onChange={(e) => setPreset(e.target.value as LabelPreset)}
               className={fsInputClass()}
             >
-              <option value="thermal_30x40">🖨️ Thermique 30×40 mm (1 étiquette/page)</option>
+              <option value="thermal_30x40">🖨️ Thermique 40×30 mm (1 étiquette/page)</option>
               <option value="a4_3x8">A4 3x8 (63x33 mm)</option>
               <option value="40x25">40×25 mm (4 colonnes)</option>
               <option value="40x30">40×30 mm paysage (4 colonnes)</option>
