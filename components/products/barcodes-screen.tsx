@@ -305,80 +305,26 @@ export function BarcodesScreen() {
       let html: string;
 
       if (isThermal) {
-        // Imprimante d'étiquettes thermique : une page par étiquette, taille exacte 30×40 mm
+        // Imprimante thermique : 1 page exacte par étiquette (40×30 mm).
+        // IMPORTANT : aucun espace/retour à la ligne entre les divs — moindre text node
+        // décale le contenu et génère des pages blanches supplémentaires.
         const labelsHtml = labels
-          .map(
-            (item, idx) => `
-            <div class="label${idx === labels.length - 1 ? " last" : ""}">
-              <div class="name">${esc(item.name)}</div>
-              <div class="barcode">${item.svg}</div>
-              <div class="meta">${esc(item.barcode)}</div>
-            </div>`,
+          .map((item) =>
+            `<div class="label"><div class="name">${esc(item.name)}</div><div class="barcode">${item.svg}</div><div class="meta">${esc(item.barcode)}</div></div>`,
           )
-          .join("\n");
+          .join("");
 
-        html = `<!doctype html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  <title>Code Barre - Impression</title>
-  <style>
-    @page { size: ${cfg.widthMm}mm ${cfg.heightMm}mm; margin: 0; }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: Arial, sans-serif; color: #111; background: #fff; }
-    .label {
-      width: ${cfg.widthMm}mm;
-      height: ${cfg.heightMm}mm;
-      padding: 1.5mm 1mm;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      overflow: hidden;
-      page-break-after: always;
-    }
-    .label.last { page-break-after: avoid; }
-    .name {
-      font-size: 7pt;
-      font-weight: 700;
-      line-height: 1.25;
-      text-align: center;
-      width: 100%;
-      overflow: hidden;
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-      margin-bottom: 1.5mm;
-    }
-    .barcode {
-      width: 100%;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-    }
-    .barcode svg { width: 100%; height: auto; max-height: 16mm; display: block; }
-    .meta {
-      font-size: 6pt;
-      text-align: center;
-      width: 100%;
-      margin-top: 1.5mm;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      letter-spacing: 0.03em;
-    }
-  </style>
-</head>
-<body>
-${labelsHtml}
-  <script>
-    window.onload = function() {
-      window.print();
-      window.onafterprint = function() { window.close(); };
-    };
-  </script>
-</body>
-</html>`;
+        html = `<!doctype html><html><head><meta charset="utf-8"/><title>Etiquettes</title><style>
+@page{size:${cfg.widthMm}mm ${cfg.heightMm}mm;margin:0}
+html,body{margin:0;padding:0;width:${cfg.widthMm}mm;font-family:Arial,Helvetica,sans-serif;color:#000;background:#fff;font-size:0;line-height:0}
+*{box-sizing:border-box}
+.label{display:flex;flex-direction:column;align-items:center;justify-content:center;width:${cfg.widthMm}mm;height:${cfg.heightMm}mm;padding:1.5mm 2mm;overflow:hidden;page-break-after:always;break-after:page}
+.label:last-child{page-break-after:auto;break-after:auto}
+.name{font-size:7.5pt;font-weight:700;line-height:1.25;text-align:center;width:100%;word-break:break-word;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-bottom:1mm}
+.barcode{width:100%;display:flex;justify-content:center;align-items:center}
+.barcode svg{width:100%;height:auto;max-height:14mm;display:block}
+.meta{font-size:6pt;text-align:center;width:100%;margin-top:1mm;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+</style></head><body>${labelsHtml}<script>window.onload=function(){window.print();window.onafterprint=function(){window.close()}};<\/script></body></html>`;
       } else {
         // Grille sur feuille A4
         const rowsHtml = labels
