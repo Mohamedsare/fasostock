@@ -89,11 +89,6 @@ export function RegisterForm() {
       });
 
       if (registered.needsEmailConfirmation) {
-        try {
-          await supabase.auth.signOut();
-        } catch {
-          /* pas de session */
-        }
         toast.success(
           "Compte créé ! Ouvrez l’email de confirmation (vérifiez les spams), cliquez sur le lien, puis connectez-vous.",
           7000,
