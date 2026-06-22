@@ -318,8 +318,7 @@ export function BarcodesScreen() {
 @page{size:${cfg.widthMm}mm ${cfg.heightMm}mm;margin:0}
 html,body{margin:0;padding:0;width:${cfg.widthMm}mm;font-family:Arial,Helvetica,sans-serif;color:#000;background:#fff;font-size:0;line-height:0}
 *{box-sizing:border-box}
-.label{display:flex;flex-direction:column;align-items:center;justify-content:center;width:${cfg.widthMm}mm;height:${cfg.heightMm}mm;padding:1.5mm 2mm;overflow:hidden;page-break-after:always;break-after:page}
-.label:last-child{page-break-after:auto;break-after:auto}
+.label{display:flex;flex-direction:column;align-items:center;justify-content:center;width:${cfg.widthMm}mm;height:${cfg.heightMm}mm;padding:1.5mm 2mm;overflow:hidden}
 .name{font-size:7.5pt;font-weight:700;line-height:1.25;text-align:center;width:100%;word-break:break-word;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-bottom:1mm}
 .barcode{width:100%;display:flex;justify-content:center;align-items:center}
 .barcode svg{width:100%;height:auto;max-height:14mm;display:block}
