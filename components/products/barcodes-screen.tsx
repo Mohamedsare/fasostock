@@ -20,13 +20,14 @@ import { cn } from "@/lib/utils/cn";
 
 type SelectedMap = Record<string, number>;
 const CODE_HEIGHT = 26;
-type LabelPreset = "a4_3x8" | "40x25" | "40x30" | "50x30";
-type LabelConfig = { cols: number; widthMm: number; heightMm: number };
+type LabelPreset = "a4_3x8" | "40x25" | "40x30" | "50x30" | "thermal_30x40";
+type LabelConfig = { cols: number; widthMm: number; heightMm: number; thermal?: boolean };
 const LABEL_CONFIGS: Record<LabelPreset, LabelConfig> = {
   a4_3x8: { cols: 3, widthMm: 63, heightMm: 33 },
   "40x25": { cols: 4, widthMm: 40, heightMm: 25 },
   "40x30": { cols: 4, widthMm: 40, heightMm: 30 },
   "50x30": { cols: 3, widthMm: 50, heightMm: 30 },
+  thermal_30x40: { cols: 1, widthMm: 30, heightMm: 40, thermal: true },
 };
 
 function normalizedBarcode(product: ProductItem): string {
@@ -67,14 +68,14 @@ function buildPersistedBarcode(product: ProductItem, usedUpper: Set<string>): st
   return fallback;
 }
 
-function barcodeSvg(value: string): string | null {
+function barcodeSvg(value: string, height = CODE_HEIGHT): string | null {
   try {
     const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     JsBarcode(svg, value, {
       format: "CODE128",
       displayValue: false,
       width: 1.5,
-      height: CODE_HEIGHT,
+      height,
       margin: 0,
     });
     return svg.outerHTML;
@@ -109,7 +110,7 @@ export function BarcodesScreen() {
   const [selected, setSelected] = useState<SelectedMap>({});
   const [printing, setPrinting] = useState(false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
-  const [preset, setPreset] = useState<LabelPreset>("a4_3x8");
+  const [preset, setPreset] = useState<LabelPreset>("thermal_30x40");
   const [pageMarginMm, setPageMarginMm] = useState(10);
   const [gapMm, setGapMm] = useState(3);
   const [showPrice, setShowPrice] = useState(false);
@@ -279,9 +280,11 @@ export function BarcodesScreen() {
 
     setPrinting(true);
     try {
+      const isThermal = cfg.thermal === true;
+      const svgHeight = isThermal ? 18 : CODE_HEIGHT;
       const labels: Array<{ name: string; barcode: string; svg: string }> = [];
       for (const row of selectedRows) {
-        const svg = barcodeSvg(row.barcode);
+        const svg = barcodeSvg(row.barcode, svgHeight);
         if (!svg) continue;
         const name = row.product.name;
         const price = Number(row.product.sale_price ?? 0);
@@ -299,19 +302,97 @@ export function BarcodesScreen() {
         return;
       }
 
-      const rowsHtml = labels
-        .map(
-          (item) => `
+      let html: string;
+
+      if (isThermal) {
+        // Imprimante d'étiquettes thermique : une page par étiquette, taille exacte 30×40 mm
+        const labelsHtml = labels
+          .map(
+            (item, idx) => `
+            <div class="label${idx === labels.length - 1 ? " last" : ""}">
+              <div class="name">${esc(item.name)}</div>
+              <div class="barcode">${item.svg}</div>
+              <div class="meta">${esc(item.barcode)}</div>
+            </div>`,
+          )
+          .join("\n");
+
+        html = `<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Code Barre - Impression</title>
+  <style>
+    @page { size: ${cfg.widthMm}mm ${cfg.heightMm}mm; margin: 0; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; color: #111; background: #fff; }
+    .label {
+      width: ${cfg.widthMm}mm;
+      height: ${cfg.heightMm}mm;
+      padding: 1.5mm 1mm;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      page-break-after: always;
+    }
+    .label.last { page-break-after: avoid; }
+    .name {
+      font-size: 7pt;
+      font-weight: 700;
+      line-height: 1.25;
+      text-align: center;
+      width: 100%;
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      margin-bottom: 1.5mm;
+    }
+    .barcode {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .barcode svg { width: 100%; height: auto; max-height: 16mm; display: block; }
+    .meta {
+      font-size: 6pt;
+      text-align: center;
+      width: 100%;
+      margin-top: 1.5mm;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      letter-spacing: 0.03em;
+    }
+  </style>
+</head>
+<body>
+${labelsHtml}
+  <script>
+    window.onload = function() {
+      window.print();
+      window.onafterprint = function() { window.close(); };
+    };
+  </script>
+</body>
+</html>`;
+      } else {
+        // Grille sur feuille A4
+        const rowsHtml = labels
+          .map(
+            (item) => `
             <div class="label">
               <div class="name">${esc(item.name)}</div>
               <div class="barcode">${item.svg}</div>
               <div class="meta">${esc(item.barcode)}</div>
-            </div>
-          `,
-        )
-        .join("");
+            </div>`,
+          )
+          .join("");
 
-      const html = `<!doctype html>
+        html = `<!doctype html>
 <html>
 <head>
   <meta charset="utf-8" />
@@ -369,6 +450,7 @@ export function BarcodesScreen() {
   </script>
 </body>
 </html>`;
+      }
 
       w.document.open();
       w.document.write(html);
@@ -465,34 +547,39 @@ export function BarcodesScreen() {
               onChange={(e) => setPreset(e.target.value as LabelPreset)}
               className={fsInputClass()}
             >
+              <option value="thermal_30x40">🖨️ Thermique 30×40 mm (1 étiquette/page)</option>
               <option value="a4_3x8">A4 3x8 (63x33 mm)</option>
               <option value="40x25">40×25 mm (4 colonnes)</option>
-              <option value="40x30">40×30 mm (4 colonnes)</option>
+              <option value="40x30">40×30 mm paysage (4 colonnes)</option>
               <option value="50x30">50×30 mm (3 colonnes)</option>
             </select>
           </label>
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="font-medium text-neutral-700">Marge page (mm)</span>
-            <input
-              type="number"
-              min={0}
-              max={20}
-              value={pageMarginMm}
-              onChange={(e) => setPageMarginMm(Number(e.target.value || "0"))}
-              className={fsInputClass()}
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="font-medium text-neutral-700">Espacement (mm)</span>
-            <input
-              type="number"
-              min={0}
-              max={10}
-              value={gapMm}
-              onChange={(e) => setGapMm(Number(e.target.value || "0"))}
-              className={fsInputClass()}
-            />
-          </label>
+          {!cfg.thermal && (
+            <>
+              <label className="flex flex-col gap-1 text-sm">
+                <span className="font-medium text-neutral-700">Marge page (mm)</span>
+                <input
+                  type="number"
+                  min={0}
+                  max={20}
+                  value={pageMarginMm}
+                  onChange={(e) => setPageMarginMm(Number(e.target.value || "0"))}
+                  className={fsInputClass()}
+                />
+              </label>
+              <label className="flex flex-col gap-1 text-sm">
+                <span className="font-medium text-neutral-700">Espacement (mm)</span>
+                <input
+                  type="number"
+                  min={0}
+                  max={10}
+                  value={gapMm}
+                  onChange={(e) => setGapMm(Number(e.target.value || "0"))}
+                  className={fsInputClass()}
+                />
+              </label>
+            </>
+          )}
           <label className="flex items-center gap-2 pt-6 text-sm font-medium text-neutral-700">
             <input
               type="checkbox"
@@ -503,7 +590,9 @@ export function BarcodesScreen() {
           </label>
         </div>
         <div className="mt-3 text-xs text-neutral-500">
-          Aperçu: {cfg.cols} colonnes, étiquette {cfg.widthMm}x{cfg.heightMm} mm.
+          {cfg.thermal
+            ? `Thermique : 1 étiquette par page — ${cfg.widthMm}mm large × ${cfg.heightMm}mm haut`
+            : `Aperçu : ${cfg.cols} colonnes, étiquette ${cfg.widthMm}×${cfg.heightMm} mm`}
         </div>
         <div className="mt-3 rounded-xl border border-black/10 bg-fs-surface p-3">
           <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-neutral-500">
