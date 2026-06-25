@@ -224,7 +224,7 @@ export function InvoiceQuoteGenerator() {
   return (
     <div className="space-y-5">
       {/* Barre d'actions */}
-      <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
+      <div className="flex flex-wrap items-center gap-2 print:hidden">
         <div className="inline-flex rounded-xl border border-black/[0.08] bg-fs-surface-container p-1">
           {(["facture", "devis"] as const).map((t) => (
             <button
@@ -244,22 +244,26 @@ export function InvoiceQuoteGenerator() {
           ))}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="ml-auto flex items-center gap-2">
           <button
             type="button"
             onClick={reset}
+            title="Réinitialiser"
+            aria-label="Réinitialiser"
             className="inline-flex items-center gap-1.5 rounded-xl border border-black/[0.08] bg-fs-card px-3 py-2 text-sm font-semibold text-fs-text transition-colors hover:bg-black/5"
           >
             <MdRefresh className="h-4 w-4" aria-hidden />
-            Réinitialiser
+            <span className="hidden sm:inline">Réinitialiser</span>
           </button>
           <button
             type="button"
             onClick={printDoc}
+            title="Imprimer"
+            aria-label="Imprimer"
             className="inline-flex items-center gap-1.5 rounded-xl border border-black/[0.08] bg-fs-card px-3 py-2 text-sm font-semibold text-fs-text transition-colors hover:bg-black/5"
           >
             <MdPrint className="h-4 w-4" aria-hidden />
-            Imprimer
+            <span className="hidden sm:inline">Imprimer</span>
           </button>
           <button
             type="button"
@@ -271,9 +275,10 @@ export function InvoiceQuoteGenerator() {
             {downloading ? (
               <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" aria-hidden />
             ) : (
-              <MdDownload className="h-4.5 w-4.5" aria-hidden />
+              <MdDownload className="h-4 w-4" aria-hidden />
             )}
-            {downloading ? "Génération…" : "Télécharger le PDF"}
+            <span className="hidden sm:inline">{downloading ? "Génération…" : "Télécharger le PDF"}</span>
+            <span className="sm:hidden">{downloading ? "…" : "PDF"}</span>
           </button>
         </div>
       </div>
