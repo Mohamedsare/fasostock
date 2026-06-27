@@ -811,6 +811,54 @@ export function PosScreen({
     searchInputRef.current?.focus();
   }
 
+  // Capture clavier globale pour douchette code-barres / QR (caisse rapide).
+  // Si le focus n'est PAS dans un champ de saisie (cas "focus perdu" après un clic
+  // sur une carte, une catégorie, un bouton…), on reconstitue la rafale de frappes
+  // de la douchette (caractères très rapprochés terminés par Entrée) et on l'envoie
+  // à addByBarcode. Le scan marche donc partout, sans casser la saisie manuelle :
+  // tant que le focus est dans un input/textarea, ce listener reste totalement inerte.
+  const addByBarcodeRef = useRef(addByBarcode);
+  addByBarcodeRef.current = addByBarcode;
+  const scannerCameraOpenRef = useRef(barcodeScannerOpen);
+  scannerCameraOpenRef.current = barcodeScannerOpen;
+  useEffect(() => {
+    if (mode !== "quick") return;
+    let buffer = "";
+    let lastAt = 0;
+    const BURST_GAP_MS = 60; // au-delà de ce délai entre 2 touches → frappe humaine
+    const MIN_LEN = 3; // longueur minimale d'un code pour être considéré comme un scan
+    const isEditable = (el: EventTarget | null): boolean => {
+      const node = el as HTMLElement | null;
+      if (!node || typeof node.tagName !== "string") return false;
+      if (node.isContentEditable) return true;
+      const tag = node.tagName;
+      return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      // Champ de recherche (et tout autre champ) : laisse l'élément gérer ses touches.
+      if (isEditable(e.target) || isEditable(document.activeElement)) return;
+      if (scannerCameraOpenRef.current) return; // scan caméra déjà ouvert
+      if (e.ctrlKey || e.metaKey || e.altKey) return; // raccourcis clavier
+      const now = Date.now();
+      if (now - lastAt > BURST_GAP_MS) buffer = "";
+      lastAt = now;
+      if (e.key === "Enter") {
+        const code = buffer;
+        buffer = "";
+        if (code.length >= MIN_LEN) {
+          e.preventDefault();
+          e.stopPropagation();
+          addByBarcodeRef.current(code);
+          searchInputRef.current?.focus();
+        }
+        return;
+      }
+      if (e.key.length === 1) buffer += e.key;
+    };
+    document.addEventListener("keydown", onKeyDown, true);
+    return () => document.removeEventListener("keydown", onKeyDown, true);
+  }, [mode]);
+
   function updateQty(productId: string, delta: number) {
     const stock = stockByProductId.get(productId) ?? 0;
     setCart((prev) => {
@@ -1600,14 +1648,13 @@ export function PosScreen({
                       <button
                         key={p.id}
                         type="button"
-                        onClick={() =>
-                          addToCart(
-                            p.id,
-                            p.name,
-                            p.unit,
-                            thumb,
-                          )
-                        }
+                        onClick={() => {
+                          addToCart(p.id, p.name, p.unit, thumb);
+                          // Évite que le texte de recherche résiduel pollue le scan
+                          // suivant et redonne le focus pour scanner immédiatement.
+                          setSearch("");
+                          searchInputRef.current?.focus();
+                        }}
                         className={cn(
                           "relative flex min-h-0 w-full min-w-0 flex-col items-center overflow-hidden rounded-xl bg-white px-2 py-1.5 text-center transition active:scale-[0.98]",
                           "aspect-[0.82] @[400px]:aspect-[0.88] @[600px]:aspect-[0.93]",
