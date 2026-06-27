@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import JsBarcode from "jsbarcode";
+import QRCodeLib from "qrcode";
 import QRCode from "react-qr-code";
 import { MdDeleteSweep, MdInventory2, MdLocalPrintshop, MdSearch } from "react-icons/md";
 import { FsCard, FsPage, FsScreenHeader, fsInputClass } from "@/components/ui/fs-screen-primitives";
@@ -19,16 +19,8 @@ import { messageFromUnknownError, toast } from "@/lib/toast";
 import { cn } from "@/lib/utils/cn";
 
 type SelectedMap = Record<string, number>;
-const CODE_HEIGHT = 26;
-type LabelPreset = "a4_3x8" | "40x25" | "40x30" | "50x30" | "thermal_30x40";
-type LabelConfig = { cols: number; widthMm: number; heightMm: number; thermal?: boolean };
-const LABEL_CONFIGS: Record<LabelPreset, LabelConfig> = {
-  a4_3x8: { cols: 3, widthMm: 63, heightMm: 33 },
-  "40x25": { cols: 4, widthMm: 40, heightMm: 25 },
-  "40x30": { cols: 4, widthMm: 40, heightMm: 30 },
-  "50x30": { cols: 3, widthMm: 50, heightMm: 30 },
-  thermal_30x40: { cols: 1, widthMm: 40, heightMm: 30, thermal: true },
-};
+// Impression sur imprimante thermique uniquement : étiquette 40×30 mm, 1 par page.
+const THERMAL_CONFIG = { cols: 1, widthMm: 40, heightMm: 30 } as const;
 
 function normalizedBarcode(product: ProductItem): string {
   const raw = (product.barcode ?? "").trim();
@@ -68,17 +60,13 @@ function buildPersistedBarcode(product: ProductItem, usedUpper: Set<string>): st
   return fallback;
 }
 
-function barcodeSvg(value: string, height = CODE_HEIGHT): string | null {
+async function qrSvg(value: string): Promise<string | null> {
   try {
-    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    JsBarcode(svg, value, {
-      format: "CODE128",
-      displayValue: false,
-      width: 1.5,
-      height,
+    return await QRCodeLib.toString(value, {
+      type: "svg",
       margin: 0,
+      errorCorrectionLevel: "M",
     });
-    return svg.outerHTML;
   } catch {
     return null;
   }
@@ -110,9 +98,6 @@ export function BarcodesScreen() {
   const [selected, setSelected] = useState<SelectedMap>({});
   const [printing, setPrinting] = useState(false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
-  const [preset, setPreset] = useState<LabelPreset>("thermal_30x40");
-  const [pageMarginMm, setPageMarginMm] = useState(10);
-  const [gapMm, setGapMm] = useState(3);
   const [showPrice, setShowPrice] = useState(false);
 
   const productsQ = useQuery({
@@ -163,7 +148,7 @@ export function BarcodesScreen() {
   const allFilteredSelected =
     selectableFiltered.length > 0 &&
     selectableFiltered.every((p) => selected[p.id] && selected[p.id] > 0);
-  const cfg = LABEL_CONFIGS[preset];
+  const cfg = THERMAL_CONFIG;
   const selectedMissing = useMemo(
     () =>
       selectedRows.filter((r) => !(r.product.barcode ?? "").trim()),
@@ -249,7 +234,7 @@ export function BarcodesScreen() {
     });
   }
 
-  function onPrint() {
+  async function onPrint() {
     if (selectedRows.length === 0) {
       toast.error("Sélectionnez au moins un produit avec code-barres.");
       return;
@@ -280,11 +265,9 @@ export function BarcodesScreen() {
 
     setPrinting(true);
     try {
-      const isThermal = cfg.thermal === true;
-      const svgHeight = isThermal ? 18 : CODE_HEIGHT;
       const labels: Array<{ name: string; barcode: string; svg: string }> = [];
       for (const row of selectedRows) {
-        const svg = barcodeSvg(row.barcode, svgHeight);
+        const svg = await qrSvg(row.barcode);
         if (!svg) continue;
         const name = row.product.name;
         const price = Number(row.product.sale_price ?? 0);
@@ -297,106 +280,31 @@ export function BarcodesScreen() {
         }
       }
       if (labels.length === 0) {
-        toast.error("Impossible de générer les codes-barres pour cette sélection.");
+        toast.error("Impossible de générer les codes QR pour cette sélection.");
         w.close();
         return;
       }
 
-      let html: string;
+      // Imprimante thermique : 1 page exacte par étiquette (40×30 mm).
+      // IMPORTANT : aucun espace/retour à la ligne entre les divs — moindre text node
+      // décale le contenu et génère des pages blanches supplémentaires.
+      const labelsHtml = labels
+        .map((item) =>
+          `<div class="label"><div class="inner"><div class="name">${esc(item.name)}</div><div class="barcode">${item.svg}</div><div class="meta">${esc(item.barcode)}</div></div></div>`,
+        )
+        .join("");
 
-      if (isThermal) {
-        // Imprimante thermique : 1 page exacte par étiquette (40×30 mm).
-        // IMPORTANT : aucun espace/retour à la ligne entre les divs — moindre text node
-        // décale le contenu et génère des pages blanches supplémentaires.
-        const labelsHtml = labels
-          .map((item) =>
-            `<div class="label"><div class="inner"><div class="name">${esc(item.name)}</div><div class="barcode">${item.svg}</div><div class="meta">${esc(item.barcode)}</div></div></div>`,
-          )
-          .join("");
-
-        html = `<!doctype html><html><head><meta charset="utf-8"/><title>Etiquettes</title><style>
+      const html = `<!doctype html><html><head><meta charset="utf-8"/><title>Etiquettes</title><style>
 @page{size:${cfg.widthMm}mm ${cfg.heightMm}mm;margin:0}
 *{box-sizing:border-box;margin:0;padding:0}
-html,body{width:${cfg.widthMm}mm;font-family:Arial,Helvetica,sans-serif;color:#000;background:#fff}
-.label{position:relative;width:${cfg.widthMm}mm;height:${cfg.heightMm}mm;overflow:hidden}
+html,body{width:${cfg.widthMm}mm;font-family:Arial,Helvetica,sans-serif;color:#000;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.label{position:relative;width:${cfg.widthMm}mm;height:${cfg.heightMm}mm;overflow:hidden;break-inside:avoid}
 .inner{position:absolute;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1.5mm 2mm;text-align:center}
-.name{font-size:7.5pt;font-weight:700;line-height:1.25;width:100%;word-break:break-word;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-bottom:1mm}
-.barcode{width:100%;display:flex;justify-content:center;align-items:center}
-.barcode svg{width:100%;height:auto;max-height:14mm;display:block}
-.meta{font-size:6pt;width:100%;margin-top:1mm;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-</style></head><body>${labelsHtml}<script>window.onload=function(){window.print();window.onafterprint=function(){window.close()}};<\/script></body></html>`;
-      } else {
-        // Grille sur feuille A4
-        const rowsHtml = labels
-          .map(
-            (item) => `
-            <div class="label">
-              <div class="name">${esc(item.name)}</div>
-              <div class="barcode">${item.svg}</div>
-              <div class="meta">${esc(item.barcode)}</div>
-            </div>`,
-          )
-          .join("");
-
-        html = `<!doctype html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  <title>Code Barre - Impression</title>
-  <style>
-    @page { size: A4; margin: ${Math.max(0, pageMarginMm)}mm; }
-    * { box-sizing: border-box; }
-    body { margin: 0; font-family: Arial, sans-serif; color: #111; }
-    .sheet {
-      display: grid;
-      grid-template-columns: repeat(${cfg.cols}, ${cfg.widthMm}mm);
-      gap: ${Math.max(0, gapMm)}mm;
-      justify-content: center;
-      padding: 0;
-    }
-    .label {
-      width: ${cfg.widthMm}mm;
-      height: ${cfg.heightMm}mm;
-      border: 1px dashed #d1d5db;
-      padding: 2mm;
-      display: flex;
-      flex-direction: column;
-      justify-content: flex-start;
-      overflow: hidden;
-      page-break-inside: avoid;
-    }
-    .name {
-      font-size: 10px;
-      font-weight: 700;
-      line-height: 1.2;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      margin-bottom: 1.5mm;
-    }
-    .barcode { display: flex; align-items: center; justify-content: center; min-height: 13mm; }
-    .barcode svg { width: 100%; height: auto; }
-    .meta {
-      font-size: 9px;
-      text-align: center;
-      margin-top: 1mm;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-  </style>
-</head>
-<body>
-  <div class="sheet">${rowsHtml}</div>
-  <script>
-    window.onload = function() {
-      window.print();
-      window.onafterprint = function() { window.close(); };
-    };
-  </script>
-</body>
-</html>`;
-      }
+.name{font-size:7.5pt;font-weight:700;line-height:1.2;width:100%;word-break:break-word;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-bottom:0.8mm}
+.barcode{width:100%;line-height:0;display:flex;justify-content:center;align-items:center}
+.barcode svg{width:15mm;height:15mm;display:block;shape-rendering:crispEdges}
+.meta{font-size:6pt;width:100%;margin-top:0.8mm;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+</style></head><body>${labelsHtml}<script>(function(){function go(){try{window.focus()}catch(e){}window.print()}window.onafterprint=function(){window.close()};function ready(){requestAnimationFrame(function(){requestAnimationFrame(go)})}if(document.readyState==='complete'){ready()}else{window.addEventListener('load',ready)}})();<\/script></body></html>`;
 
       w.document.open();
       w.document.write(html);
@@ -456,7 +364,7 @@ html,body{width:${cfg.widthMm}mm;font-family:Arial,Helvetica,sans-serif;color:#0
         </button>
         <button
           type="button"
-          onClick={onPrint}
+          onClick={() => void onPrint()}
           disabled={printing || totalLabels <= 0}
           className="inline-flex items-center gap-2 rounded-xl bg-fs-accent px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"
         >
@@ -485,48 +393,11 @@ html,body{width:${cfg.widthMm}mm;font-family:Arial,Helvetica,sans-serif;color:#0
         </button>
       </div>
       <FsCard padding="p-4" className="mt-3">
-        <div className="grid gap-3 min-[900px]:grid-cols-4">
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="font-medium text-neutral-700">Format</span>
-            <select
-              value={preset}
-              onChange={(e) => setPreset(e.target.value as LabelPreset)}
-              className={fsInputClass()}
-            >
-              <option value="thermal_30x40">🖨️ Thermique 40×30 mm (1 étiquette/page)</option>
-              <option value="a4_3x8">A4 3x8 (63x33 mm)</option>
-              <option value="40x25">40×25 mm (4 colonnes)</option>
-              <option value="40x30">40×30 mm paysage (4 colonnes)</option>
-              <option value="50x30">50×30 mm (3 colonnes)</option>
-            </select>
-          </label>
-          {!cfg.thermal && (
-            <>
-              <label className="flex flex-col gap-1 text-sm">
-                <span className="font-medium text-neutral-700">Marge page (mm)</span>
-                <input
-                  type="number"
-                  min={0}
-                  max={20}
-                  value={pageMarginMm}
-                  onChange={(e) => setPageMarginMm(Number(e.target.value || "0"))}
-                  className={fsInputClass()}
-                />
-              </label>
-              <label className="flex flex-col gap-1 text-sm">
-                <span className="font-medium text-neutral-700">Espacement (mm)</span>
-                <input
-                  type="number"
-                  min={0}
-                  max={10}
-                  value={gapMm}
-                  onChange={(e) => setGapMm(Number(e.target.value || "0"))}
-                  className={fsInputClass()}
-                />
-              </label>
-            </>
-          )}
-          <label className="flex items-center gap-2 pt-6 text-sm font-medium text-neutral-700">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2 rounded-xl border border-black/10 bg-fs-surface px-3 py-2 text-sm font-semibold text-neutral-800">
+            🖨️ Thermique 40×30 mm (1 étiquette/page)
+          </div>
+          <label className="flex items-center gap-2 text-sm font-medium text-neutral-700">
             <input
               type="checkbox"
               checked={showPrice}
@@ -536,9 +407,7 @@ html,body{width:${cfg.widthMm}mm;font-family:Arial,Helvetica,sans-serif;color:#0
           </label>
         </div>
         <div className="mt-3 text-xs text-neutral-500">
-          {cfg.thermal
-            ? `Thermique : 1 étiquette par page — ${cfg.widthMm}mm large × ${cfg.heightMm}mm haut`
-            : `Aperçu : ${cfg.cols} colonnes, étiquette ${cfg.widthMm}×${cfg.heightMm} mm`}
+          {`Thermique : 1 étiquette par page — ${cfg.widthMm}mm large × ${cfg.heightMm}mm haut`}
         </div>
         <div className="mt-3 rounded-xl border border-black/10 bg-fs-surface p-3">
           <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-neutral-500">
