@@ -299,11 +299,11 @@ export function BarcodesScreen() {
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{width:${cfg.widthMm}mm;font-family:Arial,Helvetica,sans-serif;color:#000;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .label{position:relative;width:${cfg.widthMm}mm;height:${cfg.heightMm}mm;overflow:hidden;break-inside:avoid}
-.inner{position:absolute;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1.5mm 2mm;text-align:center}
-.name{font-size:7.5pt;font-weight:700;line-height:1.2;width:100%;word-break:break-word;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-bottom:0.8mm}
+.inner{position:absolute;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2mm 2mm;text-align:center}
+.name{font-size:7pt;font-weight:700;line-height:1.15;width:100%;word-break:break-word;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-bottom:0.6mm}
 .barcode{width:100%;line-height:0;display:flex;justify-content:center;align-items:center}
-.barcode svg{width:15mm;height:15mm;display:block;shape-rendering:crispEdges}
-.meta{font-size:6pt;width:100%;margin-top:0.8mm;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.barcode svg{width:13mm;height:13mm;display:block;shape-rendering:crispEdges}
+.meta{font-size:5.5pt;width:100%;margin-top:0.6mm;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 </style></head><body>${labelsHtml}<script>(function(){function go(){try{window.focus()}catch(e){}window.print()}window.onafterprint=function(){window.close()};function ready(){requestAnimationFrame(function(){requestAnimationFrame(go)})}if(document.readyState==='complete'){ready()}else{window.addEventListener('load',ready)}})();<\/script></body></html>`;
 
       w.document.open();
