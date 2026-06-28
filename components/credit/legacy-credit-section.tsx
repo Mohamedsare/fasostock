@@ -2081,6 +2081,7 @@ function LegacyPayDialog({
     | "transfer";
   const [method, setMethod] = useState<PaymentModeUi>("cash");
   const [amount, setAmount] = useState("");
+  const [reference, setReference] = useState("");
 
   const warnNonNumericAmount = () => {
     const now = Date.now();
@@ -2113,6 +2114,15 @@ function LegacyPayDialog({
       ? "mobile_money"
       : method;
   const isCash = backendMethod === "cash";
+  // Référence saisie (ID transaction Orange/Moov/Wave…) — facultative.
+  // Vide ⇒ comportement actuel (libellé fournisseur ou null).
+  const referenceInput = reference.trim();
+  const finalReference =
+    !isCash && referenceInput
+      ? mobileProviderLabel
+        ? `${mobileProviderLabel} · ${referenceInput}`
+        : referenceInput
+      : mobileProviderLabel || null;
   const applied = isCash ? Math.min(tendered, rem) : tendered;
   const changeDue = isCash ? Math.max(0, Math.round((tendered - applied) * 100) / 100) : 0;
   const nonCashOver = !isCash && tendered > rem + EPS;
@@ -2197,6 +2207,20 @@ function LegacyPayDialog({
                 </p>
               ) : null}
             </div>
+            {!isCash ? (
+              <div>
+                <label className={mobileLabelClass()}>Référence (facultatif)</label>
+                <input
+                  className={mobileFieldClass()}
+                  value={reference}
+                  onChange={(e) => setReference(e.target.value)}
+                  placeholder="ID de transaction (Orange Money, Moov…)"
+                />
+                <p className="mt-1 text-xs text-neutral-600">
+                  Laissez vide si vous n&apos;avez pas l&apos;identifiant.
+                </p>
+              </div>
+            ) : null}
           </div>
         </div>
 
@@ -2218,7 +2242,7 @@ function LegacyPayDialog({
                   method: backendMethod,
                   amount: applied,
                   amountTendered: tendered,
-                  reference: mobileProviderLabel || null,
+                  reference: finalReference,
                 })
               }
               className="touch-manipulation min-h-12 w-full rounded-xl bg-fs-accent py-3 text-base font-bold text-white active:opacity-95 disabled:opacity-50 sm:flex-1 sm:py-2 sm:text-sm"
