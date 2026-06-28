@@ -95,6 +95,21 @@ export type WarehouseDispatchLineInput = {
   unitPrice: number;
 };
 
+/** Une ligne de sortie (article d'un bon) retrouvée par recherche produit. */
+export type WarehouseDispatchLineHit = {
+  invoiceId: string;
+  documentNumber: string;
+  createdAt: string;
+  customerName: string | null;
+  productId: string;
+  productName: string;
+  productSku: string | null;
+  productUnit: string;
+  quantity: number;
+  unitPrice: number;
+  lineTotal: number;
+};
+
 export const WAREHOUSE_PACKAGING_LABELS: Record<string, string> = {
   carton: "Carton",
   paquet: "Paquet",

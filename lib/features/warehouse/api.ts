@@ -7,6 +7,7 @@ import type {
   Warehouse,
   WarehouseDispatchInvoiceDetails,
   WarehouseDispatchInvoiceSummary,
+  WarehouseDispatchLineHit,
   WarehouseDispatchLineInput,
   WarehouseMovement,
   WarehouseStockLine,
@@ -380,6 +381,71 @@ export async function getWarehouseDispatchInvoiceDetails(
     createdAt: String(inv.created_at ?? ""),
     lines,
   };
+}
+
+/**
+ * Recherche toutes les lignes de sortie (articles des bons) dont le produit
+ * correspond à `query` (nom ou SKU). Scopé au dépôt actif, ou à la société si
+ * aucun dépôt n'est sélectionné. Trié du plus récent au plus ancien.
+ */
+export async function searchWarehouseDispatchLinesByProduct(
+  companyId: string,
+  query: string,
+  warehouseId?: string | null,
+  limit = 300,
+): Promise<WarehouseDispatchLineHit[]> {
+  const term = query.trim();
+  if (term.length === 0) return [];
+  const escaped = term.replace(/[%_]/g, (m) => `\\${m}`);
+  const supabase = createClient();
+  let q = supabase
+    .from("warehouse_dispatch_items")
+    .select(
+      "quantity, unit_price, product_id, product:products!inner(name, sku, unit), invoice:warehouse_dispatch_invoices!inner(id, company_id, warehouse_id, document_number, created_at, customer:customers(name))",
+    )
+    .or(`name.ilike.%${escaped}%,sku.ilike.%${escaped}%`, { referencedTable: "product" });
+  if (warehouseId) {
+    q = q.eq("invoice.warehouse_id", warehouseId);
+  } else {
+    q = q.eq("invoice.company_id", companyId);
+  }
+  const { data, error } = await q.limit(limit);
+  if (error) throw mapSupabaseError(error);
+
+  const rows = (data ?? []).map((raw) => {
+    const row = raw as Record<string, unknown>;
+    const prodRaw = row.product;
+    const product = Array.isArray(prodRaw)
+      ? (prodRaw[0] as Record<string, unknown> | undefined)
+      : (prodRaw as Record<string, unknown> | null);
+    const p = product ?? {};
+    const invRaw = row.invoice;
+    const invoice = Array.isArray(invRaw)
+      ? (invRaw[0] as Record<string, unknown> | undefined)
+      : (invRaw as Record<string, unknown> | null);
+    const inv = invoice ?? {};
+    const custRaw = inv.customer;
+    const customer = Array.isArray(custRaw)
+      ? (custRaw[0] as { name?: string } | undefined)
+      : (custRaw as { name?: string } | null);
+    const quantity = toInt(row.quantity);
+    const unitPrice = toFloat(row.unit_price);
+    return {
+      invoiceId: String(inv.id ?? ""),
+      documentNumber: String(inv.document_number ?? "—"),
+      createdAt: String(inv.created_at ?? ""),
+      customerName: customer?.name != null ? String(customer.name) : null,
+      productId: String(row.product_id ?? p.id ?? ""),
+      productName: String(p.name ?? "—"),
+      productSku: p.sku != null ? String(p.sku) : null,
+      productUnit: String(p.unit ?? "pce"),
+      quantity,
+      unitPrice,
+      lineTotal: quantity * unitPrice,
+    };
+  });
+  rows.sort((a, b) => (a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0));
+  return rows;
 }
 
 export async function voidWarehouseDispatchInvoice(params: {

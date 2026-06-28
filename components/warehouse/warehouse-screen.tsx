@@ -11,6 +11,7 @@ import {
   listWarehouseInventory,
   listWarehouseMovements,
   listWarehouses,
+  searchWarehouseDispatchLinesByProduct,
   warehouseUpdateDispatchInvoice,
   voidWarehouseDispatchInvoice,
 } from "@/lib/features/warehouse/api";
@@ -18,7 +19,7 @@ import { listCustomers } from "@/lib/features/customers/api";
 import { listProducts } from "@/lib/features/products/api";
 import { listStores as listStoresFull } from "@/lib/features/stores/api";
 import { downloadStoreProductsPdf } from "@/lib/features/stores/generate-store-products-pdf";
-import type { Warehouse, WarehouseDispatchInvoiceSummary, WarehouseMovement, WarehouseStockLine } from "@/lib/features/warehouse/types";
+import type { Warehouse, WarehouseDispatchInvoiceSummary, WarehouseDispatchLineHit, WarehouseMovement, WarehouseStockLine } from "@/lib/features/warehouse/types";
 import { WAREHOUSE_PACKAGING_LABELS } from "@/lib/features/warehouse/types";
 import {
   approveStockTransfer,
@@ -293,6 +294,8 @@ export function WarehouseScreen() {
 
   const [dispatchPage, setDispatchPage] = useState(0);
   const DISPATCH_PAGE = 20;
+  const [dispatchProductSearch, setDispatchProductSearch] = useState("");
+  const [dispatchProductSearchDebounced, setDispatchProductSearchDebounced] = useState("");
   const [exportingProductsPdf, setExportingProductsPdf] = useState(false);
 
   const [transferDetailId, setTransferDetailId] = useState<string | null>(null);
@@ -331,6 +334,19 @@ export function WarehouseScreen() {
     queryKey: [...queryKeys.warehouseDispatch(companyId), activeWarehouseId],
     queryFn: () => listWarehouseDispatchInvoices(companyId, 120, activeWarehouseId),
     enabled: Boolean(companyId) && canWarehouse,
+  });
+  const dispatchSearchTerm = dispatchProductSearchDebounced.trim();
+  const dispatchSearchActive = dispatchSearchTerm.length >= 2;
+  const dispatchLinesQ = useQuery({
+    queryKey: [
+      ...queryKeys.warehouseDispatch(companyId),
+      activeWarehouseId,
+      "lines-search",
+      dispatchSearchTerm,
+    ],
+    queryFn: () =>
+      searchWarehouseDispatchLinesByProduct(companyId, dispatchSearchTerm, activeWarehouseId),
+    enabled: Boolean(companyId) && canWarehouse && dispatchSearchActive,
   });
   const whTransfersQ = useQuery({
     queryKey: queryKeys.warehouseTransfers(companyId),
@@ -585,6 +601,11 @@ export function WarehouseScreen() {
       })),
     );
   }, [dispatchEditQ.data]);
+
+  useEffect(() => {
+    const t = setTimeout(() => setDispatchProductSearchDebounced(dispatchProductSearch.trim()), 280);
+    return () => clearTimeout(t);
+  }, [dispatchProductSearch]);
 
   function storeName(id: string | null) {
     if (!id) return "—";
@@ -1407,6 +1428,17 @@ export function WarehouseScreen() {
               setPage={setDispatchPage}
               loading={dispatchQ.isLoading}
               error={dispatchQ.error}
+              search={dispatchProductSearch}
+              setSearch={setDispatchProductSearch}
+              searchActive={dispatchSearchActive}
+              searchPending={
+                dispatchSearchActive &&
+                (dispatchLinesQ.isLoading ||
+                  dispatchProductSearch.trim() !== dispatchProductSearchDebounced.trim())
+              }
+              searchError={dispatchLinesQ.error}
+              searchResults={dispatchLinesQ.data ?? []}
+              onOpenInvoice={(invoiceId) => setDispatchDetailId(invoiceId)}
               onOpen={(r) => setDispatchDetailId(r.id)}
               onEdit={(r) => {
                 setDispatchDialogInvoiceId(r.id);
@@ -2553,6 +2585,13 @@ function HistoriquesTab({
   setPage,
   loading,
   error,
+  search,
+  setSearch,
+  searchActive,
+  searchPending,
+  searchError,
+  searchResults,
+  onOpenInvoice,
   onOpen,
   onEdit,
   onVoid,
@@ -2568,6 +2607,13 @@ function HistoriquesTab({
   setPage: (n: number | ((p: number) => number)) => void;
   loading: boolean;
   error: unknown;
+  search: string;
+  setSearch: (v: string) => void;
+  searchActive: boolean;
+  searchPending: boolean;
+  searchError: unknown;
+  searchResults: WarehouseDispatchLineHit[];
+  onOpenInvoice: (invoiceId: string) => void;
   onOpen: (r: WarehouseDispatchInvoiceSummary) => void;
   onEdit: (r: WarehouseDispatchInvoiceSummary) => void;
   onVoid: (r: WarehouseDispatchInvoiceSummary) => void;
@@ -2576,31 +2622,95 @@ function HistoriquesTab({
   printingId: string | null;
   onRetry: () => void;
 }) {
+  const searchBar = (
+    <div className="space-y-1.5">
+      <div className="group relative">
+        <MdSearch className="pointer-events-none absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-neutral-400 transition-colors group-focus-within:text-fs-accent" />
+        <input
+          type="search"
+          inputMode="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Rechercher un produit…"
+          aria-label="Rechercher un produit dans l'historique des sorties"
+          className={fsInputClass(
+            "h-12 rounded-2xl border-black/[0.08] pl-11 pr-11 shadow-sm sm:h-12 [&::-webkit-search-cancel-button]:hidden",
+          )}
+        />
+        {searchPending ? (
+          <span
+            className="absolute right-3.5 top-1/2 h-4.5 w-4.5 -translate-y-1/2 animate-spin rounded-full border-2 border-fs-accent border-t-transparent"
+            aria-hidden
+          />
+        ) : search.length > 0 ? (
+          <button
+            type="button"
+            onClick={() => setSearch("")}
+            className="absolute right-2.5 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-neutral-400 transition-colors hover:bg-black/5 hover:text-neutral-700"
+            aria-label="Effacer la recherche"
+          >
+            <MdClose className="h-4.5 w-4.5" />
+          </button>
+        ) : null}
+      </div>
+      {!searchActive ? (
+        <p className="px-1 text-[11px] leading-snug text-neutral-500">
+          Saisissez un nom (ou SKU) pour voir toutes les sorties de ce produit, avec le détail.
+        </p>
+      ) : null}
+    </div>
+  );
+
+  if (searchActive) {
+    return (
+      <div className="space-y-3 pb-6">
+        {searchBar}
+        <DispatchLinesSearchResults
+          term={search.trim()}
+          pending={searchPending}
+          error={searchError}
+          results={searchResults}
+          onOpenInvoice={onOpenInvoice}
+        />
+      </div>
+    );
+  }
+
   if (loading && allRows.length === 0) {
     return (
-      <div className="flex justify-center py-20">
-        <div className="h-9 w-9 animate-spin rounded-full border-2 border-[#F97316] border-t-transparent" />
+      <div className="space-y-3 pb-6">
+        {searchBar}
+        <div className="flex justify-center py-20">
+          <div className="h-9 w-9 animate-spin rounded-full border-2 border-[#F97316] border-t-transparent" />
+        </div>
       </div>
     );
   }
   if (error) {
     return (
-      <div className="py-8 text-center">
-        <p className="text-sm text-red-600">Erreur de chargement</p>
-        <button type="button" onClick={onRetry} className="mt-2 text-sm font-semibold text-fs-accent">
-          Réessayer
-        </button>
+      <div className="space-y-3 pb-6">
+        {searchBar}
+        <div className="py-8 text-center">
+          <p className="text-sm text-red-600">Erreur de chargement</p>
+          <button type="button" onClick={onRetry} className="mt-2 text-sm font-semibold text-fs-accent">
+            Réessayer
+          </button>
+        </div>
       </div>
     );
   }
   if (allRows.length === 0) {
     return (
-      <p className="py-16 text-center text-sm text-neutral-600">Aucun bon de sortie enregistré.</p>
+      <div className="space-y-3 pb-6">
+        {searchBar}
+        <p className="py-16 text-center text-sm text-neutral-600">Aucun bon de sortie enregistré.</p>
+      </div>
     );
   }
 
   return (
     <div className="space-y-2 pb-6">
+      {searchBar}
       <FsHorizontalScroll className="rounded-xl border border-black/6 bg-[color-mix(in_srgb,var(--fs-surface-container-low)_100%,transparent)]">
         <table className="w-full min-w-[980px] border-collapse text-left [&_thead_th]:whitespace-nowrap">
           <thead>
@@ -2702,6 +2812,115 @@ function HistoriquesTab({
           </button>
         </div>
       ) : null}
+    </div>
+  );
+}
+
+function DispatchLinesSearchResults({
+  term,
+  pending,
+  error,
+  results,
+  onOpenInvoice,
+}: {
+  term: string;
+  pending: boolean;
+  error: unknown;
+  results: WarehouseDispatchLineHit[];
+  onOpenInvoice: (invoiceId: string) => void;
+}) {
+  if (pending) {
+    return (
+      <div className="flex justify-center py-16">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#F97316] border-t-transparent" />
+      </div>
+    );
+  }
+  if (error) {
+    return (
+      <p className="py-10 text-center text-sm text-red-600">
+        Erreur lors de la recherche des sorties.
+      </p>
+    );
+  }
+  if (results.length === 0) {
+    return (
+      <p className="py-12 text-center text-sm text-neutral-600">
+        Aucune sortie trouvée pour « {term} ».
+      </p>
+    );
+  }
+
+  const totalQty = results.reduce((s, r) => s + r.quantity, 0);
+  const totalAmount = results.reduce((s, r) => s + r.lineTotal, 0);
+
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 px-1 text-xs text-neutral-600">
+        <span>
+          <strong className="font-bold text-fs-text">{results.length}</strong> sortie
+          {results.length > 1 ? "s" : ""}
+        </span>
+        <span>
+          Quantité totale :{" "}
+          <strong className="font-bold tabular-nums text-fs-text">{totalQty}</strong>
+        </span>
+        <span>
+          Montant total :{" "}
+          <strong className="font-bold tabular-nums text-[#F97316]">{formatCurrency(totalAmount)}</strong>
+        </span>
+      </div>
+      <FsHorizontalScroll className="rounded-xl border border-black/6 bg-[color-mix(in_srgb,var(--fs-surface-container-low)_100%,transparent)]">
+        <table className="w-full min-w-[860px] border-collapse text-left [&_thead_th]:whitespace-nowrap">
+          <thead>
+            <tr className="border-b border-black/8 bg-[#F5F5F5] text-[11px] font-bold uppercase tracking-wide text-neutral-700">
+              <th className="px-3 py-2">Date</th>
+              <th className="px-3 py-2">N° Bon</th>
+              <th className="px-3 py-2">Client</th>
+              <th className="min-w-[240px] px-3 py-2">Produit</th>
+              <th className="px-3 py-2 text-right">Qté</th>
+              <th className="px-3 py-2 text-right">Prix U.</th>
+              <th className="px-3 py-2 text-right">Total</th>
+              <th className="px-3 py-2 text-center">Bon</th>
+            </tr>
+          </thead>
+          <tbody>
+            {results.map((r, i) => (
+              <tr
+                key={`${r.invoiceId}-${r.productId}-${i}`}
+                className="border-b border-black/6 text-sm last:border-b-0"
+              >
+                <td className="px-3 py-2.5 whitespace-nowrap text-neutral-700">{formatDt(r.createdAt)}</td>
+                <td className="px-3 py-2.5 font-bold text-fs-text">{r.documentNumber}</td>
+                <td className="px-3 py-2.5 text-neutral-700">{r.customerName ?? "—"}</td>
+                <td className="min-w-[240px] px-3 py-2.5 text-fs-text">
+                  <span className="font-semibold leading-snug">
+                    {r.productName}
+                    {r.productSku ? (
+                      <span className="ml-1 font-normal text-xs text-neutral-500">({r.productSku})</span>
+                    ) : null}
+                  </span>
+                </td>
+                <td className="px-3 py-2.5 text-right font-semibold tabular-nums">
+                  {r.quantity}
+                  <span className="ml-1 text-xs font-normal text-neutral-500">{r.productUnit}</span>
+                </td>
+                <td className="px-3 py-2.5 text-right tabular-nums text-neutral-700">{formatCurrency(r.unitPrice)}</td>
+                <td className="px-3 py-2.5 text-right font-bold tabular-nums text-[#F97316]">{formatCurrency(r.lineTotal)}</td>
+                <td className="px-3 py-2.5 text-center">
+                  <button
+                    type="button"
+                    onClick={() => onOpenInvoice(r.invoiceId)}
+                    className="inline-flex min-h-[32px] items-center rounded-lg border border-[#F97316]/30 bg-white px-3 py-1 text-xs font-bold text-[#F97316]"
+                  >
+                    Voir
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </FsHorizontalScroll>
     </div>
   );
 }
