@@ -13,6 +13,7 @@ import {
   truncateName,
 } from "@/lib/features/receipt/receipt-ticket-format";
 import QRCode from "qrcode";
+import { ARCHIVO_BLACK_FONT_FACE_CSS } from "./archivo-black-font";
 import { escapeHtml } from "./escape-html";
 
 function tx(s: string): string {
@@ -21,11 +22,27 @@ function tx(s: string): string {
 
 /**
  * Ticket thermique HTML → PDF (parité `ReceiptThermalPrintService` Flutter).
- * Rendu dans la zone **~72 mm** de large (papier **80 mm** ; marges PDF gérées dans `html-to-pdf.ts`).
+ * Zone de contenu : **~72 mm** (papier 80 mm) ou **~48 mm** (papier 58 mm) ;
+ * marges PDF gérées dans `html-to-pdf.ts`.
+ *
+ * Le viewport de rendu suit la largeur du papier : les tailles en `px` ont donc
+ * la même taille **physique** sur 58 et 80 mm. En 58 mm on réduit seulement les
+ * éléments à largeur fixe (logo, nom de boutique, colonnes chiffres, longueur de
+ * nom) pour qu'ils tiennent dans les 48 mm. Le rendu 80 mm reste inchangé.
  */
 export async function renderReceiptThermalHtml(
   data: ReceiptTicketData,
+  paperWidthMm: 58 | 80 = 80,
 ): Promise<string> {
+  const narrow = paperWidthMm === 58;
+  // Largeurs fixes calibrées pour 72 mm ; réduites pour tenir dans 48 mm (58 mm).
+  const logoMaxWidthPx = narrow ? 160 : 248;
+  const storeFontPx = narrow ? 19 : 25;
+  const storeLetterSp = narrow ? 0.4 : 0.65;
+  const qtyColPx = narrow ? 14 : 18;
+  const numColPx = narrow ? 24 : 32;
+  const maxNameLen = narrow ? 16 : RECEIPT_THERMAL_PDF_MAX_NAME_LEN;
+
   const tel = telLine(data.storePhone);
   const payU = paymentUppercase(data.paymentMethod);
   const isCash = payU === "ESPECES";
@@ -72,10 +89,7 @@ export async function renderReceiptThermalHtml(
   parts.push(`<div class="sep mono">${escapeHtml(RECEIPT_SEP_LONG)}</div>`);
   parts.push(`<table class="grid mono"><tbody>`);
   for (const item of data.items) {
-    const name = truncateName(
-      sanitizeForPdf(item.name),
-      RECEIPT_THERMAL_PDF_MAX_NAME_LEN,
-    );
+    const name = truncateName(sanitizeForPdf(item.name), maxNameLen);
     parts.push(`<tr>
       <td class="left">${escapeHtml(name)}</td>
       <td class="cqty">${item.quantity}</td>
@@ -128,9 +142,8 @@ export async function renderReceiptThermalHtml(
 
   return `<!DOCTYPE html>
 <html lang="fr"><head><meta charset="utf-8"/>
-<link rel="preconnect" href="https://fonts.googleapis.com"/>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap"/>
 <style>
+  ${ARCHIVO_BLACK_FONT_FACE_CSS}
   * { box-sizing: border-box; }
   html, body {
     margin: 0;
@@ -149,7 +162,7 @@ export async function renderReceiptThermalHtml(
     margin-bottom: 4px;
   }
   .logo-wrap img {
-    max-width: 248px;
+    max-width: ${logoMaxWidthPx}px;
     max-height: 80px;
     width: auto;
     height: auto;
@@ -160,8 +173,8 @@ export async function renderReceiptThermalHtml(
   }
   .store {
     font-family: "Archivo Black", sans-serif;
-    font-size: 25px;
-    letter-spacing: 0.65px;
+    font-size: ${storeFontPx}px;
+    letter-spacing: ${storeLetterSp}px;
     line-height: 1.05;
     text-align: center;
     font-weight: 400;
@@ -181,8 +194,8 @@ export async function renderReceiptThermalHtml(
     text-align: left;
     padding-bottom: 2px;
   }
-  table.grid thead th.cqty { text-align: center; width: 18px; }
-  table.grid thead th.cnum { text-align: right; width: 32px; }
+  table.grid thead th.cqty { text-align: center; width: ${qtyColPx}px; }
+  table.grid thead th.cnum { text-align: right; width: ${numColPx}px; }
   table.grid tbody td { padding-bottom: 3px; vertical-align: top; }
   table.grid tbody td.cqty { text-align: center; }
   table.grid tbody td.cnum { text-align: right; }

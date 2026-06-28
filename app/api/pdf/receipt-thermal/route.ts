@@ -45,7 +45,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Non autorisé." }, { status: 403 });
     }
 
-    const html = await renderReceiptThermalHtml(data);
+    const html = await renderReceiptThermalHtml(data, paperWidthMm);
     const buf = await htmlToPdfBufferThermal(html, paperWidthMm);
     return new NextResponse(new Uint8Array(buf), {
       status: 200,
