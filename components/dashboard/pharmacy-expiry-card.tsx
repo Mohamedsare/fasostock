@@ -8,6 +8,7 @@ import {
   fetchExpirySummary,
 } from "@/lib/features/products/batches-api";
 import { activityConfig } from "@/lib/features/activity/activity-config";
+import { activityUiTerms } from "@/lib/features/activity/activity-profiles";
 import { ROUTES } from "@/lib/config/routes";
 import { cn } from "@/lib/utils/cn";
 
@@ -24,6 +25,7 @@ type Props = {
 export function PharmacyExpiryCard({ companyId, businessTypeSlug }: Props) {
   const enabled =
     !!companyId && activityConfig(businessTypeSlug).expiryDashboard;
+  const terms = activityUiTerms(businessTypeSlug);
 
   const q = useQuery({
     queryKey: ["expiry-summary", companyId],
@@ -49,7 +51,7 @@ export function PharmacyExpiryCard({ companyId, businessTypeSlug }: Props) {
           href={ROUTES.products}
           className="text-xs font-semibold text-fs-accent hover:underline"
         >
-          Gérer les médicaments
+          {terms.expiryManageLinkLabel ?? "Gérer les produits"}
         </Link>
       </div>
 

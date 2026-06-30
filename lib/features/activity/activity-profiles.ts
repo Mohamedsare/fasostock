@@ -70,7 +70,7 @@ const ACTIVITY_PROFILES: ActivityProfile[] = [
       ROUTES.printers,
       ROUTES.settings,
       ROUTES.help,
-      ROUTES.notifications,
+      ROUTES.subscription,
     ],
   },
   {
@@ -166,6 +166,13 @@ export type ActivityUiTerms = {
   posCheckoutLabel?: string;
   /** Stock caisse (vue caissier). */
   stockCashierTitle?: string;
+  /**
+   * Cartes de suivi de péremption (tableau de bord + rapports). Optionnels :
+   * les composants retombent sur un libellé générique « produit ».
+   */
+  expiryReportsTitle?: string;
+  expiredItemsLabel?: string;
+  expiryManageLinkLabel?: string;
 };
 
 /**
@@ -228,6 +235,39 @@ export function activityUiTerms(
       posCartTitle: "Ordonnance / Panier",
       posCheckoutLabel: "Valider la dispensation",
       stockCashierTitle: "Stock pharmacie",
+      expiryReportsTitle: "Rapports pharmacie",
+      expiredItemsLabel: "Médicaments périmés",
+      expiryManageLinkLabel: "Gérer les médicaments",
+    };
+  }
+  if (businessTypeSlug === "supermarche-alimentation") {
+    return {
+      storeSingular: "Magasin",
+      storesPlural: "Magasins",
+      dashboardTitle: "Tableau de bord",
+      reportsTitle: "Rapports",
+      productsTitle: "Produits",
+      productsSubtitle: "Catalogue, rayons et marques",
+      salesHistoryTitle: "Historique des ventes",
+      purchasesTitle: "Achats",
+      purchasesDescription: "Voir, modifier, annuler ou supprimer les achats fournisseurs.",
+      purchasesCreateActionLabel: "Nouvel achat",
+      purchasesCreatedToast: "Achat créé (brouillon)",
+      purchasesCancelledToast: "Achat annulé",
+      purchasesDeletedToast: "Achat supprimé",
+      purchasesCreateDeniedToast: "Vous n'avez pas le droit de créer des achats.",
+      creditTitle: "Crédit client",
+      creditSubtitle: "Encours, échéances et paiements partiels des clients",
+      customersTitle: "Clients",
+      customersDescription: "Gérer vos clients (particuliers et entreprises)",
+      inventoryTitle: "Stock",
+      posTitle: "Caisse",
+      posCartTitle: "Panier",
+      posCheckoutLabel: "Encaisser",
+      stockCashierTitle: "Stock caisse",
+      expiryReportsTitle: "Suivi des dates limites (DLC/DLUO)",
+      expiredItemsLabel: "Produits périmés",
+      expiryManageLinkLabel: "Gérer les produits",
     };
   }
   if (businessTypeSlug === "restaurant-fast-food") {

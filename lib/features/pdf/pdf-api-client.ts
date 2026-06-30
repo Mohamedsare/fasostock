@@ -113,6 +113,12 @@ export async function fetchCreditRepaymentReceiptPdfBlob(
   );
 }
 
+export async function fetchSubscriptionInvoicePdfBlob(
+  requestId: string,
+): Promise<Blob> {
+  return postPdf("/api/pdf/subscription-invoice", JSON.stringify({ requestId }));
+}
+
 export async function fetchStoreProductsPdfBlob(data: {
   companyId: string;
   storeId?: string | null;

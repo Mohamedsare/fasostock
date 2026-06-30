@@ -11,6 +11,7 @@ import {
   Store,
   Warehouse,
   AlertTriangle,
+  CalendarClock,
   Truck,
   Boxes,
   ArrowLeftRight,
@@ -21,9 +22,10 @@ import {
   UserCog,
   ScrollText,
   CreditCard,
+  Wallet,
   Barcode,
   HelpCircle,
-  Bell,
+  Crown,
   KeyRound,
   Printer,
   Settings,
@@ -57,7 +59,9 @@ export const NAV_ITEMS: NavItem[] = [
     icon: AlertTriangle,
     iconBg: "#B45309",
   },
+  { href: ROUTES.expiry, label: "Péremptions", icon: CalendarClock, iconBg: "#B45309" },
   { href: ROUTES.purchases, label: "Achats", icon: Truck, iconBg: "#92400E" },
+  { href: ROUTES.expenses, label: "Dépenses", icon: Wallet, iconBg: "#B45309" },
   { href: ROUTES.warehouse, label: "Magasin", icon: Boxes, iconBg: "#7C2D12" },
   { href: ROUTES.transfers, label: "Transferts", icon: ArrowLeftRight, iconBg: "#EA580C" },
   { href: ROUTES.customers, label: "Clients", icon: Users, iconBg: "#9A3412" },
@@ -65,7 +69,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: ROUTES.suppliers, label: "Fournisseurs", icon: Building2, iconBg: "#C2410C" },
   { href: ROUTES.reports, label: "Rapports", icon: BarChart3, iconBg: "#F97316" },
   { href: ROUTES.ai, label: "Prédictions IA", icon: Sparkles, iconBg: "#78350F" },
-  { href: ROUTES.users, label: "Utilisateurs", icon: UserCog, iconBg: "#92400E" },
+  { href: ROUTES.users, label: "Employés", icon: UserCog, iconBg: "#92400E" },
   { href: ROUTES.audit, label: "Journal d'audit", icon: ScrollText, iconBg: "#7C2D12" },
   {
     href: ROUTES.integrations,
@@ -77,7 +81,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: ROUTES.printers, label: "Imprimantes", icon: Printer, iconBg: "#B45309" },
   { href: ROUTES.settings, label: "Paramètres", icon: Settings, iconBg: "#92400E" },
   { href: ROUTES.help, label: "Aide", icon: HelpCircle, iconBg: "#D97706" },
-  { href: ROUTES.notifications, label: "Notifications", icon: Bell, iconBg: "#EA580C" },
+  { href: ROUTES.subscription, label: "Abonnement", icon: Crown, iconBg: "#CA8A04" },
 ];
 
 /** Navigation restaurant hiérarchique (phase 1: existants + placeholders). */
@@ -143,7 +147,7 @@ export const RESTAURANT_NAV_ITEMS: NavItem[] = [
   { href: "/restaurant/livraison/suivi", label: "Suivi", icon: Truck, child: true },
 
   { kind: "section", href: "/restaurant/_sec_depenses", label: "Depenses", icon: CreditCard },
-  { href: "/restaurant/depenses", label: "Suivi des depenses", icon: CreditCard, child: true },
+  { href: ROUTES.expenses, label: "Suivi des depenses", icon: Wallet, child: true },
   { href: "/restaurant/depenses/categories", label: "Categories de depenses", icon: CreditCard, child: true },
 
   { kind: "section", href: "/restaurant/_sec_employes", label: "Employes", icon: UserCog },
@@ -166,5 +170,4 @@ export const RESTAURANT_NAV_ITEMS: NavItem[] = [
   { href: ROUTES.printers, label: "Imprimantes", icon: Printer, child: true },
   { href: "/restaurant/parametres/taxes", label: "Taxes", icon: Settings, child: true },
   { href: "/restaurant/parametres/paiements", label: "Paiements", icon: Settings, child: true },
-  { href: ROUTES.users, label: "Utilisateurs", icon: Settings, child: true },
 ];

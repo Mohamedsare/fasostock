@@ -28,6 +28,7 @@ import type {
   AdminAppErrorLite,
   AdminSubscriptionPlanLite,
   AdminCompanySubscriptionRow,
+  AdminSubscriptionRequestRow,
 } from "./types";
 
 function toNum(v: unknown): number {
@@ -763,6 +764,63 @@ export async function adminListCompanySubscriptions(): Promise<AdminCompanySubsc
       cancelAtPeriodEnd: subs?.cancel_at_period_end === true,
     };
   });
+}
+
+export async function adminListSubscriptionRequests(
+  onlyPending = false,
+): Promise<AdminSubscriptionRequestRow[]> {
+  const supabase = createClient();
+  let query = supabase
+    .from("subscription_requests")
+    .select(
+      "id, company_id, billing_interval, amount_cents, currency, first_name, last_name, phone, city, payment_method, transaction_id, status, created_at, company:companies(name), plan:subscription_plans(name)",
+    )
+    .order("created_at", { ascending: false });
+  if (onlyPending) query = query.eq("status", "pending");
+  const { data, error } = await query;
+  if (error) throw mapSupabaseError(error);
+  return ((data ?? []) as Record<string, unknown>[]).map((r) => {
+    const companyRaw = r.company;
+    const company = Array.isArray(companyRaw)
+      ? (companyRaw[0] as Record<string, unknown> | undefined)
+      : (companyRaw as Record<string, unknown> | undefined);
+    const planRaw = r.plan;
+    const plan = Array.isArray(planRaw)
+      ? (planRaw[0] as Record<string, unknown> | undefined)
+      : (planRaw as Record<string, unknown> | undefined);
+    return {
+      id: String(r.id ?? ""),
+      companyId: String(r.company_id ?? ""),
+      companyName: company?.name != null ? String(company.name) : null,
+      planName: plan?.name != null ? String(plan.name) : null,
+      billingInterval: String(r.billing_interval ?? "month") === "year" ? "year" : "month",
+      amountCents: toNum(r.amount_cents),
+      currency: String(r.currency ?? "XOF"),
+      firstName: String(r.first_name ?? ""),
+      lastName: String(r.last_name ?? ""),
+      phone: String(r.phone ?? ""),
+      city: r.city != null ? String(r.city) : null,
+      paymentMethod: String(r.payment_method ?? ""),
+      transactionId: r.transaction_id != null ? String(r.transaction_id) : null,
+      status: (String(r.status ?? "pending") as AdminSubscriptionRequestRow["status"]) ?? "pending",
+      createdAt: String(r.created_at ?? ""),
+    };
+  });
+}
+
+/** Valide (active l'abonnement) ou refuse une demande — via RPC super-admin. */
+export async function adminReviewSubscriptionRequest(params: {
+  requestId: string;
+  approve: boolean;
+  note?: string | null;
+}): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase.rpc("review_subscription_request", {
+    p_request_id: params.requestId,
+    p_approve: params.approve,
+    p_note: params.note ?? null,
+  });
+  if (error) throw mapSupabaseError(error);
 }
 
 export async function adminUpsertCompanySubscription(params: {

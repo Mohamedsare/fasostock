@@ -22,7 +22,7 @@ const APP_ZONE_ROOTS: string[] = [
   ROUTES.users,
   ROUTES.audit,
   ROUTES.help,
-  ROUTES.notifications,
+  ROUTES.subscription,
   ROUTES.integrations,
   "/restaurant",
 ];

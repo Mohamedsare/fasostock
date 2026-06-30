@@ -40,6 +40,12 @@ export type ActivityConfig = {
   showBarcodeField: boolean;
   /** Bloc d'alertes de péremption sur le tableau de bord. */
   expiryDashboard: boolean;
+  /**
+   * Suivi des « ventes sur ordonnance » dans la carte rapports (pharmacie).
+   * Distinct de `expiryDashboard` : un supermarché suit la péremption sans
+   * notion d'ordonnance.
+   */
+  prescriptionReports: boolean;
 };
 
 const DEFAULT_ACTIVITY_CONFIG: ActivityConfig = {
@@ -48,6 +54,7 @@ const DEFAULT_ACTIVITY_CONFIG: ActivityConfig = {
   batchTracking: false,
   showBarcodeField: true,
   expiryDashboard: false,
+  prescriptionReports: false,
 };
 
 const PHARMACY_CONFIG: ActivityConfig = {
@@ -96,10 +103,26 @@ const PHARMACY_CONFIG: ActivityConfig = {
   // Code-barres peu utilisé au comptoir d'officine → champ masqué (comme le menu).
   showBarcodeField: false,
   expiryDashboard: true,
+  prescriptionReports: true,
+};
+
+const SUPERMARKET_CONFIG: ActivityConfig = {
+  slug: "supermarche-alimentation",
+  // Pas de champ produit additionnel (réutilise le formulaire générique).
+  productFields: [],
+  // Frais / DLC : on réutilise tel quel le suivi de lots et l'alerte de
+  // péremption déjà éprouvés en pharmacie (table `product_batches`).
+  batchTracking: true,
+  // Code-barres central en grande distribution (douchette caisse).
+  showBarcodeField: true,
+  expiryDashboard: true,
+  // Pas de notion d'ordonnance en alimentation.
+  prescriptionReports: false,
 };
 
 const CONFIGS: Record<string, ActivityConfig> = {
   [PHARMACY_CONFIG.slug]: PHARMACY_CONFIG,
+  [SUPERMARKET_CONFIG.slug]: SUPERMARKET_CONFIG,
 };
 
 /** Config métier effective pour un slug (jamais `null` — fallback défaut). */

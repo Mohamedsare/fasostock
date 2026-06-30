@@ -5,9 +5,13 @@ import { FsHorizontalScroll } from "@/components/ui/fs-horizontal-scroll";
 import {
   adminListCompanySubscriptions,
   adminListSubscriptionPlansLite,
+  adminListSubscriptionRequests,
+  adminReviewSubscriptionRequest,
   adminUpsertCompanySubscription,
 } from "@/lib/features/admin/api";
 import type { AdminCompanySubscriptionRow } from "@/lib/features/admin/types";
+import { subscriptionPaymentLabel } from "@/lib/features/subscription/types";
+import { formatCurrency } from "@/lib/utils/currency";
 import { messageFromUnknownError, toast } from "@/lib/toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
@@ -69,6 +73,24 @@ export function AdminSubscriptionsScreen() {
     },
     onError: (e) => toast.error(messageFromUnknownError(e)),
   });
+
+  const reqQ = useQuery({
+    queryKey: ["admin-subscription-requests"] as const,
+    queryFn: () => adminListSubscriptionRequests(true),
+  });
+
+  const reviewMut = useMutation({
+    mutationFn: (p: { requestId: string; approve: boolean }) =>
+      adminReviewSubscriptionRequest(p),
+    onSuccess: (_d, p) => {
+      toast.success(p.approve ? "Abonnement activé" : "Demande refusée");
+      void qc.invalidateQueries({ queryKey: ["admin-subscription-requests"] });
+      void qc.invalidateQueries({ queryKey: ["admin-company-subscriptions"] });
+    },
+    onError: (e) => toast.error(messageFromUnknownError(e)),
+  });
+
+  const pendingRequests = useMemo(() => reqQ.data ?? [], [reqQ.data]);
 
   const plans = useMemo(() => q.data?.plans ?? [], [q.data?.plans]);
   const defaultPlanId = useMemo(() => plans[0]?.id ?? "", [plans]);
@@ -134,6 +156,110 @@ export function AdminSubscriptionsScreen() {
           Regles appliquees via migration: ELOF MULTI SERVICES et RAMADAN TELECOM actifs, entreprises existantes en essai 7 jours, nouvelles entreprises en essai 14 jours par defaut.
         </p>
       </AdminCard>
+
+      {/* Demandes d'abonnement en attente (soumises par les owners) */}
+      <section>
+        <div className="mb-3 flex items-center gap-2">
+          <h2 className="text-base font-bold text-slate-900">
+            Demandes d&apos;abonnement
+          </h2>
+          {pendingRequests.length > 0 ? (
+            <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-orange-500 px-2 text-xs font-bold text-white">
+              {pendingRequests.length}
+            </span>
+          ) : null}
+          <span className="ml-1 text-xs text-slate-500">en attente de validation</span>
+        </div>
+
+        {reqQ.isLoading ? (
+          <AdminCard>
+            <p className="text-sm text-slate-500">Chargement…</p>
+          </AdminCard>
+        ) : pendingRequests.length === 0 ? (
+          <AdminCard>
+            <div className="flex flex-col items-center gap-2 py-6 text-center">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50">
+                <svg className="h-6 w-6 text-emerald-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 6 9 17l-5-5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              </div>
+              <p className="text-sm font-medium text-slate-600">
+                Aucune demande en attente. Tout est à jour.
+              </p>
+            </div>
+          </AdminCard>
+        ) : (
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+            {pendingRequests.map((r) => {
+              const busy =
+                reviewMut.isPending && reviewMut.variables?.requestId === r.id;
+              return (
+                <div
+                  key={r.id}
+                  className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
+                >
+                  <div className="flex items-start justify-between gap-3 border-l-4 border-orange-500 bg-orange-50/40 px-4 py-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-base font-bold text-slate-900">
+                        {r.companyName ?? "Entreprise"}
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        {r.planName ?? "Pro"} ·{" "}
+                        {r.billingInterval === "year" ? "Annuel" : "Mensuel"} ·{" "}
+                        {new Date(r.createdAt).toLocaleDateString("fr-FR")}
+                      </p>
+                    </div>
+                    <div className="shrink-0 rounded-xl bg-slate-900 px-3 py-1.5 text-right">
+                      <p className="text-sm font-extrabold leading-none text-white">
+                        {formatCurrency(r.amountCents)}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-2.5 px-4 py-3.5">
+                    <Field label="Demandeur" value={`${r.firstName} ${r.lastName}`.trim() || "—"} />
+                    <Field label="Téléphone" value={r.phone || "—"} />
+                    <Field label="Ville" value={r.city || "—"} />
+                    <Field label="Paiement" value={subscriptionPaymentLabel(r.paymentMethod)} />
+                    <div className="col-span-2">
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                        ID transaction
+                      </p>
+                      <p className="mt-0.5 break-all rounded-lg bg-slate-50 px-2 py-1.5 font-mono text-xs text-slate-800">
+                        {r.transactionId || "— (paiement en espèces)"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2 border-t border-slate-100 p-3">
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => reviewMut.mutate({ requestId: r.id, approve: true })}
+                      className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
+                    >
+                      {busy ? (
+                        <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" aria-hidden />
+                      ) : null}
+                      Approuver &amp; activer
+                    </button>
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => {
+                        if (window.confirm("Refuser cette demande d'abonnement ?")) {
+                          reviewMut.mutate({ requestId: r.id, approve: false });
+                        }
+                      }}
+                      className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                    >
+                      Refuser
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
 
       <AdminCard padding="p-0">
         <FsHorizontalScroll>
@@ -237,6 +363,17 @@ export function AdminSubscriptionsScreen() {
         </table>
         </FsHorizontalScroll>
       </AdminCard>
+    </div>
+  );
+}
+
+function Field({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0">
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+        {label}
+      </p>
+      <p className="mt-0.5 truncate text-sm font-medium text-slate-800">{value}</p>
     </div>
   );
 }

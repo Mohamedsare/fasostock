@@ -8,6 +8,7 @@ import {
   fetchExpirySummary,
 } from "@/lib/features/products/batches-api";
 import { activityConfig } from "@/lib/features/activity/activity-config";
+import { activityUiTerms } from "@/lib/features/activity/activity-profiles";
 import { formatCurrency } from "@/lib/utils/currency";
 import { FsCard } from "@/components/ui/fs-screen-primitives";
 
@@ -55,8 +56,9 @@ export function PharmacyReportsCard({
   fromDate,
   toDate,
 }: Props) {
-  const enabled =
-    !!companyId && activityConfig(businessTypeSlug).expiryDashboard;
+  const config = activityConfig(businessTypeSlug);
+  const terms = activityUiTerms(businessTypeSlug);
+  const enabled = !!companyId && config.expiryDashboard;
 
   const expiryQ = useQuery({
     queryKey: ["expiry-summary", companyId],
@@ -68,7 +70,7 @@ export function PharmacyReportsCard({
   const prescQ = useQuery({
     queryKey: ["prescription-sales", companyId, storeId, fromDate, toDate],
     queryFn: () => fetchPrescriptionSales(companyId, storeId, fromDate, toDate),
-    enabled,
+    enabled: enabled && config.prescriptionReports,
     staleTime: 60_000,
   });
 
@@ -81,12 +83,18 @@ export function PharmacyReportsCard({
     <FsCard className="mb-6" padding="p-4 sm:p-5">
       <h2 className="flex items-center gap-1.5 text-base font-bold text-fs-text">
         <MdEventBusy className="h-5 w-5 text-fs-accent" aria-hidden />
-        Rapports pharmacie
+        {terms.expiryReportsTitle ?? "Suivi des péremptions"}
       </h2>
 
-      <div className="mt-3 grid grid-cols-1 gap-3 min-[640px]:grid-cols-3">
+      <div
+        className={`mt-3 grid grid-cols-1 gap-3 ${
+          config.prescriptionReports
+            ? "min-[640px]:grid-cols-3"
+            : "min-[640px]:grid-cols-2"
+        }`}
+      >
         <Tile
-          label="Médicaments périmés"
+          label={terms.expiredItemsLabel ?? "Produits périmés"}
           value={expiry ? String(expiry.expiredCount) : "—"}
           sub={expiry ? `${expiry.expiredQuantity} unité(s)` : ""}
           tone="red"
@@ -97,13 +105,15 @@ export function PharmacyReportsCard({
           sub={expiry ? `${expiry.expiringSoonQuantity} unité(s)` : ""}
           tone="amber"
         />
-        <Tile
-          label="Ventes sur ordonnance (période)"
-          value={presc ? String(presc.count) : "—"}
-          sub={presc ? formatCurrency(presc.total) : ""}
-          tone="accent"
-          icon
-        />
+        {config.prescriptionReports ? (
+          <Tile
+            label="Ventes sur ordonnance (période)"
+            value={presc ? String(presc.count) : "—"}
+            sub={presc ? formatCurrency(presc.total) : ""}
+            tone="accent"
+            icon
+          />
+        ) : null}
       </div>
 
       {expiry && expiry.items.length > 0 ? (

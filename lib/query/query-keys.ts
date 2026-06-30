@@ -18,6 +18,9 @@ export const queryKeys = {
   }) => ["purchases", params] as const,
   customers: (companyId: string) => ["customers", companyId] as const,
   suppliers: (companyId: string) => ["suppliers", companyId] as const,
+  /** Dépenses sur une plage de dates (filtres catégorie/recherche côté client). */
+  expenses: (params: { companyId: string; from: string; to: string }) =>
+    ["expenses", params] as const,
   aiInsights: (params: {
     companyId: string;
     storeId: string | null;
@@ -84,9 +87,6 @@ export const queryKeys = {
   warehouseMovements: (companyId: string) => ["warehouse", companyId, "movements"] as const,
   warehouseDispatch: (companyId: string) => ["warehouse", companyId, "dispatch"] as const,
   warehouseTransfers: (companyId: string) => ["warehouse", companyId, "transfers"] as const,
-  /** Badge cloche + page Notifications (aligné `NotificationsRepository` Flutter). */
-  notificationsInbox: ["notifications-inbox"] as const,
-  notificationsUnread: ["topbar-notifications-unread"] as const,
   /** Panneau owner (ruptures, tendances…) — aligné `OwnerNotificationsDialog` Flutter. */
   ownerNotifications: (companyId: string, storeId: string | null) =>
     ["owner-notifications", companyId, storeId ?? "__all__"] as const,

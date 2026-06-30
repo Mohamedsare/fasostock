@@ -220,6 +220,24 @@ export type AdminSubscriptionPlanLite = {
   isActive: boolean;
 };
 
+export type AdminSubscriptionRequestRow = {
+  id: string;
+  companyId: string;
+  companyName: string | null;
+  planName: string | null;
+  billingInterval: "month" | "year";
+  amountCents: number;
+  currency: string;
+  firstName: string;
+  lastName: string;
+  phone: string;
+  city: string | null;
+  paymentMethod: string;
+  transactionId: string | null;
+  status: "pending" | "approved" | "rejected";
+  createdAt: string;
+};
+
 export type AdminCompanySubscriptionRow = {
   companyId: string;
   companyName: string;

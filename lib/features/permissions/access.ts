@@ -5,6 +5,7 @@ import {
   adaptNavItemsForActivity,
   isRouteAllowedForActivity,
 } from "@/lib/features/activity/activity-profiles";
+import { activityConfig } from "@/lib/features/activity/activity-config";
 
 /** Chemins affichés en menu restreint pendant le chargement des droits (Flutter `cashierPaths`). */
 export const CASHIER_FALLBACK_HREFS = [
@@ -62,6 +63,12 @@ export type AccessHelpers = {
   canCredit: boolean;
   /** Propriétaire ou permission page Code Barre. */
   canBarcodes: boolean;
+  /** Propriétaire ou permission page Péremptions (DLC/DLUO). */
+  canExpiry: boolean;
+  /** Propriétaire ou permission de consultation des dépenses. */
+  canExpenses: boolean;
+  /** Propriétaire ou permission de gestion (CRUD) des dépenses. */
+  canManageExpenses: boolean;
 };
 
 /** Construit les helpers à partir du contexte (même logique que `app_shell.dart` Flutter). */
@@ -119,6 +126,10 @@ export function buildAccessHelpers(
     data.warehouseFeatureEnabled !== false;
   const canCredit = isOwner || hasPermission(P.creditView);
   const canBarcodes = isOwner || hasPermission(P.barcodesManage);
+  const canExpiry = isOwner || hasPermission(P.expiryView);
+  const canManageExpenses = isOwner || hasPermission(P.expensesManage);
+  const canExpenses =
+    isOwner || hasPermission(P.expensesView) || canManageExpenses;
 
   return {
     hasPermission,
@@ -141,6 +152,9 @@ export function buildAccessHelpers(
     canWarehouse,
     canCredit,
     canBarcodes,
+    canExpiry,
+    canExpenses,
+    canManageExpenses,
   };
 }
 
@@ -181,7 +195,12 @@ export function filterNavItemsForPermissions(
     if (href === ROUTES.sales) return h.canSales;
     if (href === ROUTES.stores) return h.canStores;
     if (href === ROUTES.inventory) return h.canInventory && !h.isCashier;
+    if (href === ROUTES.expiry) {
+      // Page réservée aux métiers à suivi de péremption (pharmacie, supermarché…).
+      return h.canExpiry && activityConfig(businessTypeSlug).expiryDashboard;
+    }
     if (href === ROUTES.purchases) return h.canPurchases;
+    if (href === ROUTES.expenses) return h.canExpenses;
     if (href === ROUTES.warehouse) return h.canWarehouse;
     if (href === ROUTES.customers) return h.canCustomers;
     if (href === ROUTES.credit) return h.canCredit;
@@ -194,7 +213,7 @@ export function filterNavItemsForPermissions(
     if (href === ROUTES.transfers) return h.canTransfers;
     if (href === ROUTES.audit) return h.canAudit && !h.isOwner;
     if (href === ROUTES.help) return h.isOwner;
-    if (href === ROUTES.notifications) return h.isOwner;
+    if (href === ROUTES.subscription) return h.isOwner;
     if (href === ROUTES.integrations) return false;
     return true;
   });
@@ -227,7 +246,9 @@ const APP_SHELL_ROUTE_PREFIXES: readonly string[] = [
   ROUTES.stores,
   ROUTES.inventory,
   ROUTES.stockCashier,
+  ROUTES.expiry,
   ROUTES.purchases,
+  ROUTES.expenses,
   ROUTES.warehouse,
   ROUTES.transfers,
   ROUTES.customers,
@@ -240,7 +261,7 @@ const APP_SHELL_ROUTE_PREFIXES: readonly string[] = [
   ROUTES.settings,
   ROUTES.printers,
   ROUTES.help,
-  ROUTES.notifications,
+  ROUTES.subscription,
   ROUTES.integrations,
   "/restaurant",
 ];
@@ -288,5 +309,9 @@ export function canAccessPathname(
 
   const route = normalizeAppRoute(pathname);
   if (!isRouteAllowedForActivity(route, businessTypeSlug)) return false;
+  // Page Péremptions : réservée aux métiers à suivi de lots (accès URL direct).
+  if (route === ROUTES.expiry && !activityConfig(businessTypeSlug).expiryDashboard) {
+    return false;
+  }
   return isAppShellRoute(route);
 }

@@ -231,8 +231,8 @@ export function UsersScreen() {
   return (
     <FsPage>
       <FsScreenHeader
-        title="Utilisateurs"
-        subtitle="Gérez les rôles et l'accès des utilisateurs de l'entreprise."
+        title="Employés"
+        subtitle="Gérez les rôles et l'accès des employés de l'entreprise."
       />
 
       <div className="mb-3 flex items-center justify-between gap-2 sm:mb-4">

@@ -352,7 +352,7 @@ export function SettingsScreen() {
     onSuccess: async (_, enabled) => {
       toast.success(
         enabled
-          ? "Mode facture (tableau) activé pour l'entreprise. Accordez le droit aux utilisateurs dans Utilisateurs."
+          ? "Mode facture (tableau) activé pour l'entreprise. Accordez le droit aux employés dans Employés."
           : "Mode facture (tableau) désactivé.",
       );
       await qc.invalidateQueries({ queryKey: queryKeys.invoiceTablePosEnabled(companyId) });
@@ -629,7 +629,7 @@ export function SettingsScreen() {
           <p className="mt-2 text-xs leading-relaxed text-neutral-600 sm:text-sm">
             Deuxième écran de caisse facture : les lignes du panier s&apos;affichent comme sur une facture (tableau).
             Le PDF A4 généré est identique au mode facture classique. Une fois activé ici, accordez le droit « POS
-            facture A4 (vue tableau) » aux utilisateurs concernés dans Utilisateurs.
+            facture A4 (vue tableau) » aux employés concernés dans Employés.
           </p>
           {invoiceTablePosQ.isPending ? (
             <div className="mt-4 flex justify-center py-4" role="status" aria-label="Chargement">

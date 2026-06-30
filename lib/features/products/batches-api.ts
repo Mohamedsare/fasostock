@@ -105,6 +105,64 @@ export type ExpirySummary = {
 /** Fenêtre « bientôt périmé » par défaut (jours). */
 export const EXPIRY_SOON_DAYS = 90;
 
+/** Une ligne de la page Péremptions (lot daté avec stock restant). */
+export type ExpiryListItem = {
+  batchId: string;
+  productId: string;
+  productName: string;
+  storeId: string | null;
+  lotNumber: string | null;
+  expiryDate: string;
+  quantity: number;
+  /** Jours restants (négatif = déjà périmé). */
+  daysLeft: number;
+};
+
+/**
+ * Liste complète des lots datés encore en stock (quantité > 0), triés par date
+ * de péremption croissante. Sert la page dédiée « Péremptions » (recherche +
+ * filtres côté client). Réutilise `product_batches` (aucune table spécifique).
+ */
+export async function fetchExpiryList(
+  companyId: string,
+): Promise<ExpiryListItem[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("product_batches")
+    .select(
+      "id, product_id, store_id, lot_number, expiry_date, quantity, product:products(name)",
+    )
+    .eq("company_id", companyId)
+    .gt("quantity", 0)
+    .not("expiry_date", "is", null)
+    .order("expiry_date", { ascending: true });
+  if (error) throw error;
+
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const todayMs = new Date(todayIso).getTime();
+
+  return ((data ?? []) as Array<Record<string, unknown>>).map((row) => {
+    const expiry = String(row.expiry_date);
+    const productRaw = row.product;
+    const productName = Array.isArray(productRaw)
+      ? String((productRaw[0] as { name?: string } | undefined)?.name ?? "—")
+      : String((productRaw as { name?: string } | null)?.name ?? "—");
+    const daysLeft = Math.round(
+      (new Date(expiry).getTime() - todayMs) / 86_400_000,
+    );
+    return {
+      batchId: String(row.id),
+      productId: String(row.product_id),
+      productName,
+      storeId: row.store_id != null ? String(row.store_id) : null,
+      lotNumber: row.lot_number != null ? String(row.lot_number) : null,
+      expiryDate: expiry,
+      quantity: Math.max(0, Math.floor(Number(row.quantity ?? 0))),
+      daysLeft,
+    };
+  });
+}
+
 export async function fetchExpirySummary(
   companyId: string,
   soonDays: number = EXPIRY_SOON_DAYS,

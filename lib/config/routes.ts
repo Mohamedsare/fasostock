@@ -16,7 +16,11 @@ export const ROUTES = {
   stores: "/stores",
   inventory: "/inventory",
   stockCashier: "/stock-c",
+  /** Suivi des dates de péremption (DLC/DLUO) — métiers à suivi de lots (pharmacie, supermarché). */
+  expiry: "/peremption",
   purchases: "/purchases",
+  /** Gestion des dépenses / charges (loyer, salaires, transport…) — tous métiers. */
+  expenses: "/depenses",
   warehouse: "/warehouse",
   transfers: "/transfers",
   customers: "/customers",
@@ -31,7 +35,8 @@ export const ROUTES = {
   users: "/users",
   audit: "/audit",
   help: "/help",
-  notifications: "/notifications",
+  /** Abonnement de l'entreprise (plan, renouvellement, souscription) — owner. */
+  subscription: "/abonnement",
   integrations: "/integrations",
   /** Espace super-admin (shell dédié, aligné Flutter `AppRoutes.admin`). */
   admin: "/admin",
