@@ -20,6 +20,7 @@ import {
   MdMap,
   MdMessage,
   MdEmail,
+  MdOndemandVideo,
   MdPeople,
   MdPublic,
   MdSettings,
@@ -45,6 +46,7 @@ const NAV = [
   { href: "/admin/ai", label: "IA", icon: MdAutoAwesome },
   { href: "/admin/reports", label: "Rapports", icon: MdBarChart },
   { href: "/admin/abonnement", label: "Abonnement", icon: MdCardMembership },
+  { href: "/admin/tuto", label: "Tuto", icon: MdOndemandVideo },
   { href: "/admin/gpublique", label: "GPublique", icon: MdPublic },
   { href: "/admin/settings", label: "Paramètres", icon: MdSettings },
 ] as const;

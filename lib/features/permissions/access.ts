@@ -212,7 +212,8 @@ export function filterNavItemsForPermissions(
     if (href === ROUTES.settings || href === ROUTES.printers) return h.canSettings;
     if (href === ROUTES.transfers) return h.canTransfers;
     if (href === ROUTES.audit) return h.canAudit && !h.isOwner;
-    if (href === ROUTES.help) return h.isOwner;
+    // Aide : visible par tous (tutoriels vidéo + contacts). Le guide détaillé interne reste owner.
+    if (href === ROUTES.help) return true;
     if (href === ROUTES.subscription) return h.isOwner;
     if (href === ROUTES.integrations) return false;
     return true;
