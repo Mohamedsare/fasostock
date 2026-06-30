@@ -3,6 +3,8 @@ import { escapeHtml } from "./escape-html";
 export type SubscriptionInvoiceData = {
   invoiceNumber: string;
   issuedAtIso: string;
+  /** Logo de marque FasoStock embarqué (data URL) pour l'en-tête de la facture. */
+  brandLogoSrc: string | null;
   companyName: string;
   companyLogoSrc: string | null;
   clientName: string;
@@ -52,6 +54,10 @@ export function renderSubscriptionInvoiceHtml(d: SubscriptionInvoiceData): strin
     ? `<img src="${tx(d.companyLogoSrc)}" alt="" class="client-logo" />`
     : "";
 
+  const brandMark = d.brandLogoSrc
+    ? `<img src="${tx(d.brandLogoSrc)}" alt="FasoStock" class="brand-logo-img" />`
+    : `<div class="brand-mark">FS</div>`;
+
   return `<!doctype html>
 <html lang="fr">
 <head>
@@ -63,6 +69,7 @@ export function renderSubscriptionInvoiceHtml(d: SubscriptionInvoiceData): strin
   .top { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; padding-bottom: 18px; border-bottom: 3px solid #f97316; }
   .brand { display: flex; align-items: center; gap: 10px; }
   .brand-mark { width: 42px; height: 42px; border-radius: 10px; background: #f97316; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 20px; }
+  .brand-logo-img { width: 46px; height: 46px; object-fit: contain; }
   .brand-name { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; color: #111827; }
   .brand-name span { color: #f97316; }
   .brand-sub { font-size: 11px; color: #6b7280; margin-top: 2px; }
@@ -112,7 +119,7 @@ export function renderSubscriptionInvoiceHtml(d: SubscriptionInvoiceData): strin
     <div class="top">
       <div>
         <div class="brand">
-          <div class="brand-mark">FS</div>
+          ${brandMark}
           <div>
             <div class="brand-name">Faso<span>Stock</span></div>
             <div class="brand-sub">Logiciel de gestion de stock & caisse</div>

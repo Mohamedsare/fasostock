@@ -25,15 +25,15 @@ import {
   fetchMySubscription,
   fetchPaidPlans,
 } from "@/lib/features/subscription/api";
-import { fetchSubscriptionInvoicePdfBlob } from "@/lib/features/pdf/pdf-api-client";
 import {
   SUBSCRIPTION_STATUS_LABELS,
   subscriptionPaymentLabel,
   type SubscriptionStatus,
 } from "@/lib/features/subscription/types";
 import { SubscribeFlowDialog } from "@/components/subscription/subscribe-flow-dialog";
+import { InvoicePreviewDialog } from "@/components/subscription/invoice-preview-dialog";
 import { formatCurrency } from "@/lib/utils/currency";
-import { messageFromUnknownError, toast, toastMutationError } from "@/lib/toast";
+import { toast, toastMutationError } from "@/lib/toast";
 import { cn } from "@/lib/utils/cn";
 
 function formatDmy(iso: string | null): string {
@@ -107,20 +107,7 @@ export function SubscriptionScreen() {
   });
   const invoices = useMemo(() => invoicesQ.data ?? [], [invoicesQ.data]);
 
-  const [downloadingId, setDownloadingId] = useState<string | null>(null);
-  async function openInvoice(requestId: string) {
-    try {
-      setDownloadingId(requestId);
-      const blob = await fetchSubscriptionInvoicePdfBlob(requestId);
-      const url = URL.createObjectURL(blob);
-      window.open(url, "_blank", "noopener,noreferrer");
-      setTimeout(() => URL.revokeObjectURL(url), 60_000);
-    } catch (e) {
-      toast.error(messageFromUnknownError(e, "Téléchargement de la facture impossible."));
-    } finally {
-      setDownloadingId(null);
-    }
-  }
+  const [previewId, setPreviewId] = useState<string | null>(null);
 
   const sub = subQ.data;
   const plans = useMemo(() => plansQ.data ?? [], [plansQ.data]);
@@ -354,19 +341,11 @@ export function SubscriptionScreen() {
                       </div>
                       <button
                         type="button"
-                        onClick={() => openInvoice(inv.id)}
-                        disabled={downloadingId === inv.id}
-                        className="inline-flex shrink-0 items-center gap-1.5 rounded-[10px] border border-black/[0.12] bg-fs-card px-3 py-2 text-xs font-semibold text-neutral-800 disabled:opacity-60 sm:text-sm"
+                        onClick={() => setPreviewId(inv.id)}
+                        className="inline-flex shrink-0 items-center gap-1.5 rounded-[10px] border border-black/[0.12] bg-fs-card px-3 py-2 text-xs font-semibold text-neutral-800 active:scale-[0.99] sm:text-sm"
                       >
-                        {downloadingId === inv.id ? (
-                          <span
-                            className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-fs-accent border-t-transparent"
-                            aria-hidden
-                          />
-                        ) : (
-                          <MdPictureAsPdf className="h-4 w-4" aria-hidden />
-                        )}
-                        Facture
+                        <MdPictureAsPdf className="h-4 w-4" aria-hidden />
+                        Voir / Télécharger
                       </button>
                     </li>
                   ))}
@@ -385,6 +364,13 @@ export function SubscriptionScreen() {
         onSubmit={async (input) => {
           await submitMut.mutateAsync(input);
         }}
+      />
+
+      <InvoicePreviewDialog
+        open={previewId != null}
+        requestId={previewId}
+        fileName="facture-fasostock.pdf"
+        onClose={() => setPreviewId(null)}
       />
     </FsPage>
   );

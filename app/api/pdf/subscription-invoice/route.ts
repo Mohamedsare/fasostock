@@ -1,3 +1,5 @@
+import fs from "fs";
+import path from "path";
 import { NextResponse } from "next/server";
 import QRCode from "qrcode";
 import { htmlToPdfBufferA4 } from "@/lib/server/pdf/html-to-pdf";
@@ -25,6 +27,19 @@ async function toDataUrlFromHttp(
   } catch {
     return null;
   }
+}
+
+/** Logo de marque FasoStock (public/fs.png) embarqué en data URL — lu une seule fois. */
+let brandLogoCache: string | null | undefined;
+function brandLogoDataUrl(): string | null {
+  if (brandLogoCache !== undefined) return brandLogoCache;
+  try {
+    const buf = fs.readFileSync(path.join(process.cwd(), "public", "fs.png"));
+    brandLogoCache = `data:image/png;base64,${buf.toString("base64")}`;
+  } catch {
+    brandLogoCache = null;
+  }
+  return brandLogoCache;
 }
 
 function ymd(iso: string): string {
@@ -103,6 +118,7 @@ export async function POST(req: Request) {
     const html = renderSubscriptionInvoiceHtml({
       invoiceNumber,
       issuedAtIso,
+      brandLogoSrc: brandLogoDataUrl(),
       companyName,
       companyLogoSrc,
       clientName: `${String(r.first_name ?? "")} ${String(r.last_name ?? "")}`.trim(),
