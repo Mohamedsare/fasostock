@@ -11,6 +11,8 @@ export type PosReceiptSnap = {
     name: string;
     quantity: number;
     unitPrice: number;
+    /** Total exact de la ligne (conditionnement) ; sinon qté × PU. */
+    lineTotal?: number;
   }>;
   subtotal: number;
   discount: number;
@@ -110,7 +112,7 @@ export function buildReceiptTicketData(
     name: c.name,
     quantity: c.quantity,
     unitPrice: c.unitPrice,
-    total: c.quantity * c.unitPrice,
+    total: c.lineTotal ?? c.quantity * c.unitPrice,
   }));
 
   const isCash = snap.quickPayment === "cash";

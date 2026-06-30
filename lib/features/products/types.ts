@@ -23,6 +23,27 @@ export type ProductImageRow = {
 /** Aligné `product_scope` Supabase / Flutter. */
 export type ProductScope = "both" | "warehouse_only" | "boutique_only";
 
+/**
+ * Conditionnement d'un produit (table `product_packagings`) — ex. paquet, carton.
+ * Le code-barres « pièce » reste `ProductItem.barcode` ; cette table ajoute les
+ * conditionnements plus grands. Le stock reste compté en unité de base (pièce) :
+ * scanner un conditionnement ajoute `factor` pièces au panier.
+ */
+export type ProductPackaging = {
+  id: string;
+  company_id?: string;
+  product_id?: string;
+  /** Libellé (ex. « Carton », « Paquet »). */
+  label: string;
+  /** Code-barres propre au conditionnement (GTIN paquet/carton). */
+  barcode: string | null;
+  /** Nombre d'unités de base (pièces) contenues. ≥ 1. */
+  factor: number;
+  /** Prix de vente du conditionnement ; `null` = factor × prix pièce. */
+  price: number | null;
+  position: number;
+};
+
 export type ProductItem = {
   id: string;
   company_id: string;
@@ -47,6 +68,8 @@ export type ProductItem = {
   brand?: { id: string; name: string } | null;
   /** Tri par `position` asc. — première = miniature liste (comme Flutter). */
   product_images?: ProductImageRow[] | null;
+  /** Conditionnements (paquet/carton) — tri par `position` asc. Vide si aucun. */
+  product_packagings?: ProductPackaging[] | null;
   /**
    * Champs métier additionnels (ex. pharmacie). Colonnes nullables ajoutées par
    * migration additive — `null`/absent pour les métiers qui ne les utilisent pas.
@@ -91,11 +114,37 @@ export type ProductFormInput = {
   activityFields?: ActivityProductFieldValues;
 };
 
+/**
+ * Conditionnement saisi dans le formulaire produit. `id` présent = ligne existante
+ * (mise à jour) ; absent = nouvelle ligne (insertion).
+ */
+export type ProductPackagingDraft = {
+  id?: string;
+  label: string;
+  barcode: string;
+  factor: number;
+  /** `null` = pas de prix dédié → factor × prix pièce. */
+  price: number | null;
+};
+
 /** Soumission formulaire produit — aligné `ProductFormDialog` Flutter. */
 export type ProductFormSavePayload = {
   input: ProductFormInput;
   pendingImages: File[];
   removedImageIds: string[];
+  /** Conditionnements voulus (état final affiché dans le formulaire). */
+  packagings: ProductPackagingDraft[];
+  /** Ids de conditionnements existants supprimés dans le formulaire. */
+  removedPackagingIds: string[];
   /** Création uniquement — ajustement stock boutique si > 0. */
   initialStock: number;
+  /**
+   * Création uniquement — lot daté initial (métiers à suivi de péremption).
+   * Crée une ligne `product_batches` juste après la création du produit.
+   */
+  initialBatch?: {
+    expiryDate: string;
+    quantity: number;
+    lotNumber: string;
+  } | null;
 };

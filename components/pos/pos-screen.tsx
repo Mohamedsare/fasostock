@@ -289,6 +289,28 @@ export function PosScreen({
     });
     return m;
   }, [rawStockByProductId, editStockRelease]);
+  // Index code-barres conditionnement → produit + facteur + prix (caisse rapide).
+  // Permet de scanner un paquet/carton : ajoute `factor` pièces au prix du
+  // conditionnement, le stock restant compté en pièces.
+  const packagingByBarcode = useMemo(() => {
+    const m = new Map<
+      string,
+      { product: (typeof products)[number]; factor: number; price: number | null; label: string }
+    >();
+    for (const p of products) {
+      for (const pkg of p.product_packagings ?? []) {
+        const bc = (pkg.barcode ?? "").trim().toLowerCase();
+        if (!bc || m.has(bc)) continue;
+        m.set(bc, {
+          product: p,
+          factor: Math.max(1, Math.floor(pkg.factor)),
+          price: pkg.price != null ? pkg.price : null,
+          label: pkg.label,
+        });
+      }
+    }
+    return m;
+  }, [products]);
   const categories = posQ.data?.categories ?? [];
   const customers = posQ.data?.customers ?? [];
   const showDiscountField = store?.pos_discount_enabled === true;
@@ -306,7 +328,10 @@ export function PosScreen({
       return (
         p.name.toLowerCase().includes(q) ||
         (p.sku ?? "").toLowerCase().includes(q) ||
-        (p.barcode ?? "").toLowerCase().includes(q)
+        (p.barcode ?? "").toLowerCase().includes(q) ||
+        (p.product_packagings ?? []).some((pk) =>
+          (pk.barcode ?? "").toLowerCase().includes(q),
+        )
       );
     });
   }, [products, stockByProductId, categoryId, search]);
@@ -564,6 +589,7 @@ export function PosScreen({
                 name: c.name,
                 quantity: c.quantity,
                 unitPrice: c.unitPrice,
+                lineTotal: c.lineTotal,
               })),
               subtotal,
               discount: discountValue,
@@ -581,6 +607,13 @@ export function PosScreen({
           productId: c.productId,
           quantity: c.quantity,
           unitPrice: c.unitPrice,
+          // Remise de ligne = écart entre qté×PU et le total exact (lineTotal).
+          // Sert l'exactitude du prix d'un conditionnement (carton/paquet).
+          discount: Math.max(
+            0,
+            c.quantity * c.unitPrice -
+              (c.lineTotal ?? c.quantity * c.unitPrice),
+          ),
         })),
         discount: discountValue,
         payments,
@@ -781,6 +814,69 @@ export function PosScreen({
     });
   }
 
+  /**
+   * Ajoute `addQty` unités (pièces) d'un produit au panier, à un prix unitaire
+   * imposé (conditionnement). Respecte le stock disponible. Sert au scan d'un
+   * paquet/carton : on ajoute le nombre de pièces contenu, au prix du conditionnement.
+   */
+  function addUnitsToCart(
+    productId: string,
+    name: string,
+    unit: string,
+    imageUrl: string | null,
+    addQty: number,
+    fixedUnitPrice: number,
+    lineAddTotal: number,
+  ): boolean {
+    if (addQty <= 0) return false;
+    // Décision de stock prise de façon SYNCHRONE (état `cart` courant) : le
+    // résultat est renvoyé à l'appelant avant que l'updater setCart ne s'exécute.
+    const stock = stockByProductId.get(productId) ?? 0;
+    const current = cart.find((p) => p.productId === productId)?.quantity ?? 0;
+    if (current + addQty > stock) {
+      const now = Date.now();
+      if (now - lastStockToastAt.current > 2000) {
+        lastStockToastAt.current = now;
+        toast.info("Stock insuffisant pour ce conditionnement.");
+      }
+      return false;
+    }
+    setCart((prev) => {
+      const idx = prev.findIndex((p) => p.productId === productId);
+      if (idx < 0) {
+        return [
+          ...prev,
+          {
+            productId,
+            name,
+            quantity: addQty,
+            unitPrice: fixedUnitPrice,
+            unit: unit || "u",
+            imageUrl: imageUrl ?? null,
+            // `lineTotal` = prix exact du conditionnement : c'est lui qui fait foi
+            // (sous-total, ticket, remise de ligne au checkout).
+            lineTotal: lineAddTotal,
+            linePriceUserSet: true,
+          },
+        ];
+      }
+      const row = prev[idx];
+      // Total exact cumulé : on ajoute le total du conditionnement scanné au total
+      // déjà présent sur la ligne (qu'il vienne d'un scan précédent ou de qté×PU).
+      const prevLineTotal = row.lineTotal ?? row.quantity * row.unitPrice;
+      const next = [...prev];
+      next[idx] = {
+        ...row,
+        quantity: row.quantity + addQty,
+        unitPrice: fixedUnitPrice,
+        linePriceUserSet: true,
+        lineTotal: prevLineTotal + lineAddTotal,
+      };
+      return next;
+    });
+    return true;
+  }
+
   /** Aligné `PosQuickPage._addByBarcode` : barcode exact en priorité, puis SKU exact en fallback. */
   function addByBarcode(code: string) {
     const trimmed = code.replace(/\r|\n/g, "").trim();
@@ -790,6 +886,38 @@ export function PosScreen({
       products.find((x) => x.is_active && x.barcode && x.barcode.trim().toLowerCase() === lower) ??
       products.find((x) => x.is_active && x.sku && x.sku.trim().toLowerCase() === lower);
     if (!p) {
+      // Pas de produit direct : tenter un conditionnement (paquet/carton).
+      const pkg = packagingByBarcode.get(lower);
+      if (pkg && pkg.product.is_active) {
+        const prod = pkg.product;
+        const stock = stockByProductId.get(prod.id) ?? 0;
+        if (stock <= 0) {
+          toast.error("Produit indisponible (stock épuisé).");
+          searchInputRef.current?.focus();
+          return;
+        }
+        // Total exact du conditionnement (fait foi). Sans prix dédié : nb × prix pièce.
+        const packTotal =
+          pkg.price != null ? pkg.price : prod.sale_price * pkg.factor;
+        // Prix unitaire affiché = arrondi AU-DESSUS pour que qté×PU ≥ total exact
+        // (la remise de ligne absorbe l'excédent → montant encaissé exact).
+        const pieceUnitPrice = Math.ceil(packTotal / pkg.factor);
+        const added = addUnitsToCart(
+          prod.id,
+          prod.name,
+          prod.unit,
+          prod.product_images?.[0]?.url ?? null,
+          pkg.factor,
+          pieceUnitPrice,
+          packTotal,
+        );
+        if (added) {
+          toast.success(`${pkg.label} · ${prod.name} (${pkg.factor})`);
+          setSearch("");
+        }
+        searchInputRef.current?.focus();
+        return;
+      }
       toast.error("Aucun produit avec ce code-barres ou référence.");
       searchInputRef.current?.focus();
       return;

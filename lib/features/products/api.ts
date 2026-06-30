@@ -8,10 +8,11 @@ import type {
   ProductFormInput,
   ProductImageRow,
   ProductItem,
+  ProductPackaging,
 } from "./types";
 
 const productSelect =
-  "id, company_id, name, sku, barcode, unit, purchase_price, sale_price, wholesale_price, wholesale_qty, stock_min, description, is_active, category_id, brand_id, product_scope, dci, dosage_form, therapeutic_class, laboratory, prescription_required, storage_conditions, category:categories(id, name), brand:brands(id, name), product_images(id, product_id, url, position)";
+  "id, company_id, name, sku, barcode, unit, purchase_price, sale_price, wholesale_price, wholesale_qty, stock_min, description, is_active, category_id, brand_id, product_scope, dci, dosage_form, therapeutic_class, laboratory, prescription_required, storage_conditions, category:categories(id, name), brand:brands(id, name), product_images(id, product_id, url, position), product_packagings(id, product_id, label, barcode, factor, price, position)";
 
 /**
  * Convertit les champs métier du formulaire (ex. pharmacie) en colonnes SQL.
@@ -65,6 +66,22 @@ export async function listProducts(companyId: string): Promise<ProductItem[]> {
         }));
     }
 
+    const pkgRaw = row.product_packagings;
+    let product_packagings: ProductPackaging[] | null = null;
+    if (Array.isArray(pkgRaw) && pkgRaw.length > 0) {
+      product_packagings = [...(pkgRaw as Array<Record<string, unknown>>)]
+        .map((p) => ({
+          id: String(p.id),
+          product_id: p.product_id != null ? String(p.product_id) : undefined,
+          label: String(p.label ?? ""),
+          barcode: p.barcode != null ? String(p.barcode) : null,
+          factor: Math.max(1, Math.floor(Number(p.factor ?? 1))),
+          price: p.price != null ? Number(p.price) : null,
+          position: Number(p.position ?? 0),
+        }))
+        .sort((a, b) => a.position - b.position);
+    }
+
     const base = row as unknown as ProductItem;
     return {
       ...base,
@@ -73,6 +90,7 @@ export async function listProducts(companyId: string): Promise<ProductItem[]> {
       category,
       brand,
       product_images,
+      product_packagings,
     };
   });
 }

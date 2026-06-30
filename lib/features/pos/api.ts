@@ -39,7 +39,12 @@ export async function createPosSale(params: {
   companyId: string;
   storeId: string;
   customerId: string | null;
-  items: Array<{ productId: string; quantity: number; unitPrice: number }>;
+  /**
+   * `discount` par ligne (optionnel, défaut 0) : remise absorbant l'arrondi d'un
+   * conditionnement pour que `quantité × prix_unitaire − discount` = prix exact
+   * du conditionnement. Le RPC soustrait cette remise par ligne.
+   */
+  items: Array<{ productId: string; quantity: number; unitPrice: number; discount?: number }>;
   discount: number;
   payments: Array<{ method: "cash" | "mobile_money" | "card" | "other"; amount: number; reference?: string | null }>;
   saleMode: "quick_pos" | "invoice_pos";
@@ -85,7 +90,7 @@ export async function createPosSale(params: {
       product_id: i.productId,
       quantity: Math.trunc(i.quantity),
       unit_price: i.unitPrice,
-      discount: 0,
+      discount: Math.max(0, Math.round(i.discount ?? 0)),
     })),
     p_payments: params.payments.map((p) => ({
       method: p.method,

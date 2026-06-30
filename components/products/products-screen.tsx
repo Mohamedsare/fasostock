@@ -22,11 +22,18 @@ import {
   updateProduct,
 } from "@/lib/features/products/api";
 import { adjustStockAtomic } from "@/lib/features/inventory/api";
+import { createProductBatch } from "@/lib/features/products/batches-api";
+import { saveProductPackagings } from "@/lib/features/products/packagings-api";
+import { suggestNextSku } from "@/lib/features/products/sku";
 import { P } from "@/lib/constants/permissions";
 import { useAppContext } from "@/lib/features/common/app-context";
 import { usePermissions } from "@/lib/features/permissions/use-permissions";
 import type { AccessHelpers } from "@/lib/features/permissions/access";
-import type { ProductFormSavePayload, ProductItem } from "@/lib/features/products/types";
+import type {
+  ProductFormSavePayload,
+  ProductItem,
+  ProductPackagingDraft,
+} from "@/lib/features/products/types";
 import { ProductFormDialog } from "@/components/products/product-form-dialog";
 import { ProductBatchesDialog } from "@/components/products/product-batches-dialog";
 import { activityConfig } from "@/lib/features/activity/activity-config";
@@ -73,6 +80,43 @@ import { messageFromUnknownError, toast } from "@/lib/toast";
 import { ensureStringNumberMap } from "@/lib/utils/string-number-map";
 
 const PAGE_SIZE = 20;
+
+/**
+ * Détecte un code-barres de conditionnement déjà utilisé ailleurs (autre produit,
+ * son conditionnement, ou la pièce du produit courant). Évite qu'un scan tombe sur
+ * le mauvais produit. Retourne le message d'erreur, ou `null` si tout est bon.
+ */
+function findPackagingBarcodeCollision(
+  products: ProductItem[],
+  selfProductId: string | null,
+  selfMainBarcode: string,
+  packagings: ProductPackagingDraft[],
+): string | null {
+  const norm = (s: string | null | undefined) => (s ?? "").trim().toLowerCase();
+  const selfMain = norm(selfMainBarcode);
+  const taken = new Map<string, string>(); // code-barres → nom du produit propriétaire
+  for (const p of products) {
+    if (p.id === selfProductId) continue;
+    const b = norm(p.barcode);
+    if (b) taken.set(b, p.name);
+    for (const pk of p.product_packagings ?? []) {
+      const pb = norm(pk.barcode);
+      if (pb && !taken.has(pb)) taken.set(pb, p.name);
+    }
+  }
+  for (const d of packagings) {
+    const b = norm(d.barcode);
+    if (!b) continue;
+    if (b === selfMain) {
+      return `Le conditionnement « ${d.label} » a le même code-barres que la pièce de ce produit.`;
+    }
+    const owner = taken.get(b);
+    if (owner) {
+      return `Code-barres du conditionnement « ${d.label} » déjà utilisé par « ${owner} ».`;
+    }
+  }
+  return null;
+}
 
 /** Aligné sur `ProductsPageProvider.defaultStockThreshold` / tuile Flutter. */
 const DEFAULT_STOCK_THRESHOLD = 5;
@@ -155,6 +199,18 @@ export function ProductsScreen() {
         for (const file of payload.pendingImages) {
           await addProductImage(editingId, file);
         }
+        // Conditionnements (paquet/carton) — en ligne uniquement (comme les images).
+        if (
+          navigator.onLine &&
+          (payload.packagings.length > 0 || payload.removedPackagingIds.length > 0)
+        ) {
+          await saveProductPackagings(
+            companyId,
+            editingId,
+            payload.packagings,
+            payload.removedPackagingIds,
+          );
+        }
         return;
       }
       const created = await createProduct(companyId, payload.input);
@@ -177,10 +233,27 @@ export function ProductsScreen() {
         for (const file of payload.pendingImages) {
           await addProductImage(productId, file);
         }
+        // Conditionnements (paquet/carton) saisis à la création.
+        if (navigator.onLine && payload.packagings.length > 0) {
+          await saveProductPackagings(companyId, productId, payload.packagings, []);
+        }
+      }
+      // Lot daté initial (métiers à suivi de péremption) → table product_batches.
+      if (productId && payload.initialBatch?.expiryDate) {
+        await createProductBatch(companyId, productId, {
+          lotNumber: payload.initialBatch.lotNumber,
+          expiryDate: payload.initialBatch.expiryDate,
+          quantity: payload.initialBatch.quantity,
+          storeId: storeId ?? null,
+          notes: "",
+        });
       }
     },
     onSuccess: async (_, vars) => {
       await qc.invalidateQueries({ queryKey: queryKeys.products(companyId) });
+      // Rafraîchit la page Péremptions + la carte du tableau de bord.
+      await qc.invalidateQueries({ queryKey: ["expiry-list", companyId] });
+      await qc.invalidateQueries({ queryKey: ["expiry-summary", companyId] });
       if (storeId) {
         await qc.invalidateQueries({
           queryKey: queryKeys.productInventory(storeId),
@@ -277,6 +350,11 @@ export function ProductsScreen() {
   });
 
   const products = useMemo(() => productsQ.data ?? [], [productsQ.data]);
+  // SKU auto-suggéré pour un nouveau produit (préfixe propre au tenant + séquence).
+  const suggestedSku = useMemo(
+    () => suggestNextSku(ctx.data?.companyName, products.map((p) => p.sku)),
+    [ctx.data?.companyName, products],
+  );
   const categories = categoriesQ.data ?? [];
   const brands = brandsQ.data ?? [];
   const stockByProduct = useMemo(
@@ -290,7 +368,12 @@ export function ProductsScreen() {
       if (q) {
         const okName = p.name.toLowerCase().includes(q);
         const okSku = (p.sku ?? "").toLowerCase().includes(q);
-        const okBarcode = (p.barcode ?? "").includes(search.trim());
+        const term = search.trim();
+        const okBarcode =
+          (p.barcode ?? "").includes(term) ||
+          (p.product_packagings ?? []).some((pk) =>
+            (pk.barcode ?? "").includes(term),
+          );
         if (!okName && !okSku && !okBarcode) return false;
       }
       if (categoryFilter && p.category_id !== categoryFilter) return false;
@@ -573,11 +656,12 @@ export function ProductsScreen() {
                         <button
                           type="button"
                           onClick={() => setBatchesProduct(p)}
-                          className="rounded-lg border border-black/[0.08] bg-fs-card px-2 py-1 text-xs font-semibold text-fs-accent"
-                          aria-label="Lots & péremption"
-                          title="Lots & péremption"
+                          className="inline-flex items-center gap-1 rounded-lg border border-fs-accent/30 bg-fs-accent/[0.06] px-2 py-1 text-xs font-semibold text-fs-accent"
+                          aria-label="Dates de péremption"
+                          title="Enregistrer / voir les dates de péremption"
                         >
                           <MdCalendarToday className="h-4 w-4" aria-hidden />
+                          <span className="hidden min-[420px]:inline">Péremption</span>
                         </button>
                       ) : null}
                       {canUpdateProduct ? (
@@ -864,6 +948,7 @@ export function ProductsScreen() {
           initial={editing}
           loading={mutateSaveProduct.isPending}
           businessTypeSlug={ctx.data?.businessTypeSlug}
+          suggestedSku={suggestedSku}
           onClose={() => {
             setShowForm(false);
             setEditing(null);
@@ -875,6 +960,19 @@ export function ProductsScreen() {
             void qc.invalidateQueries({ queryKey: queryKeys.brands(companyId) });
           }}
           onSubmit={async (payload) => {
+            // Garde anti-collision de codes-barres de conditionnement (avant écriture).
+            if (payload.packagings.length > 0) {
+              const collision = findPackagingBarcodeCollision(
+                products,
+                editing?.id ?? null,
+                payload.input.barcode,
+                payload.packagings,
+              );
+              if (collision) {
+                toast.error(collision);
+                return;
+              }
+            }
             await mutateSaveProduct.mutateAsync({
               editingId: editing?.id ?? null,
               payload,

@@ -78,6 +78,7 @@ export function ProductBatchesDialog({
   const invalidate = () => {
     void qc.invalidateQueries({ queryKey: ["product-batches", productId] });
     void qc.invalidateQueries({ queryKey: ["expiry-summary", companyId] });
+    void qc.invalidateQueries({ queryKey: ["expiry-list", companyId] });
   };
 
   const saveMutation = useMutation({
@@ -262,7 +263,7 @@ export function ProductBatchesDialog({
               <li className="text-sm text-neutral-500">Chargement…</li>
             ) : batches.length === 0 ? (
               <li className="rounded-xl bg-fs-surface-container px-3 py-4 text-center text-sm text-neutral-500">
-                Aucun lot enregistré pour ce médicament.
+                Aucune date enregistrée. Ajoutez un lot ci-dessus avec sa date de péremption.
               </li>
             ) : (
               batches.map((b) => {

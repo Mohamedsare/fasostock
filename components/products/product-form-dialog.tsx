@@ -9,6 +9,7 @@ import type {
   ActivityProductFieldValues,
   ProductFormSavePayload,
   ProductItem,
+  ProductPackagingDraft,
   ProductScope,
 } from "@/lib/features/products/types";
 import { activityConfig } from "@/lib/features/activity/activity-config";
@@ -57,6 +58,40 @@ function parseScope(v: string | null | undefined): ProductScope {
   return "both";
 }
 
+/** Ligne de conditionnement éditable (champs numériques en chaînes). */
+type PackagingRow = {
+  key: string;
+  id?: string;
+  label: string;
+  barcode: string;
+  factor: string;
+  price: string;
+};
+
+function newRowKey(): string {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID();
+  }
+  return `pkg-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+/**
+ * Astuce non bloquante : si le prix du conditionnement n'est pas un multiple du
+ * nombre de pièces, le prix par pièce tombe « juste » (ex. 459 au lieu de 458,33)
+ * et le ticket peut afficher une multiplication qui ne tombe pas rond. On suggère
+ * les deux multiples les plus proches. Retourne `null` si tout va bien.
+ */
+function packagingPriceHint(factorStr: string, priceStr: string): string | null {
+  if (!priceStr.trim()) return null;
+  const f = Math.round(toNumber(factorStr));
+  const p = toNumber(priceStr);
+  if (f < 2 || p <= 0 || p % f === 0) return null;
+  const lower = Math.floor(p / f) * f;
+  const upper = Math.ceil(p / f) * f;
+  const opts = [lower, upper].filter((v) => v > 0);
+  return `Astuce : un multiple de ${f} donne un ticket net (ex. ${opts.join(" ou ")}).`;
+}
+
 type Props = {
   companyId: string;
   storeId: string | null;
@@ -66,6 +101,8 @@ type Props = {
   loading: boolean;
   /** Type d'activité de l'entreprise → champs métier (ex. pharmacie). */
   businessTypeSlug?: string | null;
+  /** SKU pré-rempli à la création (auto-généré, propre au tenant ; modifiable). */
+  suggestedSku?: string;
   onClose: () => void;
   onSubmit: (payload: ProductFormSavePayload) => void | Promise<void>;
   onCategoriesChanged: () => void;
@@ -93,6 +130,7 @@ export function ProductFormDialog({
   initial,
   loading,
   businessTypeSlug,
+  suggestedSku,
   onClose,
   onSubmit,
   onCategoriesChanged,
@@ -113,7 +151,9 @@ export function ProductFormDialog({
   );
 
   const [name, setName] = useState(initial?.name ?? "");
-  const [sku, setSku] = useState(initial?.sku ?? "");
+  const [sku, setSku] = useState(
+    initial ? (initial.sku ?? "") : (suggestedSku ?? ""),
+  );
   const [barcode, setBarcode] = useState(initial?.barcode ?? "");
   const [unit, setUnit] = useState(initial?.unit ?? "pce");
   const [purchasePrice, setPurchasePrice] = useState(
@@ -132,6 +172,10 @@ export function ProductFormDialog({
     String(initial != null ? initial.stock_min ?? 0 : 5),
   );
   const [initialStock, setInitialStock] = useState("");
+  // Lot daté initial (création, métiers à suivi de péremption).
+  const [batchExpiry, setBatchExpiry] = useState("");
+  const [batchQty, setBatchQty] = useState("");
+  const [batchLot, setBatchLot] = useState("");
   const [description, setDescription] = useState(initial?.description ?? "");
   const [categoryId, setCategoryId] = useState(initial?.category_id ?? "");
   const [brandId, setBrandId] = useState(initial?.brand_id ?? "");
@@ -144,6 +188,40 @@ export function ProductFormDialog({
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [pendingPreviews, setPendingPreviews] = useState<string[]>([]);
   const [removedImageIds, setRemovedImageIds] = useState<string[]>([]);
+  // Conditionnements (paquet/carton). `factor`/`price` en chaînes pour la saisie.
+  const [packagings, setPackagings] = useState<PackagingRow[]>(() =>
+    (initial?.product_packagings ?? []).map((p) => ({
+      key: p.id,
+      id: p.id,
+      label: p.label,
+      barcode: p.barcode ?? "",
+      factor: String(p.factor),
+      price: p.price != null ? String(p.price) : "",
+    })),
+  );
+  const [removedPackagingIds, setRemovedPackagingIds] = useState<string[]>([]);
+
+  const addPackaging = useCallback(() => {
+    setPackagings((rows) => [
+      ...rows,
+      { key: newRowKey(), label: "", barcode: "", factor: "", price: "" },
+    ]);
+  }, []);
+  const updatePackaging = useCallback(
+    (key: string, field: keyof Omit<PackagingRow, "key" | "id">, value: string) => {
+      setPackagings((rows) =>
+        rows.map((r) => (r.key === key ? { ...r, [field]: value } : r)),
+      );
+    },
+    [],
+  );
+  const removePackaging = useCallback((key: string) => {
+    setPackagings((rows) => {
+      const row = rows.find((r) => r.key === key);
+      if (row?.id) setRemovedPackagingIds((ids) => [...ids, row.id as string]);
+      return rows.filter((r) => r.key !== key);
+    });
+  }, []);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [inlineBusy, setInlineBusy] = useState(false);
 
@@ -239,6 +317,24 @@ export function ProductFormDialog({
     if (pp > sp) {
       return "Le prix d'achat ne peut pas dépasser le prix de vente. Réduisez le prix d'achat ou augmentez le prix de vente.";
     }
+    // Conditionnements : libellé requis, nombre de pièces ≥ 1, codes-barres uniques.
+    const seenBarcodes = new Set<string>();
+    const mainBarcode = barcode.trim().toLowerCase();
+    if (mainBarcode) seenBarcodes.add(mainBarcode);
+    for (const r of packagings) {
+      const label = r.label.trim();
+      const f = Math.round(toNumber(r.factor));
+      const bc = r.barcode.trim().toLowerCase();
+      if (!label && !bc && !r.factor.trim() && !r.price.trim()) continue; // ligne vide ignorée
+      if (!label) return "Donnez un libellé à chaque conditionnement (ex. Carton).";
+      if (f < 1) return `Conditionnement « ${label} » : le nombre de pièces doit être ≥ 1.`;
+      if (bc) {
+        if (seenBarcodes.has(bc)) {
+          return `Code-barres en double (« ${label} ») : chaque conditionnement doit avoir un code-barres unique.`;
+        }
+        seenBarcodes.add(bc);
+      }
+    }
     return null;
   }
 
@@ -261,11 +357,40 @@ export function ProductFormDialog({
       activityFields:
         config.productFields.length > 0 ? activityFields : undefined,
     };
+    const initialBatch =
+      config.batchTracking && !isEdit && batchExpiry.trim()
+        ? {
+            expiryDate: batchExpiry,
+            quantity: Math.max(0, Math.round(toNumber(batchQty))),
+            lotNumber: batchLot.trim(),
+          }
+        : null;
+    // Conditionnements : on garde les lignes nommées ; une ligne existante vidée
+    // est traitée comme supprimée.
+    const cleanPackagings: ProductPackagingDraft[] = [];
+    const droppedExistingIds: string[] = [];
+    for (const r of packagings) {
+      const label = r.label.trim();
+      if (!label) {
+        if (r.id) droppedExistingIds.push(r.id);
+        continue;
+      }
+      cleanPackagings.push({
+        id: r.id,
+        label,
+        barcode: r.barcode.trim(),
+        factor: Math.max(1, Math.round(toNumber(r.factor)) || 1),
+        price: r.price.trim() ? Math.max(0, toNumber(r.price)) : null,
+      });
+    }
     return {
       input,
       pendingImages: pendingFiles,
       removedImageIds,
+      packagings: cleanPackagings,
+      removedPackagingIds: [...removedPackagingIds, ...droppedExistingIds],
       initialStock: Math.max(0, Math.round(toNumber(initialStock))),
+      initialBatch,
     };
   }
 
@@ -388,6 +513,11 @@ export function ProductFormDialog({
                   onChange={(e) => setSku(e.target.value)}
                   className={fsInputClass()}
                 />
+                {!isEdit ? (
+                  <span className="mt-1 block text-[11px] text-neutral-400">
+                    Généré automatiquement — modifiable.
+                  </span>
+                ) : null}
               </label>
               {config.showBarcodeField ? (
                 <label className="min-w-0 flex-1">
@@ -574,6 +704,109 @@ export function ProductFormDialog({
               </label>
             </div>
 
+            {/* Conditionnements : paquet / carton avec leur code-barres et prix.
+                Le stock reste compté en pièces ; scanner un conditionnement ajoute
+                `factor` pièces au panier (caisse rapide). */}
+            <div className="rounded-xl border border-black/[0.08] p-3">
+              <p className="text-sm font-semibold text-fs-text">
+                Conditionnements
+              </p>
+              <p className="mt-0.5 text-[11px] leading-relaxed text-neutral-500">
+                Paquet, carton… Indiquez le nombre de pièces, le code-barres et le
+                prix. À la caisse, scanner ce code ajoute automatiquement le bon
+                nombre de pièces. Le stock reste compté en {unitSelectValue || "pce"}.
+              </p>
+
+              {packagings.length > 0 ? (
+                <div className="mt-2 space-y-2">
+                  {packagings.map((r) => (
+                    <div
+                      key={r.key}
+                      className="rounded-lg border border-black/[0.08] bg-fs-surface-container/40 p-2.5"
+                    >
+                      <div className="flex items-start gap-2">
+                        <input
+                          value={r.label}
+                          onChange={(e) =>
+                            updatePackaging(r.key, "label", e.target.value)
+                          }
+                          placeholder="Libellé (ex. Carton)"
+                          className={cn(fsInputClass(), "min-w-0 flex-1")}
+                          autoComplete="off"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removePackaging(r.key)}
+                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-red-200 text-red-600"
+                          aria-label="Retirer le conditionnement"
+                        >
+                          <MdClose className="h-4 w-4" />
+                        </button>
+                      </div>
+                      <div className="mt-2 flex flex-col gap-2 min-[401px]:flex-row">
+                        <label className="min-w-0 flex-1">
+                          <span className="mb-1 block text-[11px] font-medium text-neutral-600">
+                            Nb de pièces *
+                          </span>
+                          <input
+                            value={r.factor}
+                            onChange={(e) =>
+                              updatePackaging(r.key, "factor", e.target.value)
+                            }
+                            inputMode="numeric"
+                            placeholder="Ex. 24"
+                            className={fsInputClass()}
+                          />
+                        </label>
+                        <label className="min-w-0 flex-1">
+                          <span className="mb-1 block text-[11px] font-medium text-neutral-600">
+                            Prix (optionnel)
+                          </span>
+                          <input
+                            value={r.price}
+                            onChange={(e) =>
+                              updatePackaging(r.key, "price", e.target.value)
+                            }
+                            inputMode="decimal"
+                            placeholder="Sinon nb × prix pièce"
+                            className={fsInputClass()}
+                          />
+                          {packagingPriceHint(r.factor, r.price) ? (
+                            <span className="mt-1 block text-[10px] leading-snug text-amber-600">
+                              {packagingPriceHint(r.factor, r.price)}
+                            </span>
+                          ) : null}
+                        </label>
+                      </div>
+                      <label className="mt-2 block">
+                        <span className="mb-1 block text-[11px] font-medium text-neutral-600">
+                          Code-barres
+                        </span>
+                        <input
+                          value={r.barcode}
+                          onChange={(e) =>
+                            updatePackaging(r.key, "barcode", e.target.value)
+                          }
+                          placeholder="Code-barres du paquet / carton"
+                          className={fsInputClass()}
+                          autoComplete="off"
+                        />
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+
+              <button
+                type="button"
+                onClick={addPackaging}
+                className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-fs-accent/40 bg-fs-accent/[0.06] px-3 py-2 text-xs font-semibold text-fs-accent"
+              >
+                <MdAdd className="h-4 w-4" aria-hidden />
+                Ajouter un conditionnement
+              </button>
+            </div>
+
             <div
               className={cn(
                 "flex flex-col gap-3 min-[401px]:flex-row min-[401px]:gap-3",
@@ -610,6 +843,56 @@ export function ProductFormDialog({
                 </label>
               ) : null}
             </div>
+
+            {/* Suivi de péremption — métiers à suivi de lots, à la création */}
+            {config.batchTracking && !isEdit ? (
+              <div className="rounded-xl border border-fs-accent/30 bg-fs-accent/[0.04] p-3">
+                <p className="mb-1 text-xs font-semibold text-fs-accent">
+                  Date de péremption (optionnel)
+                </p>
+                <p className="mb-2.5 text-[11px] leading-relaxed text-neutral-500">
+                  Enregistrez la date du premier lot. Le produit apparaîtra dans la page
+                  Péremptions. Vous pourrez ajouter d&apos;autres lots plus tard via le
+                  bouton « Péremption ».
+                </p>
+                <div className="flex flex-col gap-2.5 min-[401px]:flex-row">
+                  <label className="min-w-0 flex-1">
+                    <span className="mb-1 block text-xs font-medium text-neutral-600">
+                      Date de péremption
+                    </span>
+                    <input
+                      type="date"
+                      value={batchExpiry}
+                      onChange={(e) => setBatchExpiry(e.target.value)}
+                      className={fsInputClass()}
+                    />
+                  </label>
+                  <label className="min-w-0 flex-1">
+                    <span className="mb-1 block text-xs font-medium text-neutral-600">
+                      Quantité du lot
+                    </span>
+                    <input
+                      value={batchQty}
+                      onChange={(e) => setBatchQty(e.target.value)}
+                      inputMode="numeric"
+                      placeholder="Ex. 50"
+                      className={fsInputClass()}
+                    />
+                  </label>
+                </div>
+                <label className="mt-2.5 block">
+                  <span className="mb-1 block text-xs font-medium text-neutral-600">
+                    N° de lot (optionnel)
+                  </span>
+                  <input
+                    value={batchLot}
+                    onChange={(e) => setBatchLot(e.target.value)}
+                    className={fsInputClass()}
+                    autoComplete="off"
+                  />
+                </label>
+              </div>
+            ) : null}
 
             {/* Catégorie — ligne Flutter dropdown + nouvelle + bouton */}
             <div>
