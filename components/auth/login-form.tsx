@@ -115,7 +115,7 @@ export function LoginForm() {
           setIsLocked(true);
           setLockedEmail(emailTrim);
           setError(
-            "Compte bloqué après 5 tentatives. Contactez le support pour être débloqué.",
+            "Compte bloqué après 5 tentatives. Réessayez dans une trentaine de minutes, ou contactez le support pour un déblocage immédiat.",
           );
           setLoading(false);
           return;

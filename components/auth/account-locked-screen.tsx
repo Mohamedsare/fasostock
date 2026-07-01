@@ -23,7 +23,7 @@ export function AccountLockedScreen({
   return (
     <AuthPageShell
       title="Compte temporairement bloqué"
-      subtitle="Après 5 tentatives incorrectes, l’accès est verrouillé pour votre sécurité. Le super administrateur peut débloquer votre compte."
+      subtitle="Après 5 tentatives incorrectes, l’accès est verrouillé pour votre sécurité. Il se débloque automatiquement après une trentaine de minutes — ou immédiatement via le support."
     >
       <AuthCard>
         <div className="flex justify-center">
@@ -41,7 +41,7 @@ export function AccountLockedScreen({
           </p>
         ) : null}
         <p className="mt-4 text-center text-sm leading-relaxed text-neutral-600 sm:text-[15px]">
-          Contactez le support pour être débloqué :
+          Patientez une trentaine de minutes, ou contactez le support pour un déblocage immédiat :
         </p>
         <div className="mt-5 flex flex-col gap-3">
           <a
