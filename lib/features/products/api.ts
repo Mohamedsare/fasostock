@@ -95,6 +95,25 @@ export async function listProducts(companyId: string): Promise<ProductItem[]> {
   });
 }
 
+/**
+ * Tous les SKU de l'entreprise, Y COMPRIS les produits supprimés (soft-delete).
+ * La suppression étant un soft-delete, la ligne (et son SKU) reste sous la
+ * contrainte UNIQUE(company_id, sku). Le générateur auto doit donc connaître ces
+ * SKU pour ne jamais réutiliser un numéro déjà attribué (sinon collision à la
+ * création). Requête légère (colonne `sku` seule, sans filtre `deleted_at`).
+ */
+export async function listCompanySkus(companyId: string): Promise<string[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("products")
+    .select("sku")
+    .eq("company_id", companyId);
+  if (error) throw error;
+  return ((data ?? []) as Array<{ sku: string | null }>)
+    .map((r) => r.sku)
+    .filter((s): s is string => typeof s === "string" && s.trim().length > 0);
+}
+
 export async function listCategories(
   companyId: string,
 ): Promise<ProductCategory[]> {

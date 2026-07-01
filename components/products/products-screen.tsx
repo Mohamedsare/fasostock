@@ -13,6 +13,7 @@ import {
   deleteProductImage,
   listBrands,
   listCategories,
+  listCompanySkus,
   listProducts,
   listStoreInventory,
   setProductActive,
@@ -181,6 +182,12 @@ export function ProductsScreen() {
     queryFn: () => listStoreInventory(storeId),
     enabled: !!storeId,
   });
+  // Tous les SKU (y compris produits supprimés) → suggestion auto sans collision.
+  const skusQ = useQuery({
+    queryKey: queryKeys.productSkus(companyId),
+    queryFn: () => listCompanySkus(companyId),
+    enabled: !!companyId,
+  });
 
   const mutateSaveProduct = useMutation({
     mutationKey: ["products", "save", companyId],
@@ -251,6 +258,7 @@ export function ProductsScreen() {
     },
     onSuccess: async (_, vars) => {
       await qc.invalidateQueries({ queryKey: queryKeys.products(companyId) });
+      await qc.invalidateQueries({ queryKey: queryKeys.productSkus(companyId) });
       // Rafraîchit la page Péremptions + la carte du tableau de bord.
       await qc.invalidateQueries({ queryKey: ["expiry-list", companyId] });
       await qc.invalidateQueries({ queryKey: ["expiry-summary", companyId] });
@@ -284,6 +292,7 @@ export function ProductsScreen() {
     mutationFn: (id: string) => softDeleteProduct(id),
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: queryKeys.products(companyId) });
+      await qc.invalidateQueries({ queryKey: queryKeys.productSkus(companyId) });
       toast.success(`${productEntityLabel} supprimé`);
     },
     onError: (e) => toast.error(messageFromUnknownError(e)),
@@ -351,9 +360,15 @@ export function ProductsScreen() {
 
   const products = useMemo(() => productsQ.data ?? [], [productsQ.data]);
   // SKU auto-suggéré pour un nouveau produit (préfixe propre au tenant + séquence).
+  // Basé sur TOUS les SKU (y compris produits supprimés) pour ne jamais réutiliser
+  // un numéro déjà pris (contrainte UNIQUE(company_id, sku) inclut les soft-deletes).
   const suggestedSku = useMemo(
-    () => suggestNextSku(ctx.data?.companyName, products.map((p) => p.sku)),
-    [ctx.data?.companyName, products],
+    () =>
+      suggestNextSku(
+        ctx.data?.companyName,
+        skusQ.data ?? products.map((p) => p.sku),
+      ),
+    [ctx.data?.companyName, skusQ.data, products],
   );
   const categories = categoriesQ.data ?? [];
   const brands = brandsQ.data ?? [];
@@ -998,6 +1013,7 @@ export function ProductsScreen() {
           onClose={() => setShowImportCsv(false)}
           onSuccess={() => {
             void qc.invalidateQueries({ queryKey: queryKeys.products(companyId) });
+            void qc.invalidateQueries({ queryKey: queryKeys.productSkus(companyId) });
             void qc.invalidateQueries({ queryKey: queryKeys.categories(companyId) });
             void qc.invalidateQueries({ queryKey: queryKeys.brands(companyId) });
             if (storeId) {

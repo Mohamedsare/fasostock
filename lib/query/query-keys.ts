@@ -7,6 +7,8 @@ export const queryKeys = {
   appContext: ["app-context"] as const,
   company: (id: string) => ["company", id] as const,
   products: (companyId: string) => ["products", companyId] as const,
+  /** Tous les SKU (y compris produits supprimés) — pour la génération auto sans collision. */
+  productSkus: (companyId: string) => ["product-skus", companyId] as const,
   productInventory: (storeId: string | null) =>
     ["product-inventory", storeId] as const,
   /** Aligné `purchasesStreamProvider` Flutter — pas de plage de dates par défaut. */
