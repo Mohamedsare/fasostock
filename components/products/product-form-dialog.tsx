@@ -176,7 +176,9 @@ export function ProductFormDialog({
   const [batchExpiry, setBatchExpiry] = useState("");
   const [batchQty, setBatchQty] = useState("");
   const [batchLot, setBatchLot] = useState("");
-  const [description, setDescription] = useState(initial?.description ?? "");
+  // Champ Description retiré du formulaire ; on conserve la valeur existante
+  // (produits déjà décrits) pour ne pas l'effacer lors d'une mise à jour.
+  const [description] = useState(initial?.description ?? "");
   const [categoryId, setCategoryId] = useState(initial?.category_id ?? "");
   const [brandId, setBrandId] = useState(initial?.brand_id ?? "");
   const [productScope, setProductScope] = useState<ProductScope>(() =>
@@ -982,18 +984,6 @@ export function ProductFormDialog({
                 </div>
               </div>
             </div>
-
-            <label className="block">
-              <span className="mb-1 block text-xs font-medium text-neutral-600">
-                Description
-              </span>
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                rows={2}
-                className={fsInputClass("min-h-[4.5rem] resize-y")}
-              />
-            </label>
 
             <label className="flex cursor-pointer items-center gap-2 py-1">
               <input
