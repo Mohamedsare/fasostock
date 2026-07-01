@@ -27,7 +27,7 @@ export function TutorialPlayerDialog({
       }}
     >
       <FsCard
-        className="flex h-full w-full max-w-3xl flex-col overflow-hidden shadow-xl sm:h-auto sm:rounded-2xl"
+        className="flex h-full w-full max-w-2xl flex-col overflow-hidden shadow-xl sm:h-auto sm:max-h-[90vh] sm:rounded-2xl"
         padding="p-0"
       >
         <div className="flex shrink-0 items-start justify-between gap-3 border-b border-black/6 px-4 py-3">
