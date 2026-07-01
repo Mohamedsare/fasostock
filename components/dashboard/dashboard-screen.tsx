@@ -4,7 +4,6 @@ import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-quer
 import { format, parseISO } from "date-fns";
 import { fr } from "date-fns/locale";
 import {
-  MdArrowBack,
   MdArrowForward,
   MdBarChart,
   MdBusiness,
@@ -12,7 +11,6 @@ import {
   MdDescription,
   MdInventory2,
   MdLocalShipping,
-  MdLockPerson,
   MdPercent,
   MdPointOfSale,
   MdReceiptLong,
@@ -135,6 +133,17 @@ export function DashboardScreen() {
   const canInvoiceA4 =
     hasPermission(P.salesInvoiceA4) || hasPermission(P.salesCreate);
 
+  // Rôle sans accès au tableau de bord (ex. caissier) : plutôt qu'un mur
+  // « Accès restreint » à la connexion, on l'emmène directement vers sa page
+  // d'accueil autorisée (caisse, etc.). Couvre login, racine « / » et URL directe.
+  const restrictedFallback =
+    !permLoading && helpers && !canDash
+      ? getDashboardFallbackRoute(helpers)
+      : null;
+  useEffect(() => {
+    if (restrictedFallback) router.replace(restrictedFallback);
+  }, [restrictedFallback, router]);
+
   const peekFactureTab =
     companyId.length > 0 ? peekInvoiceTablePosEnabled(companyId) : undefined;
   const invoiceTableDashQ = useQuery({
@@ -246,39 +255,12 @@ export function DashboardScreen() {
     );
   }
 
+  // Redirection en cours (rôle sans tableau de bord) → petit loader, pas de mur.
   if (!ctx.isLoading && helpers && !canDash) {
-    const fallback = getDashboardFallbackRoute(helpers);
     return (
-      <div className="flex flex-1 flex-col items-center justify-center px-4 py-10">
-        <div className="w-full max-w-md rounded-2xl border border-black/[0.08] bg-fs-card p-6 shadow-sm">
-          <div className="flex flex-col items-center text-center">
-            <MdLockPerson className="h-14 w-14 text-red-600" aria-hidden />
-            <h2 className="mt-3 text-xl font-extrabold text-neutral-900">
-              Accès restreint
-            </h2>
-            <p className="mt-2 text-sm leading-relaxed text-neutral-600">
-              Votre rôle ne dispose pas des permissions nécessaires pour afficher
-              cette section.
-            </p>
-            <p className="mt-3 text-sm font-bold text-neutral-500">
-              Droit requis : Voir le tableau de bord
-            </p>
-            <button
-              type="button"
-              onClick={() => {
-                if (typeof window !== "undefined" && window.history.length > 1) {
-                  router.back();
-                } else {
-                  router.push(fallback);
-                }
-              }}
-              className="mt-6 inline-flex items-center justify-center gap-2 rounded-xl bg-fs-accent px-5 py-2.5 text-sm font-semibold text-white"
-            >
-              <MdArrowBack className="h-4 w-4" aria-hidden />
-              Retour
-            </button>
-          </div>
-        </div>
+      <div className="flex flex-1 flex-col items-center justify-center gap-3 py-24 text-center">
+        <div className="h-9 w-9 animate-spin rounded-full border-2 border-fs-accent border-t-transparent" />
+        <p className="text-sm text-neutral-500">Ouverture de votre espace…</p>
       </div>
     );
   }

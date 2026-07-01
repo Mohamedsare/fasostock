@@ -30,6 +30,7 @@ import {
   MdAddShoppingCart,
   MdAssessment,
   MdCalendarToday,
+  MdCheckCircle,
   MdChevronRight,
   MdCreditCard,
   MdDescription,
@@ -43,6 +44,7 @@ import {
   MdTrendingDown,
   MdTrendingUp,
   MdWarehouse,
+  MdWarningAmber,
 } from "react-icons/md";
 import {
   DashboardLineChart,
@@ -248,37 +250,50 @@ function SoftCard({
   );
 }
 
-/** Fond deux tons + icône filigrane — palette dérivée de la charte FasoStock (orange chaud). */
+/**
+ * Fond deux tons + icône filigrane. Palette SÉMANTIQUE : la couleur porte le sens
+ * métier (pas seulement la marque) pour une lecture instantanée —
+ *   • gains / argent gagné → vert
+ *   • comptes informatifs (ventes, ticket, articles) → bleus / teal
+ *   • dépenses (achats) → ambre (sortie d'argent, prudence)
+ *   • valeur de stock (actif immobilisé) → violet
+ *   • danger (alertes) → rouge si présent, vert si tout va bien
+ *   • CA = métrique phare → orange de marque (ancrage identité)
+ */
 type OwnerKpiTheme = { top: string; footer: string };
 
 const FASO_BRAND = {
   accent: "#E85D2C",
   accentDark: "#C2410C",
-  pos: "#F97316",
-  posDark: "#EA580C",
-  coral: "#FB7B4A",
-  coralDark: "#E85D2C",
+  // Sémantique
+  emerald: "#059669",
+  emeraldDark: "#047857",
+  blue: "#2563EB",
+  blueDark: "#1D4ED8",
+  sky: "#0EA5E9",
+  skyDark: "#0284C7",
   amber: "#D97706",
   amberDark: "#B45309",
-  gold: "#CA8A04",
-  goldDark: "#A16207",
-  brown: "#5C2A0E",
-  brownDark: "#3D1A09",
-  stone: "#78716C",
-  stoneDark: "#57534E",
-  danger: "#DC4C2C",
+  violet: "#7C3AED",
+  violetDark: "#6D28D9",
+  teal: "#0D9488",
+  tealDark: "#0F766E",
+  danger: "#DC2626",
   dangerDark: "#B91C1C",
 } as const;
 
 const OWNER_KPI_THEMES = {
   revenue: { top: FASO_BRAND.accent, footer: FASO_BRAND.accentDark },
-  margin: { top: FASO_BRAND.pos, footer: FASO_BRAND.posDark },
-  sales: { top: FASO_BRAND.coral, footer: FASO_BRAND.coralDark },
-  ticket: { top: FASO_BRAND.amber, footer: FASO_BRAND.amberDark },
-  purchases: { top: FASO_BRAND.gold, footer: FASO_BRAND.goldDark },
-  stock: { top: FASO_BRAND.stone, footer: FASO_BRAND.stoneDark },
-  items: { top: FASO_BRAND.brown, footer: FASO_BRAND.brownDark },
+  margin: { top: FASO_BRAND.emerald, footer: FASO_BRAND.emeraldDark },
+  sales: { top: FASO_BRAND.blue, footer: FASO_BRAND.blueDark },
+  ticket: { top: FASO_BRAND.sky, footer: FASO_BRAND.skyDark },
+  purchases: { top: FASO_BRAND.amber, footer: FASO_BRAND.amberDark },
+  stock: { top: FASO_BRAND.violet, footer: FASO_BRAND.violetDark },
+  items: { top: FASO_BRAND.teal, footer: FASO_BRAND.tealDark },
+  /** Danger (alertes présentes). Pour « tout va bien », utiliser `alertOk`. */
   alert: { top: FASO_BRAND.danger, footer: FASO_BRAND.dangerDark },
+  /** Aucune alerte : vert « tout va bien ». */
+  alertOk: { top: FASO_BRAND.emerald, footer: FASO_BRAND.emeraldDark },
 } as const satisfies Record<string, OwnerKpiTheme>;
 
 function OwnerKpiCardShell({
@@ -1118,10 +1133,10 @@ export function OwnerDashboardUi(props: OwnerDashboardUiProps) {
             title="Alertes stock"
             value={`${d.lowStockCount}`}
             sub={d.lowStockCount > 0 ? stockAlertScopeLabel : "RAS"}
-            icon={MdShowChart}
+            icon={d.lowStockCount > 0 ? MdWarningAmber : MdCheckCircle}
             iconBg="rgba(255,255,255,0.22)"
             iconColor="#ffffff"
-            theme={OWNER_KPI_THEMES.alert}
+            theme={d.lowStockCount > 0 ? OWNER_KPI_THEMES.alert : OWNER_KPI_THEMES.alertOk}
             deltaPct={null}
             deltaLabel="seuil actuel (hors comparaison)"
             href={helpers.canInventory ? ROUTES.inventory : reportsHref}
