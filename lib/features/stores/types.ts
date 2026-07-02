@@ -33,4 +33,6 @@ export type Store = {
   invoice_signer_title: string | null;
   invoice_signer_name: string | null;
   invoice_template: string | null;
+  /** Largeur du ticket thermique (mm) pour le POS de cette boutique : 58 ou 80. `null` => 80 par défaut. */
+  receipt_paper_width_mm: number | null;
 };

@@ -127,7 +127,7 @@ export async function renderReceiptThermalHtml(
   }
   parts.push(`<div style="height:8px"></div>`);
   parts.push(
-    `<div class="qrwrap"><img src="${qrDataUrl}" width="108" height="108" alt="" /></div>`,
+    `<div class="qrwrap"><img src="${qrDataUrl}" width="52" height="52" alt="" /></div>`,
   );
   parts.push(`<div style="height:8px"></div>`);
   parts.push(

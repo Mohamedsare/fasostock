@@ -163,7 +163,7 @@ export function ReceiptTicketPreview({ data }: { data: ReceiptTicketData }) {
           <div className="bg-white" style={{ padding: 0 }}>
             <QRCode
               value={qrPayload}
-              size={108}
+              size={52}
               level="M"
               fgColor="#000000"
               bgColor="#FFFFFF"

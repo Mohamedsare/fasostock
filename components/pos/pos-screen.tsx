@@ -176,7 +176,7 @@ export function PosScreen({
     },
     staleTime: 5 * 60_000,
   });
-  const thermalPaperWidthMm: 58 | 80 = useMemo(() => {
+  const localThermalPaperWidthMm: 58 | 80 = useMemo(() => {
     if (!companyId || !authUserIdQ.data) return 80;
     try {
       return (
@@ -247,6 +247,12 @@ export function PosScreen({
   });
 
   const store = posQ.data?.store ?? null;
+  // Priorité au format ticket réglé sur la boutique (dialogue « Caisse rapide » de
+  // la page Boutiques), sinon préférence locale (page Imprimantes), sinon 80 mm.
+  const thermalPaperWidthMm: 58 | 80 =
+    store?.receipt_paper_width_mm === 58 || store?.receipt_paper_width_mm === 80
+      ? store.receipt_paper_width_mm
+      : localThermalPaperWidthMm;
 
   const stripCol1900 = useMediaQuery("(min-width: 1900px)");
   const stripCol1400 = useMediaQuery("(min-width: 1400px)");

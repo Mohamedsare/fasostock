@@ -16,15 +16,17 @@ import {
   MdRefresh,
   MdPictureAsPdf,
   MdStore,
-  MdTableChart,
 } from "react-icons/md";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { CreateStoreModal, EditStoreModal } from "@/components/stores/store-dialogs";
+import {
+  StoreInvoiceA4Dialog,
+  StoreReceiptFormatDialog,
+} from "@/components/stores/store-config-dialogs";
 import { FsCard, FsFab, FsPage } from "@/components/ui/fs-screen-primitives";
 import { P } from "@/lib/constants/permissions";
-import { ROUTES, storeFactureTabPath } from "@/lib/config/routes";
+import { ROUTES } from "@/lib/config/routes";
 import type { AccessHelpers } from "@/lib/features/permissions/access";
 import { useAppContext } from "@/lib/features/common/app-context";
 import { fetchStoresPageData } from "@/lib/features/stores/api";
@@ -33,10 +35,6 @@ import { downloadStoreProductsPdf } from "@/lib/features/stores/generate-store-p
 import type { Store } from "@/lib/features/stores/types";
 import { usePermissions } from "@/lib/features/permissions/use-permissions";
 import { queryKeys } from "@/lib/query/query-keys";
-import {
-  fetchInvoiceTablePosEnabled,
-  peekInvoiceTablePosEnabled,
-} from "@/lib/features/settings/invoice-table-pos";
 import { cn } from "@/lib/utils/cn";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { messageFromUnknownError, toast } from "@/lib/toast";
@@ -59,6 +57,8 @@ export function StoresScreen() {
 
   const [createOpen, setCreateOpen] = useState(false);
   const [editStore, setEditStore] = useState<Store | null>(null);
+  const [a4Store, setA4Store] = useState<Store | null>(null);
+  const [receiptStore, setReceiptStore] = useState<Store | null>(null);
 
   const companyId = ctx.data?.companyId ?? "";
   const companyName = ctx.data?.companyName ?? "";
@@ -73,23 +73,6 @@ export function StoresScreen() {
     queryFn: () => fetchStoresPageData(companyId),
     enabled: !!companyId && canViewOrCreate,
   });
-
-  const peekInvoiceTable =
-    companyId.length > 0 ? peekInvoiceTablePosEnabled(companyId) : undefined;
-  const invoiceTableQ = useQuery({
-    queryKey: queryKeys.invoiceTablePosEnabled(companyId),
-    queryFn: () => fetchInvoiceTablePosEnabled(companyId),
-    enabled: !!companyId && canViewOrCreate,
-    staleTime: 60_000,
-    ...(peekInvoiceTable !== undefined ? { initialData: peekInvoiceTable } : {}),
-  });
-  const invoiceTablePosEnabled = invoiceTableQ.data ?? false;
-  const canPosInvoiceA4 =
-    hasPermission(P.salesInvoiceA4) || hasPermission(P.salesCreate);
-  const canFactureTab =
-    hasPermission(P.salesInvoiceA4Table) &&
-    canPosInvoiceA4 &&
-    invoiceTablePosEnabled;
 
   const stores = storesQ.data?.stores ?? [];
   const quota = storesQ.data?.storeQuota ?? 1;
@@ -268,9 +251,8 @@ export function StoresScreen() {
                 companyId={companyId}
                 companyName={companyName}
                 companyLogoUrl={companyLogoUrl}
-                canPosQuick={hasPermission(P.salesCreate)}
-                canPosInvoice={canPosInvoiceA4}
-                canFactureTab={canFactureTab}
+                onConfigureA4={() => setA4Store(s)}
+                onConfigureReceipt={() => setReceiptStore(s)}
                 onEdit={() => setEditStore(s)}
               />
             ))}
@@ -296,6 +278,24 @@ export function StoresScreen() {
           open={!!editStore}
           store={editStore}
           onClose={() => setEditStore(null)}
+          onUpdated={() => {
+            void qc.invalidateQueries({ queryKey: queryKeys.stores(companyId) });
+            void qc.invalidateQueries({ queryKey: queryKeys.appContext });
+          }}
+        />
+        <StoreInvoiceA4Dialog
+          open={!!a4Store}
+          store={a4Store}
+          onClose={() => setA4Store(null)}
+          onUpdated={() => {
+            void qc.invalidateQueries({ queryKey: queryKeys.stores(companyId) });
+            void qc.invalidateQueries({ queryKey: queryKeys.appContext });
+          }}
+        />
+        <StoreReceiptFormatDialog
+          open={!!receiptStore}
+          store={receiptStore}
+          onClose={() => setReceiptStore(null)}
           onUpdated={() => {
             void qc.invalidateQueries({ queryKey: queryKeys.stores(companyId) });
             void qc.invalidateQueries({ queryKey: queryKeys.appContext });
@@ -348,24 +348,19 @@ function StoreCard({
   companyId,
   companyName,
   companyLogoUrl,
-  canPosQuick,
-  canPosInvoice,
-  canFactureTab,
+  onConfigureA4,
+  onConfigureReceipt,
   onEdit,
 }: {
   store: Store;
   companyId: string;
   companyName: string;
   companyLogoUrl: string | null;
-  canPosQuick: boolean;
-  canPosInvoice: boolean;
-  canFactureTab: boolean;
+  onConfigureA4: () => void;
+  onConfigureReceipt: () => void;
   onEdit: () => void;
 }) {
   const [exportingPdf, setExportingPdf] = useState(false);
-  const posQuickHref = `${ROUTES.stores}/${store.id}/pos-quick`;
-  const posInvoiceHref = `${ROUTES.stores}/${store.id}/pos`;
-  const factureTabHref = storeFactureTabPath(store.id);
 
   async function exportProductsPdf() {
     if (exportingPdf) return;
@@ -471,46 +466,30 @@ function StoreCard({
         </button>
       </div>
       <div className="flex border-t border-black/[0.06]">
-        {canPosQuick ? (
-          <>
-            <Link
-              href={posQuickHref}
-              className="flex min-h-12 min-w-0 flex-1 flex-col items-center justify-center gap-1 py-2.5 text-center text-[var(--fs-accent)] active:bg-neutral-50/80"
-            >
-              <MdReceiptLong className="h-5 w-5 shrink-0" aria-hidden />
-              <span className="px-1 text-[11px] font-semibold leading-tight">Caisse rapide</span>
-            </Link>
-            <div className="w-px shrink-0 self-stretch bg-black/[0.08]" />
-          </>
-        ) : null}
-        {canPosInvoice ? (
-          <>
-            <Link
-              href={posInvoiceHref}
-              className="flex min-h-12 min-w-0 flex-1 flex-col items-center justify-center gap-1 py-2.5 text-center text-[var(--fs-accent)] active:bg-neutral-50/80"
-            >
-              <MdDescription className="h-5 w-5 shrink-0" aria-hidden />
-              <span className="px-1 text-[11px] font-semibold leading-tight">Facture A4</span>
-            </Link>
-            <div className="w-px shrink-0 self-stretch bg-black/[0.08]" />
-          </>
-        ) : null}
-        {canFactureTab ? (
-          <>
-            <Link
-              href={factureTabHref}
-              className="flex min-h-12 min-w-0 flex-1 flex-col items-center justify-center gap-1 py-2.5 text-center text-[var(--fs-accent)] active:bg-neutral-50/80"
-            >
-              <MdTableChart className="h-5 w-5 shrink-0" aria-hidden />
-              <span className="px-1 text-[11px] font-semibold leading-tight">Facture tab.</span>
-            </Link>
-            <div className="w-px shrink-0 self-stretch bg-black/[0.08]" />
-          </>
-        ) : null}
+        <button
+          type="button"
+          onClick={onConfigureReceipt}
+          title="Format du ticket thermique (Caisse rapide)"
+          className="flex min-h-12 min-w-0 flex-1 flex-col items-center justify-center gap-1 py-2.5 text-center text-[var(--fs-accent)] active:bg-neutral-50/80"
+        >
+          <MdReceiptLong className="h-5 w-5 shrink-0" aria-hidden />
+          <span className="px-1 text-[11px] font-semibold leading-tight">Caisse rapide</span>
+        </button>
+        <div className="w-px shrink-0 self-stretch bg-black/[0.08]" />
+        <button
+          type="button"
+          onClick={onConfigureA4}
+          title="Personnaliser la facture A4"
+          className="flex min-h-12 min-w-0 flex-1 flex-col items-center justify-center gap-1 py-2.5 text-center text-[var(--fs-accent)] active:bg-neutral-50/80"
+        >
+          <MdDescription className="h-5 w-5 shrink-0" aria-hidden />
+          <span className="px-1 text-[11px] font-semibold leading-tight">Facture A4</span>
+        </button>
         <div className="w-px shrink-0 self-stretch bg-black/[0.08]" />
         <button
           type="button"
           onClick={onEdit}
+          title="Modifier les infos de la boutique"
           className="flex min-h-12 min-w-0 flex-1 flex-col items-center justify-center gap-1 py-2.5 text-neutral-600 active:bg-neutral-50/80"
         >
           <MdEdit className="h-5 w-5 shrink-0" aria-hidden />
