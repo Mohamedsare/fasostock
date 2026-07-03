@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { MdEventBusy, MdReceiptLong } from "react-icons/md";
 import { createClient } from "@/lib/supabase/client";
+import { localDayEndIso, localDayStartIso } from "@/lib/utils/local-day";
 import {
   EXPIRY_SOON_DAYS,
   fetchExpirySummary,
@@ -35,8 +36,8 @@ async function fetchPrescriptionSales(
     .eq("company_id", companyId)
     .eq("status", "completed")
     .not("prescription_number", "is", null)
-    .gte("created_at", fromDate)
-    .lte("created_at", `${toDate}T23:59:59.999`);
+    .gte("created_at", localDayStartIso(fromDate))
+    .lte("created_at", localDayEndIso(toDate));
   if (storeId) query = query.eq("store_id", storeId);
   const { data, error } = await query;
   if (error) throw error;

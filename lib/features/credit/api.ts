@@ -1,6 +1,7 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
+import { localDayEndIso, localDayStartIso } from "@/lib/utils/local-day";
 import type { SaleItem } from "@/lib/features/sales/types";
 import type { CreditSaleRow } from "./types";
 
@@ -81,8 +82,8 @@ export async function listCreditSales(params: {
     .not("customer_id", "is", null)
     .order("created_at", { ascending: false });
   if (params.storeId) q = q.eq("store_id", params.storeId);
-  if (params.from) q = q.gte("created_at", params.from);
-  if (params.to) q = q.lte("created_at", `${params.to}T23:59:59.999Z`);
+  if (params.from) q = q.gte("created_at", localDayStartIso(params.from));
+  if (params.to) q = q.lte("created_at", localDayEndIso(params.to));
   const { data, error } = await q;
   if (error) throw error;
   const rows = ((data ?? []) as Array<Record<string, unknown>>).map(normalizeCreditRow);

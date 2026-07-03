@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/client";
 import { mapSupabaseError } from "@/lib/supabase/map-error";
+import { localDayEndIso, localDayStartIso } from "@/lib/utils/local-day";
 import type {
   CreateTransferLineInput,
   StockTransferDetail,
@@ -82,8 +83,8 @@ export async function listStockTransfers(params: {
   if (params.status) q = q.eq("status", params.status);
   if (params.fromStoreId) q = q.eq("from_store_id", params.fromStoreId);
   if (params.toStoreId) q = q.eq("to_store_id", params.toStoreId);
-  if (params.fromDate) q = q.gte("created_at", params.fromDate);
-  if (params.toDate) q = q.lte("created_at", `${params.toDate}T23:59:59.999Z`);
+  if (params.fromDate) q = q.gte("created_at", localDayStartIso(params.fromDate));
+  if (params.toDate) q = q.lte("created_at", localDayEndIso(params.toDate));
   const { data, error } = await q;
   if (error) throw mapSupabaseError(error);
   return (data ?? []).map((r) => mapListRow(r as Record<string, unknown>));

@@ -4,6 +4,7 @@ import { enqueueOutbox } from "@/lib/db/dexie-db";
 import { listProducts } from "@/lib/features/products/api";
 import { firstProductImageUrl } from "@/lib/features/products/product-images";
 import { createClient } from "@/lib/supabase/client";
+import { localDayEndIso, localDayStartIso } from "@/lib/utils/local-day";
 import type {
   PurchaseDetail,
   PurchaseItemInput,
@@ -51,8 +52,8 @@ export async function listPurchases(params: {
     .order("created_at", { ascending: false });
 
   if (params.from && params.to) {
-    const fromIso = `${params.from}T00:00:00.000Z`;
-    const toIso = `${params.to}T23:59:59.999Z`;
+    const fromIso = localDayStartIso(params.from);
+    const toIso = localDayEndIso(params.to);
     q = q.gte("created_at", fromIso).lte("created_at", toIso);
   }
 

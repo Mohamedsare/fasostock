@@ -32,6 +32,7 @@ import {
 import { FsHorizontalScroll } from "@/components/ui/fs-horizontal-scroll";
 import { ROUTES } from "@/lib/config/routes";
 import { P } from "@/lib/constants/permissions";
+import { localDayEndIso, localDayStartIso } from "@/lib/utils/local-day";
 import { listCreditSales } from "@/lib/features/credit/api";
 import {
   buildCustomerAggregates,
@@ -356,8 +357,8 @@ export function CreditScreen() {
     staleTime: 10_000,
   });
   const dispatchCreditRows = useMemo<DispatchCreditRow[]>(() => {
-    const fromMs = Date.parse(`${from}T00:00:00.000Z`);
-    const toMs = Date.parse(`${to}T23:59:59.999Z`);
+    const fromMs = Date.parse(from ? localDayStartIso(from) : "");
+    const toMs = Date.parse(to ? localDayEndIso(to) : "");
     return dispatchRowsRaw
       .filter((r) => {
         const createdMs = Date.parse(r.createdAt);

@@ -3,6 +3,7 @@
 import { enqueueOutbox } from "@/lib/db/dexie-db";
 import { notifyCompanyOwnersPush } from "@/lib/features/push/company-owners-push-client";
 import { createClient } from "@/lib/supabase/client";
+import { localDayEndIso, localDayStartIso } from "@/lib/utils/local-day";
 import type { SaleItem, SaleStatus } from "./types";
 
 const saleSelect =
@@ -53,8 +54,8 @@ export async function listSales(params: {
     .order("created_at", { ascending: false });
   if (params.storeId) q = q.eq("store_id", params.storeId);
   if (params.status) q = q.eq("status", params.status);
-  if (params.from) q = q.gte("created_at", params.from);
-  if (params.to) q = q.lte("created_at", `${params.to}T23:59:59.999Z`);
+  if (params.from) q = q.gte("created_at", localDayStartIso(params.from));
+  if (params.to) q = q.lte("created_at", localDayEndIso(params.to));
   const { data, error } = await q;
   if (error) throw error;
   const rows = ((data ?? []) as Array<Record<string, unknown>>).map((row) => {

@@ -6,6 +6,11 @@ import {
   resolveDashboardRange,
   type DashboardPeriod,
 } from "@/lib/features/dashboard/date-range";
+import {
+  localDateFromIso,
+  localDayEndIso,
+  localDayStartIso,
+} from "@/lib/utils/local-day";
 import type {
   CategorySales,
   DashboardData,
@@ -27,8 +32,6 @@ import {
 import { fetchPredictionContextWithSupabase } from "@/lib/features/dashboard/prediction-context-data";
 import type { PredictionContext } from "@/lib/features/ai/prediction-types";
 
-const toEndOfDay = (d: string) => `${d}T23:59:59.999Z`;
-
 function emptySummary(): SalesSummary {
   return { totalAmount: 0, count: 0, itemsSold: 0, margin: 0 };
 }
@@ -46,8 +49,8 @@ async function fetchSalesIdsInRange(
     .select("id")
     .eq("company_id", companyId)
     .eq("status", "completed")
-    .gte("created_at", fromDate)
-    .lte("created_at", toEndOfDay(toDate));
+    .gte("created_at", localDayStartIso(fromDate))
+    .lte("created_at", localDayEndIso(toDate));
   if (storeId) q = q.eq("store_id", storeId);
   if (createdBy) q = q.eq("created_by", createdBy);
   const { data, error } = await q;
@@ -103,7 +106,7 @@ function computeSalesByDay(
 ): SalesByDay[] {
   const byDay = new Map<string, { total: number; count: number }>();
   for (const s of sales) {
-    const date = (s.created_at ?? "").slice(0, 10);
+    const date = s.created_at ? localDateFromIso(s.created_at) : "";
     if (!date) continue;
     const cur = byDay.get(date) ?? { total: 0, count: 0 };
     byDay.set(date, {
@@ -217,8 +220,8 @@ async function getPurchasesSummary(
     .select("id, total")
     .eq("company_id", companyId)
     .in("status", ["confirmed", "received", "partially_received"])
-    .gte("created_at", fromDate)
-    .lte("created_at", toEndOfDay(toDate));
+    .gte("created_at", localDayStartIso(fromDate))
+    .lte("created_at", localDayEndIso(toDate));
   if (storeId) q = q.eq("store_id", storeId);
   const { data, error } = await q;
   if (error) throw error;
@@ -587,8 +590,8 @@ async function fetchStockReportForStore(params: {
     .from("stock_movements")
     .select("quantity, created_at")
     .eq("store_id", storeId)
-    .gte("created_at", fromDate)
-    .lte("created_at", toEndOfDay(toDate));
+    .gte("created_at", localDayStartIso(fromDate))
+    .lte("created_at", localDayEndIso(toDate));
   if (movErr) throw movErr;
 
   let entries = 0;
@@ -598,7 +601,7 @@ async function fetchStockReportForStore(params: {
     const mm = mv as { quantity?: number; created_at?: string };
     const q = Number(mm.quantity ?? 0);
     const raw = String(mm.created_at ?? "");
-    const day = raw.length >= 10 ? raw.slice(0, 10) : raw;
+    const day = raw ? localDateFromIso(raw) : raw;
     if (q >= 0) entries += q;
     else exits += Math.abs(q);
     byDayNet.set(day, (byDayNet.get(day) ?? 0) + q);
