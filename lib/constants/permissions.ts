@@ -54,6 +54,20 @@ export const P = {
   suppliersManage: "suppliers.manage",
   transfersCreate: "transfers.create",
   transfersApprove: "transfers.approve",
+  /** Module Comptabilité (SYSCOHADA) — consultation ; owner par défaut, accordable aux autres. */
+  accountingView: "accounting.view",
+  /** Comptabilité — saisie / modification des écritures, plan comptable, journaux. */
+  accountingManage: "accounting.manage",
+  /** Comptabilité — paramètres (exercices, comptes par défaut, TVA). */
+  accountingSettings: "accounting.settings",
+  /** Module R. Humaine — consultation (employés, contrats, congés). */
+  hrView: "hr.view",
+  /** R. Humaine — gestion (employés, contrats, congés). */
+  hrManage: "hr.manage",
+  /** Paie — consultation des bulletins et du livre de paie. */
+  payrollView: "payroll.view",
+  /** Paie — génération / validation des bulletins, barèmes CNSS / IUTS. */
+  payrollManage: "payroll.manage",
 } as const;
 
 /** Liste complète (équivalent `Permissions.all` Flutter) — super_admin. */
@@ -107,4 +121,11 @@ export const PERMISSION_LABELS_FR: Record<string, string> = {
   [P.suppliersManage]: "Gerer les fournisseurs",
   [P.transfersCreate]: "Creer / gerer les transferts",
   [P.transfersApprove]: "Approuver les transferts",
+  [P.accountingView]: "Voir la comptabilite (SYSCOHADA)",
+  [P.accountingManage]: "Saisir / gerer les ecritures comptables",
+  [P.accountingSettings]: "Gerer les parametres comptables (exercices, comptes, TVA)",
+  [P.hrView]: "Voir les ressources humaines (employes, contrats, conges)",
+  [P.hrManage]: "Gerer les ressources humaines (employes, contrats, conges)",
+  [P.payrollView]: "Voir la paie (bulletins, livre de paie)",
+  [P.payrollManage]: "Gerer la paie (bulletins, baremes CNSS / IUTS)",
 };

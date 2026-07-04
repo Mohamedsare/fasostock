@@ -2,6 +2,11 @@
 
 import { createClient } from "@/lib/supabase/client";
 import { mapSupabaseError } from "@/lib/supabase/map-error";
+import {
+  localDateFromIso,
+  localDayEndIso,
+  localDayStartIso,
+} from "@/lib/utils/local-day";
 import type {
   AdminAppClientKind,
   AdminAppErrorLog,
@@ -41,7 +46,7 @@ export async function adminListCompanies(): Promise<AdminCompany[]> {
   const { data, error } = await supabase
     .from("companies")
     .select(
-      "id, name, slug, is_active, store_quota, ai_predictions_enabled, warehouse_feature_enabled, store_quota_increase_enabled, warehouse_kpi_show_purchase_value, warehouse_kpi_show_sale_value, warehouse_quota, created_at",
+      "id, name, slug, is_active, store_quota, ai_predictions_enabled, warehouse_feature_enabled, store_quota_increase_enabled, warehouse_kpi_show_purchase_value, warehouse_kpi_show_sale_value, warehouse_quota, accounting_module_enabled, hr_module_enabled, created_at",
     )
     .order("created_at", { ascending: false });
   if (error) throw mapSupabaseError(error);
@@ -59,6 +64,8 @@ export async function adminListCompanies(): Promise<AdminCompany[]> {
       warehouseKpiShowPurchaseValue: r.warehouse_kpi_show_purchase_value !== false,
       warehouseKpiShowSaleValue: r.warehouse_kpi_show_sale_value !== false,
       warehouseQuota: (() => { const q = toNum(r.warehouse_quota); return q > 0 ? q : 1; })(),
+      accountingModuleEnabled: r.accounting_module_enabled === true,
+      hrModuleEnabled: r.hr_module_enabled === true,
       createdAt: r.created_at != null ? String(r.created_at) : null,
     };
   });
@@ -97,6 +104,8 @@ export async function adminUpdateCompany(
     storeQuotaIncreaseEnabled?: boolean;
     warehouseKpiShowPurchaseValue?: boolean;
     warehouseKpiShowSaleValue?: boolean;
+    accountingModuleEnabled?: boolean;
+    hrModuleEnabled?: boolean;
     storeQuota?: number;
     warehouseQuota?: number;
   },
@@ -116,6 +125,12 @@ export async function adminUpdateCompany(
   }
   if (patch.warehouseKpiShowSaleValue !== undefined) {
     row.warehouse_kpi_show_sale_value = patch.warehouseKpiShowSaleValue;
+  }
+  if (patch.accountingModuleEnabled !== undefined) {
+    row.accounting_module_enabled = patch.accountingModuleEnabled;
+  }
+  if (patch.hrModuleEnabled !== undefined) {
+    row.hr_module_enabled = patch.hrModuleEnabled;
   }
   if (patch.storeQuota !== undefined) {
     const n = Math.floor(Number(patch.storeQuota));
@@ -257,13 +272,13 @@ export async function adminGetSalesOverTime(days = 30): Promise<AdminSalesOverTi
     .from("sales")
     .select("created_at, total")
     .eq("status", "completed")
-    .gte("created_at", fromStr);
+    .gte("created_at", localDayStartIso(fromStr));
   if (error) throw mapSupabaseError(error);
 
   const byDay = new Map<string, { count: number; total: number }>();
   for (const s of sales ?? []) {
     const row = s as { created_at?: string; total?: unknown };
-    const day = (row.created_at ?? "").slice(0, 10);
+    const day = row.created_at ? localDateFromIso(row.created_at) : "";
     if (!day) continue;
     const cur = byDay.get(day) ?? { count: 0, total: 0 };
     byDay.set(day, {
@@ -658,8 +673,8 @@ export async function adminListAppErrors(params: {
   if (params.source) q = q.eq("source", params.source);
   if (params.level) q = q.eq("level", params.level);
   if (params.clientKind) q = q.eq("client_kind", params.clientKind);
-  if (params.fromDate) q = q.gte("created_at", params.fromDate);
-  if (params.toDate) q = q.lte("created_at", `${params.toDate}T23:59:59.999Z`);
+  if (params.fromDate) q = q.gte("created_at", localDayStartIso(params.fromDate));
+  if (params.toDate) q = q.lte("created_at", localDayEndIso(params.toDate));
   const { data, error } = await q.order("created_at", { ascending: false }).limit(params.limit ?? 200);
   if (error) throw mapSupabaseError(error);
   return (data ?? []).map((row) => {

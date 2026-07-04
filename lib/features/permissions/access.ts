@@ -37,6 +37,10 @@ export type AppContextData = {
   warehouseKpiShowPurchaseValue: boolean;
   /** Carte KPI « Valeur au prix de vente » sur le dépôt Magasin (plateforme). */
   warehouseKpiShowSaleValue: boolean;
+  /** Module Comptabilité (SYSCOHADA) — désactivé par défaut ; activé par la plateforme. */
+  accountingModuleEnabled: boolean;
+  /** Module R. Humaine + Paie — désactivé par défaut ; activé par la plateforme. */
+  hrModuleEnabled: boolean;
 };
 
 export type AccessHelpers = {
@@ -69,6 +73,16 @@ export type AccessHelpers = {
   canExpenses: boolean;
   /** Propriétaire ou permission de gestion (CRUD) des dépenses. */
   canManageExpenses: boolean;
+  /** Module Comptabilité activé par la plateforme ET droit de consultation. */
+  canAccounting: boolean;
+  /** Comptabilité : droit de gestion (saisie / modification des écritures). */
+  canManageAccounting: boolean;
+  /** Module R. Humaine activé par la plateforme ET droit de consultation. */
+  canHr: boolean;
+  /** RH : droit de gestion (employés, contrats, congés). */
+  canManageHr: boolean;
+  /** Paie : droit de gestion (bulletins, barèmes) — implique module RH activé. */
+  canPayroll: boolean;
 };
 
 /** Construit les helpers à partir du contexte (même logique que `app_shell.dart` Flutter). */
@@ -131,6 +145,17 @@ export function buildAccessHelpers(
   const canExpenses =
     isOwner || hasPermission(P.expensesView) || canManageExpenses;
 
+  // Modules plateforme : visibles seulement si le super admin les a activés pour l'entreprise.
+  const accountingOn = data.accountingModuleEnabled === true;
+  const hrOn = data.hrModuleEnabled === true;
+  const canManageAccounting =
+    accountingOn && (isOwner || hasPermission(P.accountingManage));
+  const canAccounting =
+    accountingOn && (isOwner || hasPermission(P.accountingView) || canManageAccounting);
+  const canManageHr = hrOn && (isOwner || hasPermission(P.hrManage));
+  const canHr = hrOn && (isOwner || hasPermission(P.hrView) || canManageHr);
+  const canPayroll = hrOn && (isOwner || hasPermission(P.payrollManage));
+
   return {
     hasPermission,
     isOwner,
@@ -155,6 +180,11 @@ export function buildAccessHelpers(
     canExpiry,
     canExpenses,
     canManageExpenses,
+    canAccounting,
+    canManageAccounting,
+    canHr,
+    canManageHr,
+    canPayroll,
   };
 }
 
@@ -211,6 +241,8 @@ export function filterNavItemsForPermissions(
     if (href === ROUTES.users) return h.canUsers;
     if (href === ROUTES.settings || href === ROUTES.printers) return h.canSettings;
     if (href === ROUTES.transfers) return h.canTransfers;
+    if (href === ROUTES.accounting) return h.canAccounting;
+    if (href === ROUTES.hr) return h.canHr;
     if (href === ROUTES.audit) return h.canAudit && !h.isOwner;
     // Aide : visible par tous (tutoriels vidéo + contacts). Le guide détaillé interne reste owner.
     if (href === ROUTES.help) return true;
@@ -257,6 +289,8 @@ const APP_SHELL_ROUTE_PREFIXES: readonly string[] = [
   ROUTES.suppliers,
   ROUTES.reports,
   ROUTES.ai,
+  ROUTES.accounting,
+  ROUTES.hr,
   ROUTES.users,
   ROUTES.audit,
   ROUTES.settings,

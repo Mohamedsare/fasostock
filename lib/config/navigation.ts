@@ -19,6 +19,8 @@ import {
   Building2,
   BarChart3,
   Sparkles,
+  Calculator,
+  BriefcaseBusiness,
   UserCog,
   ScrollText,
   CreditCard,
@@ -69,6 +71,8 @@ export const NAV_ITEMS: NavItem[] = [
   { href: ROUTES.suppliers, label: "Fournisseurs", icon: Building2, iconBg: "#C2410C" },
   { href: ROUTES.reports, label: "Rapports", icon: BarChart3, iconBg: "#F97316" },
   { href: ROUTES.ai, label: "Prédictions IA", icon: Sparkles, iconBg: "#78350F" },
+  { href: ROUTES.accounting, label: "Comptabilité", icon: Calculator, iconBg: "#166534" },
+  { href: ROUTES.hr, label: "R. Humaine", icon: BriefcaseBusiness, iconBg: "#1E3A8A" },
   { href: ROUTES.users, label: "Employés", icon: UserCog, iconBg: "#92400E" },
   { href: ROUTES.audit, label: "Journal d'audit", icon: ScrollText, iconBg: "#7C2D12" },
   {

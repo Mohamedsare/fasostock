@@ -92,4 +92,18 @@ export const queryKeys = {
   /** Panneau owner (ruptures, tendances…) — aligné `OwnerNotificationsDialog` Flutter. */
   ownerNotifications: (companyId: string, storeId: string | null) =>
     ["owner-notifications", companyId, storeId ?? "__all__"] as const,
+  /** Module Comptabilité — préfixe `['accounting', companyId]` pour tout invalider. */
+  accountingSetup: (companyId: string) => ["accounting", companyId, "setup"] as const,
+  accountingAccounts: (companyId: string) => ["accounting", companyId, "accounts"] as const,
+  accountingJournals: (companyId: string) => ["accounting", companyId, "journals"] as const,
+  accountingFiscalYears: (companyId: string) => ["accounting", companyId, "fiscal-years"] as const,
+  accountingEntries: (params: { companyId: string; from: string; to: string; journalId: string | null }) =>
+    ["accounting", params.companyId, "entries", params] as const,
+  /** Module R. Humaine — préfixe `['hr', companyId]` pour tout invalider. */
+  hrEmployees: (companyId: string) => ["hr", companyId, "employees"] as const,
+  hrLeaves: (companyId: string) => ["hr", companyId, "leaves"] as const,
+  hrPayrollSettings: (companyId: string) => ["hr", companyId, "payroll-settings"] as const,
+  hrIutsBrackets: (companyId: string) => ["hr", companyId, "iuts-brackets"] as const,
+  hrPayslips: (params: { companyId: string; year: number; month: number }) =>
+    ["hr", params.companyId, "payslips", params.year, params.month] as const,
 } as const;

@@ -20,7 +20,7 @@ export async function fetchAppContextForCompany(
   const { data: companyRow, error: cErr } = await supabase
     .from("companies")
     .select(
-      "id, name, logo_url, business_type_slug, warehouse_feature_enabled, store_quota_increase_enabled, ai_predictions_enabled, warehouse_kpi_show_purchase_value, warehouse_kpi_show_sale_value",
+      "id, name, logo_url, business_type_slug, warehouse_feature_enabled, store_quota_increase_enabled, ai_predictions_enabled, warehouse_kpi_show_purchase_value, warehouse_kpi_show_sale_value, accounting_module_enabled, hr_module_enabled",
     )
     .eq("id", cid)
     .maybeSingle();
@@ -41,6 +41,8 @@ export async function fetchAppContextForCompany(
     ai_predictions_enabled?: boolean | null;
     warehouse_kpi_show_purchase_value?: boolean | null;
     warehouse_kpi_show_sale_value?: boolean | null;
+    accounting_module_enabled?: boolean | null;
+    hr_module_enabled?: boolean | null;
   };
 
   const { data: stores, error: sErr } = await supabase
@@ -75,6 +77,8 @@ export async function fetchAppContextForCompany(
       aiPredictionsEnabled: cr.ai_predictions_enabled === true,
       warehouseKpiShowPurchaseValue: cr.warehouse_kpi_show_purchase_value !== false,
       warehouseKpiShowSaleValue: cr.warehouse_kpi_show_sale_value !== false,
+      accountingModuleEnabled: cr.accounting_module_enabled === true,
+      hrModuleEnabled: cr.hr_module_enabled === true,
     };
   }
 
@@ -111,6 +115,8 @@ export async function fetchAppContextForCompany(
     aiPredictionsEnabled: cr.ai_predictions_enabled === true,
     warehouseKpiShowPurchaseValue: cr.warehouse_kpi_show_purchase_value !== false,
     warehouseKpiShowSaleValue: cr.warehouse_kpi_show_sale_value !== false,
+    accountingModuleEnabled: cr.accounting_module_enabled === true,
+    hrModuleEnabled: cr.hr_module_enabled === true,
   };
 }
 

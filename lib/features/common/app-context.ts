@@ -146,6 +146,8 @@ async function fetchAppContext(): Promise<AppContextData | null> {
       aiPredictionsEnabled: true,
       warehouseKpiShowPurchaseValue: true,
       warehouseKpiShowSaleValue: true,
+      accountingModuleEnabled: false,
+      hrModuleEnabled: false,
     };
   }
 
@@ -153,7 +155,7 @@ async function fetchAppContext(): Promise<AppContextData | null> {
   const { data: companyRow, error: cErr } = await supabase
     .from("companies")
     .select(
-      "id, name, logo_url, business_type_slug, warehouse_feature_enabled, store_quota_increase_enabled, ai_predictions_enabled, warehouse_kpi_show_purchase_value, warehouse_kpi_show_sale_value",
+      "id, name, logo_url, business_type_slug, warehouse_feature_enabled, store_quota_increase_enabled, ai_predictions_enabled, warehouse_kpi_show_purchase_value, warehouse_kpi_show_sale_value, accounting_module_enabled, hr_module_enabled",
     )
     .eq("id", primaryCompanyId)
     .maybeSingle();
@@ -183,6 +185,8 @@ async function fetchAppContext(): Promise<AppContextData | null> {
       aiPredictionsEnabled: true,
       warehouseKpiShowPurchaseValue: true,
       warehouseKpiShowSaleValue: true,
+      accountingModuleEnabled: false,
+      hrModuleEnabled: false,
     };
   }
 
@@ -202,12 +206,16 @@ async function fetchAppContext(): Promise<AppContextData | null> {
     ai_predictions_enabled?: boolean | null;
     warehouse_kpi_show_purchase_value?: boolean | null;
     warehouse_kpi_show_sale_value?: boolean | null;
+    accounting_module_enabled?: boolean | null;
+    hr_module_enabled?: boolean | null;
   };
   const warehouseFeatureEnabled = cr.warehouse_feature_enabled !== false;
   const storeQuotaIncreaseEnabled = cr.store_quota_increase_enabled !== false;
   const aiPredictionsEnabled = cr.ai_predictions_enabled === true;
   const warehouseKpiShowPurchaseValue = cr.warehouse_kpi_show_purchase_value !== false;
   const warehouseKpiShowSaleValue = cr.warehouse_kpi_show_sale_value !== false;
+  const accountingModuleEnabled = cr.accounting_module_enabled === true;
+  const hrModuleEnabled = cr.hr_module_enabled === true;
 
   if (isSuperAdmin) {
     const { data: stores } = await supabase
@@ -236,6 +244,8 @@ async function fetchAppContext(): Promise<AppContextData | null> {
       aiPredictionsEnabled,
       warehouseKpiShowPurchaseValue,
       warehouseKpiShowSaleValue,
+      accountingModuleEnabled,
+      hrModuleEnabled,
     };
   }
 
@@ -286,6 +296,8 @@ async function fetchAppContext(): Promise<AppContextData | null> {
     aiPredictionsEnabled,
     warehouseKpiShowPurchaseValue,
     warehouseKpiShowSaleValue,
+    accountingModuleEnabled,
+    hrModuleEnabled,
   };
 }
 

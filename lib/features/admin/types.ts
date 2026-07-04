@@ -17,6 +17,10 @@ export type AdminCompany = {
   warehouseKpiShowSaleValue: boolean;
   /** Nombre maximum de dépôts (magasins) autorisés — modifiable uniquement par le super admin. */
   warehouseQuota: number;
+  /** Module Comptabilité (SYSCOHADA) — désactivé par défaut ; activable par la plateforme. */
+  accountingModuleEnabled: boolean;
+  /** Module R. Humaine + Paie — désactivé par défaut ; activable par la plateforme. */
+  hrModuleEnabled: boolean;
   createdAt: string | null;
 };
 

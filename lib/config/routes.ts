@@ -29,6 +29,10 @@ export const ROUTES = {
   suppliers: "/suppliers",
   reports: "/reports",
   ai: "/ai",
+  /** Module Comptabilité (SYSCOHADA) — activé par la plateforme. */
+  accounting: "/comptabilite",
+  /** Module R. Humaine + Paie — activé par la plateforme. */
+  hr: "/rh",
   settings: "/settings",
   /** Imprimantes locales (QZ Tray) — association ticket / facture A4. */
   printers: "/printers",

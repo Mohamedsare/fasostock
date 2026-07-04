@@ -8,7 +8,7 @@ import type { AdminCompany } from "@/lib/features/admin/types";
 import { messageFromUnknownError, toast } from "@/lib/toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { MdHomeWork, MdPayments, MdRefresh, MdStorefront, MdToggleOn, MdTrendingUp } from "react-icons/md";
+import { MdBadge, MdCalculate, MdHomeWork, MdPayments, MdRefresh, MdStorefront, MdToggleOn, MdTrendingUp } from "react-icons/md";
 
 const QK = ["admin-company-features"] as const;
 
@@ -29,6 +29,8 @@ export function AdminFeaturesScreen() {
       storeQuotaIncreaseEnabled?: boolean;
       warehouseKpiShowPurchaseValue?: boolean;
       warehouseKpiShowSaleValue?: boolean;
+      accountingModuleEnabled?: boolean;
+      hrModuleEnabled?: boolean;
       storeQuota?: number;
     }) => {
       const { id, ...patch } = p;
@@ -98,7 +100,7 @@ export function AdminFeaturesScreen() {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <AdminPageHeader
           title="Fonctionnalités"
-          description="Activez ou désactivez des modules pour chaque entreprise (Magasin, prédictions IA, quota de boutiques, visibilité des KPIs valeur stock sur le dépôt Magasin)."
+          description="Activez ou désactivez des modules pour chaque entreprise (Magasin, prédictions IA, Comptabilité, R. Humaine, quota de boutiques, visibilité des KPIs valeur stock sur le dépôt Magasin)."
         />
         <button
           type="button"
@@ -112,7 +114,7 @@ export function AdminFeaturesScreen() {
 
       <AdminCard padding="p-0">
         <FsHorizontalScroll>
-          <table className="min-w-[1180px] w-full text-left text-sm">
+          <table className="min-w-[1440px] w-full text-left text-sm">
           <thead className="border-b border-slate-200 bg-slate-50 text-xs font-bold uppercase text-slate-600">
             <tr>
               <th className="p-3">Entreprise</th>
@@ -138,6 +140,18 @@ export function AdminFeaturesScreen() {
                 <span className="inline-flex items-center gap-1">
                   <MdToggleOn className="h-4 w-4 text-slate-500" aria-hidden />
                   IA
+                </span>
+              </th>
+              <th className="p-3">
+                <span className="inline-flex items-center gap-1">
+                  <MdCalculate className="h-4 w-4 text-slate-500" aria-hidden />
+                  Comptabilité
+                </span>
+              </th>
+              <th className="p-3">
+                <span className="inline-flex items-center gap-1">
+                  <MdBadge className="h-4 w-4 text-slate-500" aria-hidden />
+                  R. Humaine
                 </span>
               </th>
               <th className="p-3">
@@ -213,6 +227,34 @@ export function AdminFeaturesScreen() {
                       }
                     />
                     <span className="text-slate-600">{c.aiPredictionsEnabled ? "Activé" : "Désactivé"}</span>
+                  </label>
+                </td>
+                <td className="p-3">
+                  <label className="inline-flex cursor-pointer items-center gap-2">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-slate-300"
+                      checked={c.accountingModuleEnabled}
+                      disabled={mut.isPending}
+                      onChange={() =>
+                        mut.mutate({ id: c.id, accountingModuleEnabled: !c.accountingModuleEnabled })
+                      }
+                    />
+                    <span className="text-slate-600">{c.accountingModuleEnabled ? "Activé" : "Désactivé"}</span>
+                  </label>
+                </td>
+                <td className="p-3">
+                  <label className="inline-flex cursor-pointer items-center gap-2">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-slate-300"
+                      checked={c.hrModuleEnabled}
+                      disabled={mut.isPending}
+                      onChange={() =>
+                        mut.mutate({ id: c.id, hrModuleEnabled: !c.hrModuleEnabled })
+                      }
+                    />
+                    <span className="text-slate-600">{c.hrModuleEnabled ? "Activé" : "Désactivé"}</span>
                   </label>
                 </td>
                 <td className="p-3">
