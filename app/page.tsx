@@ -18,6 +18,7 @@ import { InstallAppButton } from "@/components/pwa/install-app-button";
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import Script from "next/script";
 import { redirect } from "next/navigation";
 import { cn } from "@/lib/utils/cn";
 import {
@@ -55,6 +56,10 @@ import { FaApple, FaGooglePlay, FaWindows } from "react-icons/fa";
 import { FaCcMastercard, FaCcVisa } from "react-icons/fa";
 
 export const dynamic = "force-dynamic";
+
+/** Identifiant éditeur Google AdSense (public). Surchargeable via env. */
+const ADSENSE_CLIENT =
+  process.env.NEXT_PUBLIC_ADSENSE_CLIENT ?? "ca-pub-2965888370366530";
 
 export const metadata: Metadata = {
   title: "Logiciel de caisse et stock Burkina Faso",
@@ -333,6 +338,14 @@ export default async function Home({
       className="min-h-dvh bg-[radial-gradient(circle_at_top,rgba(232,93,44,0.14),transparent_42%),linear-gradient(to_bottom,#fff,#fff7f3)] text-neutral-900 dark:bg-[radial-gradient(circle_at_top,rgba(232,93,44,0.22),transparent_42%),linear-gradient(to_bottom,#0b1220,#111827)] dark:text-neutral-100"
     >
       <ScrollProgress />
+      {/* Google AdSense — chargé uniquement sur la landing (page publique, visiteurs anonymes). */}
+      <Script
+        id="google-adsense"
+        async
+        src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_CLIENT}`}
+        strategy="afterInteractive"
+        crossOrigin="anonymous"
+      />
       <SiteHeader />
 
       {/* ── HERO ── */}
