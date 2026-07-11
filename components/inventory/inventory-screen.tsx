@@ -322,18 +322,24 @@ export function InventoryScreen() {
     if (invPageCount > 0 && invPage >= invPageCount) setInvPage(invPageCount - 1);
   }, [invPage, invPageCount]);
 
-  const movementRowsAll = movementsQ.data?.rows ?? [];
-  const movTotal = movementRowsAll.length;
+  const movementRowsAll = useMemo(() => movementsQ.data?.rows ?? [], [movementsQ.data?.rows]);
+  /** Même champ de recherche que le stock : filtre les mouvements par nom de produit. */
+  const filteredMovements = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    if (!needle) return movementRowsAll;
+    return movementRowsAll.filter((m) => (m.productName ?? "").toLowerCase().includes(needle));
+  }, [movementRowsAll, q]);
+  const movTotal = filteredMovements.length;
   const movPageCount = movTotal === 0 ? 0 : Math.ceil(movTotal / MOVEMENTS_PAGE_SIZE);
   const movSafePage = movPageCount === 0 ? 0 : Math.min(Math.max(0, movPage), movPageCount - 1);
-  const pagedMovements = movementRowsAll.slice(
+  const pagedMovements = filteredMovements.slice(
     movSafePage * MOVEMENTS_PAGE_SIZE,
     (movSafePage + 1) * MOVEMENTS_PAGE_SIZE,
   );
 
   useEffect(() => {
     setMovPage(0);
-  }, [tab, storeId]);
+  }, [tab, storeId, q]);
 
   useEffect(() => {
     if (movPageCount > 0 && movPage >= movPageCount) setMovPage(movPageCount - 1);
@@ -808,8 +814,12 @@ export function InventoryScreen() {
                 <div className="flex justify-center py-12">
                   <div className="h-9 w-9 animate-spin rounded-full border-2 border-fs-accent border-t-transparent" aria-hidden />
                 </div>
-              ) : movementRowsAll.length === 0 ? (
-                <p className="px-4 py-10 text-center text-sm text-neutral-600">Aucun mouvement récent</p>
+              ) : filteredMovements.length === 0 ? (
+                <p className="px-4 py-10 text-center text-sm text-neutral-600">
+                  {q.trim()
+                    ? `Aucun mouvement pour « ${q.trim()} »`
+                    : "Aucun mouvement récent"}
+                </p>
               ) : (
                 <>
                   <FsHorizontalScroll>
