@@ -23,10 +23,12 @@ import { toast, toastMutationError } from "@/lib/toast";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
+  MdAdd,
   MdClose,
   MdDeleteOutline,
   MdInventory2,
   MdReceiptLong,
+  MdRemove,
 } from "react-icons/md";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { formatCurrency } from "@/lib/utils/currency";
@@ -482,14 +484,16 @@ export function WarehouseAdjustmentDialog({
   line: WarehouseStockLine | null;
   onSuccess: () => void;
 }) {
-  const [delta, setDelta] = useState("");
+  const [direction, setDirection] = useState<"increase" | "decrease">("increase");
+  const [qty, setQty] = useState("");
   const [cost, setCost] = useState("");
   const [reason, setReason] = useState("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!open || !line) return;
-    setDelta("");
+    setDirection("increase");
+    setQty("");
     setCost(line.purchasePrice > 0 ? String(line.purchasePrice) : "");
     setReason("");
   }, [open, line]);
@@ -499,19 +503,18 @@ export function WarehouseAdjustmentDialog({
   const row = line;
 
   async function submit() {
-    const raw = delta.trim();
-    if (raw === "" || raw === "-" || raw === "+") {
-      toast.error("Indiquez une variation (+ ou − en unités).");
+    const n = parseInt(qty.trim(), 10);
+    if (!Number.isFinite(n) || n <= 0) {
+      toast.error("Indiquez une quantité (nombre entier positif, ex. 12).");
       return;
     }
-    const normalized = raw.startsWith("+") ? raw.slice(1) : raw;
-    const d = parseInt(normalized, 10);
-    if (!Number.isFinite(d) || d === 0) {
-      toast.error("Variation invalide (nombre entier, ex. -3 ou +10).");
+    if (direction === "decrease" && n > row.quantity) {
+      toast.error(`Stock insuffisant : ${row.quantity} ${row.unit} disponible(s).`);
       return;
     }
+    const d = direction === "increase" ? n : -n;
     let unitCost: number | null = null;
-    if (d > 0) {
+    if (direction === "increase") {
       const c = parseFloat(cost.trim().replace(",", "."));
       if (!Number.isFinite(c) || c < 0) {
         toast.error("Indiquez un prix d’achat unitaire pour l’ajout en stock.");
@@ -525,7 +528,7 @@ export function WarehouseAdjustmentDialog({
         companyId,
         productId: row.productId,
         delta: d,
-        unitCost: d > 0 ? unitCost : null,
+        unitCost: direction === "increase" ? unitCost : null,
         reason: reason.trim() || null,
         warehouseId: warehouseId ?? null,
       });
@@ -557,28 +560,68 @@ export function WarehouseAdjustmentDialog({
             {row.productName} — {row.quantity} {row.unit}
           </p>
           <label className="mt-3 block text-[11px] font-semibold uppercase text-neutral-500">
-            Variation (unités)
+            Type d’opération
+          </label>
+          <div className="mt-1 grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setDirection("increase")}
+              className={cn(
+                "flex items-center justify-center gap-1.5 rounded-[10px] border py-2.5 text-sm font-semibold transition-colors",
+                direction === "increase"
+                  ? "border-emerald-500 bg-emerald-50 text-emerald-700"
+                  : "border-black/10 bg-fs-card text-neutral-600",
+              )}
+            >
+              <MdAdd className="h-5 w-5" aria-hidden />
+              Augmenter
+            </button>
+            <button
+              type="button"
+              onClick={() => setDirection("decrease")}
+              className={cn(
+                "flex items-center justify-center gap-1.5 rounded-[10px] border py-2.5 text-sm font-semibold transition-colors",
+                direction === "decrease"
+                  ? "border-red-500 bg-red-50 text-red-700"
+                  : "border-black/10 bg-fs-card text-neutral-600",
+              )}
+            >
+              <MdRemove className="h-5 w-5" aria-hidden />
+              Diminuer
+            </button>
+          </div>
+
+          <label className="mt-3 block text-[11px] font-semibold uppercase text-neutral-500">
+            Quantité (unités)
           </label>
           <input
             className={fsInputClass("mt-1")}
-            placeholder="ex. -5 ou +12"
-            value={delta}
-            onChange={(e) => setDelta(e.target.value)}
+            placeholder="ex. 12"
+            inputMode="numeric"
+            value={qty}
+            onChange={(e) => setQty(e.target.value.replace(/[^0-9]/g, ""))}
           />
           {(() => {
-            const raw = delta.trim();
-            const normalized = raw.startsWith("+") ? raw.slice(1) : raw;
-            const d = parseInt(normalized, 10);
-            const showCost = Number.isFinite(d) && d > 0;
-            return showCost ? (
-              <>
-                <label className="mt-3 block text-[11px] font-semibold uppercase text-neutral-500">
-                  Prix d’achat unitaire (si ajout)
-                </label>
-                <input className={fsInputClass("mt-1")} value={cost} onChange={(e) => setCost(e.target.value)} />
-              </>
-            ) : null;
+            const n = parseInt(qty.trim(), 10);
+            if (!Number.isFinite(n) || n <= 0) return null;
+            const next = direction === "increase" ? row.quantity + n : row.quantity - n;
+            return (
+              <p className="mt-1.5 text-xs text-neutral-600">
+                Nouveau stock :{" "}
+                <span className={cn("font-semibold", next < 0 ? "text-red-600" : "text-fs-text")}>
+                  {next} {row.unit}
+                </span>
+              </p>
+            );
           })()}
+          {direction === "increase" ? (
+            <>
+              <label className="mt-3 block text-[11px] font-semibold uppercase text-neutral-500">
+                Prix d’achat unitaire (si ajout)
+              </label>
+              <input className={fsInputClass("mt-1")} value={cost} onChange={(e) => setCost(e.target.value)} />
+            </>
+          ) : null}
           <label className="mt-3 block text-[11px] font-semibold uppercase text-neutral-500">Motif</label>
           <textarea className={fsInputClass("mt-1 min-h-[64px]")} value={reason} onChange={(e) => setReason(e.target.value)} />
           <button

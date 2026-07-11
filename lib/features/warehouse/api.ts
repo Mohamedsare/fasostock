@@ -150,13 +150,23 @@ export async function listWarehouseMovements(
   companyId: string,
   limit = 200,
   warehouseId?: string | null,
+  productSearch?: string,
 ): Promise<WarehouseMovement[]> {
   const supabase = createClient();
-  let q = supabase.from("warehouse_movements").select(movSelect);
+  const term = (productSearch ?? "").trim();
+  // Recherche par produit : jointure interne pour pouvoir filtrer sur name/sku.
+  const select = term
+    ? "id, company_id, product_id, movement_kind, quantity, unit_cost, packaging_type, packs_quantity, reference_type, reference_id, notes, created_at, product:products!inner(id, name, sku)"
+    : movSelect;
+  let q = supabase.from("warehouse_movements").select(select);
   if (warehouseId) {
     q = q.eq("warehouse_id", warehouseId);
   } else {
     q = q.eq("company_id", companyId);
+  }
+  if (term) {
+    const escaped = term.replace(/[%_]/g, (m) => `\\${m}`);
+    q = q.or(`name.ilike.%${escaped}%,sku.ilike.%${escaped}%`, { referencedTable: "product" });
   }
   const { data, error } = await q
     .order("created_at", { ascending: false })

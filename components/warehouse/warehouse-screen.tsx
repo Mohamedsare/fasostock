@@ -290,6 +290,8 @@ export function WarehouseScreen() {
   const [stockPage, setStockPage] = useState(0);
 
   const [movPage, setMovPage] = useState(0);
+  const [movSearch, setMovSearch] = useState("");
+  const [movSearchDebounced, setMovSearchDebounced] = useState("");
   const MOV_PAGE = 20;
 
   const [dispatchPage, setDispatchPage] = useState(0);
@@ -325,9 +327,16 @@ export function WarehouseScreen() {
     queryFn: () => listWarehouseInventory(companyId, activeWarehouseId),
     enabled: Boolean(companyId) && canWarehouse,
   });
+  const movSearchTerm = movSearchDebounced.trim();
   const movQ = useQuery({
-    queryKey: [...queryKeys.warehouseMovements(companyId), activeWarehouseId],
-    queryFn: () => listWarehouseMovements(companyId, 500, activeWarehouseId),
+    queryKey: [...queryKeys.warehouseMovements(companyId), activeWarehouseId, movSearchTerm],
+    queryFn: () =>
+      listWarehouseMovements(
+        companyId,
+        movSearchTerm ? 2000 : 500,
+        activeWarehouseId,
+        movSearchTerm || undefined,
+      ),
     enabled: Boolean(companyId) && canWarehouse,
   });
   const dispatchQ = useQuery({
@@ -606,6 +615,15 @@ export function WarehouseScreen() {
     const t = setTimeout(() => setDispatchProductSearchDebounced(dispatchProductSearch.trim()), 280);
     return () => clearTimeout(t);
   }, [dispatchProductSearch]);
+
+  useEffect(() => {
+    const t = setTimeout(() => setMovSearchDebounced(movSearch.trim()), 280);
+    return () => clearTimeout(t);
+  }, [movSearch]);
+
+  useEffect(() => {
+    setMovPage(0);
+  }, [movSearchTerm, activeWarehouseId]);
 
   function storeName(id: string | null) {
     if (!id) return "—";
@@ -1380,6 +1398,9 @@ export function WarehouseScreen() {
               movTotalPages={movTotalPages}
               setMovPage={setMovPage}
               movementsLen={movements.length}
+              search={movSearch}
+              setSearch={setMovSearch}
+              searching={movQ.isFetching || movSearch.trim() !== movSearchTerm}
               companyId={companyId}
               voidingId={voidingId}
               onVoid={confirmVoidFromMovement}
@@ -2339,6 +2360,9 @@ function MouvementsTab({
   movTotalPages,
   setMovPage,
   movementsLen,
+  search,
+  setSearch,
+  searching,
   companyId,
   voidingId,
   onVoid,
@@ -2348,24 +2372,74 @@ function MouvementsTab({
   movTotalPages: number;
   setMovPage: (n: number | ((p: number) => number)) => void;
   movementsLen: number;
+  search: string;
+  setSearch: (v: string) => void;
+  searching: boolean;
   companyId: string;
   voidingId: string | null;
   onVoid: (m: WarehouseMovement) => void;
 }) {
+  const hasSearch = search.trim().length > 0;
+  const searchBar = (
+    <div className="group relative">
+      <MdSearch className="pointer-events-none absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-neutral-400 transition-colors group-focus-within:text-fs-accent" />
+      <input
+        type="search"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        placeholder="Rechercher un produit (toutes ses entrées/sorties du magasin)…"
+        aria-label="Rechercher un produit dans les mouvements du magasin"
+        className="h-11 w-full rounded-xl border border-black/10 bg-fs-card pl-11 pr-10 text-sm text-fs-text outline-none focus:border-fs-accent"
+      />
+      {search ? (
+        <button
+          type="button"
+          onClick={() => setSearch("")}
+          aria-label="Effacer la recherche"
+          className="absolute right-2 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-neutral-500 hover:bg-black/5"
+        >
+          <MdClose className="h-4 w-4" />
+        </button>
+      ) : null}
+    </div>
+  );
+
+  // Aucun mouvement du tout (hors recherche) : conserver l'état vide d'origine.
+  if (movementsLen === 0 && !hasSearch) {
+    return (
+      <div className="space-y-3">
+        {searchBar}
+        <div className="pb-8 pt-12 text-center sm:pt-16">
+          <MdSwapHoriz className="mx-auto h-12 w-12 text-neutral-300" />
+          <p className="mt-4 font-semibold">Aucun mouvement</p>
+          <p className="mt-2 text-sm text-neutral-600">
+            Les entrées, sorties et ajustements apparaîtront ici.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   if (movementsLen === 0) {
     return (
-      <div className="pb-8 pt-12 text-center sm:pt-16">
-        <MdSwapHoriz className="mx-auto h-12 w-12 text-neutral-300" />
-        <p className="mt-4 font-semibold">Aucun mouvement</p>
-        <p className="mt-2 text-sm text-neutral-600">
-          Les entrées, sorties et ajustements apparaîtront ici.
-        </p>
+      <div className="space-y-3">
+        {searchBar}
+        <div className="pb-8 pt-10 text-center">
+          <MdSearch className="mx-auto h-10 w-10 text-neutral-300" />
+          <p className="mt-3 font-semibold">
+            {searching ? "Recherche…" : `Aucun mouvement pour « ${search.trim()} »`}
+          </p>
+          <p className="mt-1 text-sm text-neutral-600">
+            Essayez un autre nom de produit ou vérifiez l&apos;orthographe.
+          </p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-2 pb-6">
+    <div className="space-y-3 pb-6">
+      {searchBar}
       <FsHorizontalScroll className="rounded-2xl border border-black/6 bg-fs-card">
         <table className="w-full min-w-[980px] border-collapse text-left text-[13px] [&_thead_th]:whitespace-nowrap [&_tbody_td]:whitespace-nowrap">
           <thead>
