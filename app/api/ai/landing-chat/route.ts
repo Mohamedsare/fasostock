@@ -63,7 +63,7 @@ Règles de formatage (TRÈS IMPORTANT) :
 - N'invente pas de prix précis, renvoie à la section Tarifs du site.`;
 
 export async function POST(req: Request) {
-  const key = process.env.OPENAI_API_KEY?.trim();
+  const key = process.env.DEEPSEEK_API_KEY?.trim();
   if (!key) {
     return NextResponse.json({ error: "Agent non disponible pour le moment." }, { status: 503 });
   }
@@ -82,12 +82,13 @@ export async function POST(req: Request) {
 
   const history = toSafeHistory(body.history);
 
-  const client = new OpenAI({ apiKey: key });
+  // DeepSeek est compatible avec l'API OpenAI (chat completions).
+  const client = new OpenAI({ apiKey: key, baseURL: "https://api.deepseek.com/v1" });
 
   let completion: Awaited<ReturnType<typeof client.chat.completions.create>>;
   try {
     completion = await client.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "deepseek-chat",
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
         ...history.map((m) => ({ role: m.role, content: m.content })),
@@ -100,7 +101,7 @@ export async function POST(req: Request) {
     const status = err instanceof OpenAI.APIError ? err.status ?? 502 : 502;
     const msg =
       err instanceof OpenAI.APIError && err.status === 401
-        ? "Clé API OpenAI invalide."
+        ? "Clé API DeepSeek invalide."
         : "Erreur lors de la génération de la réponse.";
     return NextResponse.json({ error: msg }, { status: status === 401 ? 503 : 502 });
   }
