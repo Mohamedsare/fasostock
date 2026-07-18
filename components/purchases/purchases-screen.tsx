@@ -188,10 +188,11 @@ export function PurchasesScreen() {
 
   /** Aligné `PurchasesPage` Flutter (l.216–219) — pas de cas super-admin séparé. */
   const canAccess =
-    hasPermission(P.purchasesView) ||
-    hasPermission(P.purchasesCreate) ||
-    hasPermission(P.purchasesCancel) ||
-    Boolean(helpers?.isOwner);
+    (hasPermission(P.purchasesView) ||
+      hasPermission(P.purchasesCreate) ||
+      hasPermission(P.purchasesCancel) ||
+      Boolean(helpers?.isOwner)) &&
+    ctx?.purchasesFeatureEnabled !== false;
 
   const canCreate = Boolean(helpers?.isOwner) || hasPermission(P.purchasesCreate);
 

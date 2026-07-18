@@ -46,7 +46,7 @@ export async function adminListCompanies(): Promise<AdminCompany[]> {
   const { data, error } = await supabase
     .from("companies")
     .select(
-      "id, name, slug, is_active, store_quota, ai_predictions_enabled, warehouse_feature_enabled, store_quota_increase_enabled, warehouse_kpi_show_purchase_value, warehouse_kpi_show_sale_value, warehouse_quota, accounting_module_enabled, hr_module_enabled, created_at",
+      "id, name, slug, is_active, store_quota, ai_predictions_enabled, warehouse_feature_enabled, purchases_feature_enabled, transfers_feature_enabled, store_quota_increase_enabled, warehouse_kpi_show_purchase_value, warehouse_kpi_show_sale_value, warehouse_quota, accounting_module_enabled, hr_module_enabled, created_at",
     )
     .order("created_at", { ascending: false });
   if (error) throw mapSupabaseError(error);
@@ -60,6 +60,8 @@ export async function adminListCompanies(): Promise<AdminCompany[]> {
       storeQuota: toNum(r.store_quota),
       aiPredictionsEnabled: r.ai_predictions_enabled === true,
       warehouseFeatureEnabled: r.warehouse_feature_enabled !== false,
+      purchasesFeatureEnabled: r.purchases_feature_enabled !== false,
+      transfersFeatureEnabled: r.transfers_feature_enabled !== false,
       storeQuotaIncreaseEnabled: r.store_quota_increase_enabled !== false,
       warehouseKpiShowPurchaseValue: r.warehouse_kpi_show_purchase_value !== false,
       warehouseKpiShowSaleValue: r.warehouse_kpi_show_sale_value !== false,
@@ -101,6 +103,8 @@ export async function adminUpdateCompany(
     isActive?: boolean;
     aiPredictionsEnabled?: boolean;
     warehouseFeatureEnabled?: boolean;
+    purchasesFeatureEnabled?: boolean;
+    transfersFeatureEnabled?: boolean;
     storeQuotaIncreaseEnabled?: boolean;
     warehouseKpiShowPurchaseValue?: boolean;
     warehouseKpiShowSaleValue?: boolean;
@@ -116,6 +120,12 @@ export async function adminUpdateCompany(
   if (patch.aiPredictionsEnabled !== undefined) row.ai_predictions_enabled = patch.aiPredictionsEnabled;
   if (patch.warehouseFeatureEnabled !== undefined) {
     row.warehouse_feature_enabled = patch.warehouseFeatureEnabled;
+  }
+  if (patch.purchasesFeatureEnabled !== undefined) {
+    row.purchases_feature_enabled = patch.purchasesFeatureEnabled;
+  }
+  if (patch.transfersFeatureEnabled !== undefined) {
+    row.transfers_feature_enabled = patch.transfersFeatureEnabled;
   }
   if (patch.storeQuotaIncreaseEnabled !== undefined) {
     row.store_quota_increase_enabled = patch.storeQuotaIncreaseEnabled;

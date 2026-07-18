@@ -8,7 +8,7 @@ import type { AdminCompany } from "@/lib/features/admin/types";
 import { messageFromUnknownError, toast } from "@/lib/toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { MdBadge, MdCalculate, MdHomeWork, MdPayments, MdRefresh, MdStorefront, MdToggleOn, MdTrendingUp } from "react-icons/md";
+import { MdBadge, MdCalculate, MdHomeWork, MdPayments, MdRefresh, MdShoppingCart, MdStorefront, MdSwapHoriz, MdToggleOn, MdTrendingUp } from "react-icons/md";
 
 const QK = ["admin-company-features"] as const;
 
@@ -25,6 +25,8 @@ export function AdminFeaturesScreen() {
     mutationFn: async (p: {
       id: string;
       warehouseFeatureEnabled?: boolean;
+      purchasesFeatureEnabled?: boolean;
+      transfersFeatureEnabled?: boolean;
       aiPredictionsEnabled?: boolean;
       storeQuotaIncreaseEnabled?: boolean;
       warehouseKpiShowPurchaseValue?: boolean;
@@ -100,7 +102,7 @@ export function AdminFeaturesScreen() {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <AdminPageHeader
           title="Fonctionnalités"
-          description="Activez ou désactivez des modules pour chaque entreprise (Magasin, prédictions IA, Comptabilité, R. Humaine, quota de boutiques, visibilité des KPIs valeur stock sur le dépôt Magasin)."
+          description="Activez ou masquez des modules pour chaque entreprise (Magasin, Achats, Transfert, prédictions IA, Comptabilité, R. Humaine, quota de boutiques, visibilité des KPIs valeur stock sur le dépôt Magasin)."
         />
         <button
           type="button"
@@ -114,7 +116,7 @@ export function AdminFeaturesScreen() {
 
       <AdminCard padding="p-0">
         <FsHorizontalScroll>
-          <table className="min-w-[1440px] w-full text-left text-sm">
+          <table className="min-w-[1720px] w-full text-left text-sm">
           <thead className="border-b border-slate-200 bg-slate-50 text-xs font-bold uppercase text-slate-600">
             <tr>
               <th className="p-3">Entreprise</th>
@@ -122,6 +124,18 @@ export function AdminFeaturesScreen() {
                 <span className="inline-flex items-center gap-1">
                   <MdHomeWork className="h-4 w-4 text-slate-500" aria-hidden />
                   Magasin
+                </span>
+              </th>
+              <th className="p-3">
+                <span className="inline-flex items-center gap-1">
+                  <MdShoppingCart className="h-4 w-4 text-slate-500" aria-hidden />
+                  Achats
+                </span>
+              </th>
+              <th className="p-3">
+                <span className="inline-flex items-center gap-1">
+                  <MdSwapHoriz className="h-4 w-4 text-slate-500" aria-hidden />
+                  Transfert
                 </span>
               </th>
               <th className="p-3">
@@ -179,6 +193,34 @@ export function AdminFeaturesScreen() {
                       }
                     />
                     <span className="text-slate-600">{c.warehouseFeatureEnabled ? "Activé" : "Désactivé"}</span>
+                  </label>
+                </td>
+                <td className="p-3">
+                  <label className="inline-flex cursor-pointer items-center gap-2">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-slate-300"
+                      checked={c.purchasesFeatureEnabled}
+                      disabled={mut.isPending}
+                      onChange={() =>
+                        mut.mutate({ id: c.id, purchasesFeatureEnabled: !c.purchasesFeatureEnabled })
+                      }
+                    />
+                    <span className="text-slate-600">{c.purchasesFeatureEnabled ? "Activé" : "Masqué"}</span>
+                  </label>
+                </td>
+                <td className="p-3">
+                  <label className="inline-flex cursor-pointer items-center gap-2">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-slate-300"
+                      checked={c.transfersFeatureEnabled}
+                      disabled={mut.isPending}
+                      onChange={() =>
+                        mut.mutate({ id: c.id, transfersFeatureEnabled: !c.transfersFeatureEnabled })
+                      }
+                    />
+                    <span className="text-slate-600">{c.transfersFeatureEnabled ? "Activé" : "Masqué"}</span>
                   </label>
                 </td>
                 <td className="p-3">

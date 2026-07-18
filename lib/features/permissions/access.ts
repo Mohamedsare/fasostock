@@ -29,6 +29,10 @@ export type AppContextData = {
   roleSlug: string | null;
   /** Module Magasin (dépôt) — désactivé par la plateforme si false. */
   warehouseFeatureEnabled: boolean;
+  /** Module Achats — masqué par la plateforme si false. */
+  purchasesFeatureEnabled: boolean;
+  /** Module Transferts — masqué par la plateforme si false. */
+  transfersFeatureEnabled: boolean;
   /** Augmentation du quota de boutiques autorisée (plateforme). */
   storeQuotaIncreaseEnabled: boolean;
   /** Prédictions IA — désactivé par la plateforme si false. */
@@ -105,9 +109,10 @@ export function buildAccessHelpers(
     hasPermission(P.usersManage) || isOwner;
   const canSettings = hasPermission(P.settingsManage);
   const canTransfers =
-    hasPermission(P.stockTransfer) ||
-    hasPermission(P.transfersCreate) ||
-    hasPermission(P.transfersApprove);
+    (hasPermission(P.stockTransfer) ||
+      hasPermission(P.transfersCreate) ||
+      hasPermission(P.transfersApprove)) &&
+    data.transfersFeatureEnabled !== false;
   const canDashboard = hasPermission(P.dashboardView);
   const canProducts =
     hasPermission(P.productsView) ||
@@ -125,11 +130,12 @@ export function buildAccessHelpers(
     hasPermission(P.stockAdjust) ||
     hasPermission(P.stockTransfer);
   const canPurchases =
-    hasPermission(P.purchasesView) ||
-    hasPermission(P.purchasesCreate) ||
-    hasPermission(P.purchasesCancel) ||
-    hasPermission(P.purchasesUpdate) ||
-    hasPermission(P.purchasesDelete);
+    (hasPermission(P.purchasesView) ||
+      hasPermission(P.purchasesCreate) ||
+      hasPermission(P.purchasesCancel) ||
+      hasPermission(P.purchasesUpdate) ||
+      hasPermission(P.purchasesDelete)) &&
+    data.purchasesFeatureEnabled !== false;
   const canCustomers =
     hasPermission(P.customersView) || hasPermission(P.customersManage);
   const canSuppliers =

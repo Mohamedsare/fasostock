@@ -142,6 +142,8 @@ async function fetchAppContext(): Promise<AppContextData | null> {
       permissionKeys: isSuperAdmin ? [...PERMISSIONS_ALL] : [],
       roleSlug: isSuperAdmin ? "super_admin" : null,
       warehouseFeatureEnabled: true,
+      purchasesFeatureEnabled: true,
+      transfersFeatureEnabled: true,
       storeQuotaIncreaseEnabled: true,
       aiPredictionsEnabled: true,
       warehouseKpiShowPurchaseValue: true,
@@ -155,7 +157,7 @@ async function fetchAppContext(): Promise<AppContextData | null> {
   const { data: companyRow, error: cErr } = await supabase
     .from("companies")
     .select(
-      "id, name, logo_url, business_type_slug, warehouse_feature_enabled, store_quota_increase_enabled, ai_predictions_enabled, warehouse_kpi_show_purchase_value, warehouse_kpi_show_sale_value, accounting_module_enabled, hr_module_enabled",
+      "id, name, logo_url, business_type_slug, warehouse_feature_enabled, purchases_feature_enabled, transfers_feature_enabled, store_quota_increase_enabled, ai_predictions_enabled, warehouse_kpi_show_purchase_value, warehouse_kpi_show_sale_value, accounting_module_enabled, hr_module_enabled",
     )
     .eq("id", primaryCompanyId)
     .maybeSingle();
@@ -181,6 +183,8 @@ async function fetchAppContext(): Promise<AppContextData | null> {
       permissionKeys: isSuperAdmin ? [...PERMISSIONS_ALL] : [],
       roleSlug: isSuperAdmin ? "super_admin" : null,
       warehouseFeatureEnabled: true,
+      purchasesFeatureEnabled: true,
+      transfersFeatureEnabled: true,
       storeQuotaIncreaseEnabled: true,
       aiPredictionsEnabled: true,
       warehouseKpiShowPurchaseValue: true,
@@ -202,6 +206,8 @@ async function fetchAppContext(): Promise<AppContextData | null> {
     ((companyRow as { logo_url?: string | null }).logo_url ?? null)?.trim() || null;
   const cr = companyRow as {
     warehouse_feature_enabled?: boolean | null;
+    purchases_feature_enabled?: boolean | null;
+    transfers_feature_enabled?: boolean | null;
     store_quota_increase_enabled?: boolean | null;
     ai_predictions_enabled?: boolean | null;
     warehouse_kpi_show_purchase_value?: boolean | null;
@@ -210,6 +216,8 @@ async function fetchAppContext(): Promise<AppContextData | null> {
     hr_module_enabled?: boolean | null;
   };
   const warehouseFeatureEnabled = cr.warehouse_feature_enabled !== false;
+  const purchasesFeatureEnabled = cr.purchases_feature_enabled !== false;
+  const transfersFeatureEnabled = cr.transfers_feature_enabled !== false;
   const storeQuotaIncreaseEnabled = cr.store_quota_increase_enabled !== false;
   const aiPredictionsEnabled = cr.ai_predictions_enabled === true;
   const warehouseKpiShowPurchaseValue = cr.warehouse_kpi_show_purchase_value !== false;
@@ -240,6 +248,8 @@ async function fetchAppContext(): Promise<AppContextData | null> {
       permissionKeys: [...PERMISSIONS_ALL],
       roleSlug: "super_admin",
       warehouseFeatureEnabled,
+      purchasesFeatureEnabled,
+      transfersFeatureEnabled,
       storeQuotaIncreaseEnabled,
       aiPredictionsEnabled,
       warehouseKpiShowPurchaseValue,
@@ -292,6 +302,8 @@ async function fetchAppContext(): Promise<AppContextData | null> {
     permissionKeys,
     roleSlug,
     warehouseFeatureEnabled,
+    purchasesFeatureEnabled,
+    transfersFeatureEnabled,
     storeQuotaIncreaseEnabled,
     aiPredictionsEnabled,
     warehouseKpiShowPurchaseValue,

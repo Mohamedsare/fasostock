@@ -20,7 +20,7 @@ export async function fetchAppContextForCompany(
   const { data: companyRow, error: cErr } = await supabase
     .from("companies")
     .select(
-      "id, name, logo_url, business_type_slug, warehouse_feature_enabled, store_quota_increase_enabled, ai_predictions_enabled, warehouse_kpi_show_purchase_value, warehouse_kpi_show_sale_value, accounting_module_enabled, hr_module_enabled",
+      "id, name, logo_url, business_type_slug, warehouse_feature_enabled, purchases_feature_enabled, transfers_feature_enabled, store_quota_increase_enabled, ai_predictions_enabled, warehouse_kpi_show_purchase_value, warehouse_kpi_show_sale_value, accounting_module_enabled, hr_module_enabled",
     )
     .eq("id", cid)
     .maybeSingle();
@@ -37,6 +37,8 @@ export async function fetchAppContextForCompany(
     ((companyRow as { logo_url?: string | null }).logo_url ?? null)?.trim() || null;
   const cr = companyRow as {
     warehouse_feature_enabled?: boolean | null;
+    purchases_feature_enabled?: boolean | null;
+    transfers_feature_enabled?: boolean | null;
     store_quota_increase_enabled?: boolean | null;
     ai_predictions_enabled?: boolean | null;
     warehouse_kpi_show_purchase_value?: boolean | null;
@@ -73,6 +75,8 @@ export async function fetchAppContextForCompany(
       permissionKeys: [...PERMISSIONS_ALL],
       roleSlug: "super_admin",
       warehouseFeatureEnabled: cr.warehouse_feature_enabled !== false,
+      purchasesFeatureEnabled: cr.purchases_feature_enabled !== false,
+      transfersFeatureEnabled: cr.transfers_feature_enabled !== false,
       storeQuotaIncreaseEnabled: cr.store_quota_increase_enabled !== false,
       aiPredictionsEnabled: cr.ai_predictions_enabled === true,
       warehouseKpiShowPurchaseValue: cr.warehouse_kpi_show_purchase_value !== false,
@@ -111,6 +115,8 @@ export async function fetchAppContextForCompany(
     permissionKeys,
     roleSlug,
     warehouseFeatureEnabled: cr.warehouse_feature_enabled !== false,
+    purchasesFeatureEnabled: cr.purchases_feature_enabled !== false,
+    transfersFeatureEnabled: cr.transfers_feature_enabled !== false,
     storeQuotaIncreaseEnabled: cr.store_quota_increase_enabled !== false,
     aiPredictionsEnabled: cr.ai_predictions_enabled === true,
     warehouseKpiShowPurchaseValue: cr.warehouse_kpi_show_purchase_value !== false,

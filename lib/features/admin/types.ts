@@ -9,6 +9,10 @@ export type AdminCompany = {
   aiPredictionsEnabled: boolean;
   /** Module dépôt Magasin — désactivable par la plateforme. */
   warehouseFeatureEnabled: boolean;
+  /** Module Achats — masquable par la plateforme. */
+  purchasesFeatureEnabled: boolean;
+  /** Module Transferts — masquable par la plateforme. */
+  transfersFeatureEnabled: boolean;
   /** Autorise l’augmentation du quota de boutiques (plateforme). */
   storeQuotaIncreaseEnabled: boolean;
   /** Affiche la carte KPI « Valeur au prix d'achat » sur le dépôt Magasin. */
