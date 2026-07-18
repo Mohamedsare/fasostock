@@ -33,6 +33,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   MdAdd,
   MdDeleteOutline,
+  MdLockOutline,
   MdManageAccounts,
   MdPerson,
   MdRefresh,
@@ -355,59 +356,70 @@ export function UsersScreen() {
             </div>
 
             {canManage ? (
-              <div className="mt-2 flex flex-wrap items-center justify-end gap-2 sm:mt-3">
-                <select
-                  value={u.roleId}
-                  onChange={(e) => {
-                    const roleId = e.target.value;
-                    setRoleMut.mutate({ roleRowId: u.roleRowId, roleId });
-                  }}
-                  className={cn(
-                    "min-h-[40px] rounded-[10px] border border-black/8 bg-fs-card px-2 py-2 text-xs font-semibold text-neutral-800 sm:text-sm",
-                    setRoleMut.isPending ? "opacity-70" : "",
-                  )}
-                  disabled={setRoleMut.isPending}
-                >
-                  {(rolesQ.data ?? []).map((r) => (
-                    <option key={r.id} value={r.id}>
-                      {roleLabelFr(r.slug, r.name, roleOverrides)}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setActiveMut.mutate({
-                      roleRowId: u.roleRowId,
-                      isActive: !u.isActive,
-                    })
-                  }
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-black/8 bg-fs-card text-fs-accent"
-                  aria-label={u.isActive ? "Désactiver" : "Activer"}
-                  disabled={setActiveMut.isPending}
-                >
-                  {u.isActive ? (
-                    <MdToggleOn className="h-6 w-6" aria-hidden />
-                  ) : (
-                    <MdToggleOff className="h-6 w-6 text-neutral-500" aria-hidden />
-                  )}
-                </button>
-                {isOwner && u.userId !== currentUserId ? (
+              u.userId === currentUserId ? (
+                // Garde-fou : on ne peut pas modifier son propre compte (rôle,
+                // activation, suppression) pour éviter de se verrouiller soi-même.
+                <div className="mt-2 flex justify-end sm:mt-3">
+                  <span className="inline-flex items-center gap-1.5 rounded-[10px] border border-black/8 bg-fs-surface-container px-3 py-2 text-[11px] font-semibold text-neutral-600">
+                    <MdLockOutline className="h-4 w-4" aria-hidden />
+                    Vous ne pouvez pas modifier votre propre compte
+                  </span>
+                </div>
+              ) : (
+                <div className="mt-2 flex flex-wrap items-center justify-end gap-2 sm:mt-3">
+                  <select
+                    value={u.roleId}
+                    onChange={(e) => {
+                      const roleId = e.target.value;
+                      setRoleMut.mutate({ roleRowId: u.roleRowId, roleId });
+                    }}
+                    className={cn(
+                      "min-h-[40px] rounded-[10px] border border-black/8 bg-fs-card px-2 py-2 text-xs font-semibold text-neutral-800 sm:text-sm",
+                      setRoleMut.isPending ? "opacity-70" : "",
+                    )}
+                    disabled={setRoleMut.isPending}
+                  >
+                    {(rolesQ.data ?? []).map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {roleLabelFr(r.slug, r.name, roleOverrides)}
+                      </option>
+                    ))}
+                  </select>
                   <button
                     type="button"
-                    onClick={() => {
-                      if (confirm("Retirer cet utilisateur de l'entreprise ?")) {
-                        removeMut.mutate(u.roleRowId);
-                      }
-                    }}
-                    className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-black/8 bg-fs-card text-red-600"
-                    aria-label="Retirer"
-                    disabled={removeMut.isPending}
+                    onClick={() =>
+                      setActiveMut.mutate({
+                        roleRowId: u.roleRowId,
+                        isActive: !u.isActive,
+                      })
+                    }
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-black/8 bg-fs-card text-fs-accent"
+                    aria-label={u.isActive ? "Désactiver" : "Activer"}
+                    disabled={setActiveMut.isPending}
                   >
-                    <MdDeleteOutline className="h-5 w-5" aria-hidden />
+                    {u.isActive ? (
+                      <MdToggleOn className="h-6 w-6" aria-hidden />
+                    ) : (
+                      <MdToggleOff className="h-6 w-6 text-neutral-500" aria-hidden />
+                    )}
                   </button>
-                ) : null}
-              </div>
+                  {isOwner ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (confirm("Retirer cet utilisateur de l'entreprise ?")) {
+                          removeMut.mutate(u.roleRowId);
+                        }
+                      }}
+                      className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-black/8 bg-fs-card text-red-600"
+                      aria-label="Retirer"
+                      disabled={removeMut.isPending}
+                    >
+                      <MdDeleteOutline className="h-5 w-5" aria-hidden />
+                    </button>
+                  ) : null}
+                </div>
+              )
             ) : null}
           </div>
         ))}
