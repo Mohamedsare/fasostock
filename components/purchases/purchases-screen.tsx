@@ -33,9 +33,13 @@ import {
   MdAdd,
   MdChevronLeft,
   MdChevronRight,
+  MdDeleteOutline,
   MdDownload,
   MdErrorOutline,
   MdLock,
+  MdOutlineBlock,
+  MdOutlineEdit,
+  MdOutlineVisibility,
 } from "react-icons/md";
 import { messageFromUnknownError, toast, toastMutationError } from "@/lib/toast";
 import { downloadProSpreadsheet } from "@/lib/utils/spreadsheet-export-pro";
@@ -548,16 +552,18 @@ export function PurchasesScreen() {
                         </td>
                         <td className="whitespace-nowrap px-4 py-3">{statusLabel(r.status)}</td>
                         <td className="px-4 py-2">
-                          <div className="flex flex-wrap items-center gap-1">
+                          <div className="flex items-center gap-1">
                             <button
                               type="button"
                               onClick={() => {
                                 setDetailId(r.id);
                                 setDetailOpen(true);
                               }}
-                              className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg px-2 text-xs font-semibold text-fs-accent hover:bg-fs-accent/10 active:bg-fs-accent/15 sm:text-sm"
+                              title="Voir"
+                              aria-label="Voir l'achat"
+                              className="inline-flex h-10 w-10 items-center justify-center rounded-full text-neutral-600 transition-colors hover:bg-fs-accent/10 hover:text-fs-accent active:bg-fs-accent/15"
                             >
-                              Voir
+                              <MdOutlineVisibility className="h-5 w-5" aria-hidden />
                             </button>
                             {r.status === "draft" && canManage ? (
                               <>
@@ -567,9 +573,11 @@ export function PurchasesScreen() {
                                     setDetailId(r.id);
                                     setDetailOpen(true);
                                   }}
-                                  className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg px-2 text-xs font-semibold text-fs-accent hover:bg-fs-accent/10 active:bg-fs-accent/15 sm:text-sm"
+                                  title="Modifier"
+                                  aria-label="Modifier l'achat"
+                                  className="inline-flex h-10 w-10 items-center justify-center rounded-full text-neutral-600 transition-colors hover:bg-fs-accent/10 hover:text-fs-accent active:bg-fs-accent/15"
                                 >
-                                  Modifier
+                                  <MdOutlineEdit className="h-5 w-5" aria-hidden />
                                 </button>
                                 <button
                                   type="button"
@@ -579,9 +587,11 @@ export function PurchasesScreen() {
                                       label: r.reference ?? r.id,
                                     })
                                   }
-                                  className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg px-2 text-xs font-semibold text-fs-accent hover:bg-fs-surface-container sm:text-sm"
+                                  title="Annuler"
+                                  aria-label="Annuler l'achat"
+                                  className="inline-flex h-10 w-10 items-center justify-center rounded-full text-neutral-600 transition-colors hover:bg-amber-50 hover:text-amber-600 active:bg-amber-100"
                                 >
-                                  Annuler
+                                  <MdOutlineBlock className="h-5 w-5" aria-hidden />
                                 </button>
                                 <button
                                   type="button"
@@ -591,9 +601,11 @@ export function PurchasesScreen() {
                                       label: r.reference ?? r.id,
                                     })
                                   }
-                                  className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg px-2 text-xs font-semibold text-red-600 hover:bg-red-50 sm:text-sm"
+                                  title="Supprimer"
+                                  aria-label="Supprimer l'achat"
+                                  className="inline-flex h-10 w-10 items-center justify-center rounded-full text-neutral-600 transition-colors hover:bg-red-50 hover:text-red-600 active:bg-red-100"
                                 >
-                                  Supprimer
+                                  <MdDeleteOutline className="h-5 w-5" aria-hidden />
                                 </button>
                               </>
                             ) : null}

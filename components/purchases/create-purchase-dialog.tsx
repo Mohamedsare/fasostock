@@ -13,6 +13,8 @@ import {
   MdDeleteOutline,
   MdErrorOutline,
   MdPayment,
+  MdSearch,
+  MdUnfoldMore,
 } from "react-icons/md";
 
 type SupplierLite = { id: string; name: string };
@@ -30,6 +32,14 @@ export type PurchasePaymentMethod =
   | "mobile_money"
   | "card"
   | "other";
+
+function normalizeSearch(s: string): string {
+  return s
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .trim();
+}
 
 function paymentLabel(m: PurchasePaymentMethod): string {
   switch (m) {
@@ -93,13 +103,14 @@ export function CreatePurchaseDialog({
 }) {
   const [storeId, setStoreId] = useState<string | null>(null);
   const [supplierId, setSupplierId] = useState<string | null>(null);
-  const [reference, setReference] = useState("");
   const [lines, setLines] = useState<LineRow[]>([
     { productId: "", quantity: 0, unitPrice: 0 },
   ]);
   const [paymentMethod, setPaymentMethod] = useState<PurchasePaymentMethod>("transfer");
   const [paymentAmount, setPaymentAmount] = useState("0");
   const [paymentSheetOpen, setPaymentSheetOpen] = useState(false);
+  const [productSheetLine, setProductSheetLine] = useState<number | null>(null);
+  const [productSearch, setProductSearch] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -119,11 +130,12 @@ export function CreatePurchaseDialog({
     if (initialStoreId && ids.has(initialStoreId)) sid = initialStoreId;
     setStoreId(sid);
     setSupplierId(suppliers[0]?.id ?? null);
-    setReference("");
     setLines([{ productId: "", quantity: 0, unitPrice: 0 }]);
     setPaymentMethod("transfer");
     setPaymentAmount("0");
     setPaymentSheetOpen(false);
+    setProductSheetLine(null);
+    setProductSearch("");
     setBusy(false);
     setError(null);
   }, [open, stores, initialStoreId, suppliers]);
@@ -133,6 +145,12 @@ export function CreatePurchaseDialog({
     for (const p of products) m.set(p.id, p);
     return m;
   }, [products]);
+
+  const filteredProducts = useMemo(() => {
+    const q = normalizeSearch(productSearch);
+    if (!q) return products;
+    return products.filter((p) => normalizeSearch(p.name).includes(q));
+  }, [products, productSearch]);
 
   const total = useMemo(() => {
     return lines.reduce((s, l) => s + Math.max(0, l.quantity) * Math.max(0, l.unitPrice), 0);
@@ -188,8 +206,8 @@ export function CreatePurchaseDialog({
           if (e.target === e.currentTarget) onClose();
         }}
       >
-        <FsCard className="max-h-[min(92dvh,720px)] w-full max-w-[500px] overflow-hidden rounded-t-2xl sm:rounded-2xl" padding="p-3 sm:p-4">
-          <div className="flex max-h-[min(85dvh,680px)] flex-col">
+        <FsCard className="max-h-[min(94dvh,880px)] w-full max-w-190 overflow-hidden rounded-t-2xl sm:rounded-2xl" padding="p-4 sm:p-6">
+          <div className="flex max-h-[min(90dvh,820px)] flex-col">
             <div className="flex items-start justify-between gap-3 border-b border-black/6 pb-3">
               <h2
                 id="create-purchase-title"
@@ -251,17 +269,6 @@ export function CreatePurchaseDialog({
                 </div>
               </div>
 
-              <div className="mt-3">
-                <label className="mb-1 block text-xs font-medium text-neutral-600">
-                  Référence (optionnel)
-                </label>
-                <input
-                  className={fsInputClass("rounded-[10px] border border-black/8")}
-                  value={reference}
-                  onChange={(e) => setReference(e.target.value)}
-                />
-              </div>
-
               <div className="mt-4 flex items-center justify-between gap-2">
                 <p className="text-sm font-semibold text-fs-text">Articles</p>
                 {productsLoading ? (
@@ -279,7 +286,7 @@ export function CreatePurchaseDialog({
               </div>
 
               <div
-                className="mt-2 max-h-[220px] overflow-y-auto rounded-[10px] border border-black/8"
+                className="mt-2 max-h-[220px] overflow-y-auto rounded-[10px] border border-black/8 sm:max-h-90"
                 style={{ WebkitOverflowScrolling: "touch" }}
               >
                 {lines.map((line, i) => {
@@ -296,23 +303,34 @@ export function CreatePurchaseDialog({
                           }
                           className="h-10 w-10 shrink-0 rounded-lg"
                         />
-                        <select
-                          className={cn(fsInputClass("min-w-0 flex-1 text-xs sm:text-sm"), "w-full")}
-                          value={line.productId || ""}
-                          onChange={(e) => setLineProduct(i, e.target.value || null)}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setProductSearch("");
+                            setProductSheetLine(i);
+                          }}
+                          className={cn(
+                            fsInputClass("flex min-w-0 flex-1 items-center justify-between gap-2 text-left text-xs sm:text-sm"),
+                            "w-full",
+                          )}
                         >
-                          <option value="">Produit</option>
-                          {products.map((p) => (
-                            <option key={p.id} value={p.id}>
-                              {p.name}
-                            </option>
-                          ))}
-                        </select>
+                          <span
+                            className={cn(
+                              "min-w-0 flex-1 truncate",
+                              line.productId ? "text-fs-text" : "text-neutral-400",
+                            )}
+                          >
+                            {line.productId
+                              ? productById.get(line.productId)?.name ?? "Produit"
+                              : "Produit"}
+                          </span>
+                          <MdUnfoldMore className="h-4 w-4 shrink-0 text-neutral-500" aria-hidden />
+                        </button>
                       </div>
                       <div className="flex flex-wrap items-end gap-2 sm:flex-nowrap">
                         <input
                           inputMode="numeric"
-                          className={cn(fsInputClass("w-[4.5rem] text-xs"), "sm:w-[70px]")}
+                          className={cn(fsInputClass("w-[4.5rem] text-xs sm:text-sm"), "sm:w-22")}
                           placeholder="Qté"
                           value={line.quantity === 0 ? "" : String(line.quantity)}
                           onChange={(e) =>
@@ -321,7 +339,7 @@ export function CreatePurchaseDialog({
                         />
                         <input
                           inputMode="decimal"
-                          className={cn(fsInputClass("w-[5.5rem] text-xs"), "sm:w-[90px]")}
+                          className={cn(fsInputClass("w-[5.5rem] text-xs sm:text-sm"), "sm:w-32")}
                           placeholder="Prix unit."
                           value={line.unitPrice === 0 ? "" : String(line.unitPrice)}
                           onChange={(e) =>
@@ -427,7 +445,7 @@ export function CreatePurchaseDialog({
                     await onCreate({
                       storeId: effectiveStoreId,
                       supplierId: effectiveSupplierId,
-                      reference: reference.trim() || null,
+                      reference: null,
                       items,
                       payments,
                     });
@@ -450,6 +468,101 @@ export function CreatePurchaseDialog({
           </div>
         </FsCard>
       </div>
+
+      {productSheetLine !== null ? (
+        <div
+          className="fixed inset-0 z-[60] flex flex-col justify-end bg-black/40 sm:items-center sm:justify-center sm:p-4"
+          role="presentation"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) setProductSheetLine(null);
+          }}
+        >
+          <div
+            className="flex max-h-[85dvh] w-full flex-col overflow-hidden rounded-t-2xl bg-fs-card pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-xl sm:max-h-[70dvh] sm:max-w-lg sm:rounded-2xl sm:pb-0"
+            role="dialog"
+            aria-label="Sélectionner un produit"
+          >
+            <div className="flex items-center justify-between gap-3 border-b border-black/6 p-4 pb-3">
+              <p className="text-base font-semibold text-fs-text">Sélectionner un produit</p>
+              <button
+                type="button"
+                onClick={() => setProductSheetLine(null)}
+                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-black/8 bg-fs-card text-neutral-700"
+                aria-label="Fermer"
+              >
+                <MdClose className="h-5 w-5" aria-hidden />
+              </button>
+            </div>
+
+            <div className="p-3">
+              <div className="relative">
+                <MdSearch
+                  className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-neutral-400"
+                  aria-hidden
+                />
+                <input
+                  // eslint-disable-next-line jsx-a11y/no-autofocus
+                  autoFocus
+                  type="text"
+                  value={productSearch}
+                  onChange={(e) => setProductSearch(e.target.value)}
+                  placeholder="Rechercher un produit…"
+                  className={fsInputClass("pl-10")}
+                  aria-label="Rechercher un produit"
+                />
+              </div>
+            </div>
+
+            <div
+              className="min-h-0 flex-1 overflow-y-auto px-2 pb-2"
+              style={{ WebkitOverflowScrolling: "touch" }}
+            >
+              {filteredProducts.length === 0 ? (
+                <p className="px-3 py-8 text-center text-sm text-neutral-500">
+                  Aucun produit trouvé
+                </p>
+              ) : (
+                filteredProducts.map((p) => {
+                  const sel =
+                    productSheetLine !== null && lines[productSheetLine]?.productId === p.id;
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => {
+                        if (productSheetLine !== null) setLineProduct(productSheetLine, p.id);
+                        setProductSheetLine(null);
+                      }}
+                      className={cn(
+                        "flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left active:bg-fs-surface-container",
+                        sel ? "bg-fs-accent/10" : "hover:bg-fs-surface-container",
+                      )}
+                    >
+                      <ProductListThumbnail
+                        imageUrl={p.imageUrl ?? null}
+                        className="h-11 w-11 shrink-0 rounded-lg"
+                      />
+                      <span className="min-w-0 flex-1">
+                        <span
+                          className={cn(
+                            "block truncate text-sm font-medium",
+                            sel ? "text-fs-accent" : "text-fs-text",
+                          )}
+                        >
+                          {p.name}
+                        </span>
+                        <span className="block text-xs text-neutral-500">
+                          {formatCurrency(p.purchasePrice)} / {p.unit}
+                        </span>
+                      </span>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {paymentSheetOpen ? (
         <div
