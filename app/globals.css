@@ -358,6 +358,25 @@ html.dark .fs-owner-dashboard {
   }
 }
 
+/* Bottom-sheet (sélecteur de boutique mobile) */
+@keyframes fs-sheet-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fs-sheet-up {
+  from {
+    transform: translate3d(0, 100%, 0);
+  }
+  to {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
 @keyframes fs-reveal-zoom {
   from {
     opacity: 0;

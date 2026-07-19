@@ -156,6 +156,8 @@ export async function listStoreInventory(storeId: string | null) {
 export async function createProduct(
   companyId: string,
   input: ProductFormInput,
+  /** Boutique courante : le produit est rattaché à son catalogue (utile si catalogue personnalisé). */
+  storeId?: string | null,
 ): Promise<{ id: string } | undefined> {
   const payload = {
     company_id: companyId,
@@ -182,7 +184,20 @@ export async function createProduct(
   }
   const { data, error } = await supabase.from("products").insert(payload).select("id").single();
   if (error) throw error;
-  return { id: String((data as { id: string }).id) };
+  const id = String((data as { id: string }).id);
+  // Rattache le produit au catalogue de la boutique courante (idempotent). Sans effet pour
+  // les boutiques qui partagent tout le catalogue ; essentiel pour un catalogue personnalisé.
+  if (storeId) {
+    const { error: linkErr } = await supabase
+      .from("store_products")
+      .upsert(
+        { company_id: companyId, store_id: storeId, product_id: id },
+        { onConflict: "store_id,product_id", ignoreDuplicates: true },
+      );
+    // Ne bloque pas la création du produit si le rattachement échoue.
+    if (linkErr) console.error("store_products link failed", linkErr);
+  }
+  return { id };
 }
 
 export async function updateProduct(

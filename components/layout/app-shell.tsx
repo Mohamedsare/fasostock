@@ -18,6 +18,7 @@ import { ROUTES } from "@/lib/config/routes";
 import { OwnerNotificationsBell } from "@/components/layout/owner-notifications-bell";
 import { NAV_ITEMS, RESTAURANT_NAV_ITEMS } from "@/lib/config/navigation";
 import { useAppContext } from "@/lib/features/common/app-context";
+import { StoreSwitcherSheet } from "@/components/layout/store-switcher-sheet";
 import { usePermissions } from "@/lib/features/permissions/use-permissions";
 import { useDesktopNav } from "@/lib/hooks/use-media-query";
 import { signOutAndRedirect } from "@/lib/auth/sign-out-client";
@@ -432,47 +433,30 @@ export function AppShell({ children, userEmail }: AppShellProps) {
                 ) : null}
               </div>
               {isOwner && stores.length > 1 ? (
-                <div className="relative">
+                <>
                   <button
                     type="button"
-                    onClick={() => setStoreSwitcherOpen((v) => !v)}
+                    onClick={() => setStoreSwitcherOpen(true)}
                     className={cn(
-                      "inline-flex items-center gap-1 rounded-xl border border-black/[0.07] bg-fs-surface-container/90 px-2 py-1.5",
-                      "shadow-[0_1px_2px_rgba(0,0,0,0.04)] dark:border-white/10 dark:bg-white/5",
+                      "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-black/[0.07] bg-fs-surface-container/90 text-fs-accent",
+                      "shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-transform active:scale-95 dark:border-white/10 dark:bg-white/5",
                     )}
-                    aria-label="Changer de boutique"
+                    aria-label={`Changer de boutique (actuelle : ${
+                      stores.find((s) => s.id === activeStoreId)?.name ?? "Boutique"
+                    })`}
+                    aria-haspopup="dialog"
                   >
-                    <ShoppingBag className="h-3.5 w-3.5 shrink-0 text-fs-accent" />
-                    <span className="max-w-22.5 truncate text-[12px] font-semibold text-fs-text">
-                      {stores.find((s) => s.id === activeStoreId)?.name ?? "Boutique"}
-                    </span>
-                    <ChevronDown className={cn("h-3 w-3 shrink-0 text-neutral-400 transition-transform", storeSwitcherOpen && "rotate-180")} />
+                    <ShoppingBag className="h-[18px] w-[18px]" aria-hidden />
                   </button>
-                  {storeSwitcherOpen && (
-                    <>
-                      <div className="fixed inset-0 z-40" onClick={() => setStoreSwitcherOpen(false)} />
-                      <div className="absolute right-0 top-full z-50 mt-1.5 min-w-42.5 overflow-hidden rounded-xl border border-black/[0.07] bg-fs-card shadow-lg dark:border-white/10">
-                        {stores.map((s) => (
-                          <button
-                            key={s.id}
-                            type="button"
-                            onClick={() => switchStore(s.id)}
-                            className={cn(
-                              "flex w-full items-center gap-2 px-3 py-2.5 text-left text-[13px] font-medium transition-colors",
-                              s.id === activeStoreId
-                                ? "bg-[color-mix(in_srgb,var(--fs-accent)_10%,transparent)] text-fs-accent"
-                                : "text-fs-text hover:bg-black/[0.035] dark:hover:bg-white/5",
-                            )}
-                          >
-                            <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", s.id === activeStoreId ? "bg-fs-accent" : "bg-transparent")} />
-                            <span className="flex-1 truncate">{s.name}</span>
-                            {s.isPrimary ? <span className="text-[10px] text-neutral-400">principal</span> : null}
-                          </button>
-                        ))}
-                      </div>
-                    </>
-                  )}
-                </div>
+                  {storeSwitcherOpen ? (
+                    <StoreSwitcherSheet
+                      stores={stores}
+                      activeStoreId={activeStoreId}
+                      onSelect={switchStore}
+                      onClose={() => setStoreSwitcherOpen(false)}
+                    />
+                  ) : null}
+                </>
               ) : null}
               <button
                 type="button"

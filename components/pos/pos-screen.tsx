@@ -20,6 +20,8 @@ import { getPrinterSelectionForSession } from "@/lib/features/printers/printer-c
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { ROUTES, storeFactureTabPath } from "@/lib/config/routes";
 import { queryKeys } from "@/lib/query/query-keys";
+import { useStoreCatalog } from "@/lib/features/stores/use-store-catalog";
+import { filterByStoreCatalog } from "@/lib/features/stores/store-catalog";
 import { readPosCartQtyUiForMode } from "@/lib/utils/pos-cart-settings";
 import { ensureStringNumberMap } from "@/lib/utils/string-number-map";
 import { messageFromUnknownError, toast } from "@/lib/toast";
@@ -282,7 +284,11 @@ export function PosScreen({
     };
   }, [mode, store, posQ.isLoading, posQ.isError]);
 
-  const products = useMemo(() => posQ.data?.products ?? [], [posQ.data?.products]);
+  const { catalog: storeCatalog } = useStoreCatalog(storeId);
+  const products = useMemo(
+    () => filterByStoreCatalog(posQ.data?.products ?? [], storeCatalog),
+    [posQ.data?.products, storeCatalog],
+  );
   const rawStockByProductId = useMemo(
     () => ensureStringNumberMap(posQ.data?.stockByProductId),
     [posQ.data?.stockByProductId],

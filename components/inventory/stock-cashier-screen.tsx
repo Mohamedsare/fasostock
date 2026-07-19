@@ -11,6 +11,7 @@ import { usePermissions } from "@/lib/features/permissions/use-permissions";
 import { activityUiTerms } from "@/lib/features/activity/activity-profiles";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { queryKeys } from "@/lib/query/query-keys";
+import { useStoreCatalog } from "@/lib/features/stores/use-store-catalog";
 import { formatCurrency } from "@/lib/utils/currency";
 import { cn } from "@/lib/utils/cn";
 import { useQuery } from "@tanstack/react-query";
@@ -182,7 +183,12 @@ export function StockCashierScreen() {
     staleTime: 20_000,
   });
 
-  const rows = useMemo(() => dataQ.data?.rows ?? [], [dataQ.data?.rows]);
+  const { catalog: storeCatalog } = useStoreCatalog(storeId);
+  const rows = useMemo(() => {
+    const all = dataQ.data?.rows ?? [];
+    if (!storeCatalog) return all;
+    return all.filter((r) => storeCatalog.has(r.productId));
+  }, [dataQ.data?.rows, storeCatalog]);
   const defaultThreshold = dataQ.data?.defaultThreshold ?? 5;
 
   const rupture = useMemo(() => {

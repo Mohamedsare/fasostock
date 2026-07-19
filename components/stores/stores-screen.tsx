@@ -16,10 +16,12 @@ import {
   MdRefresh,
   MdPictureAsPdf,
   MdStore,
+  MdInventory2,
 } from "react-icons/md";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { CreateStoreModal, EditStoreModal } from "@/components/stores/store-dialogs";
+import { StoreCatalogDialog } from "@/components/stores/store-catalog-dialog";
 import {
   StoreInvoiceA4Dialog,
   StoreReceiptFormatDialog,
@@ -59,6 +61,7 @@ export function StoresScreen() {
   const [editStore, setEditStore] = useState<Store | null>(null);
   const [a4Store, setA4Store] = useState<Store | null>(null);
   const [receiptStore, setReceiptStore] = useState<Store | null>(null);
+  const [catalogStore, setCatalogStore] = useState<Store | null>(null);
 
   const companyId = ctx.data?.companyId ?? "";
   const companyName = ctx.data?.companyName ?? "";
@@ -254,6 +257,7 @@ export function StoresScreen() {
                 onConfigureA4={() => setA4Store(s)}
                 onConfigureReceipt={() => setReceiptStore(s)}
                 onEdit={() => setEditStore(s)}
+                onManageCatalog={() => setCatalogStore(s)}
               />
             ))}
           </div>
@@ -268,6 +272,7 @@ export function StoresScreen() {
         <CreateStoreModal
           open={createOpen}
           companyId={companyId}
+          existingStores={stores}
           onClose={() => setCreateOpen(false)}
           onCreated={() => {
             void qc.invalidateQueries({ queryKey: queryKeys.stores(companyId) });
@@ -281,6 +286,16 @@ export function StoresScreen() {
           onUpdated={() => {
             void qc.invalidateQueries({ queryKey: queryKeys.stores(companyId) });
             void qc.invalidateQueries({ queryKey: queryKeys.appContext });
+          }}
+        />
+        <StoreCatalogDialog
+          open={!!catalogStore}
+          store={catalogStore}
+          companyId={companyId}
+          onClose={() => setCatalogStore(null)}
+          onUpdated={() => {
+            void qc.invalidateQueries({ queryKey: queryKeys.storesPage(companyId) });
+            void qc.invalidateQueries({ queryKey: queryKeys.stores(companyId) });
           }}
         />
         <StoreInvoiceA4Dialog
@@ -351,6 +366,7 @@ function StoreCard({
   onConfigureA4,
   onConfigureReceipt,
   onEdit,
+  onManageCatalog,
 }: {
   store: Store;
   companyId: string;
@@ -359,6 +375,7 @@ function StoreCard({
   onConfigureA4: () => void;
   onConfigureReceipt: () => void;
   onEdit: () => void;
+  onManageCatalog: () => void;
 }) {
   const [exportingPdf, setExportingPdf] = useState(false);
 
@@ -423,6 +440,11 @@ function StoreCard({
                   Principale
                 </span>
               ) : null}
+              {!store.shares_company_catalog ? (
+                <span className="shrink-0 rounded-md bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
+                  Catalogue perso
+                </span>
+              ) : null}
             </div>
             {store.code ? (
               <p className="mt-0.5 font-mono text-xs text-neutral-500">{store.code}</p>
@@ -484,6 +506,16 @@ function StoreCard({
         >
           <MdDescription className="h-5 w-5 shrink-0" aria-hidden />
           <span className="px-1 text-[11px] font-semibold leading-tight">Facture A4</span>
+        </button>
+        <div className="w-px shrink-0 self-stretch bg-black/[0.08]" />
+        <button
+          type="button"
+          onClick={onManageCatalog}
+          title="Produits vendus par cette boutique (catalogue partagé ou personnalisé)"
+          className="flex min-h-12 min-w-0 flex-1 flex-col items-center justify-center gap-1 py-2.5 text-center text-[var(--fs-accent)] active:bg-neutral-50/80"
+        >
+          <MdInventory2 className="h-5 w-5 shrink-0" aria-hidden />
+          <span className="px-1 text-[11px] font-semibold leading-tight">Catalogue</span>
         </button>
         <div className="w-px shrink-0 self-stretch bg-black/[0.08]" />
         <button

@@ -6,6 +6,8 @@ import { firstProductImageUrl } from "@/lib/features/products/product-images";
 import { createStockTransfer } from "@/lib/features/transfers/api";
 import type { CreateTransferLineInput } from "@/lib/features/transfers/types";
 import { listProducts } from "@/lib/features/products/api";
+import { useStoreCatalog } from "@/lib/features/stores/use-store-catalog";
+import { filterByStoreCatalog } from "@/lib/features/stores/store-catalog";
 import { toast, toastMutationError } from "@/lib/toast";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
@@ -39,7 +41,9 @@ export function CreateTransferDialog({
     enabled: open && Boolean(companyId),
   });
 
-  const products = productsQ.data ?? [];
+  // Transfert : on ne peut expédier que les produits vendus par la boutique source.
+  const { catalog: fromStoreCatalog } = useStoreCatalog(fromStoreId || null);
+  const products = filterByStoreCatalog(productsQ.data ?? [], fromStoreCatalog);
 
   useEffect(() => {
     if (!open || stores.length === 0) return;

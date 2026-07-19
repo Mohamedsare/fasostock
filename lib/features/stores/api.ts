@@ -5,7 +5,7 @@ import type { Store } from "@/lib/features/stores/types";
 
 const STORE_FIELDS =
   "id, company_id, name, code, address, logo_url, phone, email, description, is_active, is_primary, pos_discount_enabled, created_at, " +
-  "currency, primary_color, secondary_color, invoice_prefix, footer_text, legal_info, signature_url, stamp_url, payment_terms, tax_label, tax_number, city, country, commercial_name, slogan, activity, mobile_money, invoice_short_title, invoice_signer_title, invoice_signer_name, invoice_template, receipt_paper_width_mm";
+  "currency, primary_color, secondary_color, invoice_prefix, footer_text, legal_info, signature_url, stamp_url, payment_terms, tax_label, tax_number, city, country, commercial_name, slogan, activity, mobile_money, invoice_short_title, invoice_signer_title, invoice_signer_name, invoice_template, receipt_paper_width_mm, shares_company_catalog";
 
 function mapStore(row: Record<string, unknown>): Store {
   return {
@@ -46,6 +46,8 @@ function mapStore(row: Record<string, unknown>): Store {
       row.receipt_paper_width_mm === 58 || row.receipt_paper_width_mm === 80
         ? (row.receipt_paper_width_mm as number)
         : null,
+    // Défaut historique : partage du catalogue si la colonne est absente/null.
+    shares_company_catalog: row.shares_company_catalog !== false,
   };
 }
 
@@ -133,6 +135,10 @@ export type CreateStoreInput = {
   description?: string | null;
   isPrimary: boolean;
   logoFile?: File | null;
+  /** true = la boutique partage tout le catalogue de l'entreprise (défaut). false = catalogue personnalisé. */
+  sharesCompanyCatalog?: boolean;
+  /** Si catalogue personnalisé, copier les produits d'une boutique existante. */
+  copyCatalogFromStoreId?: string | null;
 };
 
 export async function createStore(input: CreateStoreInput): Promise<Store> {
@@ -145,6 +151,8 @@ export async function createStore(input: CreateStoreInput): Promise<Store> {
     p_email: input.email ?? null,
     p_description: input.description ?? null,
     p_is_primary: input.isPrimary,
+    p_shares_company_catalog: input.sharesCompanyCatalog ?? true,
+    p_copy_from_store_id: input.copyCatalogFromStoreId ?? null,
   });
   if (error) throw error;
   if (!raw || typeof raw !== "object") {

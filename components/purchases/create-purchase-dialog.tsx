@@ -4,6 +4,8 @@ import { ProductListThumbnail } from "@/components/products/product-list-thumbna
 import { FsCard, fsInputClass } from "@/components/ui/fs-screen-primitives";
 import { formatCurrency } from "@/lib/utils/currency";
 import { cn } from "@/lib/utils/cn";
+import { useStoreCatalog } from "@/lib/features/stores/use-store-catalog";
+import { filterByStoreCatalog } from "@/lib/features/stores/store-catalog";
 import { useEffect, useMemo, useState } from "react";
 import {
   MdAdd,
@@ -146,21 +148,28 @@ export function CreatePurchaseDialog({
     return m;
   }, [products]);
 
-  const filteredProducts = useMemo(() => {
-    const q = normalizeSearch(productSearch);
-    if (!q) return products;
-    return products.filter((p) => normalizeSearch(p.name).includes(q));
-  }, [products, productSearch]);
-
-  const total = useMemo(() => {
-    return lines.reduce((s, l) => s + Math.max(0, l.quantity) * Math.max(0, l.unitPrice), 0);
-  }, [lines]);
-
   const effectiveStoreId =
     storeId && stores.some((s) => s.id === storeId) ? storeId : stores[0]?.id ?? null;
 
   const effectiveSupplierId =
     supplierId && suppliers.some((s) => s.id === supplierId) ? supplierId : null;
+
+  // Catalogue de la boutique sélectionnée : `null` = partage tout le catalogue.
+  const { catalog: storeCatalog } = useStoreCatalog(effectiveStoreId);
+  const availableProducts = useMemo(
+    () => filterByStoreCatalog(products, storeCatalog),
+    [products, storeCatalog],
+  );
+
+  const filteredProducts = useMemo(() => {
+    const q = normalizeSearch(productSearch);
+    if (!q) return availableProducts;
+    return availableProducts.filter((p) => normalizeSearch(p.name).includes(q));
+  }, [availableProducts, productSearch]);
+
+  const total = useMemo(() => {
+    return lines.reduce((s, l) => s + Math.max(0, l.quantity) * Math.max(0, l.unitPrice), 0);
+  }, [lines]);
 
   const canSubmit =
     Boolean(effectiveStoreId) &&

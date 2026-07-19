@@ -57,6 +57,8 @@ export const queryKeys = {
   stores: (companyId: string) => ["stores", companyId] as const,
   /** Page Boutiques : `fetchStoresPageData` (liste + quota). */
   storesPage: (companyId: string) => ["stores", companyId, "page"] as const,
+  /** Catalogue personnalisé d'une boutique (produits autorisés). `null` si la boutique partage tout. */
+  storeCatalog: (storeId: string | null) => ["store-catalog", storeId] as const,
   dashboard: (params: {
     companyId: string;
     storeId: string | null;

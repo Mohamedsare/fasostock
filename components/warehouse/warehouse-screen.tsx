@@ -772,6 +772,7 @@ export function WarehouseScreen() {
       invoice_signer_name: null,
       invoice_template: "classic",
       receipt_paper_width_mm: null,
+      shares_company_catalog: true,
     };
 
     const effectiveStore = storeForA4 ?? defaultStore;

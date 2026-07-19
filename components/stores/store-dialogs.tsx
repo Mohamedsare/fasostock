@@ -16,14 +16,20 @@ function trimOrNull(v: string): string | null {
   return t.length ? t : null;
 }
 
+/** Choix du catalogue produits pour une nouvelle boutique. */
+type CatalogMode = "all" | "same_as" | "empty";
+
 export function CreateStoreModal({
   open,
   companyId,
+  existingStores = [],
   onClose,
   onCreated,
 }: {
   open: boolean;
   companyId: string;
+  /** Boutiques existantes de l'entreprise — pour l'option « mêmes produits que… ». */
+  existingStores?: Array<Pick<Store, "id" | "name" | "shares_company_catalog">>;
   onClose: () => void;
   onCreated: () => void;
 }) {
@@ -34,6 +40,8 @@ export function CreateStoreModal({
   const [description, setDescription] = useState("");
   const [isPrimary, setIsPrimary] = useState(false);
   const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [catalogMode, setCatalogMode] = useState<CatalogMode>("all");
+  const [sameAsStoreId, setSameAsStoreId] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -46,10 +54,12 @@ export function CreateStoreModal({
       setDescription("");
       setIsPrimary(false);
       setLogoFile(null);
+      setCatalogMode("all");
+      setSameAsStoreId(existingStores[0]?.id ?? "");
       setError(null);
       setLoading(false);
     }
-  }, [open]);
+  }, [open, existingStores]);
 
   if (!open) return null;
 
@@ -59,9 +69,30 @@ export function CreateStoreModal({
       setError("Nom requis (2 caractères minimum)");
       return;
     }
+    if (catalogMode === "same_as" && !sameAsStoreId) {
+      setError("Choisissez la boutique dont copier les produits.");
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
+      // Résolution du choix de catalogue :
+      //  - « all »      : partage tout le catalogue de l'entreprise.
+      //  - « empty »    : catalogue personnalisé vierge.
+      //  - « same_as X »: si X partage tout → la nouvelle partage aussi ; sinon copie le catalogue de X.
+      let sharesCompanyCatalog = true;
+      let copyCatalogFromStoreId: string | null = null;
+      if (catalogMode === "empty") {
+        sharesCompanyCatalog = false;
+      } else if (catalogMode === "same_as") {
+        const src = existingStores.find((s) => s.id === sameAsStoreId);
+        if (src && src.shares_company_catalog) {
+          sharesCompanyCatalog = true;
+        } else {
+          sharesCompanyCatalog = false;
+          copyCatalogFromStoreId = sameAsStoreId;
+        }
+      }
       const input: CreateStoreInput = {
         companyId,
         name: n,
@@ -71,6 +102,8 @@ export function CreateStoreModal({
         description: trimOrNull(description),
         isPrimary,
         logoFile,
+        sharesCompanyCatalog,
+        copyCatalogFromStoreId,
       };
       await createStore(input);
       toast.success("Boutique créée");
@@ -173,6 +206,84 @@ export function CreateStoreModal({
             />
             Définir comme boutique principale
           </label>
+
+          {/* Choix du catalogue produits */}
+          <fieldset className="rounded-xl border border-black/[0.08] p-3">
+            <legend className="px-1 text-xs font-semibold text-neutral-700">
+              Produits vendus
+            </legend>
+            <div className="space-y-2">
+              <label className="flex items-start gap-2 text-sm">
+                <input
+                  type="radio"
+                  name="catalog-mode"
+                  className="mt-0.5 h-4 w-4"
+                  checked={catalogMode === "all"}
+                  onChange={() => setCatalogMode("all")}
+                />
+                <span>
+                  <span className="font-medium text-neutral-800">
+                    Tout le catalogue de l’entreprise
+                  </span>
+                  <span className="block text-xs text-neutral-500">
+                    La boutique vend les mêmes produits que les autres (stock propre).
+                  </span>
+                </span>
+              </label>
+
+              {existingStores.length > 0 ? (
+                <label className="flex items-start gap-2 text-sm">
+                  <input
+                    type="radio"
+                    name="catalog-mode"
+                    className="mt-0.5 h-4 w-4"
+                    checked={catalogMode === "same_as"}
+                    onChange={() => setCatalogMode("same_as")}
+                  />
+                  <span className="min-w-0 flex-1">
+                    <span className="font-medium text-neutral-800">
+                      Les mêmes produits qu’une boutique
+                    </span>
+                    <span className="block text-xs text-neutral-500">
+                      Copie le catalogue de la boutique choisie.
+                    </span>
+                    {catalogMode === "same_as" ? (
+                      <select
+                        value={sameAsStoreId}
+                        onChange={(e) => setSameAsStoreId(e.target.value)}
+                        className="mt-2 w-full rounded-lg border border-black/[0.12] px-3 py-2 text-sm"
+                      >
+                        {existingStores.map((s) => (
+                          <option key={s.id} value={s.id}>
+                            {s.name}
+                          </option>
+                        ))}
+                      </select>
+                    ) : null}
+                  </span>
+                </label>
+              ) : null}
+
+              <label className="flex items-start gap-2 text-sm">
+                <input
+                  type="radio"
+                  name="catalog-mode"
+                  className="mt-0.5 h-4 w-4"
+                  checked={catalogMode === "empty"}
+                  onChange={() => setCatalogMode("empty")}
+                />
+                <span>
+                  <span className="font-medium text-neutral-800">
+                    Produits différents
+                  </span>
+                  <span className="block text-xs text-neutral-500">
+                    Catalogue vierge : vous ajouterez les produits de cette boutique.
+                  </span>
+                </span>
+              </label>
+            </div>
+          </fieldset>
+
           <label className="block text-xs font-medium text-neutral-600">
             Logo (optionnel)
             <input

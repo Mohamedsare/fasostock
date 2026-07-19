@@ -40,6 +40,8 @@ import { ProductBatchesDialog } from "@/components/products/product-batches-dial
 import { activityConfig } from "@/lib/features/activity/activity-config";
 import { ROUTES } from "@/lib/config/routes";
 import { queryKeys } from "@/lib/query/query-keys";
+import { useStoreCatalog } from "@/lib/features/stores/use-store-catalog";
+import { filterByStoreCatalog } from "@/lib/features/stores/store-catalog";
 import { activityUiTerms } from "@/lib/features/activity/activity-profiles";
 import { formatCurrency } from "@/lib/utils/currency";
 import { cn } from "@/lib/utils/cn";
@@ -182,6 +184,8 @@ export function ProductsScreen() {
     queryFn: () => listStoreInventory(storeId),
     enabled: !!storeId,
   });
+  // Catalogue de la boutique courante : `null` = partage tout le catalogue de l'entreprise.
+  const { catalog: storeCatalog } = useStoreCatalog(storeId);
   // Tous les SKU (y compris produits supprimés) → suggestion auto sans collision.
   const skusQ = useQuery({
     queryKey: queryKeys.productSkus(companyId),
@@ -220,7 +224,7 @@ export function ProductsScreen() {
         }
         return;
       }
-      const created = await createProduct(companyId, payload.input);
+      const created = await createProduct(companyId, payload.input, storeId);
       const productId = created?.id;
       if (
         productId &&
@@ -358,7 +362,10 @@ export function ProductsScreen() {
     onError: (e) => toast.error(messageFromUnknownError(e)),
   });
 
-  const products = useMemo(() => productsQ.data ?? [], [productsQ.data]);
+  const products = useMemo(
+    () => filterByStoreCatalog(productsQ.data ?? [], storeCatalog),
+    [productsQ.data, storeCatalog],
+  );
   // SKU auto-suggéré pour un nouveau produit (préfixe propre au tenant + séquence).
   // Basé sur TOUS les SKU (y compris produits supprimés) pour ne jamais réutiliser
   // un numéro déjà pris (contrainte UNIQUE(company_id, sku) inclut les soft-deletes).

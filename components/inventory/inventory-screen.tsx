@@ -25,6 +25,7 @@ import { usePermissions } from "@/lib/features/permissions/use-permissions";
 import type { ProductCategory } from "@/lib/features/products/types";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { queryKeys } from "@/lib/query/query-keys";
+import { useStoreCatalog } from "@/lib/features/stores/use-store-catalog";
 import { activityUiTerms } from "@/lib/features/activity/activity-profiles";
 import { activityConfig } from "@/lib/features/activity/activity-config";
 import { messageFromUnknownError, toast, toastMutationError } from "@/lib/toast";
@@ -265,7 +266,13 @@ export function InventoryScreen() {
     onError: (e) => toastMutationError("inventory", e),
   });
 
-  const rows = useMemo(() => dataQ.data?.rows ?? [], [dataQ.data?.rows]);
+  // Catalogue de la boutique courante : `null` = partage tout le catalogue de l'entreprise.
+  const { catalog: storeCatalog } = useStoreCatalog(storeId);
+  const rows = useMemo(() => {
+    const all = dataQ.data?.rows ?? [];
+    if (!storeCatalog) return all;
+    return all.filter((r) => storeCatalog.has(r.productId));
+  }, [dataQ.data?.rows, storeCatalog]);
   const categories: ProductCategory[] = dataQ.data?.categories ?? [];
 
   /** Après recherche + catégorie uniquement (KPI Flutter lignes 578–580). */
