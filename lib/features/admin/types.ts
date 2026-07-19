@@ -36,6 +36,8 @@ export type AdminStore = {
   phone: string | null;
   isActive: boolean;
   isPrimary: boolean;
+  /** Module Vente Engins activé pour cette boutique (super admin). */
+  engineSalesEnabled: boolean;
   createdAt: string | null;
 };
 

@@ -13,6 +13,8 @@ export const ROUTES = {
   products: "/products",
   barcodes: "/barcodes",
   sales: "/sales",
+  /** Module Vente Engins (motos) — activé par boutique par le super admin. */
+  engines: "/engins",
   stores: "/stores",
   inventory: "/inventory",
   stockCashier: "/stock-c",
@@ -60,6 +62,16 @@ export const ROUTES = {
 /** Aligné `AppRoutes.factureTab` (Flutter) — POS facture A4 vue tableau. */
 export function storeFactureTabPath(storeId: string): string {
   return `${ROUTES.stores}/${storeId}/facture-tab`;
+}
+
+/** Flux de saisie « Vente Engins » (POS engin) pour une boutique. */
+export function storeEngineSalePath(storeId: string): string {
+  return `${ROUTES.stores}/${storeId}/vente-engin`;
+}
+
+/** Page publique de vérification d'une facture engin (QR). */
+export function engineSaleVerifyPath(token: string): string {
+  return `/verifier/engin/${token}`;
 }
 
 /** Barre du bas mobile — 3 raccourcis + « Plus » (comme Flutter `AppShell`). */

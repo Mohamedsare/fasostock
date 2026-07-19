@@ -770,6 +770,8 @@ export function WarehouseScreen() {
       invoice_short_title: "Facture",
       invoice_signer_title: null,
       invoice_signer_name: null,
+      engine_invoice_signatory: null,
+      engine_invoice_extra_phones: null,
       invoice_template: "classic",
       receipt_paper_width_mm: null,
       shares_company_catalog: true,

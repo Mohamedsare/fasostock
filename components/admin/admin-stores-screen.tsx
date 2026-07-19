@@ -6,6 +6,7 @@ import {
   adminDeleteStore,
   adminListCompanies,
   adminListStores,
+  adminSetStoreEngineSales,
   adminUpdateStore,
 } from "@/lib/features/admin/api";
 import type { AdminStore } from "@/lib/features/admin/types";
@@ -43,6 +44,16 @@ export function AdminStoresScreen() {
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["admin-stores"] });
       toast.success("Boutique mise à jour");
+    },
+    onError: (e) => toast.error(messageFromUnknownError(e)),
+  });
+
+  const engineMut = useMutation({
+    mutationFn: async (p: { id: string; enabled: boolean }) =>
+      adminSetStoreEngineSales(p.id, p.enabled),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["admin-stores"] });
+      toast.success("Module Vente Engins mis à jour");
     },
     onError: (e) => toast.error(messageFromUnknownError(e)),
   });
@@ -99,6 +110,7 @@ export function AdminStoresScreen() {
               <th className="p-3">Code</th>
               <th className="p-3">Statut</th>
               <th className="p-3">Principale</th>
+              <th className="p-3">Vente Engins</th>
               <th className="p-3">Actions</th>
             </tr>
           </thead>
@@ -114,6 +126,22 @@ export function AdminStoresScreen() {
                   </span>
                 </td>
                 <td className="p-3">{s.isPrimary ? "Oui" : "—"}</td>
+                <td className="p-3">
+                  <label className="inline-flex cursor-pointer items-center gap-2">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 accent-red-600"
+                      checked={s.engineSalesEnabled}
+                      disabled={engineMut.isPending}
+                      onChange={() =>
+                        engineMut.mutate({ id: s.id, enabled: !s.engineSalesEnabled })
+                      }
+                    />
+                    <span className="text-xs text-slate-600">
+                      {s.engineSalesEnabled ? "Activé" : "Désactivé"}
+                    </span>
+                  </label>
+                </td>
                 <td className="p-3">
                   <div className="flex gap-1">
                     <button

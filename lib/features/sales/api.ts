@@ -51,6 +51,8 @@ export async function listSales(params: {
     .from("sales")
     .select(saleSelect)
     .eq("company_id", params.companyId)
+    // Les ventes d'engins ont leur propre page (module Vente Engins).
+    .eq("sale_kind", "standard")
     .order("created_at", { ascending: false });
   if (params.storeId) q = q.eq("store_id", params.storeId);
   if (params.status) q = q.eq("status", params.status);

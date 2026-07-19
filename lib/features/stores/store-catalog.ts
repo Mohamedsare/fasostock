@@ -12,10 +12,15 @@ import { createClient } from "@/lib/supabase/client";
  *   des `product_id` autorisés.
  */
 
-/** `null` = la boutique partage tout le catalogue (pas de filtrage). Sinon, IDs produits autorisés. */
+/**
+ * `null` = la boutique partage tout le catalogue (pas de filtrage). Sinon, liste des
+ * IDs produits autorisés. On renvoie un **tableau** (et non un `Set`) car cette valeur
+ * transite par le cache React Query (persistance/sérialisation) : un `Set` y serait
+ * corrompu. La conversion en `Set` se fait dans `useStoreCatalog` (via `select`).
+ */
 export async function fetchStoreCatalog(
   storeId: string | null,
-): Promise<Set<string> | null> {
+): Promise<string[] | null> {
   if (!storeId) return null;
   const supabase = createClient();
   const { data: store, error: storeErr } = await supabase
@@ -33,7 +38,7 @@ export async function fetchStoreCatalog(
     .select("product_id")
     .eq("store_id", storeId);
   if (error) throw error;
-  return new Set((data ?? []).map((r) => String((r as { product_id: unknown }).product_id)));
+  return (data ?? []).map((r) => String((r as { product_id: unknown }).product_id));
 }
 
 /** Restreint une liste de produits au catalogue d'une boutique. `catalog === null` => aucun filtrage. */

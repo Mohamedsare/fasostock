@@ -23,7 +23,7 @@ export type AppContextData = {
   /** `companies.logo_url` — menu, factures, paramètres (aligné Flutter). */
   companyLogoUrl: string | null;
   storeId: string | null;
-  stores: { id: string; name: string; isPrimary?: boolean }[];
+  stores: { id: string; name: string; isPrimary?: boolean; engineSalesEnabled?: boolean }[];
   isSuperAdmin: boolean;
   permissionKeys: string[];
   roleSlug: string | null;
@@ -54,6 +54,8 @@ export type AccessHelpers = {
   canDashboard: boolean;
   canProducts: boolean;
   canSales: boolean;
+  /** Module Vente Engins — boutique courante autorisée par la plateforme ET droit ventes. */
+  canEngineSales: boolean;
   canStores: boolean;
   canInventory: boolean;
   canPurchases: boolean;
@@ -123,6 +125,17 @@ export function buildAccessHelpers(
     hasPermission(P.salesView) ||
     hasPermission(P.salesCreate) ||
     hasPermission(P.salesInvoiceA4);
+  // Vente Engins : visible si la boutique COURANTE est autorisée (ou, en vue
+  // « toutes boutiques », si au moins une l'est) ET l'utilisateur peut vendre.
+  const activeStore = data.stores.find((s) => s.id === data.storeId);
+  const engineStoreOn = data.storeId
+    ? activeStore?.engineSalesEnabled === true
+    : data.stores.some((s) => s.engineSalesEnabled === true);
+  const canEngineSales =
+    engineStoreOn &&
+    (hasPermission(P.salesInvoiceA4) ||
+      hasPermission(P.salesCreate) ||
+      hasPermission(P.salesView));
   const canStores =
     hasPermission(P.storesView) || hasPermission(P.storesCreate);
   const canInventory =
@@ -169,6 +182,7 @@ export function buildAccessHelpers(
     canDashboard,
     canProducts,
     canSales,
+    canEngineSales,
     canStores,
     canInventory,
     canPurchases,
@@ -229,6 +243,7 @@ export function filterNavItemsForPermissions(
     if (href === ROUTES.products) return h.canProducts;
     if (href === ROUTES.barcodes) return h.canBarcodes;
     if (href === ROUTES.sales) return h.canSales;
+    if (href === ROUTES.engines) return h.canEngineSales;
     if (href === ROUTES.stores) return h.canStores;
     if (href === ROUTES.inventory) return h.canInventory && !h.isCashier;
     if (href === ROUTES.expiry) {
@@ -282,6 +297,7 @@ const APP_SHELL_ROUTE_PREFIXES: readonly string[] = [
   ROUTES.products,
   ROUTES.barcodes,
   ROUTES.sales,
+  ROUTES.engines,
   ROUTES.stores,
   ROUTES.inventory,
   ROUTES.stockCashier,
@@ -333,6 +349,13 @@ export function canAccessPathname(
     );
   }
   if (p.startsWith("/stores/") && p.endsWith("/pos") && !p.endsWith("/pos-quick")) {
+    return (
+      h.hasPermission(P.salesInvoiceA4) ||
+      h.hasPermission(P.salesCreate) ||
+      h.hasPermission(P.salesUpdate)
+    );
+  }
+  if (p.startsWith("/stores/") && p.endsWith("/vente-engin")) {
     return (
       h.hasPermission(P.salesInvoiceA4) ||
       h.hasPermission(P.salesCreate) ||

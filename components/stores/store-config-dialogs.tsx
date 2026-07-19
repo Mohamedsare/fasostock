@@ -88,6 +88,8 @@ export function StoreInvoiceA4Dialog({
   const [stampUrl, setStampUrl] = useState("");
   const [invoiceSignerTitle, setInvoiceSignerTitle] = useState("");
   const [invoiceSignerName, setInvoiceSignerName] = useState("");
+  const [engineSignatory, setEngineSignatory] = useState("");
+  const [engineExtraPhones, setEngineExtraPhones] = useState("");
   const [invoiceTemplate, setInvoiceTemplate] = useState<"classic" | "elof">(
     "classic",
   );
@@ -121,6 +123,8 @@ export function StoreInvoiceA4Dialog({
     setStampUrl(store.stamp_url ?? "");
     setInvoiceSignerTitle(store.invoice_signer_title ?? "");
     setInvoiceSignerName(store.invoice_signer_name ?? "");
+    setEngineSignatory(store.engine_invoice_signatory ?? "");
+    setEngineExtraPhones(store.engine_invoice_extra_phones ?? "");
     const t = (store.invoice_template ?? "classic").toLowerCase().trim();
     setInvoiceTemplate(t === "elof" ? "elof" : "classic");
     setError(null);
@@ -265,6 +269,8 @@ export function StoreInvoiceA4Dialog({
         stamp_url: trimOrNull(stampUrl),
         invoice_signer_title: trimOrNull(invoiceSignerTitle),
         invoice_signer_name: trimOrNull(invoiceSignerName),
+        engine_invoice_signatory: trimOrNull(engineSignatory),
+        engine_invoice_extra_phones: trimOrNull(engineExtraPhones),
         invoice_template: invoiceTemplate === "elof" ? "elof" : "classic",
       });
       toast.success("Facture A4 mise à jour");
@@ -633,6 +639,24 @@ export function StoreInvoiceA4Dialog({
               setInvoiceSignerName(e.target.value);
               markStale();
             }}
+            className={smallFieldCls}
+          />
+        </label>
+        <label className={labelCls}>
+          Signataire facture engin
+          <input
+            value={engineSignatory}
+            onChange={(e) => setEngineSignatory(e.target.value)}
+            placeholder="Ex. COULIBALY Soungalo"
+            className={smallFieldCls}
+          />
+        </label>
+        <label className={labelCls}>
+          Téléphones facture engin
+          <input
+            value={engineExtraPhones}
+            onChange={(e) => setEngineExtraPhones(e.target.value)}
+            placeholder="Numéros séparés par des virgules"
             className={smallFieldCls}
           />
         </label>

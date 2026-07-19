@@ -5,7 +5,7 @@ import type { Store } from "@/lib/features/stores/types";
 
 const STORE_FIELDS =
   "id, company_id, name, code, address, logo_url, phone, email, description, is_active, is_primary, pos_discount_enabled, created_at, " +
-  "currency, primary_color, secondary_color, invoice_prefix, footer_text, legal_info, signature_url, stamp_url, payment_terms, tax_label, tax_number, city, country, commercial_name, slogan, activity, mobile_money, invoice_short_title, invoice_signer_title, invoice_signer_name, invoice_template, receipt_paper_width_mm, shares_company_catalog";
+  "currency, primary_color, secondary_color, invoice_prefix, footer_text, legal_info, signature_url, stamp_url, payment_terms, tax_label, tax_number, city, country, commercial_name, slogan, activity, mobile_money, invoice_short_title, invoice_signer_title, invoice_signer_name, invoice_template, engine_invoice_signatory, engine_invoice_extra_phones, receipt_paper_width_mm, shares_company_catalog";
 
 function mapStore(row: Record<string, unknown>): Store {
   return {
@@ -42,6 +42,8 @@ function mapStore(row: Record<string, unknown>): Store {
     invoice_signer_title: (row.invoice_signer_title as string | null) ?? null,
     invoice_signer_name: (row.invoice_signer_name as string | null) ?? null,
     invoice_template: (row.invoice_template as string | null) ?? null,
+    engine_invoice_signatory: (row.engine_invoice_signatory as string | null) ?? null,
+    engine_invoice_extra_phones: (row.engine_invoice_extra_phones as string | null) ?? null,
     receipt_paper_width_mm:
       row.receipt_paper_width_mm === 58 || row.receipt_paper_width_mm === 80
         ? (row.receipt_paper_width_mm as number)

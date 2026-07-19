@@ -228,7 +228,7 @@ async function fetchAppContext(): Promise<AppContextData | null> {
   if (isSuperAdmin) {
     const { data: stores } = await supabase
       .from("stores")
-      .select("id, name, is_primary")
+      .select("id, name, is_primary, engine_sales_enabled")
       .eq("company_id", companyId)
       .order("is_primary", { ascending: false })
       .order("name", { ascending: true });
@@ -236,6 +236,7 @@ async function fetchAppContext(): Promise<AppContextData | null> {
       id: s.id as string,
       name: s.name as string,
       isPrimary: (s as { is_primary?: boolean }).is_primary === true,
+      engineSalesEnabled: (s as { engine_sales_enabled?: boolean }).engine_sales_enabled === true,
     }));
     return {
       companyId,
@@ -261,7 +262,7 @@ async function fetchAppContext(): Promise<AppContextData | null> {
 
   const { data: stores, error: sErr } = await supabase
     .from("stores")
-    .select("id, name, is_primary")
+    .select("id, name, is_primary, engine_sales_enabled")
     .eq("company_id", companyId)
     .order("is_primary", { ascending: false })
     .order("name", { ascending: true });
@@ -271,6 +272,7 @@ async function fetchAppContext(): Promise<AppContextData | null> {
     id: s.id as string,
     name: s.name as string,
     isPrimary: (s as { is_primary?: boolean }).is_primary === true,
+    engineSalesEnabled: (s as { engine_sales_enabled?: boolean }).engine_sales_enabled === true,
   }));
 
   let permissionKeys: string[] = [];
