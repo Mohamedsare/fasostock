@@ -164,6 +164,8 @@ export async function createDraftPurchase(params: {
   items: PurchaseItemInput[];
   /** Aligné `CreatePurchasePaymentInput` (Flutter). */
   payments?: { method: string; amount: number }[] | null;
+  /** Enregistre directement l'achat (stock mis à jour), sans étape brouillon. */
+  autoConfirm?: boolean;
 }): Promise<string> {
   const total = params.items.reduce(
     (acc, it) => acc + Math.max(0, Math.trunc(it.quantity)) * Math.max(0, toNum(it.unitPrice)),
@@ -177,9 +179,21 @@ export async function createDraftPurchase(params: {
       ? params.reference.trim()
       : `A-${Date.now()}`;
 
+  // Id généré côté client : permet, hors ligne, d'enchaîner création puis
+  // confirmation du stock sur le même achat via l'outbox.
+  const purchaseId = crypto.randomUUID();
+
   if (!navigator.onLine) {
-    await enqueueOutbox("purchase_create_draft", { ...params, total, reference: referenceFinal });
-    return "offline";
+    await enqueueOutbox("purchase_create_draft", {
+      ...params,
+      id: purchaseId,
+      total,
+      reference: referenceFinal,
+    });
+    if (params.autoConfirm) {
+      await enqueueOutbox("purchase_confirm_with_stock", { purchaseId });
+    }
+    return purchaseId;
   }
 
   const {
@@ -189,9 +203,10 @@ export async function createDraftPurchase(params: {
   if (uErr) throw uErr;
   if (!user) throw new Error("Non authentifié");
 
-  const { data: pRow, error: pErr } = await supabase
+  const { error: pErr } = await supabase
     .from("purchases")
     .insert({
+      id: purchaseId,
       company_id: params.companyId,
       store_id: params.storeId,
       supplier_id: params.supplierId,
@@ -199,11 +214,8 @@ export async function createDraftPurchase(params: {
       status: "draft",
       total,
       created_by: user.id,
-    })
-    .select("id")
-    .single();
+    });
   if (pErr) throw pErr;
-  const purchaseId = String((pRow as { id: string }).id);
 
   if (params.items.length > 0) {
     const { error: iErr } = await supabase.from("purchase_items").insert(
@@ -230,6 +242,14 @@ export async function createDraftPurchase(params: {
       })),
     );
     if (payErr) throw payErr;
+  }
+
+  if (params.autoConfirm) {
+    const { error: cErr } = await supabase.rpc("confirm_purchase_with_stock", {
+      p_purchase_id: purchaseId,
+      p_created_by: user.id,
+    });
+    if (cErr) throw cErr;
   }
 
   return purchaseId;
@@ -304,7 +324,7 @@ export async function cancelPurchase(purchaseId: string): Promise<void> {
   if (error) throw error;
 }
 
-/** Aligné `PurchasesRepository.delete` (Flutter) — brouillon uniquement. */
+/** Supprime un achat : brouillon ou annulé (jamais un achat validé/reçu). */
 export async function deleteDraftPurchase(purchaseId: string): Promise<void> {
   const supabase = createClient();
 
@@ -314,8 +334,9 @@ export async function deleteDraftPurchase(purchaseId: string): Promise<void> {
     .eq("id", purchaseId)
     .single();
   if (selErr) throw selErr;
-  if (String((row as { status?: string }).status) !== "draft") {
-    throw new Error("Seuls les brouillons peuvent être supprimés");
+  const status = String((row as { status?: string }).status);
+  if (status !== "draft" && status !== "cancelled") {
+    throw new Error("Seuls les brouillons ou achats annulés peuvent être supprimés");
   }
 
   const { error } = await supabase.from("purchases").delete().eq("id", purchaseId);

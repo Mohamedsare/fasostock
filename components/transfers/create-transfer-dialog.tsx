@@ -23,16 +23,20 @@ export function CreateTransferDialog({
   onClose,
   companyId,
   stores,
+  initialFromStoreId,
   onCreated,
 }: {
   open: boolean;
   onClose: () => void;
   companyId: string;
   stores: StoreLite[];
+  /** Boutique courante : pré-sélectionnée comme origine si l'utilisateur y a accès. */
+  initialFromStoreId?: string | null;
   onCreated: () => void;
 }) {
   const [fromStoreId, setFromStoreId] = useState("");
   const [toStoreId, setToStoreId] = useState("");
+  const [busy, setBusy] = useState(false);
   const [lines, setLines] = useState<CreateTransferLineInput[]>([{ productId: "", quantityRequested: 1 }]);
 
   const productsQ = useQuery({
@@ -47,10 +51,18 @@ export function CreateTransferDialog({
 
   useEffect(() => {
     if (!open || stores.length === 0) return;
-    setFromStoreId(stores[0].id);
-    setToStoreId(stores.length > 1 ? stores[1].id : stores[0].id);
+    // Origine = boutique courante si l'utilisateur y a accès, sinon la première.
+    const from =
+      initialFromStoreId && stores.some((s) => s.id === initialFromStoreId)
+        ? initialFromStoreId
+        : stores[0].id;
+    // Destination = première boutique différente de l'origine.
+    const to = stores.find((s) => s.id !== from)?.id ?? from;
+    setFromStoreId(from);
+    setToStoreId(to);
+    setBusy(false);
     setLines([{ productId: "", quantityRequested: 1 }]);
-  }, [open, stores]);
+  }, [open, stores, initialFromStoreId]);
 
   function addLine() {
     setLines((prev) => [...prev, { productId: "", quantityRequested: 1 }]);
@@ -64,7 +76,16 @@ export function CreateTransferDialog({
     setLines((prev) => prev.map((row, j) => (j === i ? { ...row, ...patch } : row)));
   }
 
+  const validLines = lines.filter((l) => l.productId && l.quantityRequested >= 1);
+  const canSubmit =
+    Boolean(fromStoreId) &&
+    Boolean(toStoreId) &&
+    fromStoreId !== toStoreId &&
+    validLines.length > 0 &&
+    !busy;
+
   async function submit() {
+    if (busy) return;
     if (!fromStoreId.trim()) {
       toast.error("Choisissez la boutique d’origine.");
       return;
@@ -77,18 +98,25 @@ export function CreateTransferDialog({
       toast.error("L’origine et la destination doivent être deux boutiques différentes.");
       return;
     }
+    if (validLines.length === 0) {
+      toast.error("Ajoutez au moins un produit avec une quantité.");
+      return;
+    }
     try {
+      setBusy(true);
       await createStockTransfer({
         companyId,
         fromWarehouse: false,
         fromStoreId,
         toStoreId,
-        items: lines,
+        items: validLines,
       });
       onCreated();
       onClose();
     } catch (e) {
       toastMutationError("transfers-create", e);
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -224,9 +252,14 @@ export function CreateTransferDialog({
           <button
             type="button"
             onClick={() => void submit()}
-            className="fs-touch-target w-full rounded-[10px] bg-fs-accent py-3.5 text-sm font-semibold text-white"
+            disabled={!canSubmit}
+            className="fs-touch-target inline-flex w-full items-center justify-center gap-2 rounded-[10px] bg-fs-accent py-3.5 text-sm font-semibold text-white disabled:opacity-50"
           >
-            Créer le brouillon
+            {busy ? (
+              <span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+            ) : (
+              "Créer le brouillon"
+            )}
           </button>
         </div>
       </div>

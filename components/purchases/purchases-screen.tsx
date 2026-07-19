@@ -9,6 +9,7 @@ import { FsPullToRefresh } from "@/components/ui/fs-pull-to-refresh";
 import { P } from "@/lib/constants/permissions";
 import {
   cancelPurchase,
+  confirmPurchaseWithStock,
   createDraftPurchase,
   deleteDraftPurchase,
   getPurchaseDetail,
@@ -28,7 +29,7 @@ import { queryKeys } from "@/lib/query/query-keys";
 import { formatCurrency } from "@/lib/utils/currency";
 import { cn } from "@/lib/utils/cn";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   MdAdd,
   MdChevronLeft,
@@ -38,6 +39,7 @@ import {
   MdErrorOutline,
   MdLock,
   MdOutlineBlock,
+  MdOutlineCheckCircle,
   MdOutlineEdit,
   MdOutlineVisibility,
 } from "react-icons/md";
@@ -120,6 +122,54 @@ function ConfirmCancelPurchaseDialog({
             className="rounded-xl bg-fs-accent px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
           >
             {busy ? "…" : "Oui"}
+          </button>
+        </div>
+      </FsCard>
+    </div>
+  );
+}
+
+function ConfirmRegisterPurchaseDialog({
+  open,
+  referenceOrId,
+  busy,
+  onCancel,
+  onConfirm,
+}: {
+  open: boolean;
+  referenceOrId: string;
+  busy: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  if (!open) return null;
+  return (
+    <div
+      className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 p-4"
+      role="alertdialog"
+      aria-modal="true"
+    >
+      <FsCard className="w-full max-w-md" padding="p-4 sm:p-5">
+        <h2 className="text-base font-bold text-fs-text">Enregistrer l&apos;achat</h2>
+        <p className="mt-3 text-sm text-neutral-600">
+          Enregistrer l&apos;achat {referenceOrId} ? Le stock des produits sera mis à jour.
+        </p>
+        <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={busy}
+            className="rounded-xl px-4 py-2.5 text-sm font-semibold text-fs-accent"
+          >
+            Non
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={busy}
+            className="rounded-xl bg-fs-accent px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+          >
+            {busy ? "…" : "Enregistrer"}
           </button>
         </div>
       </FsCard>
@@ -211,6 +261,16 @@ export function PurchasesScreen() {
   const [status, setStatus] = useState<PurchaseStatus | "all">("all");
   const [page, setPage] = useState(0);
 
+  // Positionne le filtre sur la boutique courante au premier chargement
+  // (l'utilisateur reste libre de choisir « Toutes » ensuite).
+  const storeFilterInitedRef = useRef(false);
+  useEffect(() => {
+    if (storeFilterInitedRef.current) return;
+    if (!companyId) return;
+    storeFilterInitedRef.current = true;
+    if (ctxStoreId) setFilterStoreId(ctxStoreId);
+  }, [companyId, ctxStoreId]);
+
   const isPaginationNarrow = useMediaQuery("(max-width: 499px)");
 
   const params = useMemo(
@@ -272,6 +332,7 @@ export function PurchasesScreen() {
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailId, setDetailId] = useState<string | null>(null);
 
+  const [registerTarget, setRegisterTarget] = useState<{ id: string; label: string } | null>(null);
   const [cancelTarget, setCancelTarget] = useState<{ id: string; label: string } | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; label: string } | null>(null);
 
@@ -303,11 +364,30 @@ export function PurchasesScreen() {
         reference: payload.reference,
         items: payload.items,
         payments: payload.payments,
+        autoConfirm: payload.confirm,
       });
     },
     onSuccess: async () => {
       await invalidatePurchases();
+      // L'achat est confirmé immédiatement : le stock des produits a changé.
+      if (companyId) {
+        await qc.invalidateQueries({ queryKey: queryKeys.products(companyId) });
+      }
       toast.success(terms.purchasesCreatedToast);
+    },
+    onError: (e) => toastMutationError("purchases", e),
+  });
+
+  const confirmMut = useMutation({
+    mutationFn: async (purchaseId: string) => confirmPurchaseWithStock(purchaseId),
+    onSuccess: async () => {
+      await invalidatePurchases();
+      if (detailId) await qc.invalidateQueries({ queryKey: ["purchase-detail", detailId] });
+      // Le stock des produits a changé.
+      if (companyId) {
+        await qc.invalidateQueries({ queryKey: queryKeys.products(companyId) });
+      }
+      toast.success("Achat enregistré");
     },
     onError: (e) => toastMutationError("purchases", e),
   });
@@ -569,6 +649,20 @@ export function PurchasesScreen() {
                               <>
                                 <button
                                   type="button"
+                                  onClick={() =>
+                                    setRegisterTarget({
+                                      id: r.id,
+                                      label: r.reference ?? r.id,
+                                    })
+                                  }
+                                  title="Enregistrer"
+                                  aria-label="Enregistrer l'achat"
+                                  className="inline-flex h-10 w-10 items-center justify-center rounded-full text-neutral-600 transition-colors hover:bg-emerald-50 hover:text-emerald-600 active:bg-emerald-100"
+                                >
+                                  <MdOutlineCheckCircle className="h-5 w-5" aria-hidden />
+                                </button>
+                                <button
+                                  type="button"
                                   onClick={() => {
                                     setDetailId(r.id);
                                     setDetailOpen(true);
@@ -608,6 +702,22 @@ export function PurchasesScreen() {
                                   <MdDeleteOutline className="h-5 w-5" aria-hidden />
                                 </button>
                               </>
+                            ) : null}
+                            {r.status === "cancelled" && canManage ? (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setDeleteTarget({
+                                    id: r.id,
+                                    label: r.reference ?? r.id,
+                                  })
+                                }
+                                title="Supprimer"
+                                aria-label="Supprimer l'achat"
+                                className="inline-flex h-10 w-10 items-center justify-center rounded-full text-neutral-600 transition-colors hover:bg-red-50 hover:text-red-600 active:bg-red-100"
+                              >
+                                <MdDeleteOutline className="h-5 w-5" aria-hidden />
+                              </button>
                             ) : null}
                           </div>
                         </td>
@@ -735,6 +845,19 @@ export function PurchasesScreen() {
           onClose={() => setBatchCaptureOpen(false)}
         />
       ) : null}
+
+      <ConfirmRegisterPurchaseDialog
+        open={registerTarget != null}
+        referenceOrId={registerTarget?.label ?? ""}
+        busy={confirmMut.isPending}
+        onCancel={() => {
+          if (!confirmMut.isPending) setRegisterTarget(null);
+        }}
+        onConfirm={() => {
+          if (!registerTarget) return;
+          confirmMut.mutate(registerTarget.id, { onSuccess: () => setRegisterTarget(null) });
+        }}
+      />
 
       <ConfirmCancelPurchaseDialog
         open={cancelTarget != null}

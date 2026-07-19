@@ -80,6 +80,8 @@ export type CreatePurchasePayload = {
   reference: string | null;
   items: { productId: string; productName: string; quantity: number; unitPrice: number }[];
   payments: { method: string; amount: number }[] | null;
+  /** `true` = enregistrer (stock mis à jour), `false` = brouillon à valider plus tard. */
+  confirm: boolean;
 };
 
 export function CreatePurchaseDialog({
@@ -113,7 +115,8 @@ export function CreatePurchaseDialog({
   const [paymentSheetOpen, setPaymentSheetOpen] = useState(false);
   const [productSheetLine, setProductSheetLine] = useState<number | null>(null);
   const [productSearch, setProductSearch] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [busyMode, setBusyMode] = useState<"draft" | "confirm" | null>(null);
+  const busy = busyMode !== null;
   const [error, setError] = useState<string | null>(null);
 
   const [isNarrow, setIsNarrow] = useState(false);
@@ -138,7 +141,7 @@ export function CreatePurchaseDialog({
     setPaymentSheetOpen(false);
     setProductSheetLine(null);
     setProductSearch("");
-    setBusy(false);
+    setBusyMode(null);
     setError(null);
   }, [open, stores, initialStoreId, suppliers]);
 
@@ -200,6 +203,47 @@ export function CreatePurchaseDialog({
   function removeLine(i: number) {
     if (lines.length <= 1) return;
     setLines((prev) => prev.filter((_, j) => j !== i));
+  }
+
+  async function submit(confirm: boolean) {
+    setError(null);
+    if (!effectiveStoreId || !effectiveSupplierId) {
+      setError("Sélectionnez une boutique et un fournisseur.");
+      return;
+    }
+    const items = lines
+      .filter((l) => l.productId && l.quantity > 0 && l.unitPrice >= 0)
+      .map((l) => {
+        const p = productById.get(l.productId)!;
+        return {
+          productId: l.productId,
+          productName: p.name,
+          quantity: l.quantity,
+          unitPrice: l.unitPrice,
+        };
+      });
+    if (items.length === 0) {
+      setError("Ajoutez au moins un article avec quantité et prix.");
+      return;
+    }
+    const payAmt = Number(paymentAmount.replace(",", ".")) || 0;
+    const payments = payAmt > 0 ? [{ method: paymentMethod, amount: payAmt }] : null;
+    try {
+      setBusyMode(confirm ? "confirm" : "draft");
+      await onCreate({
+        storeId: effectiveStoreId,
+        supplierId: effectiveSupplierId,
+        reference: null,
+        items,
+        payments,
+        confirm,
+      });
+      onClose();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Création impossible.");
+    } finally {
+      setBusyMode(null);
+    }
   }
 
   if (!open) return null;
@@ -423,54 +467,25 @@ export function CreatePurchaseDialog({
               <button
                 type="button"
                 disabled={busy || !canSubmit}
-                onClick={async () => {
-                  setError(null);
-                  if (!effectiveStoreId || !effectiveSupplierId) {
-                    setError("Sélectionnez une boutique et un fournisseur.");
-                    return;
-                  }
-                  const items = lines
-                    .filter((l) => l.productId && l.quantity > 0 && l.unitPrice >= 0)
-                    .map((l) => {
-                      const p = productById.get(l.productId)!;
-                      return {
-                        productId: l.productId,
-                        productName: p.name,
-                        quantity: l.quantity,
-                        unitPrice: l.unitPrice,
-                      };
-                    });
-                  if (items.length === 0) {
-                    setError("Ajoutez au moins un article avec quantité et prix.");
-                    return;
-                  }
-                  const payAmt = Number(paymentAmount.replace(",", ".")) || 0;
-                  const payments =
-                    payAmt > 0
-                      ? [{ method: paymentMethod, amount: payAmt }]
-                      : null;
-                  try {
-                    setBusy(true);
-                    await onCreate({
-                      storeId: effectiveStoreId,
-                      supplierId: effectiveSupplierId,
-                      reference: null,
-                      items,
-                      payments,
-                    });
-                    onClose();
-                  } catch (e) {
-                    setError(e instanceof Error ? e.message : "Création impossible.");
-                  } finally {
-                    setBusy(false);
-                  }
-                }}
+                onClick={() => submit(false)}
+                className="inline-flex min-h-[44px] items-center justify-center rounded-[10px] border border-fs-accent/30 px-4 py-2.5 text-sm font-semibold text-fs-accent disabled:opacity-50"
+              >
+                {busyMode === "draft" ? (
+                  <span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-fs-accent border-t-transparent" />
+                ) : (
+                  "Brouillon"
+                )}
+              </button>
+              <button
+                type="button"
+                disabled={busy || !canSubmit}
+                onClick={() => submit(true)}
                 className="inline-flex min-h-[44px] min-w-[160px] items-center justify-center rounded-[10px] bg-fs-accent px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
               >
-                {busy ? (
+                {busyMode === "confirm" ? (
                   <span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
                 ) : (
-                  "Créer (brouillon)"
+                  "Enregistrer"
                 )}
               </button>
             </div>

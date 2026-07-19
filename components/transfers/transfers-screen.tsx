@@ -580,6 +580,7 @@ export function TransfersScreen() {
         onClose={() => setCreateOpen(false)}
         companyId={companyId}
         stores={stores}
+        initialFromStoreId={ctx?.storeId ?? null}
         onCreated={async () => {
           await qc.invalidateQueries({ queryKey: queryKeys.stockTransfers(companyId) });
           toast.success("Transfert créé");

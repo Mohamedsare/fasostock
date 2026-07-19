@@ -143,9 +143,11 @@ export function registerOutboxHandlers(): void {
 
     const uid = await requireUserId(supabase);
 
+    const providedId = p.id ? String(p.id) : null;
     const { data: pRow, error: pErr } = await supabase
       .from("purchases")
       .insert({
+        ...(providedId ? { id: providedId } : {}),
         company_id: companyId,
         store_id: storeId,
         supplier_id: supplierId,
