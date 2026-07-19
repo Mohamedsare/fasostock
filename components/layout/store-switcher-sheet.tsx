@@ -44,7 +44,7 @@ export function StoreSwitcherSheet({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[70] flex flex-col justify-end"
+      className="fixed inset-0 z-[70] flex items-center justify-center p-4"
       role="dialog"
       aria-modal="true"
       aria-label="Changer de boutique"
@@ -57,13 +57,9 @@ export function StoreSwitcherSheet({
         className="absolute inset-0 bg-black/40 backdrop-blur-[1px] animate-[fs-sheet-fade_140ms_ease-out]"
       />
 
-      {/* Feuille */}
-      <div className="relative z-10 mx-auto w-full max-w-md rounded-t-3xl border border-black/[0.06] bg-fs-card pb-[max(1rem,env(safe-area-inset-bottom))] shadow-[0_-8px_40px_rgba(0,0,0,0.18)] animate-[fs-sheet-up_220ms_cubic-bezier(0.22,1,0.36,1)] dark:border-white/10">
-        <div className="flex justify-center pt-2.5">
-          <span className="h-1.5 w-10 rounded-full bg-black/15 dark:bg-white/20" aria-hidden />
-        </div>
-
-        <div className="flex items-center justify-between px-5 pb-2 pt-3">
+      {/* Fenêtre centrée */}
+      <div className="relative z-10 flex max-h-[85dvh] w-full max-w-sm flex-col overflow-hidden rounded-3xl border border-black/[0.06] bg-fs-card shadow-[0_20px_60px_rgba(0,0,0,0.28)] animate-[fs-pop-in_180ms_cubic-bezier(0.22,1,0.36,1)] dark:border-white/10">
+        <div className="flex items-center justify-between px-5 pb-2 pt-4">
           <div className="min-w-0">
             <h2 className="text-base font-bold text-fs-text">Changer de boutique</h2>
             <p className="text-xs text-neutral-500">
