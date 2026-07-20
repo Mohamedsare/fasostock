@@ -63,6 +63,16 @@ export async function listEngineSales(params: {
   storeId: string | null;
 }): Promise<EngineSaleListItem[]> {
   const supabase = createClient();
+  // Garde-fou RLS : sans session valide, la requête ne renvoie PAS une erreur mais 0 ligne
+  // (l'utilisateur anonyme ne voit rien). Cela arrive pendant un rafraîchissement de jeton
+  // déclenché par une invalidation globale (SyncProvider) → l'historique se viderait « par
+  // moment ». On lève plutôt une erreur : TanStack conserve alors les données précédentes
+  // (jamais écrasées par une fausse liste vide) et réessaie automatiquement.
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  if (!session) throw new Error("Session non prête — nouvelle tentative en cours.");
+
   let q = supabase
     .from("sales")
     .select(

@@ -338,16 +338,21 @@ export function EnginesScreen() {
               </div>
             ) : null}
           </div>
-          {listQ.isLoading ? (
-            <FsCard padding="p-8">
-              <div className="flex justify-center">
-                <div className="h-7 w-7 animate-spin rounded-full border-2 border-fs-accent border-t-transparent" />
-              </div>
-            </FsCard>
-          ) : rows.length === 0 ? (
-            <FsCard padding="px-4 py-12">
-              <p className="text-center text-base text-neutral-600">Aucune vente d&apos;engin.</p>
-            </FsCard>
+          {rows.length === 0 ? (
+            // « Aucune vente » UNIQUEMENT si la requête a réellement réussi avec 0 ligne.
+            // Sinon (chargement, ou erreur/blip de session sans données en cache) → spinner :
+            // on ne montre jamais l'état vide sur un échec transitoire.
+            listQ.isSuccess ? (
+              <FsCard padding="px-4 py-12">
+                <p className="text-center text-base text-neutral-600">Aucune vente d&apos;engin.</p>
+              </FsCard>
+            ) : (
+              <FsCard padding="p-8">
+                <div className="flex justify-center">
+                  <div className="h-7 w-7 animate-spin rounded-full border-2 border-fs-accent border-t-transparent" />
+                </div>
+              </FsCard>
+            )
           ) : filteredRows.length === 0 ? (
             <FsCard padding="px-4 py-12">
               <p className="text-center text-base text-neutral-600">
