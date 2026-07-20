@@ -35,6 +35,7 @@ import {
   MdToggleOff,
   MdToggleOn,
   MdUpload,
+  MdVideocam,
 } from "react-icons/md";
 
 type GPubTab = "general" | "media" | "partners";
@@ -53,6 +54,7 @@ export function AdminGPubliqueScreen() {
   const [heroBannerImageDataUrl, setHeroBannerImageDataUrl] = useState("");
   const [landingSettings, setLandingSettings] = useState<Record<string, string>>({
     hero_banner_image_url: "",
+    hero_banner_media_type: "image",
     footer_whatsapp_url:
       "https://wa.me/212771668079?text=Bonjour%2C%20je%20suis%20int%C3%A9ress%C3%A9(e)%20par%20FasoStock.%20Pouvez-vous%20m%27aider%20%3F",
     footer_facebook_url: "https://facebook.com",
@@ -188,21 +190,25 @@ export function AdminGPubliqueScreen() {
     }
   }
 
-  async function onPickHeroBannerImage(file: File | null) {
+  async function onPickHeroBanner(file: File | null) {
     if (!file) return;
+    const mediaType = file.type.startsWith("video/") ? "video" : "image";
     setUploadingHero(true);
     try {
       const url = await adminUploadLandingImage(file, "hero");
       setHeroBannerImageDataUrl(url);
       // Auto-save : remplace immédiatement la valeur en base (sinon les anciennes Data URLs filtrées restent).
-      const merged = { ...landingSettings, hero_banner_image_url: url };
+      const merged = { ...landingSettings, hero_banner_image_url: url, hero_banner_media_type: mediaType };
       setLandingSettings(merged);
-      await adminSetPublicLandingSettings({ hero_banner_image_url: url });
+      await adminSetPublicLandingSettings({
+        hero_banner_image_url: url,
+        hero_banner_media_type: mediaType,
+      });
       await Promise.all([
         qc.invalidateQueries({ queryKey: ["admin-public-landing-settings"] }),
         revalidateLandingCache(),
       ]);
-      toast.success("Bannière publiée.");
+      toast.success(mediaType === "video" ? "Bannière vidéo publiée." : "Bannière publiée.");
     } catch (e) {
       toast.error(messageFromUnknownError(e));
     } finally {
@@ -272,6 +278,13 @@ export function AdminGPubliqueScreen() {
   }, [landingSettings, serverSettingsMap]);
 
   const activePartners = (q.data ?? []).filter((x) => x.isActive).length;
+
+  // Type de bannière courant : piloté par le réglage, avec repli sur l'extension de l'URL.
+  const heroMediaTypeSetting = (landingSettings.hero_banner_media_type ?? "").trim().toLowerCase();
+  const heroBannerIsVideo =
+    heroMediaTypeSetting === "video" ||
+    (heroMediaTypeSetting !== "image" &&
+      /\.(mp4|webm|ogg|ogv|mov|m4v)(\?.*)?$/i.test(landingSettings.hero_banner_image_url ?? ""));
 
   return (
     <div className="min-h-0 space-y-4 px-4 pb-28 pt-4 sm:px-5 sm:pb-10 sm:pt-5 md:space-y-6 md:px-6 md:pt-6 lg:px-8">
@@ -398,7 +411,7 @@ export function AdminGPubliqueScreen() {
         ) : null}
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
           <label className="flex flex-col gap-2">
-            <span className={LABEL}>URL bannière hero</span>
+            <span className={LABEL}>URL bannière hero (image ou vidéo)</span>
             <input
               value={landingSettings.hero_banner_image_url ?? ""}
               onChange={(e) => setSetting("hero_banner_image_url", e.target.value)}
@@ -408,18 +421,47 @@ export function AdminGPubliqueScreen() {
             />
           </label>
           <div className="flex flex-col gap-2">
-            <span className={LABEL}>Uploader bannière</span>
+            <span className={LABEL}>Uploader bannière (image ou vidéo)</span>
             <label className="inline-flex min-h-14 w-full cursor-pointer items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-orange-200 bg-orange-50/40 px-4 text-base font-bold text-orange-900 transition active:scale-[0.99]">
               <MdUpload className="h-5 w-5 shrink-0" aria-hidden />
-              {uploadingHero ? "Envoi…" : "Choisir une image (publie la bannière)"}
+              {uploadingHero ? "Envoi…" : "Choisir une image ou une vidéo (publie la bannière)"}
               <input
                 type="file"
-                accept="image/*"
+                accept="image/*,video/*"
                 className="sr-only"
                 disabled={uploadingHero}
-                onChange={(e) => void onPickHeroBannerImage(e.target.files?.[0] ?? null)}
+                onChange={(e) => void onPickHeroBanner(e.target.files?.[0] ?? null)}
               />
             </label>
+          </div>
+          <div className="flex flex-col gap-2">
+            <span className={LABEL}>Type de bannière</span>
+            <div className="inline-flex rounded-2xl border border-slate-200 bg-slate-100 p-1">
+              {(
+                [
+                  { id: "image", label: "Image", Icon: MdImage },
+                  { id: "video", label: "Vidéo", Icon: MdVideocam },
+                ] as const
+              ).map(({ id, label, Icon }) => {
+                const active = (landingSettings.hero_banner_media_type ?? "image") === id;
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setSetting("hero_banner_media_type", id)}
+                    className={`inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl px-4 text-sm font-bold transition ${
+                      active ? "bg-white text-orange-700 shadow-sm" : "text-slate-500"
+                    }`}
+                  >
+                    <Icon className="h-5 w-5 shrink-0" aria-hidden />
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-xs text-slate-500">
+              Réglé automatiquement à l&apos;upload. Ajustez si vous collez une URL manuellement.
+            </p>
           </div>
           <label className="flex flex-col gap-2">
             <span className={LABEL}>Lien démo section accompagnement</span>
@@ -489,12 +531,24 @@ export function AdminGPubliqueScreen() {
           <article className="rounded-2xl border border-slate-200 bg-slate-50 p-3 sm:p-4">
             <p className={`mb-3 ${LABEL}`}>Bannière actuelle</p>
             {landingSettings.hero_banner_image_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={landingSettings.hero_banner_image_url}
-                alt="Bannière actuelle"
-                className="max-h-56 w-full rounded-xl object-cover sm:max-h-64"
-              />
+              heroBannerIsVideo ? (
+                <video
+                  src={landingSettings.hero_banner_image_url}
+                  className="max-h-56 w-full rounded-xl object-cover sm:max-h-64"
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
+                  controls
+                />
+              ) : (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={landingSettings.hero_banner_image_url}
+                  alt="Bannière actuelle"
+                  className="max-h-56 w-full rounded-xl object-cover sm:max-h-64"
+                />
+              )
             ) : (
               <div className="flex min-h-48 items-center justify-center rounded-xl border border-dashed border-slate-300 bg-white px-4 text-center text-sm text-slate-500">
                 Aucune bannière
@@ -504,12 +558,24 @@ export function AdminGPubliqueScreen() {
           <article className="rounded-2xl border border-slate-200 bg-slate-50 p-3 sm:p-4">
             <p className={`mb-3 ${LABEL}`}>Dernier fichier choisi (aperçu local)</p>
             {heroBannerImageDataUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={heroBannerImageDataUrl}
-                alt="Aperçu bannière"
-                className="max-h-56 w-full rounded-xl object-cover sm:max-h-64"
-              />
+              heroBannerIsVideo ? (
+                <video
+                  src={heroBannerImageDataUrl}
+                  className="max-h-56 w-full rounded-xl object-cover sm:max-h-64"
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
+                  controls
+                />
+              ) : (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={heroBannerImageDataUrl}
+                  alt="Aperçu bannière"
+                  className="max-h-56 w-full rounded-xl object-cover sm:max-h-64"
+                />
+              )
             ) : (
               <div className="flex min-h-48 items-center justify-center rounded-xl border border-dashed border-slate-300 bg-white text-center text-sm text-slate-500">
                 L&apos;upload remplace tout de suite la bannière en ligne

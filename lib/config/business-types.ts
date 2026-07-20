@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
   Building2,
+  Car,
   Hammer,
   MoreHorizontal,
   Package,
@@ -71,6 +72,13 @@ export const BUSINESS_TYPES: readonly BusinessTypeOption[] = [
     label: "Pièces auto",
     description: "Pièces détachées et entretien véhicules.",
     icon: Package,
+    storeNamePlaceholderNoun: "magasin",
+  },
+  {
+    slug: "vente-engins",
+    label: "Ventes d'engins",
+    description: "Motos, voitures et engins motorisés.",
+    icon: Car,
     storeNamePlaceholderNoun: "magasin",
   },
   {

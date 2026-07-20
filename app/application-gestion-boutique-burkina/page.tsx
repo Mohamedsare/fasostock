@@ -13,12 +13,12 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://fasostock.com";
 const canonicalUrl = `${siteUrl}/application-gestion-boutique-burkina`;
 
 export const metadata: Metadata = {
-  title: "Application de Gestion de Boutique au Burkina Faso | FasoStock",
+  title: "Application de Gestion de Boutique au Burkina | FasoStock",
   description:
-    "Application mobile et web pour gérer votre boutique au Burkina Faso. Ventes, stock, crédits clients et caisse depuis votre téléphone ou ordinateur. Fonctionne hors ligne.",
+    "Application mobile et web pour gérer votre boutique au Burkina Faso : ventes, stock, crédits clients et caisse. Fonctionne même hors ligne.",
   alternates: { canonical: canonicalUrl },
   openGraph: {
-    title: "Application de Gestion de Boutique au Burkina Faso | FasoStock",
+    title: "Application de Gestion de Boutique au Burkina | FasoStock",
     description:
       "FasoStock — l'application de gestion de boutique préférée des commerçants burkinabè. Mobile, hors ligne, simple et puissante.",
     url: canonicalUrl,

@@ -15,7 +15,7 @@ const canonicalUrl = `${siteUrl}/logiciel-inventaire-pme-burkina`;
 export const metadata: Metadata = {
   title: "Logiciel d'Inventaire pour PME au Burkina Faso | FasoStock",
   description:
-    "Gérez l'inventaire de votre PME au Burkina Faso avec FasoStock. Solution complète pour artisans, commerçants et petites entreprises burkinabè. Alertes de rupture, valorisation de stock, rapports.",
+    "Gérez l'inventaire de votre PME au Burkina Faso : alertes de rupture, valorisation de stock et rapports. Pensé pour artisans et commerçants burkinabè.",
   alternates: { canonical: canonicalUrl },
   openGraph: {
     title: "Logiciel d'Inventaire pour PME au Burkina Faso | FasoStock",

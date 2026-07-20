@@ -15,7 +15,7 @@ const canonicalUrl = `${siteUrl}/logiciel-caisse-ouagadougou`;
 export const metadata: Metadata = {
   title: "Logiciel de Caisse pour Commerces à Ouagadougou | FasoStock",
   description:
-    "Logiciel de caisse enregistreuse pour boutiques, pharmacies, épiceries et commerces à Ouagadougou. Encaissez, gérez votre stock et suivez vos ventes depuis votre mobile ou PC.",
+    "Logiciel de caisse pour boutiques, pharmacies et épiceries à Ouagadougou. Encaissez, gérez votre stock et suivez vos ventes depuis mobile ou PC.",
   alternates: { canonical: canonicalUrl },
   openGraph: {
     title: "Logiciel de Caisse pour Commerces à Ouagadougou | FasoStock",

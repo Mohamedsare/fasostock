@@ -20,6 +20,7 @@ import {
   MdAccountBalance,
   MdAssignmentTurnedIn,
   MdBadge,
+  MdCheckCircle,
   MdClose,
   MdCreditCard,
   MdEditDocument,
@@ -28,6 +29,7 @@ import {
   MdPayments,
   MdPendingActions,
   MdReceiptLong,
+  MdSchedule,
   MdSearch,
   MdTaskAlt,
   MdWarningAmber,
@@ -59,6 +61,7 @@ const STEP_CLASSES: Record<RegistrationStep, string> = {
   ww_issued: "bg-blue-50 text-blue-700",
   deposited: "bg-indigo-50 text-indigo-700",
   recepisse: "bg-cyan-50 text-cyan-700",
+  recepisse_delivered: "bg-sky-50 text-sky-700",
   carte_grise: "bg-teal-50 text-teal-700",
   delivered: "bg-emerald-100 text-emerald-800",
 };
@@ -93,6 +96,45 @@ function PaymentCell({ row }: { row: EngineRegistrationListItem }) {
         Reste {formatCurrency(row.remaining)}
       </span>
     </span>
+  );
+}
+
+/**
+ * Cellule document (WW / Récépissé / Carte grise) — n°, date de réception, et
+ * badge de remise au client (traçabilité anti-litige). Vide tant que non émis.
+ */
+function DocCell({
+  number,
+  date,
+  delivered,
+  deliveredDate,
+}: {
+  number: string | null;
+  date: string | null;
+  delivered: boolean;
+  deliveredDate: string | null;
+}) {
+  if (!number) {
+    return <span className="text-xs font-medium text-neutral-300">—</span>;
+  }
+  return (
+    <div className="flex min-w-30 flex-col items-start gap-1">
+      <span className="font-mono text-xs font-semibold text-fs-text">{number}</span>
+      {date ? (
+        <span className="text-[10px] text-neutral-500">le {formatDate(date)}</span>
+      ) : null}
+      {delivered ? (
+        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700">
+          <MdCheckCircle className="h-3 w-3" aria-hidden />
+          Remis{deliveredDate ? ` ${formatDate(deliveredDate)}` : ""}
+        </span>
+      ) : (
+        <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">
+          <MdSchedule className="h-3 w-3" aria-hidden />
+          Non remis
+        </span>
+      )}
+    </div>
   );
 }
 
@@ -201,6 +243,7 @@ export function EngineRegistrationScreen() {
       ww_issued: 0,
       deposited: 0,
       recepisse: 0,
+      recepisse_delivered: 0,
       carte_grise: 0,
       delivered: 0,
       cmcMissing: 0,
@@ -321,12 +364,21 @@ export function EngineRegistrationScreen() {
                 onClick={() => toggleFilter("deposited")}
               />
               <StatTile
-                label="Récépissé reçu"
+                label="Récépissé à remettre"
                 value={stats.recepisse}
+                sub="reçu, pas encore remis"
                 icon={MdReceiptLong}
                 tone="cyan"
                 active={stepFilter === "recepisse"}
                 onClick={() => toggleFilter("recepisse")}
+              />
+              <StatTile
+                label="Récépissé remis"
+                value={stats.recepisse_delivered}
+                icon={MdAssignmentTurnedIn}
+                tone="blue"
+                active={stepFilter === "recepisse_delivered"}
+                onClick={() => toggleFilter("recepisse_delivered")}
               />
               <StatTile
                 label="Carte grise à remettre"
@@ -432,7 +484,7 @@ export function EngineRegistrationScreen() {
           ) : (
             <FsCard className="overflow-hidden p-0" padding="p-0">
               <FsHorizontalScroll className="touch-pan-x">
-                <table className="w-full min-w-[900px] border-collapse text-left text-sm">
+                <table className="w-full min-w-310 border-collapse text-left text-sm">
                   <thead>
                     <tr className="border-b border-black/6 bg-fs-surface-container/80">
                       <th className="whitespace-nowrap px-4 py-3 font-semibold">Réf.</th>
@@ -440,6 +492,24 @@ export function EngineRegistrationScreen() {
                       <th className="whitespace-nowrap px-4 py-3 font-semibold">Client</th>
                       <th className="whitespace-nowrap px-4 py-3 font-semibold">Châssis</th>
                       <th className="whitespace-nowrap px-4 py-3 font-semibold">Paiement</th>
+                      <th className="whitespace-nowrap px-4 py-3 font-semibold">
+                        <span className="inline-flex items-center gap-1.5">
+                          <MdCreditCard className="h-4 w-4 text-blue-600" aria-hidden />
+                          WW
+                        </span>
+                      </th>
+                      <th className="whitespace-nowrap px-4 py-3 font-semibold">
+                        <span className="inline-flex items-center gap-1.5">
+                          <MdReceiptLong className="h-4 w-4 text-cyan-600" aria-hidden />
+                          Récépissé
+                        </span>
+                      </th>
+                      <th className="whitespace-nowrap px-4 py-3 font-semibold">
+                        <span className="inline-flex items-center gap-1.5">
+                          <MdAssignmentTurnedIn className="h-4 w-4 text-teal-600" aria-hidden />
+                          Carte grise
+                        </span>
+                      </th>
                       <th className="whitespace-nowrap px-4 py-3 font-semibold">Étape</th>
                       <th className="whitespace-nowrap px-4 py-3 font-semibold">Action</th>
                     </tr>
@@ -459,6 +529,30 @@ export function EngineRegistrationScreen() {
                         </td>
                         <td className="whitespace-nowrap px-4 py-3">
                           <PaymentCell row={r} />
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-3 align-top">
+                          <DocCell
+                            number={r.registration.wwNumber}
+                            date={r.registration.wwDate}
+                            delivered={r.registration.wwDelivered}
+                            deliveredDate={r.registration.wwDeliveredDate}
+                          />
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-3 align-top">
+                          <DocCell
+                            number={r.registration.recepisseNumber}
+                            date={r.registration.recepisseDate}
+                            delivered={r.registration.recepisseDelivered}
+                            deliveredDate={r.registration.recepisseDeliveredDate}
+                          />
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-3 align-top">
+                          <DocCell
+                            number={r.registration.carteGriseNumber}
+                            date={r.registration.carteGriseDate}
+                            delivered={r.registration.carteGriseDelivered}
+                            deliveredDate={r.registration.deliveredToClientDate}
+                          />
                         </td>
                         <td className="whitespace-nowrap px-4 py-3">
                           <StepBadge step={r.step} />

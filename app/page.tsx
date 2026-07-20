@@ -62,9 +62,9 @@ const ADSENSE_CLIENT =
   process.env.NEXT_PUBLIC_ADSENSE_CLIENT ?? "ca-pub-2965888370366530";
 
 export const metadata: Metadata = {
-  title: "Logiciel de caisse et stock Burkina Faso",
+  title: "Logiciel de caisse et gestion de stock au Burkina Faso",
   description:
-    "FasoStock aide les commerces du Burkina Faso a gerer stock, ventes, credit client et caisse depuis mobile et web.",
+    "FasoStock aide les commerçants et PME du Burkina Faso à gérer leur stock, leurs ventes, leurs crédits clients et leur caisse, depuis mobile ou PC.",
   alternates: { canonical: "/" },
   robots: {
     index: true,
@@ -293,6 +293,13 @@ export default async function Home({
 
   const supportSectionImageUrl = supportImage.imageUrl;
   const heroBannerImageUrl = (landingSettings.hero_banner_image_url ?? "").trim();
+  // La bannière hero peut être une image ou une vidéo. Le type est piloté par le
+  // réglage `hero_banner_media_type` (défini à l'upload dans GPublique) ; à défaut
+  // on le devine depuis l'extension de l'URL.
+  const heroBannerMediaType = (landingSettings.hero_banner_media_type ?? "").trim().toLowerCase();
+  const heroBannerIsVideo =
+    heroBannerMediaType === "video" ||
+    (heroBannerMediaType !== "image" && /\.(mp4|webm|ogg|ogv|mov|m4v)(\?.*)?$/i.test(heroBannerImageUrl));
   const supportDemoUrl = (landingSettings.support_demo_url ?? "").trim() || "/help";
   const whatsappDefaultUrl = `https://wa.me/212771668079?text=${encodeURIComponent(
     "Bonjour, je suis intéressé(e) par FasoStock. Pouvez-vous m'aider ?",
@@ -343,7 +350,7 @@ export default async function Home({
         id="google-adsense"
         async
         src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_CLIENT}`}
-        strategy="afterInteractive"
+        strategy="lazyOnload"
         crossOrigin="anonymous"
       />
       <SiteHeader />
@@ -360,16 +367,28 @@ export default async function Home({
         >
           {heroBannerImageUrl ? (
             <>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={heroBannerImageUrl}
-                alt=""
-                aria-hidden
-                loading="eager"
-                decoding="async"
-                fetchPriority="high"
-                className="pointer-events-none absolute inset-0 h-full w-full object-cover"
-              />
+              {heroBannerIsVideo ? (
+                <video
+                  src={heroBannerImageUrl}
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
+                  preload="auto"
+                  aria-hidden
+                  className="pointer-events-none absolute inset-0 h-full w-full object-cover"
+                />
+              ) : (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={heroBannerImageUrl}
+                  alt="FasoStock — logiciel de gestion de stock, ventes et caisse pour commerces au Burkina Faso"
+                  loading="eager"
+                  decoding="async"
+                  fetchPriority="high"
+                  className="pointer-events-none absolute inset-0 h-full w-full object-cover"
+                />
+              )}
               <div
                 aria-hidden
                 className="pointer-events-none absolute inset-0 bg-[linear-gradient(105deg,rgba(15,23,42,0.78)_0%,rgba(15,23,42,0.55)_45%,rgba(15,23,42,0.2)_75%,rgba(15,23,42,0.05)_100%)]"

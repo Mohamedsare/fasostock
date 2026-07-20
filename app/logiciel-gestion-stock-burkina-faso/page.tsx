@@ -15,7 +15,7 @@ const canonicalUrl = `${siteUrl}/logiciel-gestion-stock-burkina-faso`;
 export const metadata: Metadata = {
   title: "Logiciel de Gestion de Stock au Burkina Faso | FasoStock",
   description:
-    "Gérez votre stock, vos ventes et votre caisse avec FasoStock — le logiciel de gestion de stock N°1 au Burkina Faso. Simple, rapide et adapté aux commerçants burkinabè.",
+    "Gérez stock, ventes et caisse avec FasoStock, le logiciel de gestion de stock N°1 au Burkina Faso. Simple, rapide et adapté aux commerçants.",
   alternates: { canonical: canonicalUrl },
   openGraph: {
     title: "Logiciel de Gestion de Stock au Burkina Faso | FasoStock",

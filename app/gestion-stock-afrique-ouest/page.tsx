@@ -13,12 +13,12 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://fasostock.com";
 const canonicalUrl = `${siteUrl}/gestion-stock-afrique-ouest`;
 
 export const metadata: Metadata = {
-  title: "Logiciel de Gestion de Stock en Afrique de l'Ouest | FasoStock",
+  title: "Gestion de Stock pour l'Afrique de l'Ouest | FasoStock",
   description:
-    "Solution de gestion de stock pour commerces en Afrique de l'Ouest. Disponible au Burkina Faso, en Côte d'Ivoire, au Mali, au Niger, au Togo et au Bénin. Adapté au Franc CFA.",
+    "Logiciel de gestion de stock pour commerces en Afrique de l'Ouest : Burkina, Côte d'Ivoire, Mali, Niger, Togo, Bénin. Adapté au Franc CFA.",
   alternates: { canonical: canonicalUrl },
   openGraph: {
-    title: "Logiciel de Gestion de Stock en Afrique de l'Ouest | FasoStock",
+    title: "Gestion de Stock pour l'Afrique de l'Ouest | FasoStock",
     description:
       "Gérez votre stock en Afrique de l'Ouest avec FasoStock. Burkina Faso, Côte d'Ivoire, Mali, Niger, Togo, Bénin — une solution pour toute la région.",
     url: canonicalUrl,

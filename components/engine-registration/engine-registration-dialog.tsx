@@ -37,14 +37,20 @@ function Field({
 function DocCard({
   title,
   accent,
+  wide,
   children,
 }: {
   title: string;
   accent?: boolean;
+  /** Étend la carte sur les 2 colonnes de la grille (≥820px). */
+  wide?: boolean;
   children: React.ReactNode;
 }) {
   return (
-    <FsCard padding="p-4">
+    <FsCard
+      padding="p-4"
+      className={cn("rounded-sm sm:rounded-sm", wide && "min-[820px]:col-span-2")}
+    >
       <div
         className={cn(
           "mb-3 border-l-4 pl-2 text-sm font-bold uppercase tracking-wide",
@@ -85,7 +91,7 @@ export function EngineRegistrationDialog({
     onError: (e) => toast.error(messageFromUnknownError(e, "Enregistrement impossible.")),
   });
 
-  const input = fsInputClass("rounded-md border border-black/8");
+  const input = fsInputClass("rounded-sm border border-black/8");
   const busy = saveMut.isPending;
   const paid = row.paid;
   const currentStep = deriveRegistrationStep(reg, paid);
@@ -93,6 +99,34 @@ export function EngineRegistrationDialog({
     setReg((r) => (r ? { ...r, [key]: value } : r));
   const setStr = (key: keyof EngineRegistration, value: string) =>
     set(key, (value.trim() === "" ? null : value) as EngineRegistration[keyof EngineRegistration]);
+
+  const todayIso = () => new Date().toISOString().slice(0, 10);
+  // Coche « remis » : préremplit la date du jour si vide (traçabilité anti-litige).
+  const hasWw = Boolean((reg.wwNumber ?? "").trim() || reg.wwDate);
+  const toggleWwDelivered = (checked: boolean) =>
+    setReg((r) => ({
+      ...r,
+      wwDelivered: checked,
+      wwDeliveredDate: checked && !r.wwDeliveredDate ? todayIso() : r.wwDeliveredDate,
+    }));
+
+  const hasRecepisse = Boolean((reg.recepisseNumber ?? "").trim() || reg.recepisseDate);
+  const toggleRecepisseDelivered = (checked: boolean) =>
+    setReg((r) => ({
+      ...r,
+      recepisseDelivered: checked,
+      recepisseDeliveredDate:
+        checked && !r.recepisseDeliveredDate ? todayIso() : r.recepisseDeliveredDate,
+    }));
+
+  const hasCarteGrise = Boolean((reg.carteGriseNumber ?? "").trim() || reg.carteGriseDate);
+  const toggleCarteGriseDelivered = (checked: boolean) =>
+    setReg((r) => ({
+      ...r,
+      carteGriseDelivered: checked,
+      deliveredToClientDate:
+        checked && !r.deliveredToClientDate ? todayIso() : r.deliveredToClientDate,
+    }));
 
   return (
     <div
@@ -104,7 +138,7 @@ export function EngineRegistrationDialog({
       }}
     >
       <FsCard
-        className="max-h-[min(94dvh,940px)] w-full max-w-3xl overflow-hidden rounded-t-2xl sm:rounded-2xl"
+        className="max-h-[min(94dvh,940px)] w-full max-w-3xl overflow-hidden rounded-t-sm sm:rounded-sm"
         padding="p-0"
       >
         <div className="flex max-h-[min(94dvh,940px)] flex-col">
@@ -126,7 +160,7 @@ export function EngineRegistrationDialog({
                 if (!busy) onClose();
               }}
               aria-label="Fermer"
-              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-black/8 text-neutral-700"
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-sm border border-black/8 text-neutral-700"
             >
               <MdClose className="h-5 w-5" aria-hidden />
             </button>
@@ -144,7 +178,7 @@ export function EngineRegistrationDialog({
                   <span
                     key={s}
                     className={cn(
-                      "inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold",
+                      "inline-flex items-center rounded-sm px-2.5 py-1 text-[11px] font-semibold",
                       active
                         ? "bg-fs-accent text-white"
                         : done
@@ -159,7 +193,7 @@ export function EngineRegistrationDialog({
             </div>
 
             {/* Paiement (lecture) */}
-            <div className="flex items-center justify-between rounded-lg bg-fs-surface-container/60 px-4 py-3">
+            <div className="flex items-center justify-between rounded-sm bg-fs-surface-container/60 px-4 py-3">
               <div>
                 <span className="text-xs text-neutral-500">Total</span>
                 <span className="ml-2 text-sm font-bold text-fs-text">
@@ -179,7 +213,7 @@ export function EngineRegistrationDialog({
               </div>
               <span
                 className={cn(
-                  "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold",
+                  "inline-flex items-center rounded-sm px-2.5 py-1 text-xs font-semibold",
                   paid ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700",
                 )}
               >
@@ -221,10 +255,10 @@ export function EngineRegistrationDialog({
                 </div>
               </DocCard>
 
-              {/* WW */}
-              <DocCard title="WW (carte provisoire)" accent>
+              {/* WW + remise au client */}
+              <DocCard title="WW (carte provisoire)" accent wide>
                 {!paid ? (
-                  <div className="mb-3 flex items-start gap-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                  <div className="mb-3 flex items-start gap-2 rounded-sm bg-amber-50 px-3 py-2 text-xs text-amber-800">
                     <MdLock className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
                     <span>
                       Le WW ne peut être émis que si la vente est <strong>soldée</strong>. Encaissez
@@ -241,7 +275,7 @@ export function EngineRegistrationDialog({
                       onChange={(e) => setStr("wwNumber", e.target.value)}
                     />
                   </Field>
-                  <Field label="Date WW">
+                  <Field label="Date WW (émis)">
                     <input
                       type="date"
                       className={input}
@@ -250,6 +284,60 @@ export function EngineRegistrationDialog({
                       onChange={(e) => setStr("wwDate", e.target.value)}
                     />
                   </Field>
+                </div>
+
+                {/* Remise au client — traçabilité anti-litige */}
+                <div className="mt-4 rounded-sm border border-fs-accent/25 bg-[color-mix(in_srgb,var(--fs-accent)_6%,transparent)] p-3">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 accent-fs-accent"
+                      checked={reg.wwDelivered}
+                      disabled={!canEdit || !hasWw}
+                      onChange={(e) => toggleWwDelivered(e.target.checked)}
+                    />
+                    <span className="text-sm font-semibold text-fs-text">WW remis au client</span>
+                  </label>
+                  {!hasWw ? (
+                    <p className="mt-2 text-[11px] text-neutral-500">
+                      Renseignez d&apos;abord le WW émis (n° ou date) avant d&apos;enregistrer la remise.
+                    </p>
+                  ) : (
+                    <p className="mt-2 text-[11px] text-neutral-500">
+                      Enregistrez qui a récupéré le WW et quand — preuve en cas de contestation.
+                    </p>
+                  )}
+                  {reg.wwDelivered ? (
+                    <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                      <Field label="Date de remise">
+                        <input
+                          type="date"
+                          className={input}
+                          value={reg.wwDeliveredDate ?? ""}
+                          disabled={!canEdit}
+                          onChange={(e) => setStr("wwDeliveredDate", e.target.value)}
+                        />
+                      </Field>
+                      <Field label="Remis par (agent)">
+                        <input
+                          className={input}
+                          value={reg.wwDeliveredBy ?? ""}
+                          disabled={!canEdit}
+                          placeholder="Nom de l'agent"
+                          onChange={(e) => setStr("wwDeliveredBy", e.target.value)}
+                        />
+                      </Field>
+                      <Field label="Reçu par" hint="Client ou mandataire">
+                        <input
+                          className={input}
+                          value={reg.wwReceivedBy ?? ""}
+                          disabled={!canEdit}
+                          placeholder="Nom de la personne"
+                          onChange={(e) => setStr("wwReceivedBy", e.target.value)}
+                        />
+                      </Field>
+                    </div>
+                  ) : null}
                 </div>
               </DocCard>
 
@@ -276,8 +364,8 @@ export function EngineRegistrationDialog({
                 </div>
               </DocCard>
 
-              {/* Récépissé */}
-              <DocCard title="Récépissé">
+              {/* Récépissé + remise au client */}
+              <DocCard title="Récépissé" wide>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <Field label="N° récépissé">
                     <input
@@ -287,7 +375,7 @@ export function EngineRegistrationDialog({
                       onChange={(e) => setStr("recepisseNumber", e.target.value)}
                     />
                   </Field>
-                  <Field label="Date récépissé">
+                  <Field label="Date récépissé (reçu)">
                     <input
                       type="date"
                       className={input}
@@ -297,10 +385,67 @@ export function EngineRegistrationDialog({
                     />
                   </Field>
                 </div>
+
+                {/* Remise au client — traçabilité anti-litige */}
+                <div className="mt-4 rounded-sm border border-fs-accent/25 bg-[color-mix(in_srgb,var(--fs-accent)_6%,transparent)] p-3">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 accent-fs-accent"
+                      checked={reg.recepisseDelivered}
+                      disabled={!canEdit || !hasRecepisse}
+                      onChange={(e) => toggleRecepisseDelivered(e.target.checked)}
+                    />
+                    <span className="text-sm font-semibold text-fs-text">
+                      Récépissé remis au client
+                    </span>
+                  </label>
+                  {!hasRecepisse ? (
+                    <p className="mt-2 text-[11px] text-neutral-500">
+                      Renseignez d&apos;abord le récépissé reçu (n° ou date) avant d&apos;enregistrer
+                      la remise.
+                    </p>
+                  ) : (
+                    <p className="mt-2 text-[11px] text-neutral-500">
+                      Enregistrez qui a récupéré le récépissé et quand — preuve en cas de contestation.
+                    </p>
+                  )}
+                  {reg.recepisseDelivered ? (
+                    <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                      <Field label="Date de remise">
+                        <input
+                          type="date"
+                          className={input}
+                          value={reg.recepisseDeliveredDate ?? ""}
+                          disabled={!canEdit}
+                          onChange={(e) => setStr("recepisseDeliveredDate", e.target.value)}
+                        />
+                      </Field>
+                      <Field label="Remis par (agent)">
+                        <input
+                          className={input}
+                          value={reg.recepisseDeliveredBy ?? ""}
+                          disabled={!canEdit}
+                          placeholder="Nom de l'agent"
+                          onChange={(e) => setStr("recepisseDeliveredBy", e.target.value)}
+                        />
+                      </Field>
+                      <Field label="Reçu par" hint="Client ou mandataire">
+                        <input
+                          className={input}
+                          value={reg.recepisseReceivedBy ?? ""}
+                          disabled={!canEdit}
+                          placeholder="Nom de la personne"
+                          onChange={(e) => setStr("recepisseReceivedBy", e.target.value)}
+                        />
+                      </Field>
+                    </div>
+                  ) : null}
+                </div>
               </DocCard>
 
-              {/* Carte grise */}
-              <DocCard title="Carte grise" accent>
+              {/* Carte grise + remise au client */}
+              <DocCard title="Carte grise" accent wide>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <Field label="N° carte grise">
                     <input
@@ -310,7 +455,7 @@ export function EngineRegistrationDialog({
                       onChange={(e) => setStr("carteGriseNumber", e.target.value)}
                     />
                   </Field>
-                  <Field label="Date carte grise">
+                  <Field label="Date carte grise (reçue)">
                     <input
                       type="date"
                       className={input}
@@ -319,17 +464,64 @@ export function EngineRegistrationDialog({
                       onChange={(e) => setStr("carteGriseDate", e.target.value)}
                     />
                   </Field>
-                  <div className="sm:col-span-2">
-                    <Field label="Remise au client (date)" hint="Renseigner une fois la carte grise remise.">
-                      <input
-                        type="date"
-                        className={input}
-                        value={reg.deliveredToClientDate ?? ""}
-                        disabled={!canEdit}
-                        onChange={(e) => setStr("deliveredToClientDate", e.target.value)}
-                      />
-                    </Field>
-                  </div>
+                </div>
+
+                {/* Remise au client — traçabilité anti-litige (clôture le dossier) */}
+                <div className="mt-4 rounded-sm border border-fs-accent/25 bg-[color-mix(in_srgb,var(--fs-accent)_6%,transparent)] p-3">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 accent-fs-accent"
+                      checked={reg.carteGriseDelivered}
+                      disabled={!canEdit || !hasCarteGrise}
+                      onChange={(e) => toggleCarteGriseDelivered(e.target.checked)}
+                    />
+                    <span className="text-sm font-semibold text-fs-text">
+                      Carte grise remise au client
+                    </span>
+                  </label>
+                  {!hasCarteGrise ? (
+                    <p className="mt-2 text-[11px] text-neutral-500">
+                      Renseignez d&apos;abord la carte grise reçue (n° ou date) avant d&apos;enregistrer
+                      la remise.
+                    </p>
+                  ) : (
+                    <p className="mt-2 text-[11px] text-neutral-500">
+                      Enregistrez qui a récupéré la carte grise et quand — clôture du dossier, preuve
+                      en cas de contestation.
+                    </p>
+                  )}
+                  {reg.carteGriseDelivered ? (
+                    <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                      <Field label="Date de remise">
+                        <input
+                          type="date"
+                          className={input}
+                          value={reg.deliveredToClientDate ?? ""}
+                          disabled={!canEdit}
+                          onChange={(e) => setStr("deliveredToClientDate", e.target.value)}
+                        />
+                      </Field>
+                      <Field label="Remis par (agent)">
+                        <input
+                          className={input}
+                          value={reg.carteGriseDeliveredBy ?? ""}
+                          disabled={!canEdit}
+                          placeholder="Nom de l'agent"
+                          onChange={(e) => setStr("carteGriseDeliveredBy", e.target.value)}
+                        />
+                      </Field>
+                      <Field label="Reçu par" hint="Client ou mandataire">
+                        <input
+                          className={input}
+                          value={reg.carteGriseReceivedBy ?? ""}
+                          disabled={!canEdit}
+                          placeholder="Nom de la personne"
+                          onChange={(e) => setStr("carteGriseReceivedBy", e.target.value)}
+                        />
+                      </Field>
+                    </div>
+                  ) : null}
                 </div>
               </DocCard>
 
@@ -355,7 +547,7 @@ export function EngineRegistrationDialog({
                   if (!busy) onClose();
                 }}
                 disabled={busy}
-                className="rounded-[10px] px-4 py-2.5 text-sm font-semibold text-fs-accent"
+                className="rounded-sm px-4 py-2.5 text-sm font-semibold text-fs-accent"
               >
                 Annuler
               </button>
@@ -363,7 +555,7 @@ export function EngineRegistrationDialog({
                 type="button"
                 onClick={() => saveMut.mutate()}
                 disabled={busy}
-                className="inline-flex min-h-[44px] min-w-[160px] items-center justify-center rounded-[10px] bg-fs-accent px-4 text-sm font-semibold text-white disabled:opacity-50"
+                className="inline-flex min-h-[44px] min-w-[160px] items-center justify-center rounded-sm bg-fs-accent px-4 text-sm font-semibold text-white disabled:opacity-50"
               >
                 {busy ? (
                   <span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
