@@ -1,5 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { registerOutboxHandler } from "@/lib/sync/sync-manager";
+import { persistEngineSale } from "@/lib/features/engine-sales/api";
+import type { CreateEngineSaleInput } from "@/lib/features/engine-sales/types";
 
 function toNum(v: unknown): number {
   const n = typeof v === "number" ? v : Number(v);
@@ -294,5 +296,29 @@ export function registerOutboxHandlers(): void {
         });
       }
     }
+  });
+
+  registerOutboxHandler("engine_sale_create", async (supabase, payload) => {
+    const p = payload as {
+      params: CreateEngineSaleInput;
+      createdBy?: string;
+      clientRequestId: string;
+    };
+    // `createdBy` capturé hors ligne ; on retombe sur l'utilisateur courant si absent.
+    const uid = p.createdBy && p.createdBy.length > 0 ? p.createdBy : await requireUserId(supabase);
+
+    const result = await persistEngineSale(supabase, p.params, uid, p.clientRequestId);
+
+    const { notifyCompanyOwnersPush } = await import(
+      "@/lib/features/push/company-owners-push-client"
+    );
+    const total =
+      Math.max(1, Math.trunc(p.params.quantity)) * Math.max(0, p.params.unitPrice);
+    await notifyCompanyOwnersPush({
+      companyIds: [p.params.companyId],
+      title: "Nouvelle vente d'engin",
+      body: `${result.saleNumber} · ${total.toLocaleString("fr-FR")} FCFA`,
+      url: "/engins",
+    });
   });
 }

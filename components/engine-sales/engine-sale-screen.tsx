@@ -219,6 +219,13 @@ export function EngineSaleScreen({ storeId }: { storeId: string }) {
     onSuccess: async (res) => {
       await qc.invalidateQueries({ queryKey: queryKeys.engineSales({ companyId, storeId }) });
       await qc.invalidateQueries({ queryKey: queryKeys.productInventory(storeId) });
+      // Vente créée hors ligne (mise en file d'attente) : pas de facture PDF tant que
+      // la synchronisation n'a pas eu lieu côté serveur.
+      if (res.saleId.startsWith("offline:")) {
+        toast.success("Vente enregistrée localement. Synchronisation à la reconnexion.");
+        router.push(ROUTES.engines);
+        return;
+      }
       toast.success(`Vente enregistrée · ${res.saleNumber}`);
       window.open(`/api/pdf/engine-invoice?saleId=${encodeURIComponent(res.saleId)}`, "_blank");
       router.push(ROUTES.engines);

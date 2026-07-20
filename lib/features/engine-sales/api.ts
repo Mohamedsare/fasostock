@@ -1,5 +1,7 @@
 "use client";
 
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { enqueueOutbox } from "@/lib/db/dexie-db";
 import { createClient } from "@/lib/supabase/client";
 import { notifyCompanyOwnersPush } from "@/lib/features/push/company-owners-push-client";
 import { purgeCancelledSaleAsOwner } from "@/lib/features/sales/api";
@@ -8,7 +10,9 @@ import type {
   CreateEngineSaleInput,
   CreateEngineSaleResult,
   EngineCondition,
+  EnginePaymentStatus,
   EngineSaleDetail,
+  EngineSalePaymentLine,
   EngineWheels,
   UpdateEngineSaleDetailsInput,
 } from "./types";
@@ -26,9 +30,32 @@ export type EngineSaleListItem = {
   status: string;
   storeId: string;
   clientName: string | null;
+  clientPhone: string | null;
   engineDesignation: string | null;
+  engineBrand: string | null;
+  engineModel: string | null;
+  engineChassis: string | null;
   verificationToken: string | null;
+  /** Somme des règlements enregistrés. */
+  amountPaid: number;
+  /** Reste à payer (jamais négatif). */
+  remaining: number;
+  /** Statut de règlement dérivé (voir `enginePaymentStatus`). */
+  paymentStatus: EnginePaymentStatus;
 };
+
+/** Dérive le statut de règlement à partir du total et du montant déjà payé. */
+export function enginePaymentStatus(total: number, amountPaid: number): EnginePaymentStatus {
+  if (amountPaid <= 0) return "unpaid";
+  // Tolérance d'arrondi (paiements en FCFA — entiers, mais on reste défensif).
+  if (amountPaid >= total - 0.5) return "paid";
+  return "partial";
+}
+
+function sumPayments(raw: unknown): number {
+  const arr = Array.isArray(raw) ? raw : [];
+  return arr.reduce((s, p) => s + Number((p as { amount?: unknown })?.amount ?? 0), 0);
+}
 
 /** Liste des ventes d'engins d'une entreprise (option : filtrer par boutique). */
 export async function listEngineSales(params: {
@@ -39,63 +66,111 @@ export async function listEngineSales(params: {
   let q = supabase
     .from("sales")
     .select(
-      "id, sale_number, created_at, total, status, store_id, engine_sale_details(client_name, engine_designation, verification_token)",
+      "id, sale_number, created_at, total, status, store_id, sale_payments(amount), engine_sale_details(client_name, client_phone1, engine_designation, engine_brand, engine_model, engine_chassis, verification_token)",
     )
     .eq("company_id", params.companyId)
     .eq("sale_kind", "engine")
     .order("created_at", { ascending: false })
-    .limit(200);
+    .limit(500);
   if (params.storeId) q = q.eq("store_id", params.storeId);
   const { data, error } = await q;
   if (error) throw error;
   return (data ?? []).map((row) => {
     const r = row as Record<string, unknown>;
     const d = r.engine_sale_details as
-      | { client_name?: string; engine_designation?: string; verification_token?: string }
-      | { client_name?: string; engine_designation?: string; verification_token?: string }[]
+      | Record<string, string | null>
+      | Record<string, string | null>[]
       | null;
     const det = Array.isArray(d) ? d[0] : d;
+    const total = Number(r.total ?? 0);
+    const status = String(r.status ?? "");
+    // Une vente annulée n'a plus de reste dû (le règlement suit l'annulation métier).
+    const amountPaid = status === "cancelled" ? 0 : sumPayments(r.sale_payments);
     return {
       saleId: String(r.id),
       saleNumber: String(r.sale_number ?? r.id),
       createdAt: String(r.created_at ?? ""),
-      total: Number(r.total ?? 0),
-      status: String(r.status ?? ""),
+      total,
+      status,
       storeId: String(r.store_id ?? ""),
       clientName: det?.client_name ?? null,
+      clientPhone: det?.client_phone1 ?? null,
       engineDesignation: det?.engine_designation ?? null,
+      engineBrand: det?.engine_brand ?? null,
+      engineModel: det?.engine_model ?? null,
+      engineChassis: det?.engine_chassis ?? null,
       verificationToken: det?.verification_token ?? null,
+      amountPaid,
+      remaining: Math.max(0, total - amountPaid),
+      paymentStatus: enginePaymentStatus(total, amountPaid),
     };
   });
 }
 
 /**
- * Crée une vente d'engin : réutilise `create_sale_with_stock` (stock + paiements
- * comme le POS), marque `sale_kind='engine'`, puis écrit `engine_sale_details`.
+ * Rattache (ou crée) une fiche client pour une vente d'engin à crédit, afin que la
+ * dette apparaisse et se gère dans la page **Crédit** (comme une vente standard à crédit).
+ * Dédoublonnage par **téléphone exact** ; sinon création d'une nouvelle fiche.
+ * Retourne l'id client, ou `null` si impossible.
  */
-export async function createEngineSale(
-  params: CreateEngineSaleInput,
-): Promise<CreateEngineSaleResult> {
-  const supabase = createClient();
-  const {
-    data: { user },
-    error: userErr,
-  } = await supabase.auth.getUser();
-  if (userErr) throw userErr;
-  if (!user) throw new Error("Utilisateur non authentifié.");
+async function resolveEngineCustomerId(
+  supabase: SupabaseClient,
+  companyId: string,
+  client: CreateEngineSaleInput["client"],
+): Promise<string | null> {
+  const phone = (client.phone1 ?? "").trim();
+  if (phone) {
+    const { data, error } = await supabase
+      .from("customers")
+      .select("id")
+      .eq("company_id", companyId)
+      .eq("phone", phone)
+      .limit(1);
+    if (error) throw error;
+    const rows = (data ?? []) as Array<{ id?: string }>;
+    if (rows.length > 0 && rows[0]?.id) return String(rows[0].id);
+  }
+  const { data: created, error: cErr } = await supabase
+    .from("customers")
+    .insert({
+      company_id: companyId,
+      name: nn(client.name) ?? "Client engin",
+      type: "individual",
+      phone: phone || null,
+      email: nn(client.email),
+      address: nn(client.address),
+    })
+    .select("id")
+    .single();
+  if (cErr) throw cErr;
+  return (created as { id?: string }).id ?? null;
+}
 
+/**
+ * Écrit une vente d'engin dans Supabase (réutilise `create_sale_with_stock` : stock +
+ * paiements comme le POS), marque `sale_kind='engine'`, puis écrit `engine_sale_details`.
+ *
+ * **Idempotent** : le RPC déduplique via `p_client_request_id`, et l'écriture des détails
+ * passe par un upsert `ignoreDuplicates` sur la PK `sale_id`. Une ré-exécution (retry outbox
+ * après une sync partielle) ne crée donc jamais de doublon. Partagé entre le chemin en ligne
+ * et le handler outbox `engine_sale_create` (création hors ligne).
+ */
+export async function persistEngineSale(
+  supabase: SupabaseClient,
+  params: CreateEngineSaleInput,
+  createdBy: string,
+  clientRequestId: string,
+): Promise<CreateEngineSaleResult> {
   const qty = Math.max(1, Math.trunc(params.quantity));
   const unitPrice = Math.max(0, params.unitPrice);
   const total = qty * unitPrice;
-
-  const clientRequestId = crypto.randomUUID();
 
   // 1. Vente + stock via le RPC existant (une seule ligne : l'engin).
   const { data: saleIdRaw, error } = await supabase.rpc("create_sale_with_stock", {
     p_company_id: params.companyId,
     p_store_id: params.storeId,
     p_customer_id: null,
-    p_created_by: user.id,
+    p_created_by: createdBy,
     p_items: [
       {
         product_id: params.productId,
@@ -123,10 +198,9 @@ export async function createEngineSale(
     .eq("id", saleId);
   if (kindErr) throw kindErr;
 
-  // 3. Détails engin/client. verification_token généré par défaut côté DB.
-  const { data: detailRow, error: detErr } = await supabase
-    .from("engine_sale_details")
-    .insert({
+  // 3. Détails engin/client (upsert idempotent). verification_token généré par la DB.
+  const { error: detErr } = await supabase.from("engine_sale_details").upsert(
+    {
       sale_id: saleId,
       company_id: params.companyId,
       client_name: nn(params.client.name),
@@ -162,16 +236,46 @@ export async function createEngineSale(
       acc_other: nn(params.accessories.other),
       observations: nn(params.observations),
       internal_reference: nn(params.internalReference),
-    })
-    .select("verification_token")
-    .single();
+    },
+    { onConflict: "sale_id", ignoreDuplicates: true },
+  );
   if (detErr) throw detErr;
 
+  // 3.b Dette engin → rattacher une fiche client pour un suivi dans la page Crédit.
+  //     Uniquement s'il reste un solde dû. Idempotent : on ne (re)lie que si la vente
+  //     n'a pas déjà un client → aucun doublon même au rejouage de la file outbox.
+  const amountPaid = params.payments
+    .filter((p) => p.amount > 0)
+    .reduce((s, p) => s + p.amount, 0);
+  if (total - amountPaid > 0.0001) {
+    const { data: meta } = await supabase
+      .from("sales")
+      .select("customer_id")
+      .eq("id", saleId)
+      .maybeSingle();
+    const linked = (meta as { customer_id?: string | null } | null)?.customer_id ?? null;
+    if (!linked) {
+      const customerId = await resolveEngineCustomerId(supabase, params.companyId, params.client);
+      if (customerId) {
+        const { error: linkErr } = await supabase
+          .from("sales")
+          .update({ customer_id: customerId })
+          .eq("id", saleId);
+        if (linkErr) throw linkErr;
+      }
+    }
+  }
+
+  // 4. Token de vérification + numéro de vente (lecture après écriture : robuste aux retries).
+  const { data: detailRow } = await supabase
+    .from("engine_sale_details")
+    .select("verification_token")
+    .eq("sale_id", saleId)
+    .maybeSingle();
   const verificationToken = String(
-    (detailRow as { verification_token?: string }).verification_token ?? "",
+    (detailRow as { verification_token?: string } | null)?.verification_token ?? "",
   );
 
-  // 4. Numéro de vente pour l'affichage / la facture.
   const { data: saleRow } = await supabase
     .from("sales")
     .select("sale_number")
@@ -179,15 +283,56 @@ export async function createEngineSale(
     .maybeSingle();
   const saleNumber = String((saleRow as { sale_number?: string } | null)?.sale_number ?? saleId);
 
-  // 5. Notification propriétaires (best-effort, non bloquant).
+  return { saleId, saleNumber, verificationToken };
+}
+
+/**
+ * Crée une vente d'engin.
+ *
+ * - **En ligne** : écrit immédiatement (via `persistEngineSale`) et notifie les propriétaires.
+ * - **Hors ligne** : met la vente en file d'attente (outbox `engine_sale_create`, handler
+ *   `lib/sync/register-handlers.ts`), synchronisée automatiquement au retour du réseau —
+ *   exactement comme le POS (`pos_sale_create`). Retourne alors un `saleId` `offline:*`
+ *   (l'appelant saute la facture PDF, disponible après synchronisation).
+ */
+export async function createEngineSale(
+  params: CreateEngineSaleInput,
+): Promise<CreateEngineSaleResult> {
+  const supabase = createClient();
+  const {
+    data: { user },
+    error: userErr,
+  } = await supabase.auth.getUser();
+  if (userErr) throw userErr;
+  if (!user) throw new Error("Utilisateur non authentifié.");
+
+  const clientRequestId = crypto.randomUUID();
+
+  if (typeof navigator !== "undefined" && !navigator.onLine) {
+    await enqueueOutbox("engine_sale_create", {
+      params,
+      createdBy: user.id,
+      clientRequestId,
+    });
+    return {
+      saleId: `offline:${clientRequestId}`,
+      saleNumber: "Hors ligne — en attente sync",
+      verificationToken: "",
+    };
+  }
+
+  const result = await persistEngineSale(supabase, params, user.id, clientRequestId);
+
+  const total = Math.max(1, Math.trunc(params.quantity)) * Math.max(0, params.unitPrice);
+  // Notification propriétaires (best-effort, non bloquant).
   void notifyCompanyOwnersPush({
     companyIds: [params.companyId],
     title: "Nouvelle vente d'engin",
-    body: `${saleNumber} · ${total.toLocaleString("fr-FR")} FCFA`,
+    body: `${result.saleNumber} · ${total.toLocaleString("fr-FR")} FCFA`,
     url: "/engins",
   });
 
-  return { saleId, saleNumber, verificationToken };
+  return result;
 }
 
 /** Détail complet d'une vente d'engin (vue + pré-remplissage de l'édition). */
@@ -195,17 +340,39 @@ export async function getEngineSaleDetail(saleId: string): Promise<EngineSaleDet
   const supabase = createClient();
   const { data, error } = await supabase
     .from("engine_sale_details")
-    .select("*, sale:sales(sale_number, status, created_at, store_id, total)")
+    .select(
+      "*, sale:sales(sale_number, status, created_at, store_id, total, sale_payments(id, method, amount, reference, created_at))",
+    )
     .eq("sale_id", saleId)
     .maybeSingle();
   if (error) throw error;
   if (!data) return null;
   const d = data as Record<string, unknown>;
-  const saleRaw = d.sale as
-    | { sale_number?: string; status?: string; created_at?: string; store_id?: string; total?: number }
-    | { sale_number?: string; status?: string; created_at?: string; store_id?: string; total?: number }[]
-    | null;
+  type SaleRaw = {
+    sale_number?: string;
+    status?: string;
+    created_at?: string;
+    store_id?: string;
+    total?: number;
+    sale_payments?: Array<{
+      id?: string;
+      method?: string;
+      amount?: number;
+      reference?: string | null;
+      created_at?: string;
+    }> | null;
+  };
+  const saleRaw = d.sale as SaleRaw | SaleRaw[] | null;
   const sale = Array.isArray(saleRaw) ? saleRaw[0] : saleRaw;
+  const payments: EngineSalePaymentLine[] = (sale?.sale_payments ?? [])
+    .map((p) => ({
+      id: String(p.id ?? crypto.randomUUID()),
+      method: String(p.method ?? ""),
+      amount: Number(p.amount ?? 0),
+      reference: p.reference ?? null,
+      createdAt: String(p.created_at ?? ""),
+    }))
+    .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   return {
     saleId,
     saleNumber: String(sale?.sale_number ?? saleId),
@@ -255,6 +422,7 @@ export async function getEngineSaleDetail(saleId: string): Promise<EngineSaleDet
     observations: (d.observations as string) ?? null,
     internalReference: (d.internal_reference as string) ?? null,
     verificationToken: (d.verification_token as string) ?? null,
+    payments,
   };
 }
 

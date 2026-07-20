@@ -1,7 +1,9 @@
 "use client";
 
 import { FsCard, fsInputClass } from "@/components/ui/fs-screen-primitives";
+import { EngineCollectPaymentDialog } from "@/components/engine-sales/engine-collect-payment-dialog";
 import {
+  enginePaymentStatus,
   getEngineSaleDetail,
   updateEngineSaleDetails,
 } from "@/lib/features/engine-sales/api";
@@ -27,6 +29,7 @@ import {
   MdClose,
   MdDownload,
   MdEdit,
+  MdPayments,
   MdPrint,
 } from "react-icons/md";
 
@@ -35,6 +38,32 @@ function wheelsLabel(w: EngineWheels | null): string {
 }
 function conditionLabel(c: EngineCondition | null): string {
   return c === "neuf" ? "Neuf" : c === "occasion" ? "Occasion" : "—";
+}
+
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  cash: "Espèces",
+  mobile_money: "Mobile money",
+  transfer: "Virement",
+  card: "Carte",
+  other: "Autre",
+};
+function paymentMethodLabel(m: string): string {
+  return PAYMENT_METHOD_LABELS[m] ?? (m || "—");
+}
+
+function formatPaymentDate(iso: string): string {
+  try {
+    return new Date(iso).toLocaleString("fr-FR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
+  } catch {
+    return iso.slice(0, 16);
+  }
 }
 
 export function EngineSaleDetailDialog({
@@ -55,6 +84,7 @@ export function EngineSaleDetailDialog({
   const qc = useQueryClient();
   const [editing, setEditing] = useState(false);
   const [busyAction, setBusyAction] = useState<"print" | "download" | null>(null);
+  const [collecting, setCollecting] = useState(false);
 
   const detailQ = useQuery({
     queryKey: ["engine-sale-detail", saleId],
@@ -83,7 +113,10 @@ export function EngineSaleDetailDialog({
   }, [detail]);
 
   useEffect(() => {
-    if (!open) setEditing(false);
+    if (!open) {
+      setEditing(false);
+      setCollecting(false);
+    }
   }, [open]);
 
   const saveMut = useMutation({
@@ -137,6 +170,16 @@ export function EngineSaleDetailDialog({
 
   const input = fsInputClass("rounded-md border border-black/8");
   const isCancelled = detail?.status === "cancelled";
+
+  const payments = detail?.payments ?? [];
+  const amountPaid = payments.reduce((s, p) => s + p.amount, 0);
+  const remaining = Math.max(0, (detail?.total ?? 0) - amountPaid);
+  const payStatus = enginePaymentStatus(detail?.total ?? 0, amountPaid);
+  const payStatusCfg = {
+    paid: { label: "Payé", cls: "bg-emerald-50 text-emerald-700" },
+    partial: { label: "Partiel", cls: "bg-amber-50 text-amber-700" },
+    unpaid: { label: "Impayé", cls: "bg-red-50 text-red-700" },
+  }[payStatus];
 
   // Affiche une valeur (lecture) ou un champ (édition).
   const RowText = ({ label, value }: { label: string; value: string | null }) => (
@@ -364,6 +407,92 @@ export function EngineSaleDetailDialog({
                   <RowText label="Référence interne" value={detail.internalReference} />
                   <RowText label="Observations" value={detail.observations} />
                 </div>
+
+                {/* Paiement — pleine largeur */}
+                <div className="sm:col-span-2">
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <p className="text-xs font-bold uppercase text-fs-accent">Paiement</p>
+                    <div className="flex items-center gap-2">
+                      {!isCancelled && remaining > 0 && canEdit ? (
+                        <button
+                          type="button"
+                          onClick={() => setCollecting(true)}
+                          className="inline-flex h-8 items-center gap-1 rounded-lg bg-emerald-600 px-2.5 text-xs font-semibold text-white transition-colors hover:bg-emerald-700"
+                        >
+                          <MdPayments className="h-4 w-4" aria-hidden />
+                          Encaisser
+                        </button>
+                      ) : null}
+                      {!isCancelled ? (
+                        <span
+                          className={cn(
+                            "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold",
+                            payStatusCfg.cls,
+                          )}
+                        >
+                          {payStatusCfg.label}
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="rounded-lg bg-fs-surface-container/60 px-3 py-2">
+                      <p className="text-[11px] font-medium text-neutral-500">Total</p>
+                      <p className="text-sm font-bold text-fs-text">{formatCurrency(detail.total)}</p>
+                    </div>
+                    <div className="rounded-lg bg-fs-surface-container/60 px-3 py-2">
+                      <p className="text-[11px] font-medium text-neutral-500">Payé</p>
+                      <p className="text-sm font-bold text-emerald-700">{formatCurrency(amountPaid)}</p>
+                    </div>
+                    <div className="rounded-lg bg-fs-surface-container/60 px-3 py-2">
+                      <p className="text-[11px] font-medium text-neutral-500">Reste</p>
+                      <p
+                        className={cn(
+                          "text-sm font-bold",
+                          remaining > 0 ? "text-amber-700" : "text-neutral-500",
+                        )}
+                      >
+                        {formatCurrency(remaining)}
+                      </p>
+                    </div>
+                  </div>
+
+                  {payments.length > 0 ? (
+                    <div className="mt-3 overflow-hidden rounded-lg border border-black/6">
+                      <table className="w-full border-collapse text-left text-sm">
+                        <thead>
+                          <tr className="border-b border-black/6 bg-fs-surface-container/60 text-xs text-neutral-600">
+                            <th className="px-3 py-2 font-semibold">Date</th>
+                            <th className="px-3 py-2 font-semibold">Mode</th>
+                            <th className="px-3 py-2 font-semibold">Référence</th>
+                            <th className="px-3 py-2 text-right font-semibold">Montant</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {payments.map((p) => (
+                            <tr key={p.id} className="border-b border-black/4 last:border-0">
+                              <td className="whitespace-nowrap px-3 py-2 text-neutral-700">
+                                {p.createdAt ? formatPaymentDate(p.createdAt) : "—"}
+                              </td>
+                              <td className="px-3 py-2">{paymentMethodLabel(p.method)}</td>
+                              <td className="max-w-[160px] truncate px-3 py-2 text-neutral-600">
+                                {p.reference || "—"}
+                              </td>
+                              <td className="whitespace-nowrap px-3 py-2 text-right font-semibold text-fs-text">
+                                {formatCurrency(p.amount)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <p className="mt-3 rounded-lg bg-fs-surface-container/40 px-3 py-2.5 text-sm text-neutral-500">
+                      Aucun règlement enregistré.
+                    </p>
+                  )}
+                </div>
               </div>
             )}
           </div>
@@ -395,6 +524,27 @@ export function EngineSaleDetailDialog({
           ) : null}
         </div>
       </FsCard>
+
+      <EngineCollectPaymentDialog
+        target={
+          detail
+            ? {
+                saleId: detail.saleId,
+                saleNumber: detail.saleNumber,
+                total: detail.total,
+                remaining,
+              }
+            : null
+        }
+        open={collecting && detail != null}
+        onClose={() => setCollecting(false)}
+        onPaid={async () => {
+          await qc.invalidateQueries({ queryKey: ["engine-sale-detail", saleId] });
+          await qc.invalidateQueries({
+            queryKey: queryKeys.engineSales({ companyId, storeId: currentStoreFilterId }),
+          });
+        }}
+      />
     </div>
   );
 }

@@ -1,8 +1,12 @@
 "use client";
 
 import { EngineSaleDetailDialog } from "@/components/engine-sales/engine-sale-detail-dialog";
+import {
+  EngineCollectPaymentDialog,
+  type EngineCollectTarget,
+} from "@/components/engine-sales/engine-collect-payment-dialog";
 import { FsHorizontalScroll } from "@/components/ui/fs-horizontal-scroll";
-import { FsCard, FsPage } from "@/components/ui/fs-screen-primitives";
+import { FsCard, FsPage, fsInputClass } from "@/components/ui/fs-screen-primitives";
 import { P } from "@/lib/constants/permissions";
 import { storeEngineSalePath, engineSaleVerifyPath } from "@/lib/config/routes";
 import { deleteEngineSale, listEngineSales } from "@/lib/features/engine-sales/api";
@@ -16,16 +20,20 @@ import { queryKeys } from "@/lib/query/query-keys";
 import { formatCurrency } from "@/lib/utils/currency";
 import { messageFromUnknownError, toast } from "@/lib/toast";
 import { cn } from "@/lib/utils/cn";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { EnginePaymentStatus } from "@/lib/features/engine-sales/types";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
+  MdClose,
   MdDeleteOutline,
   MdDescription,
   MdDownload,
   MdOutlineBlock,
   MdOutlineVisibility,
+  MdPayments,
   MdPrint,
+  MdSearch,
   MdTwoWheeler,
   MdVerified,
 } from "react-icons/md";
@@ -61,6 +69,52 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
+/** Badge d'état de règlement (Payé / Partiel / Impayé). Neutre si vente annulée. */
+function PaymentBadge({
+  status,
+  paymentStatus,
+  remaining,
+}: {
+  status: string;
+  paymentStatus: EnginePaymentStatus;
+  remaining: number;
+}) {
+  if (status === "cancelled") {
+    return <span className="text-xs text-neutral-400">—</span>;
+  }
+  const cfg = {
+    paid: { label: "Payé", cls: "bg-emerald-50 text-emerald-700" },
+    partial: { label: "Partiel", cls: "bg-amber-50 text-amber-700" },
+    unpaid: { label: "Impayé", cls: "bg-red-50 text-red-700" },
+  }[paymentStatus];
+  return (
+    <span className="inline-flex flex-col items-start gap-0.5">
+      <span
+        className={cn(
+          "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold",
+          cfg.cls,
+        )}
+      >
+        {cfg.label}
+      </span>
+      {paymentStatus === "partial" ? (
+        <span className="text-[10px] font-medium text-amber-700">
+          Reste {formatCurrency(remaining)}
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
+/** Normalisation recherche : minuscules + suppression des accents. */
+function normalize(s: string): string {
+  return s
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .trim();
+}
+
 const iconBtn =
   "inline-flex h-9 w-9 items-center justify-center rounded-lg text-neutral-600 transition-colors";
 
@@ -76,9 +130,17 @@ export function EnginesScreen() {
   const [cancelTarget, setCancelTarget] = useState<{ id: string; label: string } | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<{ number: string } | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
+  const [collectTarget, setCollectTarget] = useState<EngineCollectTarget | null>(null);
   const [actionBusy, setActionBusy] = useState<{ id: string; kind: "print" | "download" } | null>(
     null,
   );
+  // Recherche : saisie immédiate + terme débouncé (filtrage instantané, hors ligne, fiable).
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 180);
+    return () => clearTimeout(t);
+  }, [search]);
 
   async function doPrint(saleId: string) {
     try {
@@ -115,8 +177,15 @@ export function EnginesScreen() {
   const listQ = useQuery({
     queryKey: queryKeys.engineSales({ companyId, storeId: currentStoreId }),
     queryFn: () => listEngineSales({ companyId, storeId: currentStoreId }),
-    enabled: Boolean(companyId) && storeEngineOn,
+    // Actif dès qu'on a une entreprise (indépendamment du flag boutique) : le cache
+    // reste chaud et l'historique persisté en IndexedDB ne disparaît jamais lors d'un
+    // refetch ou d'une perte transitoire du contexte (offline-first, comme la page Ventes).
+    enabled: Boolean(companyId),
+    // Garde la liste précédente pendant un changement de clé (boutique/contexte) :
+    // l'historique ne se vide pas le temps du refetch.
+    placeholderData: keepPreviousData,
     refetchInterval: 15_000,
+    refetchIntervalInBackground: true,
   });
 
   const cancelMut = useMutation({
@@ -147,7 +216,11 @@ export function EnginesScreen() {
     onError: (e) => toast.error(messageFromUnknownError(e, "Suppression impossible.")),
   });
 
-  if (isLoading) {
+  const rows = listQ.data ?? [];
+
+  // Spinner uniquement au tout premier chargement, quand aucun historique
+  // (même persisté hors ligne) n'est encore disponible.
+  if (isLoading && rows.length === 0) {
     return (
       <FsPage className="flex min-h-0 flex-1 flex-col px-5 pt-4 sm:px-5 min-[900px]:px-7 min-[900px]:pt-7">
         <div className="flex min-h-[40vh] items-center justify-center">
@@ -157,7 +230,11 @@ export function EnginesScreen() {
     );
   }
 
-  if (!helpers?.canEngineSales || !storeEngineOn) {
+  // « Module non activé » seulement si le module est réellement désactivé ET qu'il
+  // n'existe aucun historique à afficher. Dès qu'on a des ventes en cache, on garde
+  // la liste visible : elle ne doit jamais disparaître sur un basculement transitoire
+  // du contexte (refetch app-context, sync outbox, perte de réseau).
+  if ((!helpers?.canEngineSales || !storeEngineOn) && rows.length === 0) {
     return (
       <FsPage className="flex min-h-0 flex-1 flex-col px-5 pt-4 sm:px-5 min-[900px]:px-7 min-[900px]:pt-7">
         <FsCard className="mt-6" padding="p-8">
@@ -169,8 +246,28 @@ export function EnginesScreen() {
     );
   }
 
-  const rows = listQ.data ?? [];
   const createHref = currentStoreId && canCreate ? storeEngineSalePath(currentStoreId) : null;
+
+  // Recherche instantanée côté client sur les ventes chargées (fiable + hors ligne).
+  // Couvre réf., client, téléphone, désignation/marque/modèle/châssis de l'engin.
+  const q = normalize(debouncedSearch);
+  const filteredRows = q
+    ? rows.filter((r) =>
+        normalize(
+          [
+            r.saleNumber,
+            r.clientName,
+            r.clientPhone,
+            r.engineDesignation,
+            r.engineBrand,
+            r.engineModel,
+            r.engineChassis,
+          ]
+            .filter(Boolean)
+            .join(" "),
+        ).includes(q),
+      )
+    : rows;
 
   return (
     <FsPage className="flex min-h-0 flex-1 flex-col px-5 pt-4 sm:px-5 min-[900px]:px-7 min-[900px]:pt-7">
@@ -206,7 +303,41 @@ export function EnginesScreen() {
         </div>
 
         <div>
-          <h2 className="mb-3 text-sm font-semibold text-fs-text">Historique des ventes d&apos;engins</h2>
+          <div className="mb-3 flex flex-col gap-3 min-[560px]:flex-row min-[560px]:items-center min-[560px]:justify-between">
+            <h2 className="text-sm font-semibold text-fs-text">
+              Historique des ventes d&apos;engins
+              {q && rows.length > 0 ? (
+                <span className="ml-2 font-normal text-neutral-500">
+                  · {filteredRows.length} résultat{filteredRows.length > 1 ? "s" : ""}
+                </span>
+              ) : null}
+            </h2>
+            {rows.length > 0 ? (
+              <div className="relative w-full min-[560px]:w-80">
+                <MdSearch
+                  className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-neutral-400"
+                  aria-hidden
+                />
+                <input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Rechercher (réf, client, châssis…)"
+                  className={fsInputClass("rounded-lg pl-10 pr-9")}
+                  aria-label="Rechercher une vente d'engin"
+                />
+                {search ? (
+                  <button
+                    type="button"
+                    onClick={() => setSearch("")}
+                    aria-label="Effacer la recherche"
+                    className="absolute right-2 top-1/2 inline-flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-neutral-400 hover:text-neutral-600"
+                  >
+                    <MdClose className="h-4 w-4" aria-hidden />
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
           {listQ.isLoading ? (
             <FsCard padding="p-8">
               <div className="flex justify-center">
@@ -217,10 +348,16 @@ export function EnginesScreen() {
             <FsCard padding="px-4 py-12">
               <p className="text-center text-base text-neutral-600">Aucune vente d&apos;engin.</p>
             </FsCard>
+          ) : filteredRows.length === 0 ? (
+            <FsCard padding="px-4 py-12">
+              <p className="text-center text-base text-neutral-600">
+                Aucune vente ne correspond à «&nbsp;{debouncedSearch}&nbsp;».
+              </p>
+            </FsCard>
           ) : (
             <FsCard className="overflow-hidden p-0" padding="p-0">
               <FsHorizontalScroll className="touch-pan-x">
-                <table className="w-full min-w-[880px] border-collapse text-left text-sm">
+                <table className="w-full min-w-[980px] border-collapse text-left text-sm">
                   <thead>
                     <tr className="border-b border-black/6 bg-fs-surface-container/80">
                       <th className="whitespace-nowrap px-4 py-3 font-semibold">Réf.</th>
@@ -229,11 +366,12 @@ export function EnginesScreen() {
                       <th className="whitespace-nowrap px-4 py-3 font-semibold">Engin</th>
                       <th className="whitespace-nowrap px-4 py-3 font-semibold">Statut</th>
                       <th className="whitespace-nowrap px-4 py-3 text-right font-semibold">Total</th>
+                      <th className="whitespace-nowrap px-4 py-3 font-semibold">Paiement</th>
                       <th className="whitespace-nowrap px-4 py-3 font-semibold">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {rows.map((r) => (
+                    {filteredRows.map((r) => (
                       <tr key={r.saleId} className="border-b border-black/4 last:border-0">
                         <td className="whitespace-nowrap px-4 py-3 font-medium text-fs-text">
                           {r.saleNumber}
@@ -260,8 +398,34 @@ export function EnginesScreen() {
                         >
                           {formatCurrency(r.total)}
                         </td>
+                        <td className="whitespace-nowrap px-4 py-3">
+                          <PaymentBadge
+                            status={r.status}
+                            paymentStatus={r.paymentStatus}
+                            remaining={r.remaining}
+                          />
+                        </td>
                         <td className="px-4 py-2">
                           <div className="flex items-center gap-1">
+                            {r.status !== "cancelled" && r.remaining > 0 && canEdit ? (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setCollectTarget({
+                                    saleId: r.saleId,
+                                    saleNumber: r.saleNumber,
+                                    total: r.total,
+                                    remaining: r.remaining,
+                                  })
+                                }
+                                title="Encaisser un paiement"
+                                aria-label="Encaisser un paiement"
+                                className="inline-flex h-9 items-center gap-1 rounded-lg bg-emerald-600 px-2.5 text-xs font-semibold text-white transition-colors hover:bg-emerald-700"
+                              >
+                                <MdPayments className="h-4 w-4" aria-hidden />
+                                Encaisser
+                              </button>
+                            ) : null}
                             <button
                               type="button"
                               onClick={() => setDetailId(r.saleId)}
@@ -428,6 +592,18 @@ export function EnginesScreen() {
         currentStoreFilterId={currentStoreId}
         canEdit={canEdit}
         onClose={() => setDetailId(null)}
+      />
+
+      <EngineCollectPaymentDialog
+        target={collectTarget}
+        open={collectTarget != null}
+        onClose={() => setCollectTarget(null)}
+        onPaid={async () => {
+          await qc.invalidateQueries({
+            queryKey: queryKeys.engineSales({ companyId, storeId: currentStoreId }),
+          });
+          await qc.invalidateQueries({ queryKey: ["engine-sale-detail"] });
+        }}
       />
     </FsPage>
   );

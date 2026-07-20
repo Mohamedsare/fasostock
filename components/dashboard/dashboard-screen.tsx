@@ -277,7 +277,7 @@ export function DashboardScreen() {
 
   if (isOwnerDashboard) {
     return (
-      <FsPage className="flex max-w-[100vw] flex-col overflow-x-hidden bg-fs-surface !px-2 !pt-3 min-[900px]:!px-6 min-[900px]:pt-6 sm:!px-4">
+      <FsPage className="flex max-w-[100vw] flex-col overflow-x-hidden bg-fs-surface !px-2 !pt-2 min-[900px]:!px-4 min-[900px]:!pt-3 sm:!px-3">
         {dashQ.isPending && !dashQ.data ? (
           <div className="flex flex-1 flex-col gap-3 py-8" aria-busy="true" aria-label="Chargement du tableau de bord">
             <div className="h-9 w-9 animate-spin rounded-full border-2 border-[#FF6B35] border-t-transparent" />

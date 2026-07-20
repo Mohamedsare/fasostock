@@ -4,7 +4,7 @@ import { formatUnknownErrorMessage } from "@/lib/utils/format-unknown-error";
 import { cn } from "@/lib/utils/cn";
 import type { ComponentType, ReactNode } from "react";
 
-/** Padding horizontal 12px (Flutter dashboard) → 20px sm+ (Produits / Ventes). Bas mobile : léger — le main du shell réserve déjà la bottom nav. Desktop : pb-10. */
+/** Padding réduit au maximum pour maximiser la surface de contenu : 8px mobile → 12px sm → 16px large. Bas mobile : léger — le main du shell réserve déjà la bottom nav. */
 export function FsPage({
   children,
   className,
@@ -15,8 +15,8 @@ export function FsPage({
   return (
     <div
       className={cn(
-        "min-w-0 px-3 pt-3 sm:px-5 sm:pt-5 min-[900px]:px-7",
-        "max-[1023px]:pb-6 min-[1024px]:pb-10",
+        "min-w-0 px-2 pt-2 sm:px-3 sm:pt-3 min-[900px]:px-4",
+        "max-[1023px]:pb-3 min-[1024px]:pb-5",
         className,
       )}
     >
@@ -44,7 +44,7 @@ export function FsScreenHeader({
   subtitleClassName?: string;
 }) {
   return (
-    <header className={cn("mb-3 sm:mb-4", className)}>
+    <header className={cn("mb-2 sm:mb-3", className)}>
       <h1
         className={cn(
           "text-sm font-semibold tracking-tight text-fs-text sm:text-xl sm:font-bold sm:tracking-tight",
@@ -71,7 +71,7 @@ export function FsScreenHeader({
 export function FsCard({
   children,
   className,
-  padding = "p-3 sm:p-4",
+  padding = "p-2.5 sm:p-3",
 }: {
   children: ReactNode;
   className?: string;
@@ -80,7 +80,7 @@ export function FsCard({
   return (
     <div
       className={cn(
-        "rounded-xl border border-black/[0.06] bg-fs-card shadow-sm sm:rounded-2xl",
+        "rounded-lg border border-black/[0.06] bg-fs-card shadow-sm sm:rounded-xl",
         padding,
         className,
       )}
@@ -190,7 +190,7 @@ export function FsStickyMobileActions({
   return (
     <div
       className={cn(
-        "sticky top-0 z-20 -mx-3 border-b border-black/[0.06] bg-fs-surface/95 px-3 py-2 backdrop-blur-sm min-[900px]:static min-[900px]:z-0 min-[900px]:mx-0 min-[900px]:border-0 min-[900px]:bg-transparent min-[900px]:p-0 min-[900px]:backdrop-blur-none",
+        "sticky top-0 z-20 -mx-2 border-b border-black/[0.06] bg-fs-surface/95 px-2 py-2 backdrop-blur-sm min-[900px]:static min-[900px]:z-0 min-[900px]:mx-0 min-[900px]:border-0 min-[900px]:bg-transparent min-[900px]:p-0 min-[900px]:backdrop-blur-none",
         className,
       )}
     >

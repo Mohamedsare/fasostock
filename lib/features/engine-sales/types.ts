@@ -71,6 +71,18 @@ export type CreateEngineSaleResult = {
   verificationToken: string;
 };
 
+/** Un règlement rattaché à la vente (table `sale_payments`). */
+export type EngineSalePaymentLine = {
+  id: string;
+  method: string;
+  amount: number;
+  reference: string | null;
+  createdAt: string;
+};
+
+/** Statut de règlement dérivé (total vs. somme des paiements). */
+export type EnginePaymentStatus = "paid" | "partial" | "unpaid";
+
 /** Détail complet d'une vente d'engin (vue + édition). */
 export type EngineSaleDetail = {
   saleId: string;
@@ -87,6 +99,8 @@ export type EngineSaleDetail = {
   observations: string | null;
   internalReference: string | null;
   verificationToken: string | null;
+  /** Règlements enregistrés pour cette vente. */
+  payments: EngineSalePaymentLine[];
 };
 
 /** Champs modifiables d'une vente d'engin (descriptifs — pas le montant/stock). */
