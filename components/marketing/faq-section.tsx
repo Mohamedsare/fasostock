@@ -46,14 +46,14 @@ export function FaqSection() {
   const renderItem = (item: FaqItem) => {
     const open = item.id === openId;
     return (
-      <article key={item.id} className="rounded-2xl border border-black/10 bg-white shadow-[0_10px_24px_-20px_rgba(15,23,42,0.45)]">
+      <article key={item.id} className="rounded-md border border-black/10 bg-white shadow-[0_10px_24px_-20px_rgba(15,23,42,0.45)]">
         <button
           type="button"
           onClick={() => setOpenId(open ? 0 : item.id)}
           className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
         >
           <div className="flex min-w-0 items-center gap-3">
-            <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#fff5ef] text-xs font-black text-fs-accent">
+            <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-[#fff5ef] text-xs font-black text-fs-accent">
               {String(item.id).padStart(2, "0")}
             </span>
             <span className="text-base font-black leading-tight text-[#1f2937]">{item.q}</span>
@@ -65,7 +65,7 @@ export function FaqSection() {
           <div className="border-t border-black/8 px-4 pb-4 pt-3">
             <p className="text-sm leading-relaxed text-neutral-700">{item.a}</p>
             {item.id === 1 ? (
-              <div className="mt-3 rounded-xl border border-[#f7d8c7] bg-[#fff7f1] px-3 py-2">
+              <div className="mt-3 rounded-md border border-[#f7d8c7] bg-[#fff7f1] px-3 py-2">
                 <p className="text-sm font-bold text-[#b45309]">
                   Vous vendez, encaissez et gérez votre stock même sans internet.
                 </p>
@@ -80,7 +80,7 @@ export function FaqSection() {
 
   return (
     <section className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6 sm:pb-12">
-      <div className="rounded-[1.7rem] border border-black/8 bg-[#fbfbfb] px-4 py-6 sm:px-8 sm:py-8">
+      <div className="rounded-md border border-black/8 bg-[#fbfbfb] px-4 py-6 sm:px-8 sm:py-8">
         <div className="text-center">
           <p className="inline-flex items-center gap-1.5 rounded-full bg-[#fff5ef] px-3 py-1 text-xs font-black uppercase tracking-wide text-fs-accent">
             <MdChat className="h-4 w-4" />
@@ -99,7 +99,7 @@ export function FaqSection() {
           <div data-fs-stagger className="space-y-2.5">{right.map(renderItem)}</div>
         </div>
 
-        <div className="mt-4 rounded-xl border border-fs-accent/25 bg-[#fff7f1] px-4 py-3">
+        <div className="mt-4 rounded-md border border-fs-accent/25 bg-[#fff7f1] px-4 py-3">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-center gap-3">
               <div className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-fs-accent text-white">
@@ -117,14 +117,14 @@ export function FaqSection() {
                 )}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-fs-accent px-5 py-2 text-sm font-black text-white"
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-fs-accent px-5 py-2 text-sm font-black text-white"
               >
                 <MdWhatsapp className="h-5 w-5" />
                 Discuter sur WhatsApp
               </Link>
               <Link
                 href="/register/select-activity"
-                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-fs-accent/45 bg-white px-5 py-2 text-sm font-black text-fs-accent"
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-fs-accent/45 bg-white px-5 py-2 text-sm font-black text-fs-accent"
               >
                 Demander une démo
               </Link>
@@ -132,7 +132,7 @@ export function FaqSection() {
           </div>
         </div>
 
-        <div className="mt-4 overflow-hidden rounded-xl border border-black/8 bg-white">
+        <div className="mt-4 overflow-hidden rounded-md border border-black/8 bg-white">
           <div className="grid grid-cols-1 divide-y divide-black/8 min-[860px]:grid-cols-5 min-[860px]:divide-x min-[860px]:divide-y-0">
             {[
               { icon: MdWifi, title: "Fonctionne hors ligne", text: "Continuez à vendre même sans connexion." },

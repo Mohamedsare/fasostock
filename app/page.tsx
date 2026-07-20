@@ -359,7 +359,7 @@ export default async function Home({
       <section id="accueil" className="mx-auto w-full max-w-7xl scroll-mt-24 px-4 pb-10 pt-5 sm:px-6 sm:pb-14 sm:pt-7">
         <div
           className={cn(
-            "relative overflow-hidden rounded-[2rem] border border-black/10 p-4 shadow-[0_28px_70px_-35px_rgba(17,24,39,0.4)] sm:p-6",
+            "relative overflow-hidden rounded-md border border-black/10 p-4 shadow-[0_28px_70px_-35px_rgba(17,24,39,0.4)] sm:p-6",
             heroBannerImageUrl
               ? "min-h-[420px] sm:min-h-[520px]"
               : "bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.95),rgba(246,246,246,0.9)_52%),linear-gradient(to_bottom,#fafafa,#f3f3f3)]",
@@ -443,19 +443,19 @@ export default async function Home({
                   href={supportWhatsappUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex min-h-10 items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-fs-accent px-4 py-2 text-xs font-extrabold uppercase tracking-wide text-white shadow-[0_18px_36px_-18px_rgba(232,93,44,0.95)] sm:min-h-11 sm:px-5 sm:py-2.5 sm:text-sm"
+                  className="inline-flex min-h-10 items-center justify-center gap-2 whitespace-nowrap rounded-md bg-fs-accent px-4 py-2 text-xs font-extrabold uppercase tracking-wide text-white shadow-[0_18px_36px_-18px_rgba(232,93,44,0.95)] sm:min-h-11 sm:px-5 sm:py-2.5 sm:text-sm"
                 >
                   <MdWhatsapp className="h-5 w-5" aria-hidden />
                   Démonstration
                 </Link>
                 <Link
                   href="/register/select-activity"
-                  className="inline-flex min-h-10 items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-black/10 bg-white px-4 py-2 text-xs font-bold text-neutral-800 sm:min-h-11 sm:px-5 sm:py-2.5 sm:text-sm"
+                  className="inline-flex min-h-10 items-center justify-center gap-2 whitespace-nowrap rounded-md border border-black/10 bg-white px-4 py-2 text-xs font-bold text-neutral-800 sm:min-h-11 sm:px-5 sm:py-2.5 sm:text-sm"
                 >
                   <MdOutlinePlayCircleFilled className="h-4 w-4 text-neutral-500 sm:h-5 sm:w-5" aria-hidden />
                   Voir en vidéo
                 </Link>
-                <InstallAppButton className="inline-flex min-h-10 items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-fs-accent/45 bg-white px-4 py-2 text-xs font-bold text-fs-accent sm:min-h-11 sm:px-5 sm:py-2.5 sm:text-sm" />
+                <InstallAppButton className="inline-flex min-h-10 items-center justify-center gap-2 whitespace-nowrap rounded-md border border-fs-accent/45 bg-white px-4 py-2 text-xs font-bold text-fs-accent sm:min-h-11 sm:px-5 sm:py-2.5 sm:text-sm" />
               </div>
             </div>
 
@@ -473,7 +473,7 @@ export default async function Home({
 
       {/* ── FEATURE STRIP ── */}
       <section className="mx-auto w-full max-w-7xl px-4 pb-4 sm:px-6">
-        <div className="overflow-hidden rounded-[1.2rem] border border-black/10 bg-white">
+        <div className="overflow-hidden rounded-md border border-black/10 bg-white">
           <div
             data-fs-stagger
             className="grid grid-cols-2 gap-px bg-black/8 lg:grid-cols-6"
@@ -502,7 +502,7 @@ export default async function Home({
 
       {/* ── TRUST STRIP ── */}
       <section className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6 sm:pb-10">
-        <div className="overflow-hidden rounded-[1.2rem] border border-[#eadfd8] bg-[#fff8f3]">
+        <div className="overflow-hidden rounded-md border border-[#eadfd8] bg-[#fff8f3]">
           <div
             data-fs-stagger
             className="grid grid-cols-2 gap-px bg-[#f0e5de] lg:grid-cols-4"
@@ -529,7 +529,7 @@ export default async function Home({
 
       {/* ── ACCOMPAGNEMENT ── */}
       <section className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6 sm:pb-12">
-        <div className="grid items-center gap-6 rounded-[1.7rem] border border-black/8 bg-[#f8f8f8] p-4 shadow-[0_22px_56px_-36px_rgba(17,24,39,0.38)] sm:p-6 lg:grid-cols-[1fr_1fr] lg:p-8">
+        <div className="grid items-center gap-6 rounded-md border border-black/8 bg-[#f8f8f8] p-4 shadow-[0_22px_56px_-36px_rgba(17,24,39,0.38)] sm:p-6 lg:grid-cols-[1fr_1fr] lg:p-8">
           <div className="max-w-[560px]">
             <p className="inline-flex items-center gap-2 rounded-full bg-[#fff3ea] px-3.5 py-1.5 text-xs font-black uppercase tracking-wide text-fs-accent">
               <MdGroups className="h-4 w-4" />
@@ -550,7 +550,7 @@ export default async function Home({
             <div className="mt-6 flex flex-col gap-3 min-[460px]:flex-row">
               <Link
                 href={supportDemoUrl}
-                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-fs-accent px-5 py-2.5 text-base font-extrabold text-white shadow-[0_20px_34px_-18px_rgba(232,93,44,0.9)]"
+                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-md bg-fs-accent px-5 py-2.5 text-base font-extrabold text-white shadow-[0_20px_34px_-18px_rgba(232,93,44,0.9)]"
               >
                 <MdCalendarMonth className="h-5 w-5" aria-hidden />
                 Demander une démo
@@ -559,7 +559,7 @@ export default async function Home({
                 href={supportWhatsappUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-[#3ab88f]/55 bg-[#f8fffb] px-5 py-2.5 text-base font-extrabold text-[#149a71]"
+                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-md border border-[#3ab88f]/55 bg-[#f8fffb] px-5 py-2.5 text-base font-extrabold text-[#149a71]"
               >
                 <MdWhatsapp className="h-5 w-5" aria-hidden />
                 WhatsApp
@@ -590,7 +590,7 @@ export default async function Home({
                 { title: "Formation", subtitle: "Formation de vos équipes", icon: MdCalendarMonth },
                 { title: "Suivi", subtitle: "Un suivi régulier de votre activité", icon: MdTrendingUp },
               ].map((item) => (
-                <article key={item.title} className="rounded-xl border border-black/10 bg-white/96 p-2.5 shadow-[0_14px_28px_-20px_rgba(17,24,39,0.5)]">
+                <article key={item.title} className="rounded-md border border-black/10 bg-white/96 p-2.5 shadow-[0_14px_28px_-20px_rgba(17,24,39,0.5)]">
                   <div className="flex items-start gap-2">
                     <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#fff3ea] text-fs-accent">
                       <item.icon className="h-4.5 w-4.5" aria-hidden />
@@ -610,16 +610,16 @@ export default async function Home({
                 alt="Conseiller FasoStock"
                 loading="lazy"
                 decoding="async"
-                className="relative z-[1] h-[350px] w-full rounded-[1.1rem] border border-black/10 object-cover sm:h-[520px]"
+                className="relative z-[1] h-[350px] w-full rounded-md border border-black/10 object-cover sm:h-[520px]"
               />
             ) : (
-              <div className="relative z-[1] flex h-[350px] w-full items-center justify-center rounded-[1.1rem] border border-dashed border-black/20 bg-white text-center text-sm text-neutral-500 sm:h-[520px]">
+              <div className="relative z-[1] flex h-[350px] w-full items-center justify-center rounded-md border border-dashed border-black/20 bg-white text-center text-sm text-neutral-500 sm:h-[520px]">
                 Image d&apos;accompagnement non définie.
                 <br />
                 Ajoutez-la dans Super Admin &gt; GPublique.
               </div>
             )}
-            <article className="relative z-[2] -mt-10 ml-auto mr-3 w-[90%] rounded-2xl border border-black/10 bg-white p-3 shadow-[0_20px_30px_-22px_rgba(17,24,39,0.7)] sm:-mt-14 sm:mr-4 sm:w-[82%] sm:p-4">
+            <article className="relative z-[2] -mt-10 ml-auto mr-3 w-[90%] rounded-md border border-black/10 bg-white p-3 shadow-[0_20px_30px_-22px_rgba(17,24,39,0.7)] sm:-mt-14 sm:mr-4 sm:w-[82%] sm:p-4">
               <div className="grid grid-cols-[58px_1fr] items-center gap-3 sm:grid-cols-[66px_1fr]">
                 <span className="inline-flex h-14 w-14 items-center justify-center rounded-full bg-[#fff1e7] text-fs-accent sm:h-16 sm:w-16">
                   <MdGroups className="h-8 w-8" aria-hidden />
@@ -642,7 +642,7 @@ export default async function Home({
 
       {/* ── DÉFIS QUOTIDIENS ── */}
       <section id="demonstration" className="mx-auto w-full max-w-7xl scroll-mt-24 px-4 pb-8 sm:px-6 sm:pb-12">
-        <div className="relative overflow-hidden rounded-[1.7rem] border border-black/8 bg-[#fbfbfb] px-4 py-6 sm:px-8 sm:py-8">
+        <div className="relative overflow-hidden rounded-md border border-black/8 bg-[#fbfbfb] px-4 py-6 sm:px-8 sm:py-8">
           <div className="pointer-events-none absolute -left-12 -top-14 h-40 w-40 rounded-full bg-[#fff1e7]" />
           <div className="pointer-events-none absolute right-6 top-6 text-[11px] tracking-[0.25em] text-fs-accent/25">··············</div>
 
@@ -680,13 +680,13 @@ export default async function Home({
                 <article
                   key={item.title}
                   className={cn(
-                    "relative rounded-2xl border p-4 shadow-[0_12px_26px_-22px_rgba(15,23,42,0.45)]",
+                    "relative rounded-md border p-4 shadow-[0_12px_26px_-22px_rgba(15,23,42,0.45)]",
                     borderClass,
                     bgClass,
                     i >= 4 ? "lg:col-span-1" : "",
                   )}
                 >
-                  <span className="absolute right-3 top-3 inline-flex rounded-lg bg-white px-2 py-0.5 text-xs font-black text-fs-accent">
+                  <span className="absolute right-3 top-3 inline-flex rounded-md bg-white px-2 py-0.5 text-xs font-black text-fs-accent">
                     {String(i + 1).padStart(2, "0")}
                   </span>
                   <div className={cn("mx-auto inline-flex h-12 w-12 items-center justify-center rounded-full border bg-white", textClass)}>
@@ -702,7 +702,7 @@ export default async function Home({
             })}
           </div>
 
-          <div className="mt-4 rounded-xl border border-fs-accent/25 bg-[#fff7f1] px-4 py-4">
+          <div className="mt-4 rounded-md border border-fs-accent/25 bg-[#fff7f1] px-4 py-4">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:gap-3">
               <div className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-fs-accent text-white">
                 <MdEmojiEmotions className="h-5 w-5" />
@@ -721,7 +721,7 @@ export default async function Home({
 
       {/* ── NOTRE SOLUTION ── */}
       <section className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6 sm:pb-12">
-        <div className="relative overflow-hidden rounded-[1.7rem] border border-black/8 bg-[#fbfbfb] px-4 py-6 sm:px-8 sm:py-8">
+        <div className="relative overflow-hidden rounded-md border border-black/8 bg-[#fbfbfb] px-4 py-6 sm:px-8 sm:py-8">
           <div className="pointer-events-none absolute -left-12 -top-14 h-40 w-40 rounded-full bg-[#fff1e7]" />
           <div className="pointer-events-none absolute right-6 top-6 text-[11px] tracking-[0.25em] text-fs-accent/25">··············</div>
 
@@ -759,7 +759,7 @@ export default async function Home({
                 <article
                   key={item.title}
                   className={cn(
-                    "rounded-2xl border bg-white p-4 shadow-[0_12px_26px_-22px_rgba(15,23,42,0.45)]",
+                    "rounded-md border bg-white p-4 shadow-[0_12px_26px_-22px_rgba(15,23,42,0.45)]",
                     borderClass,
                   )}
                 >
@@ -785,7 +785,7 @@ export default async function Home({
             <span className="text-fs-accent">dans une seule application.</span>
           </p>
 
-          <div className="mt-4 overflow-hidden rounded-xl border border-fs-accent/25 bg-[#fff7f1]">
+          <div className="mt-4 overflow-hidden rounded-md border border-fs-accent/25 bg-[#fff7f1]">
             <div className="grid gap-0 divide-y divide-fs-accent/15 sm:grid-cols-2 sm:divide-x sm:divide-y-0 lg:grid-cols-4">
               {[
                 {
@@ -824,7 +824,7 @@ export default async function Home({
 
       {/* ── TARIFS ── */}
       <section id="tarifs" className="mx-auto w-full max-w-6xl scroll-mt-24 px-4 pb-8 sm:px-6 sm:pb-12">
-        <div className="relative overflow-hidden rounded-[1.7rem] border border-black/8 bg-[#f8fafc] px-4 py-6 sm:px-7 sm:py-8">
+        <div className="relative overflow-hidden rounded-md border border-black/8 bg-[#f8fafc] px-4 py-6 sm:px-7 sm:py-8">
           <div className="pointer-events-none absolute -left-14 -top-16 h-44 w-44 rounded-full bg-[#ffe8db]" />
           <div className="pointer-events-none absolute -bottom-14 -right-16 h-44 w-44 rounded-full bg-[#e7f4ef]" />
 
@@ -843,7 +843,7 @@ export default async function Home({
           </div>
 
           <div data-fs-stagger className="relative mt-7 grid gap-4 lg:grid-cols-3">
-            <article className="rounded-3xl border border-[#d5eadf] bg-white p-4 shadow-[0_14px_30px_-24px_rgba(15,23,42,0.5)] sm:min-h-[420px] sm:p-5">
+            <article className="rounded-md border border-[#d5eadf] bg-white p-4 shadow-[0_14px_30px_-24px_rgba(15,23,42,0.5)] sm:min-h-[420px] sm:p-5">
               <div className="mx-auto inline-flex h-12 w-12 items-center justify-center rounded-full border border-[#d5eadf] bg-[#f2fbf6] text-[#22a168]">
                 <MdCardGiftcard className="h-6 w-6" aria-hidden />
               </div>
@@ -861,14 +861,14 @@ export default async function Home({
               </ul>
               <Link
                 href="/register/select-activity"
-                className="mt-5 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#7cd3a9] bg-white px-4 py-2 text-sm font-extrabold text-[#22a168]"
+                className="mt-5 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-[#7cd3a9] bg-white px-4 py-2 text-sm font-extrabold text-[#22a168]"
               >
                 Commencer l&apos;essai gratuit
                 <MdArrowForward className="h-4 w-4" />
               </Link>
             </article>
 
-            <article className="relative rounded-3xl border-2 border-fs-accent bg-white p-4 shadow-[0_20px_40px_-24px_rgba(249,115,22,0.75)] sm:min-h-[420px] sm:p-5">
+            <article className="relative rounded-md border-2 border-fs-accent bg-white p-4 shadow-[0_20px_40px_-24px_rgba(249,115,22,0.75)] sm:min-h-[420px] sm:p-5">
               <span className="absolute left-1/2 top-0 inline-flex -translate-x-1/2 -translate-y-1/2 rounded-full bg-fs-accent px-4 py-1 text-xs font-black uppercase text-white">
                 Populaire
               </span>
@@ -887,14 +887,14 @@ export default async function Home({
               </ul>
               <Link
                 href="/register/select-activity"
-                className="mt-5 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-fs-accent px-4 py-2 text-sm font-extrabold text-white"
+                className="mt-5 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-fs-accent px-4 py-2 text-sm font-extrabold text-white"
               >
                 Choisir le plan annuel
                 <MdArrowForward className="h-4 w-4" />
               </Link>
             </article>
 
-            <article className="rounded-3xl border border-[#d5e3ff] bg-white p-4 shadow-[0_14px_30px_-24px_rgba(15,23,42,0.5)] sm:min-h-[420px] sm:p-5">
+            <article className="rounded-md border border-[#d5e3ff] bg-white p-4 shadow-[0_14px_30px_-24px_rgba(15,23,42,0.5)] sm:min-h-[420px] sm:p-5">
               <div className="mx-auto inline-flex h-12 w-12 items-center justify-center rounded-full border border-[#d5e3ff] bg-[#f1f6ff] text-[#2f80ed]">
                 <MdWallet className="h-6 w-6" aria-hidden />
               </div>
@@ -914,7 +914,7 @@ export default async function Home({
               </ul>
               <Link
                 href="/register/select-activity"
-                className="mt-5 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#2f80ed] px-4 py-2 text-sm font-extrabold text-white"
+                className="mt-5 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-[#2f80ed] px-4 py-2 text-sm font-extrabold text-white"
               >
                 Choisir le plan mensuel
                 <MdArrowForward className="h-4 w-4" />
@@ -922,7 +922,7 @@ export default async function Home({
             </article>
           </div>
 
-          <div className="mt-5 overflow-hidden rounded-2xl border border-black/8 bg-white">
+          <div className="mt-5 overflow-hidden rounded-md border border-black/8 bg-white">
             <div className="grid grid-cols-2 divide-y divide-black/8 min-[760px]:grid-cols-4 min-[760px]:divide-x min-[760px]:divide-y-0">
               {[
                 {
@@ -964,7 +964,7 @@ export default async function Home({
       </section>
 
       <section id="fonctionnalites-principales" className="mx-auto w-full max-w-7xl scroll-mt-24 px-4 pb-8 sm:px-6 sm:pb-12">
-        <div className="relative overflow-hidden rounded-[1.7rem] border border-black/8 bg-white px-4 py-6 shadow-[0_22px_56px_-36px_rgba(17,24,39,0.28)] sm:px-8 sm:py-8">
+        <div className="relative overflow-hidden rounded-md border border-black/8 bg-white px-4 py-6 shadow-[0_22px_56px_-36px_rgba(17,24,39,0.28)] sm:px-8 sm:py-8">
           <div className="pointer-events-none absolute -left-12 -top-14 h-40 w-40 rounded-full bg-[#fff1e7]" />
           <div className="relative text-center">
             <p className="inline-flex items-center gap-1.5 rounded-full bg-[#fff5ef] px-3 py-1 text-xs font-black uppercase tracking-wide text-fs-accent">
@@ -986,7 +986,7 @@ export default async function Home({
             {landingFonctionnalitesPrincipales.map((item) => (
               <article
                 key={item.title}
-                className="flex h-full flex-col rounded-2xl border border-black/10 bg-[#fbfbfb] p-4 shadow-[0_12px_26px_-22px_rgba(15,23,42,0.45)]"
+                className="flex h-full flex-col rounded-md border border-black/10 bg-[#fbfbfb] p-4 shadow-[0_12px_26px_-22px_rgba(15,23,42,0.45)]"
               >
                 <div className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-fs-accent/25 bg-[#fff5ef] text-fs-accent">
                   <item.icon className="h-6 w-6" aria-hidden />
@@ -1004,7 +1004,7 @@ export default async function Home({
             ))}
           </div>
 
-          <div className="relative mt-8 overflow-hidden rounded-2xl border border-fs-accent/20 bg-[#fff7f1] px-3 py-5 sm:px-6 sm:py-6">
+          <div className="relative mt-8 overflow-hidden rounded-md border border-fs-accent/20 bg-[#fff7f1] px-3 py-5 sm:px-6 sm:py-6">
             <p className="text-center text-xl font-black leading-[1.12] tracking-tight text-[#17253a] sm:text-[1.35rem] lg:text-3xl">
               Conçu pour simplifier
               <br />
@@ -1017,7 +1017,7 @@ export default async function Home({
               {landingSimplifierBand.map((b) => (
                 <article
                   key={b.title}
-                  className="flex h-full flex-col rounded-xl border border-black/8 bg-white/90 p-2.5 text-left shadow-sm sm:p-3 sm:text-center"
+                  className="flex h-full flex-col rounded-md border border-black/8 bg-white/90 p-2.5 text-left shadow-sm sm:p-3 sm:text-center"
                 >
                   <div className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#fff5ef] text-fs-accent sm:mx-auto sm:h-9 sm:w-9">
                     <b.icon className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden />
@@ -1051,10 +1051,10 @@ export default async function Home({
 
       <footer id="contact" className="border-t border-white/10 bg-[#071427] text-white">
         <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
-          <div className="rounded-2xl border border-white/10 bg-[#0b1b33] p-4">
+          <div className="rounded-md border border-white/10 bg-[#0b1b33] p-4">
             <div className="grid gap-3 lg:grid-cols-[1fr_1.3fr_auto] lg:items-center">
               <div className="flex items-center gap-3">
-                <div className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-fs-accent/20 text-fs-accent">
+                <div className="inline-flex h-11 w-11 items-center justify-center rounded-md bg-fs-accent/20 text-fs-accent">
                   <MdMailOutline className="h-6 w-6" />
                 </div>
                 <div>
@@ -1191,9 +1191,9 @@ export default async function Home({
             ))}
           </div>
 
-          <div className="mt-6 rounded-2xl border border-white/10 bg-[#0b1b33] p-4">
+          <div className="mt-6 rounded-md border border-white/10 bg-[#0b1b33] p-4">
             <div className="flex items-center gap-3">
-              <div className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-fs-accent/20 text-fs-accent">
+              <div className="inline-flex h-11 w-11 items-center justify-center rounded-md bg-fs-accent/20 text-fs-accent">
                 <MdOutlinePhoneAndroid className="h-6 w-6" />
               </div>
               <div>
@@ -1207,14 +1207,14 @@ export default async function Home({
                   href={DOWNLOAD_LINKS.windows}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex h-9 items-center gap-2 rounded-lg border border-white/15 bg-[#0e223f] px-3 text-xs font-bold text-white/90 hover:border-fs-accent/55"
+                  className="inline-flex h-9 items-center gap-2 rounded-md border border-white/15 bg-[#0e223f] px-3 text-xs font-bold text-white/90 hover:border-fs-accent/55"
                   title="Télécharger la version Windows"
                 >
                   <FaWindows className="h-4 w-4" />
                   Windows
                 </a>
               ) : (
-                <span className="inline-flex h-9 items-center gap-2 rounded-lg border border-white/15 bg-[#0e223f] px-3 text-xs font-bold text-white/90">
+                <span className="inline-flex h-9 items-center gap-2 rounded-md border border-white/15 bg-[#0e223f] px-3 text-xs font-bold text-white/90">
                   <FaWindows className="h-4 w-4" />
                   Windows
                 </span>
@@ -1224,20 +1224,20 @@ export default async function Home({
                   href={DOWNLOAD_LINKS.android}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex h-9 items-center gap-2 rounded-lg border border-white/15 bg-[#0e223f] px-3 text-xs font-bold text-white/90 hover:border-fs-accent/55"
+                  className="inline-flex h-9 items-center gap-2 rounded-md border border-white/15 bg-[#0e223f] px-3 text-xs font-bold text-white/90 hover:border-fs-accent/55"
                   title="Télécharger la version Android"
                 >
                   <FaGooglePlay className="h-4 w-4" />
                   Google Play
                 </a>
               ) : (
-                <span className="inline-flex h-9 items-center gap-2 rounded-lg border border-white/15 bg-[#0e223f] px-3 text-xs font-bold text-white/90">
+                <span className="inline-flex h-9 items-center gap-2 rounded-md border border-white/15 bg-[#0e223f] px-3 text-xs font-bold text-white/90">
                   <FaGooglePlay className="h-4 w-4" />
                   Google Play
                 </span>
               )}
               <span
-                className="inline-flex h-9 items-center gap-2 rounded-lg border border-white/15 bg-[#0e223f] px-3 text-xs font-bold text-white/65"
+                className="inline-flex h-9 items-center gap-2 rounded-md border border-white/15 bg-[#0e223f] px-3 text-xs font-bold text-white/65"
                 title="Version iOS bientôt"
               >
                 <FaApple className="h-4 w-4" />

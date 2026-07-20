@@ -11,7 +11,7 @@ export function SeoFaq({ faqs }: { faqs: FaqItem[] }) {
 
   return (
     <section className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6">
-      <div className="rounded-[1.7rem] border border-black/8 bg-[#fbfbfb] px-6 py-8 dark:border-white/8 dark:bg-[#1a1a1a] sm:px-8">
+      <div className="rounded-md border border-black/8 bg-[#fbfbfb] px-6 py-8 dark:border-white/8 dark:bg-[#1a1a1a] sm:px-8">
         <div className="text-center">
           <p className="inline-flex items-center gap-1.5 rounded-full bg-[#fff5ef] px-3 py-1 text-xs font-black uppercase tracking-wide text-fs-accent dark:bg-fs-accent/20">
             <MdChat className="h-4 w-4" aria-hidden />
@@ -31,7 +31,7 @@ export function SeoFaq({ faqs }: { faqs: FaqItem[] }) {
             return (
               <article
                 key={idx}
-                className="rounded-2xl border border-black/10 bg-white shadow-[0_6px_20px_-16px_rgba(15,23,42,0.35)] dark:border-white/8 dark:bg-[#1c1b1f]"
+                className="rounded-md border border-black/10 bg-white shadow-[0_6px_20px_-16px_rgba(15,23,42,0.35)] dark:border-white/8 dark:bg-[#1c1b1f]"
               >
                 <button
                   type="button"
@@ -40,7 +40,7 @@ export function SeoFaq({ faqs }: { faqs: FaqItem[] }) {
                   aria-expanded={open}
                 >
                   <div className="flex items-center gap-3">
-                    <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#fff5ef] text-xs font-black text-fs-accent dark:bg-fs-accent/20">
+                    <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-[#fff5ef] text-xs font-black text-fs-accent dark:bg-fs-accent/20">
                       {String(idx + 1).padStart(2, "0")}
                     </span>
                     <span className="text-sm font-black leading-tight text-[#1f2937] dark:text-[#e6e1e5] sm:text-base">
@@ -62,7 +62,7 @@ export function SeoFaq({ faqs }: { faqs: FaqItem[] }) {
           })}
         </div>
 
-        <div className="mt-5 flex flex-col gap-3 rounded-xl border border-fs-accent/25 bg-[#fff7f1] px-4 py-3 dark:bg-fs-accent/8 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-5 flex flex-col gap-3 rounded-md border border-fs-accent/25 bg-[#fff7f1] px-4 py-3 dark:bg-fs-accent/8 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="font-black text-[#202938] dark:text-[#e6e1e5]">Vous avez d&apos;autres questions ?</p>
             <p className="text-sm text-neutral-600">Notre équipe répond rapidement sur WhatsApp.</p>
@@ -72,14 +72,14 @@ export function SeoFaq({ faqs }: { faqs: FaqItem[] }) {
               href="https://wa.me/22603079618?text=Bonjour%20FasoStock%2C%20j%27ai%20une%20question."
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-xl bg-fs-accent px-4 py-2 text-sm font-black text-white"
+              className="inline-flex items-center gap-2 rounded-md bg-fs-accent px-4 py-2 text-sm font-black text-white"
             >
               <MdWhatsapp className="h-4 w-4" aria-hidden />
               WhatsApp
             </a>
             <Link
               href="/register/select-activity"
-              className="inline-flex items-center gap-2 rounded-xl border border-fs-accent/45 bg-white px-4 py-2 text-sm font-black text-fs-accent dark:bg-transparent"
+              className="inline-flex items-center gap-2 rounded-md border border-fs-accent/45 bg-white px-4 py-2 text-sm font-black text-fs-accent dark:bg-transparent"
             >
               Essai gratuit
             </Link>

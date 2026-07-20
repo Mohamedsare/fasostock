@@ -63,7 +63,7 @@ export function TestimonialsSection({
 }: TestimonialsSectionProps) {
   return (
     <section className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6 sm:pb-12">
-      <div className="rounded-[1.7rem] border border-black/8 bg-[#fbfbfb] px-4 py-6 sm:px-8 sm:py-8">
+      <div className="rounded-md border border-black/8 bg-[#fbfbfb] px-4 py-6 sm:px-8 sm:py-8">
         <div className="text-center">
           <p className="inline-flex items-center gap-1.5 rounded-full bg-[#fff5ef] px-3 py-1 text-xs font-black uppercase tracking-wide text-fs-accent">
             <MdGroups className="h-4 w-4" />
@@ -82,7 +82,7 @@ export function TestimonialsSection({
             {loopTestimonials.map((t, i) => (
               <article
                 key={`${t.name}-${t.tag}-${i}`}
-                className="flex min-h-[320px] w-[min(82vw,300px)] shrink-0 flex-col rounded-2xl border border-black/10 bg-white p-4 shadow-[0_12px_26px_-22px_rgba(15,23,42,0.45)] sm:w-[min(44vw,320px)] lg:w-[320px]"
+                className="flex min-h-[320px] w-[min(82vw,300px)] shrink-0 flex-col rounded-md border border-black/10 bg-white p-4 shadow-[0_12px_26px_-22px_rgba(15,23,42,0.45)] sm:w-[min(44vw,320px)] lg:w-[320px]"
               >
                 <p className="text-fs-accent">❝</p>
                 <p className="mt-1 text-[0.9rem] font-medium italic leading-[1.72] tracking-[0.003em] text-[#17253a]">
@@ -106,7 +106,7 @@ export function TestimonialsSection({
           </div>
         </div>
 
-        <div className="mt-4 overflow-hidden rounded-xl border border-fs-accent/25 bg-[#fff7f1]">
+        <div className="mt-4 overflow-hidden rounded-md border border-fs-accent/25 bg-[#fff7f1]">
           <div data-fs-stagger className="grid grid-cols-2 divide-y divide-fs-accent/15 text-center min-[760px]:grid-cols-4 min-[760px]:divide-x min-[760px]:divide-y-0">
             {stats.slice(0, 4).map((item, idx) => (
               <div key={`${idx}-${item.value}`} className="px-4 py-3">

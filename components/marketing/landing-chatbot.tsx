@@ -90,7 +90,7 @@ export function LandingChatbot() {
       {/* Chat panel */}
       {open && (
         <div
-          className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom)+3rem+0.75rem+3.5rem+0.75rem)] right-3 z-50 flex w-[calc(100vw-1.5rem)] max-w-sm flex-col overflow-hidden rounded-2xl shadow-2xl sm:bottom-[calc(6rem+3.5rem+0.75rem)] sm:right-6"
+          className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom)+3rem+0.75rem+3.5rem+0.75rem)] right-3 z-50 flex w-[calc(100vw-1.5rem)] max-w-sm flex-col overflow-hidden rounded-md shadow-2xl sm:bottom-[calc(6rem+3.5rem+0.75rem)] sm:right-6"
           style={{
             background: "var(--fs-surface, #f8f7f5)",
             border: "1px solid color-mix(in srgb, var(--fs-accent, #e85d2c) 20%, transparent)",
@@ -126,7 +126,7 @@ export function LandingChatbot() {
                 className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
               >
                 <div
-                  className={`max-w-[82%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed whitespace-pre-line ${
+                  className={`max-w-[82%] rounded-md px-3.5 py-2.5 text-sm leading-relaxed whitespace-pre-line ${
                     m.role === "user"
                       ? "text-white"
                       : "text-[var(--fs-text,#1c1b1f)] dark:text-[var(--fs-text-dark,#e6e1e5)]"
@@ -150,7 +150,7 @@ export function LandingChatbot() {
             {loading && (
               <div className="flex justify-start">
                 <div
-                  className="flex items-center gap-1 rounded-2xl px-4 py-3"
+                  className="flex items-center gap-1 rounded-md px-4 py-3"
                   style={{
                     background: "color-mix(in srgb, var(--fs-accent, #e85d2c) 8%, white)",
                     border:

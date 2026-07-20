@@ -86,37 +86,37 @@ export function SiteHeader({ sectionHrefPrefix = "" }: SiteHeaderProps) {
         <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto p-3" onClick={close}>
           <button
             type="button"
-            className="mb-1 inline-flex h-11 w-11 items-center justify-center rounded-xl border border-black/10 bg-white text-neutral-800 hover:bg-black/5"
+            className="mb-1 inline-flex h-11 w-11 items-center justify-center rounded-md border border-black/10 bg-white text-neutral-800 hover:bg-black/5"
             onClick={toggleTheme}
             aria-label={isDark ? "Activer le mode clair" : "Activer le mode sombre"}
             title={isDark ? "Mode clair" : "Mode sombre"}
           >
             {isDark ? <MdLightMode className="h-5 w-5 text-amber-500" /> : <MdDarkMode className="h-5 w-5 text-fs-accent" />}
           </button>
-          <Link href={section("fonctionnalites-principales")} className="rounded-xl px-3 py-2.5 text-sm font-semibold text-neutral-800 hover:bg-black/5">
+          <Link href={section("fonctionnalites-principales")} className="rounded-md px-3 py-2.5 text-sm font-semibold text-neutral-800 hover:bg-black/5">
             Fonctionnalités
           </Link>
-          <Link href={section("tarifs")} className="rounded-xl px-3 py-2.5 text-sm font-semibold text-neutral-800 hover:bg-black/5">
+          <Link href={section("tarifs")} className="rounded-md px-3 py-2.5 text-sm font-semibold text-neutral-800 hover:bg-black/5">
             Tarifs
           </Link>
-          <Link href="/facture-devis" className="rounded-xl px-3 py-2.5 text-sm font-semibold text-neutral-800 hover:bg-black/5">
+          <Link href="/facture-devis" className="rounded-md px-3 py-2.5 text-sm font-semibold text-neutral-800 hover:bg-black/5">
             Facture &amp; Devis
           </Link>
-          <Link href={section("faq")} className="rounded-xl px-3 py-2.5 text-sm font-semibold text-neutral-800 hover:bg-black/5">
+          <Link href={section("faq")} className="rounded-md px-3 py-2.5 text-sm font-semibold text-neutral-800 hover:bg-black/5">
             FAQ
           </Link>
           <Link
             href="/login"
-            className="mt-2 rounded-xl border border-fs-accent/45 bg-fs-accent/8 px-3 py-2.5 text-sm font-extrabold text-fs-accent shadow-[0_10px_24px_-18px_rgba(232,93,44,0.85)]"
+            className="mt-2 rounded-md border border-fs-accent/45 bg-fs-accent/8 px-3 py-2.5 text-sm font-extrabold text-fs-accent shadow-[0_10px_24px_-18px_rgba(232,93,44,0.85)]"
           >
             Se connecter
           </Link>
-          <Link href="/register/select-activity" className="mt-1.5 rounded-xl bg-fs-accent px-3 py-2.5 text-sm font-bold text-white">
+          <Link href="/register/select-activity" className="mt-1.5 rounded-md bg-fs-accent px-3 py-2.5 text-sm font-bold text-white">
             Essai gratuit
           </Link>
           <a
             href="tel:+22603079618"
-            className="inline-flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold text-neutral-700 hover:bg-black/5"
+            className="inline-flex items-center gap-2 rounded-md px-3 py-2.5 text-sm font-semibold text-neutral-700 hover:bg-black/5"
             aria-label="Appeler FasoStock au +226 03 07 96 18"
             title="Appeler +226 03 07 96 18"
           >
@@ -129,7 +129,7 @@ export function SiteHeader({ sectionHrefPrefix = "" }: SiteHeaderProps) {
             )}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold text-neutral-700 hover:bg-black/5"
+            className="inline-flex items-center gap-2 rounded-md px-3 py-2.5 text-sm font-semibold text-neutral-700 hover:bg-black/5"
             aria-label="Contacter FasoStock sur WhatsApp"
             title="WhatsApp"
           >
@@ -180,7 +180,7 @@ export function SiteHeader({ sectionHrefPrefix = "" }: SiteHeaderProps) {
             <button
               type="button"
               onClick={toggleTheme}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-black/10 bg-white text-neutral-800 hover:bg-black/5"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-black/10 bg-white text-neutral-800 hover:bg-black/5"
               aria-label={isDark ? "Activer le mode clair" : "Activer le mode sombre"}
               title={isDark ? "Mode clair" : "Mode sombre"}
             >
@@ -188,13 +188,13 @@ export function SiteHeader({ sectionHrefPrefix = "" }: SiteHeaderProps) {
             </button>
             <Link
               href="/login"
-              className="rounded-xl border border-fs-accent/55 bg-white px-3 py-1.5 text-[13px] font-semibold text-fs-accent"
+              className="rounded-md border border-fs-accent/55 bg-white px-3 py-1.5 text-[13px] font-semibold text-fs-accent"
             >
               Se connecter
             </Link>
             <Link
               href="/register/select-activity"
-              className="inline-flex items-center gap-1 rounded-xl bg-fs-accent px-3 py-1.5 text-[13px] font-bold text-white shadow-[0_10px_24px_-14px_rgba(232,93,44,0.95)]"
+              className="inline-flex items-center gap-1 rounded-md bg-fs-accent px-3 py-1.5 text-[13px] font-bold text-white shadow-[0_10px_24px_-14px_rgba(232,93,44,0.95)]"
             >
               ☰ Essayer gratuitement
             </Link>

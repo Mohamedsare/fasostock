@@ -68,7 +68,7 @@ export function SeoLandingPage({
 
         {/* Hero */}
         <section className="mx-auto w-full max-w-7xl px-4 pt-10 pb-8 sm:px-6 sm:pt-16 sm:pb-12">
-          <div className="rounded-[1.7rem] border border-black/8 bg-white px-6 py-10 shadow-[0_22px_56px_-36px_rgba(17,24,39,0.28)] dark:border-white/8 dark:bg-[#1c1b1f] sm:px-10 sm:py-14">
+          <div className="rounded-md border border-black/8 bg-white px-6 py-10 shadow-[0_22px_56px_-36px_rgba(17,24,39,0.28)] dark:border-white/8 dark:bg-[#1c1b1f] sm:px-10 sm:py-14">
             <div className="text-center">
               <p className="inline-flex items-center gap-1.5 rounded-full bg-[#fff5ef] px-3 py-1 text-xs font-black uppercase tracking-wide text-fs-accent dark:bg-fs-accent/20">
                 <MdCheckCircle className="h-4 w-4" aria-hidden />
@@ -83,14 +83,14 @@ export function SeoLandingPage({
               <div className="mt-6 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
                 <Link
                   href="/register/select-activity"
-                  className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-fs-accent px-6 py-3 text-sm font-black text-white shadow-[0_10px_24px_-14px_rgba(232,93,44,0.95)]"
+                  className="inline-flex min-h-12 items-center justify-center gap-2 rounded-md bg-fs-accent px-6 py-3 text-sm font-black text-white shadow-[0_10px_24px_-14px_rgba(232,93,44,0.95)]"
                 >
                   Essayer gratuitement
                   <MdArrowForward className="h-4 w-4" aria-hidden />
                 </Link>
                 <Link
                   href="/login"
-                  className="inline-flex min-h-12 items-center justify-center rounded-xl border border-fs-accent/45 bg-white px-6 py-3 text-sm font-bold text-fs-accent dark:bg-transparent"
+                  className="inline-flex min-h-12 items-center justify-center rounded-md border border-fs-accent/45 bg-white px-6 py-3 text-sm font-bold text-fs-accent dark:bg-transparent"
                 >
                   Se connecter
                 </Link>
@@ -113,7 +113,7 @@ export function SeoLandingPage({
             {STATS.map((s) => (
               <div
                 key={s.label}
-                className="rounded-2xl border border-black/8 bg-white px-4 py-5 text-center shadow-sm dark:border-white/8 dark:bg-[#1c1b1f]"
+                className="rounded-md border border-black/8 bg-white px-4 py-5 text-center shadow-sm dark:border-white/8 dark:bg-[#1c1b1f]"
               >
                 <p className="text-2xl font-black text-fs-accent sm:text-3xl">{s.value}</p>
                 <p className="mt-1 text-xs text-neutral-600 sm:text-sm">{s.label}</p>
@@ -124,7 +124,7 @@ export function SeoLandingPage({
 
         {/* Features */}
         <section className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6">
-          <div className="rounded-[1.7rem] border border-black/8 bg-white px-6 py-8 shadow-sm dark:border-white/8 dark:bg-[#1c1b1f] sm:px-8">
+          <div className="rounded-md border border-black/8 bg-white px-6 py-8 shadow-sm dark:border-white/8 dark:bg-[#1c1b1f] sm:px-8">
             <div className="text-center">
               <p className="inline-flex items-center gap-1.5 rounded-full bg-[#fff5ef] px-3 py-1 text-xs font-black uppercase tracking-wide text-fs-accent dark:bg-fs-accent/20">
                 Fonctionnalités
@@ -140,7 +140,7 @@ export function SeoLandingPage({
               {features.map((f) => (
                 <article
                   key={f.title}
-                  className="rounded-2xl border border-black/10 bg-[#fbfbfb] p-5 shadow-[0_8px_24px_-18px_rgba(15,23,42,0.35)] dark:border-white/8 dark:bg-[#232323]"
+                  className="rounded-md border border-black/10 bg-[#fbfbfb] p-5 shadow-[0_8px_24px_-18px_rgba(15,23,42,0.35)] dark:border-white/8 dark:bg-[#232323]"
                 >
                   <div className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-fs-accent/25 bg-[#fff5ef] text-fs-accent dark:bg-fs-accent/20">
                     <f.icon className="h-6 w-6" aria-hidden />
@@ -155,7 +155,7 @@ export function SeoLandingPage({
 
         {/* Benefits */}
         <section className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6">
-          <div className="rounded-[1.7rem] border border-fs-accent/20 bg-[#fff7f1] px-6 py-8 dark:bg-fs-accent/8 sm:px-8">
+          <div className="rounded-md border border-fs-accent/20 bg-[#fff7f1] px-6 py-8 dark:bg-fs-accent/8 sm:px-8">
             <h2 className="text-[1.5rem] font-black leading-tight text-[#17253a] dark:text-[#e6e1e5] sm:text-[2rem]">
               Pourquoi choisir <span className="text-fs-accent">FasoStock</span> ?
             </h2>
@@ -166,7 +166,7 @@ export function SeoLandingPage({
               {benefits.map((b) => (
                 <li
                   key={b}
-                  className="flex items-start gap-3 rounded-xl bg-white/70 px-4 py-3 dark:bg-white/5"
+                  className="flex items-start gap-3 rounded-md bg-white/70 px-4 py-3 dark:bg-white/5"
                 >
                   <MdCheckCircle className="mt-0.5 h-5 w-5 shrink-0 text-green-500" aria-hidden />
                   <span className="text-sm leading-relaxed text-neutral-700">{b}</span>
@@ -181,7 +181,7 @@ export function SeoLandingPage({
 
         {/* CTA */}
         <section className="mx-auto w-full max-w-7xl px-4 pb-12 sm:px-6">
-          <div className="rounded-[1.7rem] bg-fs-accent px-6 py-10 text-center sm:px-10 sm:py-14">
+          <div className="rounded-md bg-fs-accent px-6 py-10 text-center sm:px-10 sm:py-14">
             <h2 className="text-[1.75rem] font-black leading-tight text-white sm:text-[2.5rem]">
               {ctaTitle}
             </h2>
@@ -191,7 +191,7 @@ export function SeoLandingPage({
             <div className="mt-6 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
               <Link
                 href="/register/select-activity"
-                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-white px-6 py-3 text-sm font-black text-fs-accent shadow-lg"
+                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-md bg-white px-6 py-3 text-sm font-black text-fs-accent shadow-lg"
               >
                 Commencer gratuitement
                 <MdArrowForward className="h-4 w-4" aria-hidden />
@@ -200,7 +200,7 @@ export function SeoLandingPage({
                 href="https://wa.me/22603079618?text=Bonjour%20FasoStock%2C%20je%20souhaite%20plus%20d%27informations."
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-white/40 px-6 py-3 text-sm font-bold text-white hover:bg-white/10"
+                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-md border border-white/40 px-6 py-3 text-sm font-bold text-white hover:bg-white/10"
               >
                 <MdWhatsapp className="h-5 w-5" aria-hidden />
                 Discuter sur WhatsApp

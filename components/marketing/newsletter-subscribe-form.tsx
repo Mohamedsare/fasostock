@@ -175,7 +175,7 @@ export function NewsletterSubscribeForm() {
             /* honeypot: intentionally ignored */
           }}
         />
-        <div className="min-w-0 w-full flex h-10 items-center gap-2 rounded-lg border border-white/15 bg-[#0e223f] px-3.5 text-white/55 sm:h-11 sm:rounded-xl sm:px-4">
+        <div className="min-w-0 w-full flex h-10 items-center gap-2 rounded-md border border-white/15 bg-[#0e223f] px-3.5 text-white/55 sm:h-11 sm:rounded-md sm:px-4">
           <MdMailOutline className="h-4 w-4" />
           <input
             value={email}
@@ -190,7 +190,7 @@ export function NewsletterSubscribeForm() {
         <button
           type="submit"
           disabled={loading}
-          className="inline-flex w-full sm:w-auto h-10 items-center justify-center gap-1.5 rounded-lg bg-fs-accent px-5 text-sm font-black text-white disabled:opacity-60 sm:h-11 sm:rounded-xl sm:px-6"
+          className="inline-flex w-full sm:w-auto h-10 items-center justify-center gap-1.5 rounded-md bg-fs-accent px-5 text-sm font-black text-white disabled:opacity-60 sm:h-11 sm:rounded-md sm:px-6"
         >
           {loading ? "Envoi..." : "S'abonner"}
           <MdArrowForward className="h-4 w-4" />
@@ -198,7 +198,7 @@ export function NewsletterSubscribeForm() {
       </form>
       {turnstileSiteKey && captchaRequired ? (
         <div className="pt-1">
-          <div className="w-full max-w-full overflow-hidden rounded-lg border border-white/10 bg-[#0e223f]/55 px-1 py-1.5 sm:p-1">
+          <div className="w-full max-w-full overflow-hidden rounded-md border border-white/10 bg-[#0e223f]/55 px-1 py-1.5 sm:p-1">
             <div className="flex w-full justify-center overflow-hidden">
               <div className="w-full max-w-[300px] overflow-hidden">
                 <div ref={widgetRef} className="min-h-[65px] w-[300px] max-w-none" />
