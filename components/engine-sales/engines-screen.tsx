@@ -281,20 +281,23 @@ export function EnginesScreen() {
           {createHref ? (
             <Link
               href={createHref}
-              className="touch-manipulation block min-h-[88px] rounded-xl border-2 border-[color-mix(in_srgb,var(--fs-accent)_40%,transparent)] bg-fs-card shadow-sm transition-transform active:scale-[0.99] max-[599px]:p-4 min-[600px]:p-6"
+              className="touch-manipulation col-span-2 block min-h-[96px] rounded-xl border-2 border-[color-mix(in_srgb,var(--fs-accent)_40%,transparent)] bg-fs-card px-4 py-5 shadow-sm transition-transform active:scale-[0.99] min-[600px]:min-h-[72px] min-[600px]:px-6 min-[600px]:py-3.5 min-[900px]:col-span-2"
             >
-              <div className="flex min-h-[88px] flex-col items-center justify-center text-center">
-                <div className="mb-2.5 flex items-center justify-center rounded-xl bg-[color-mix(in_srgb,var(--fs-accent)_12%,transparent)] p-2.5 text-[var(--fs-accent)] min-[600px]:mb-3.5 min-[600px]:p-3.5">
-                  <MdDescription className="h-7 w-7 min-[600px]:h-8 min-[600px]:w-8" aria-hidden />
+              {/* Carte large et peu haute : layout horizontal, contenu centré (mobile + desktop). */}
+              <div className="flex h-full flex-row items-center justify-center gap-3 text-center">
+                <div className="flex shrink-0 items-center justify-center rounded-xl bg-[color-mix(in_srgb,var(--fs-accent)_12%,transparent)] p-2 text-[var(--fs-accent)] min-[600px]:p-2.5">
+                  <MdDescription className="h-6 w-6 min-[600px]:h-7 min-[600px]:w-7" aria-hidden />
                 </div>
-                <h3 className="text-sm font-semibold leading-tight text-fs-text min-[600px]:text-base">
-                  Facture A4
-                </h3>
-                <p className="mt-1 line-clamp-1 text-xs text-neutral-600">Vente d&apos;engin</p>
+                <div className="min-w-0">
+                  <h3 className="text-sm font-semibold leading-tight text-fs-text min-[600px]:text-base">
+                    Facture A4
+                  </h3>
+                  <p className="line-clamp-1 text-xs text-neutral-600">Vente d&apos;engin</p>
+                </div>
               </div>
             </Link>
           ) : (
-            <div className="min-h-[88px] rounded-xl border border-black/[0.06] bg-fs-card p-6 opacity-70">
+            <div className="col-span-2 flex min-h-0 items-center rounded-xl border border-black/[0.06] bg-fs-card p-3 opacity-70 min-[600px]:col-span-1 min-[600px]:min-h-[88px] min-[600px]:p-6">
               <p className="text-center text-xs text-neutral-500">
                 Sélectionnez une boutique pour enregistrer une vente.
               </p>

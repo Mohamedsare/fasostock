@@ -21,6 +21,9 @@ export const queryKeys = {
   /** Ventes d'engins (module Vente Engins). */
   engineSales: (params: { companyId: string; storeId: string | null }) =>
     ["engine-sales", params] as const,
+  /** Dossiers d'immatriculation engins (module Immatriculation Engins). */
+  engineRegistrations: (params: { companyId: string; storeId: string | null }) =>
+    ["engine-registrations", params] as const,
   customers: (companyId: string) => ["customers", companyId] as const,
   suppliers: (companyId: string) => ["suppliers", companyId] as const,
   /** Dépenses sur une plage de dates (filtres catégorie/recherche côté client). */

@@ -41,7 +41,10 @@ import { activityConfig } from "@/lib/features/activity/activity-config";
 import { ROUTES } from "@/lib/config/routes";
 import { queryKeys } from "@/lib/query/query-keys";
 import { useStoreCatalog } from "@/lib/features/stores/use-store-catalog";
-import { filterByStoreCatalog } from "@/lib/features/stores/store-catalog";
+import {
+  filterByStoreCatalog,
+  filterTaxonomyByStoreCatalog,
+} from "@/lib/features/stores/store-catalog";
 import { activityUiTerms } from "@/lib/features/activity/activity-profiles";
 import { formatCurrency } from "@/lib/utils/currency";
 import { cn } from "@/lib/utils/cn";
@@ -379,6 +382,17 @@ export function ProductsScreen() {
   );
   const categories = categoriesQ.data ?? [];
   const brands = brandsQ.data ?? [];
+  // Catalogue perso : filtres et formulaire ne montrent que les catégories/marques
+  // réellement utilisées par les produits de la boutique. Les onglets de gestion
+  // gardent la liste complète de l'entreprise (`categories`/`brands`).
+  const catalogCategories = useMemo(
+    () => filterTaxonomyByStoreCatalog(categories, products, (p) => p.category_id, storeCatalog),
+    [categories, products, storeCatalog],
+  );
+  const catalogBrands = useMemo(
+    () => filterTaxonomyByStoreCatalog(brands, products, (p) => p.brand_id, storeCatalog),
+    [brands, products, storeCatalog],
+  );
   const stockByProduct = useMemo(
     () => ensureStringNumberMap(inventoryQ.data),
     [inventoryQ.data],
@@ -580,7 +594,7 @@ export function ProductsScreen() {
                   className={fsInputClass()}
                 >
                   <option value="">Toutes</option>
-                  {categories.map((c) => (
+                  {catalogCategories.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name}
                     </option>
@@ -600,7 +614,7 @@ export function ProductsScreen() {
                   className={fsInputClass()}
                 >
                   <option value="">Toutes</option>
-                  {brands.map((b) => (
+                  {catalogBrands.map((b) => (
                     <option key={b.id} value={b.id}>
                       {b.name}
                     </option>
@@ -965,8 +979,8 @@ export function ProductsScreen() {
         <ProductFormDialog
           companyId={companyId}
           storeId={storeId}
-          categories={categories}
-          brands={brands}
+          categories={catalogCategories}
+          brands={catalogBrands}
           initial={editing}
           loading={mutateSaveProduct.isPending}
           businessTypeSlug={ctx.data?.businessTypeSlug}

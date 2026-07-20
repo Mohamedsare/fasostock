@@ -38,6 +38,8 @@ export type AdminStore = {
   isPrimary: boolean;
   /** Module Vente Engins activé pour cette boutique (super admin). */
   engineSalesEnabled: boolean;
+  /** Module Immatriculation Engins activé pour cette boutique (super admin). */
+  engineRegistrationEnabled: boolean;
   createdAt: string | null;
 };
 

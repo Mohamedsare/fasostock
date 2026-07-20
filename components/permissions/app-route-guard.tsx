@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useCallback, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { MdErrorOutline, MdRefresh, MdWifiOff } from "react-icons/md";
 import { NoAccessScreen } from "@/components/permissions/no-access-screen";
 import { usePermissions } from "@/lib/features/permissions/use-permissions";
@@ -30,6 +30,24 @@ export function AppRouteGuard({ children }: { children: ReactNode }) {
       setRetryBusy(false);
     }
   }, [refetch]);
+
+  /**
+   * Session absente (souvent après une longue inactivité) : au retour sur l'onglet
+   * (focus / redevenu visible), on retente automatiquement — la session se rafraîchit
+   * et l'écran « Session non synchronisée » disparaît sans action de l'utilisateur.
+   */
+  useEffect(() => {
+    if (data !== null) return;
+    const retry = () => {
+      if (document.visibilityState === "visible") void refetch();
+    };
+    window.addEventListener("focus", retry);
+    document.addEventListener("visibilitychange", retry);
+    return () => {
+      window.removeEventListener("focus", retry);
+      document.removeEventListener("visibilitychange", retry);
+    };
+  }, [data, refetch]);
 
   /** Premier chargement sans donnée en cache */
   if (isLoading && data === undefined) {

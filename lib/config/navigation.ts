@@ -7,6 +7,7 @@ import {
   UtensilsCrossed,
   HandPlatter,
   Bike,
+  IdCard,
   History,
   Store,
   Warehouse,
@@ -54,6 +55,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: ROUTES.barcodes, label: "Code Barre", icon: Barcode, iconBg: "#9A3412" },
   { href: ROUTES.sales, label: "Ventes", icon: ShoppingCart, iconBg: "#EA580C" },
   { href: ROUTES.engines, label: "Vente Engins", icon: Bike, iconBg: "#DC2626" },
+  { href: ROUTES.engineRegistration, label: "Immatriculation Engins", icon: IdCard, iconBg: "#B91C1C" },
   { href: ROUTES.stores, label: "Boutiques", icon: Store, iconBg: "#C2410C" },
   { href: ROUTES.inventory, label: "Stock", icon: Warehouse, iconBg: "#78350F" },
   {

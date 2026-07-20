@@ -50,6 +50,32 @@ export function filterByStoreCatalog<T extends { id: string }>(
   return products.filter((p) => catalog.has(p.id));
 }
 
+/**
+ * Restreint une liste de catégories/marques à celles **réellement utilisées** par les
+ * produits du catalogue d'une boutique personnalisée. Quand la boutique partage tout le
+ * catalogue (`catalog === null`), aucune restriction : la liste complète est renvoyée
+ * (y compris les catégories/marques sans produit).
+ *
+ * @param taxonomies    liste complète (catégories ou marques) de l'entreprise
+ * @param storeProducts produits DÉJÀ filtrés par le catalogue de la boutique
+ * @param pickId        extrait l'id de taxonomie d'un produit (`p.category_id` / `p.brand_id`)
+ * @param catalog       catalogue de la boutique (`null` = partage tout → pas de restriction)
+ */
+export function filterTaxonomyByStoreCatalog<TTax extends { id: string }, TProd>(
+  taxonomies: TTax[],
+  storeProducts: TProd[],
+  pickId: (p: TProd) => string | null | undefined,
+  catalog: Set<string> | null,
+): TTax[] {
+  if (!catalog) return taxonomies;
+  const used = new Set<string>();
+  for (const p of storeProducts) {
+    const id = pickId(p);
+    if (id) used.add(id);
+  }
+  return taxonomies.filter((t) => used.has(t.id));
+}
+
 /** IDs des produits explicitement rattachés à une boutique (gestionnaire de catalogue). */
 export async function listStoreProductIds(storeId: string): Promise<Set<string>> {
   const supabase = createClient();

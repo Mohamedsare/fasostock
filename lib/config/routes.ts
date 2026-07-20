@@ -15,6 +15,8 @@ export const ROUTES = {
   sales: "/sales",
   /** Module Vente Engins (motos) — activé par boutique par le super admin. */
   engines: "/engins",
+  /** Module Immatriculation Engins (CMC/WW/récépissé/carte grise) — activé par boutique. */
+  engineRegistration: "/immatriculation",
   stores: "/stores",
   inventory: "/inventory",
   stockCashier: "/stock-c",

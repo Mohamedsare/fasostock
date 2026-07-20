@@ -89,6 +89,22 @@ async function fetchAppContext(): Promise<AppContextData | null> {
   } = await supabase.auth.getSession();
   let user = session?.user ?? null;
   if (!user) {
+    // Après une longue inactivité, le jeton d'accès a pu expirer sans rafraîchissement
+    // (timers d'onglet en veille throttlés par le navigateur). On force d'abord un
+    // rafraîchissement via le refresh token — évite un faux « Session non synchronisée »
+    // alors que la session est en réalité encore récupérable.
+    try {
+      const { data: refreshed } = await withTimeout(
+        supabase.auth.refreshSession(),
+        10_000,
+        "Rafraîchissement de session",
+      );
+      user = refreshed.session?.user ?? refreshed.user ?? null;
+    } catch {
+      user = null;
+    }
+  }
+  if (!user) {
     try {
       const { data } = await withTimeout(
         supabase.auth.getUser(),
@@ -228,7 +244,7 @@ async function fetchAppContext(): Promise<AppContextData | null> {
   if (isSuperAdmin) {
     const { data: stores } = await supabase
       .from("stores")
-      .select("id, name, is_primary, engine_sales_enabled")
+      .select("id, name, is_primary, engine_sales_enabled, engine_registration_enabled")
       .eq("company_id", companyId)
       .order("is_primary", { ascending: false })
       .order("name", { ascending: true });
@@ -237,6 +253,8 @@ async function fetchAppContext(): Promise<AppContextData | null> {
       name: s.name as string,
       isPrimary: (s as { is_primary?: boolean }).is_primary === true,
       engineSalesEnabled: (s as { engine_sales_enabled?: boolean }).engine_sales_enabled === true,
+      engineRegistrationEnabled:
+        (s as { engine_registration_enabled?: boolean }).engine_registration_enabled === true,
     }));
     return {
       companyId,
@@ -262,7 +280,7 @@ async function fetchAppContext(): Promise<AppContextData | null> {
 
   const { data: stores, error: sErr } = await supabase
     .from("stores")
-    .select("id, name, is_primary, engine_sales_enabled")
+    .select("id, name, is_primary, engine_sales_enabled, engine_registration_enabled")
     .eq("company_id", companyId)
     .order("is_primary", { ascending: false })
     .order("name", { ascending: true });
@@ -273,6 +291,8 @@ async function fetchAppContext(): Promise<AppContextData | null> {
     name: s.name as string,
     isPrimary: (s as { is_primary?: boolean }).is_primary === true,
     engineSalesEnabled: (s as { engine_sales_enabled?: boolean }).engine_sales_enabled === true,
+    engineRegistrationEnabled:
+      (s as { engine_registration_enabled?: boolean }).engine_registration_enabled === true,
   }));
 
   let permissionKeys: string[] = [];

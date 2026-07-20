@@ -21,7 +21,10 @@ import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { ROUTES, storeFactureTabPath } from "@/lib/config/routes";
 import { queryKeys } from "@/lib/query/query-keys";
 import { useStoreCatalog } from "@/lib/features/stores/use-store-catalog";
-import { filterByStoreCatalog } from "@/lib/features/stores/store-catalog";
+import {
+  filterByStoreCatalog,
+  filterTaxonomyByStoreCatalog,
+} from "@/lib/features/stores/store-catalog";
 import { readPosCartQtyUiForMode } from "@/lib/utils/pos-cart-settings";
 import { ensureStringNumberMap } from "@/lib/utils/string-number-map";
 import { messageFromUnknownError, toast } from "@/lib/toast";
@@ -323,7 +326,18 @@ export function PosScreen({
     }
     return m;
   }, [products]);
-  const categories = posQ.data?.categories ?? [];
+  // Catalogue perso : les chips catégorie ne montrent que celles utilisées par les
+  // produits du catalogue de la boutique (sinon toutes celles de l'entreprise).
+  const categories = useMemo(
+    () =>
+      filterTaxonomyByStoreCatalog(
+        posQ.data?.categories ?? [],
+        products,
+        (p) => p.category_id,
+        storeCatalog,
+      ),
+    [posQ.data?.categories, products, storeCatalog],
+  );
   const customers = posQ.data?.customers ?? [];
   const showDiscountField = store?.pos_discount_enabled === true;
   const currencyLabel = store?.currency?.trim() || "XOF";

@@ -23,7 +23,13 @@ export type AppContextData = {
   /** `companies.logo_url` — menu, factures, paramètres (aligné Flutter). */
   companyLogoUrl: string | null;
   storeId: string | null;
-  stores: { id: string; name: string; isPrimary?: boolean; engineSalesEnabled?: boolean }[];
+  stores: {
+    id: string;
+    name: string;
+    isPrimary?: boolean;
+    engineSalesEnabled?: boolean;
+    engineRegistrationEnabled?: boolean;
+  }[];
   isSuperAdmin: boolean;
   permissionKeys: string[];
   roleSlug: string | null;
@@ -56,6 +62,8 @@ export type AccessHelpers = {
   canSales: boolean;
   /** Module Vente Engins — boutique courante autorisée par la plateforme ET droit ventes. */
   canEngineSales: boolean;
+  /** Module Immatriculation Engins — boutique autorisée ET droit ventes. */
+  canEngineRegistration: boolean;
   canStores: boolean;
   canInventory: boolean;
   canPurchases: boolean;
@@ -136,6 +144,16 @@ export function buildAccessHelpers(
     (hasPermission(P.salesInvoiceA4) ||
       hasPermission(P.salesCreate) ||
       hasPermission(P.salesView));
+  // Immatriculation Engins : même logique de gating par boutique que Vente Engins.
+  const registrationStoreOn = data.storeId
+    ? activeStore?.engineRegistrationEnabled === true
+    : data.stores.some((s) => s.engineRegistrationEnabled === true);
+  const canEngineRegistration =
+    registrationStoreOn &&
+    (hasPermission(P.salesInvoiceA4) ||
+      hasPermission(P.salesCreate) ||
+      hasPermission(P.salesView) ||
+      hasPermission(P.salesUpdate));
   const canStores =
     hasPermission(P.storesView) || hasPermission(P.storesCreate);
   const canInventory =
@@ -183,6 +201,7 @@ export function buildAccessHelpers(
     canProducts,
     canSales,
     canEngineSales,
+    canEngineRegistration,
     canStores,
     canInventory,
     canPurchases,
@@ -244,6 +263,7 @@ export function filterNavItemsForPermissions(
     if (href === ROUTES.barcodes) return h.canBarcodes;
     if (href === ROUTES.sales) return h.canSales;
     if (href === ROUTES.engines) return h.canEngineSales;
+    if (href === ROUTES.engineRegistration) return h.canEngineRegistration;
     if (href === ROUTES.stores) return h.canStores;
     if (href === ROUTES.inventory) return h.canInventory && !h.isCashier;
     if (href === ROUTES.expiry) {
@@ -298,6 +318,7 @@ const APP_SHELL_ROUTE_PREFIXES: readonly string[] = [
   ROUTES.barcodes,
   ROUTES.sales,
   ROUTES.engines,
+  ROUTES.engineRegistration,
   ROUTES.stores,
   ROUTES.inventory,
   ROUTES.stockCashier,
