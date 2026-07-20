@@ -109,7 +109,7 @@ const faqs: SeoFaqItem[] = [
   },
   {
     q: "Comment contacter le support de FasoStock ?",
-    a: "Vous pouvez nous contacter directement sur WhatsApp au +226 03 07 96 18. Notre équipe répond rapidement en français, du lundi au samedi.",
+    a: "Vous pouvez nous contacter directement sur WhatsApp au +226 64 71 20 44. Notre équipe répond rapidement en français, du lundi au samedi.",
   },
   {
     q: "FasoStock fonctionne-t-il sur Android et iPhone ?",

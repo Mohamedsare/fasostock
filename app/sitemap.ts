@@ -5,6 +5,7 @@ const siteUrl =
   (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
 
 const seoRoutes = [
+  "/offre-complete",
   "/logiciel-gestion-stock-burkina-faso",
   "/logiciel-caisse-ouagadougou",
   "/gestion-stock-afrique-ouest",

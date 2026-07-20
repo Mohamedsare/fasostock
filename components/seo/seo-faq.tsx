@@ -69,7 +69,7 @@ export function SeoFaq({ faqs }: { faqs: FaqItem[] }) {
           </div>
           <div className="flex gap-2">
             <a
-              href="https://wa.me/22603079618?text=Bonjour%20FasoStock%2C%20j%27ai%20une%20question."
+              href="https://wa.me/22664712044?text=Bonjour%20FasoStock%2C%20j%27ai%20une%20question."
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 rounded-md bg-fs-accent px-4 py-2 text-sm font-black text-white"

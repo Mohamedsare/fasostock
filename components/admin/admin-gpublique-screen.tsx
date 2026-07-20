@@ -55,6 +55,7 @@ export function AdminGPubliqueScreen() {
   const [landingSettings, setLandingSettings] = useState<Record<string, string>>({
     hero_banner_image_url: "",
     hero_banner_media_type: "image",
+    offer_showcase_image_url: "",
     footer_whatsapp_url:
       "https://wa.me/212771668079?text=Bonjour%2C%20je%20suis%20int%C3%A9ress%C3%A9(e)%20par%20FasoStock.%20Pouvez-vous%20m%27aider%20%3F",
     footer_facebook_url: "https://facebook.com",
@@ -155,6 +156,7 @@ export function AdminGPubliqueScreen() {
   );
 
   const [uploadingHero, setUploadingHero] = useState(false);
+  const [uploadingOffer, setUploadingOffer] = useState(false);
   const [uploadingSupport, setUploadingSupport] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
 
@@ -168,6 +170,27 @@ export function AdminGPubliqueScreen() {
       toast.error(messageFromUnknownError(e));
     } finally {
       setUploadingLogo(false);
+    }
+  }
+
+  async function onPickOfferImage(file: File | null) {
+    if (!file) return;
+    setUploadingOffer(true);
+    try {
+      const url = await adminUploadLandingImage(file, "offer");
+      // Auto-save : publie immédiatement l'image de la page /offre-complete.
+      const merged = { ...landingSettings, offer_showcase_image_url: url };
+      setLandingSettings(merged);
+      await adminSetPublicLandingSettings({ offer_showcase_image_url: url });
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["admin-public-landing-settings"] }),
+        revalidateLandingCache(),
+      ]);
+      toast.success("Image « Offre complète » publiée.");
+    } catch (e) {
+      toast.error(messageFromUnknownError(e));
+    } finally {
+      setUploadingOffer(false);
     }
   }
 
@@ -583,6 +606,56 @@ export function AdminGPubliqueScreen() {
             )}
           </article>
         </div>
+        <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:p-5">
+          <p className="text-sm font-bold text-slate-800">Image « Offre complète »</p>
+          <p className="mt-1 text-xs leading-relaxed text-slate-500">
+            Remplace le visuel (mockup animé) de la section héro sur la page{" "}
+            <code className="rounded bg-slate-100 px-1.5 py-0.5 text-xs">/offre-complete</code>. Laissez vide pour
+            conserver le mockup.
+          </p>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <label className="flex flex-col gap-2">
+              <span className={LABEL}>URL image offre</span>
+              <input
+                value={landingSettings.offer_showcase_image_url ?? ""}
+                onChange={(e) => setSetting("offer_showcase_image_url", e.target.value)}
+                placeholder="https://..."
+                autoComplete="off"
+                className={FIELD}
+              />
+            </label>
+            <div className="flex flex-col gap-2">
+              <span className={LABEL}>Uploader l&apos;image</span>
+              <label className="inline-flex min-h-14 w-full cursor-pointer items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-orange-200 bg-orange-50/40 px-4 text-base font-bold text-orange-900 transition active:scale-[0.99]">
+                <MdUpload className="h-5 w-5 shrink-0" aria-hidden />
+                {uploadingOffer ? "Envoi…" : "Choisir une image (publiée tout de suite)"}
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="sr-only"
+                  disabled={uploadingOffer}
+                  onChange={(e) => void onPickOfferImage(e.target.files?.[0] ?? null)}
+                />
+              </label>
+            </div>
+          </div>
+          <div className="mt-4">
+            <p className={`mb-2 ${LABEL}`}>Aperçu actuel</p>
+            {landingSettings.offer_showcase_image_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={landingSettings.offer_showcase_image_url}
+                alt="Aperçu image offre complète"
+                className="max-h-56 w-full rounded-2xl object-cover sm:max-h-64"
+              />
+            ) : (
+              <div className="flex min-h-40 items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white px-4 text-center text-sm text-slate-500">
+                Aucune image — le mockup animé est affiché sur /offre-complete
+              </div>
+            )}
+          </div>
+        </div>
+
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <label className="flex flex-col gap-2">
             <span className={LABEL}>Essai (jours)</span>

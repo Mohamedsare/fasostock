@@ -197,7 +197,7 @@ export function SeoLandingPage({
                 <MdArrowForward className="h-4 w-4" aria-hidden />
               </Link>
               <a
-                href="https://wa.me/22603079618?text=Bonjour%20FasoStock%2C%20je%20souhaite%20plus%20d%27informations."
+                href="https://wa.me/22664712044?text=Bonjour%20FasoStock%2C%20je%20souhaite%20plus%20d%27informations."
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex min-h-12 items-center justify-center gap-2 rounded-md border border-white/40 px-6 py-3 text-sm font-bold text-white hover:bg-white/10"
@@ -207,9 +207,9 @@ export function SeoLandingPage({
               </a>
             </div>
             <div className="mt-4 flex flex-wrap items-center justify-center gap-4 text-xs text-white/70">
-              <a href="tel:+22603079618" className="flex items-center gap-1 hover:text-white">
+              <a href="tel:+22664712044" className="flex items-center gap-1 hover:text-white">
                 <MdPhone className="h-3.5 w-3.5" aria-hidden />
-                +226 03 07 96 18
+                +226 64 71 20 44
               </a>
               <span>Aucune carte bancaire requise</span>
               <span>Résiliation à tout moment</span>

@@ -99,6 +99,9 @@ export function SiteHeader({ sectionHrefPrefix = "" }: SiteHeaderProps) {
           <Link href={section("tarifs")} className="rounded-md px-3 py-2.5 text-sm font-semibold text-neutral-800 hover:bg-black/5">
             Tarifs
           </Link>
+          <Link href="/offre-complete" className="rounded-md px-3 py-2.5 text-sm font-extrabold text-fs-accent hover:bg-fs-accent/8">
+            Offre complète
+          </Link>
           <Link href="/facture-devis" className="rounded-md px-3 py-2.5 text-sm font-semibold text-neutral-800 hover:bg-black/5">
             Facture &amp; Devis
           </Link>
@@ -115,16 +118,16 @@ export function SiteHeader({ sectionHrefPrefix = "" }: SiteHeaderProps) {
             Essai gratuit
           </Link>
           <a
-            href="tel:+22603079618"
+            href="tel:+22664712044"
             className="inline-flex items-center gap-2 rounded-md px-3 py-2.5 text-sm font-semibold text-neutral-700 hover:bg-black/5"
-            aria-label="Appeler FasoStock au +226 03 07 96 18"
-            title="Appeler +226 03 07 96 18"
+            aria-label="Appeler FasoStock au +226 64 71 20 44"
+            title="Appeler +226 64 71 20 44"
           >
             <MdPhone className="h-4 w-4 text-fs-accent" />
-            +226 03 07 96 18
+            +226 64 71 20 44
           </a>
           <a
-            href={`https://wa.me/22603079618?text=${encodeURIComponent(
+            href={`https://wa.me/22664712044?text=${encodeURIComponent(
               "Bonjour FasoStock, je souhaite avoir plus d'informations sur votre solution.",
             )}`}
             target="_blank"
@@ -170,6 +173,9 @@ export function SiteHeader({ sectionHrefPrefix = "" }: SiteHeaderProps) {
             </Link>
             <Link href={section("tarifs")} className="text-[13px] font-semibold text-neutral-800 hover:text-fs-accent">
               Tarifs
+            </Link>
+            <Link href="/offre-complete" className="text-[13px] font-extrabold text-fs-accent hover:opacity-80">
+              Offre complète
             </Link>
             <Link href="/facture-devis" className="text-[13px] font-semibold text-neutral-800 hover:text-fs-accent">
               Facture &amp; Devis

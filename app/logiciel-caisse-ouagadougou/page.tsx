@@ -155,7 +155,7 @@ const jsonLd = {
         addressCountry: "BF",
       },
       url: siteUrl,
-      telephone: "+22603079618",
+      telephone: "+22664712044",
       description: "Logiciel de gestion de stock et de caisse pour commerces au Burkina Faso.",
     },
   ],
