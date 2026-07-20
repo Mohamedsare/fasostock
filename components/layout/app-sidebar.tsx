@@ -231,7 +231,7 @@ export function AppSidebar({
                 ) : null}
                 <span
                   className={cn(
-                    "flex shrink-0 items-center justify-center rounded-xl transition-[opacity,box-shadow] duration-200",
+                    "flex shrink-0 items-center justify-center rounded-lg transition-[opacity,box-shadow] duration-200",
                     effectiveCollapsed ? "h-10 w-10" : "h-9 w-9",
                     !active && "opacity-85 group-hover/nav:opacity-100",
                     active && "shadow-[0_2px_8px_rgba(0,0,0,0.22)]",

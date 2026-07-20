@@ -17,6 +17,8 @@ export type TopProduct = {
 
 export type PurchasesSummary = { totalAmount: number; count: number };
 
+export type ExpensesSummary = { totalAmount: number; count: number };
+
 export type StockValue = { totalValue: number; productCount: number };
 
 export type CategorySales = {
@@ -45,14 +47,19 @@ export type DashboardData = {
   leastByRevenue: TopProduct[];
   salesByCategory: CategorySales[];
   purchasesSummary: PurchasesSummary;
+  /** Dépenses (charges) sur la période — pour le Bénéfice net = marge − dépenses. */
+  expensesSummary: ExpensesSummary;
   stockValue: StockValue;
   lowStockCount: number;
   stockWatchSamples: StockWatchSample[];
   /** Même fenêtre que la période courante, décalée en arrière. */
   previousPeriodSummary: SalesSummary;
   previousPurchasesSummary: PurchasesSummary;
+  previousExpensesSummary: ExpensesSummary;
   daySalesSummary: SalesSummary;
   dayPurchasesSummary: PurchasesSummary;
+  /** Dépenses du jour sélectionné (charges saisies page Dépenses). */
+  dayExpenses: ExpensesSummary;
 };
 
 /** Aligné `StockAlerts` / `getStockAlerts` (Flutter `reports_offline_repository.dart`). */

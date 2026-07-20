@@ -14,6 +14,7 @@ import {
 import type {
   CategorySales,
   DashboardData,
+  ExpensesSummary,
   PurchasesSummary,
   ReportsPageData,
   SalesByDay,
@@ -61,6 +62,7 @@ async function fetchSalesIdsInRange(
 async function computeSalesSummaryFromIds(
   supabase: ReturnType<typeof createClient>,
   saleIds: string[],
+  ratioById: Map<string, number>,
 ): Promise<SalesSummary> {
   if (saleIds.length === 0) return emptySummary();
   const { data: sales, error: sErr } = await supabase
@@ -70,12 +72,13 @@ async function computeSalesSummaryFromIds(
   if (sErr) throw sErr;
   let totalAmount = 0;
   for (const s of sales ?? []) {
-    totalAmount += Number((s as { total?: number }).total ?? 0);
+    const row = s as { id?: string; total?: number };
+    totalAmount += Number(row.total ?? 0) * ratioFor(ratioById, row.id);
   }
   const { data: items, error: iErr } = await supabase
     .from("sale_items")
     .select(
-      "quantity, total, product:products(id, purchase_price)",
+      "sale_id, quantity, total, product:products(id, purchase_price)",
     )
     .in("sale_id", saleIds);
   if (iErr) throw iErr;
@@ -83,6 +86,7 @@ async function computeSalesSummaryFromIds(
   let margin = 0;
   for (const row of items ?? []) {
     const m = row as {
+      sale_id?: string;
       quantity?: number;
       total?: number;
       product?: { purchase_price?: number } | null;
@@ -91,7 +95,7 @@ async function computeSalesSummaryFromIds(
     const lineTotal = Number(m.total ?? 0);
     const purchasePrice = Number(m.product?.purchase_price ?? 0);
     itemsSold += qty;
-    margin += lineTotal - purchasePrice * qty;
+    margin += (lineTotal - purchasePrice * qty) * ratioFor(ratioById, m.sale_id);
   }
   return {
     totalAmount,
@@ -102,7 +106,8 @@ async function computeSalesSummaryFromIds(
 }
 
 function computeSalesByDay(
-  sales: Array<{ created_at: string; total: number }>,
+  sales: Array<{ id?: string; created_at: string; total: number }>,
+  ratioById: Map<string, number>,
 ): SalesByDay[] {
   const byDay = new Map<string, { total: number; count: number }>();
   for (const s of sales) {
@@ -110,7 +115,7 @@ function computeSalesByDay(
     if (!date) continue;
     const cur = byDay.get(date) ?? { total: 0, count: 0 };
     byDay.set(date, {
-      total: cur.total + Number(s.total ?? 0),
+      total: cur.total + Number(s.total ?? 0) * ratioFor(ratioById, s.id),
       count: cur.count + 1,
     });
   }
@@ -122,12 +127,13 @@ function computeSalesByDay(
 async function aggregateProductsFromSales(
   supabase: ReturnType<typeof createClient>,
   saleIds: string[],
+  ratioById: Map<string, number>,
 ): Promise<TopProduct[]> {
   if (saleIds.length === 0) return [];
   const { data: items, error } = await supabase
     .from("sale_items")
     .select(
-      "product_id, quantity, total, product:products(id, name, purchase_price)",
+      "sale_id, product_id, quantity, total, product:products(id, name, purchase_price)",
     )
     .in("sale_id", saleIds);
   if (error) throw error;
@@ -137,6 +143,7 @@ async function aggregateProductsFromSales(
   >();
   for (const row of items ?? []) {
     const m = row as {
+      sale_id?: string;
       product_id?: string;
       quantity?: number;
       total?: number;
@@ -148,12 +155,13 @@ async function aggregateProductsFromSales(
     const purchasePrice = Number(m.product?.purchase_price ?? 0);
     const qty = Number(m.quantity ?? 0);
     const total = Number(m.total ?? 0);
+    const r = ratioFor(ratioById, m.sale_id);
     const cur = agg.get(pid) ?? { name, qty: 0, revenue: 0, cost: 0 };
     agg.set(pid, {
       name,
       qty: cur.qty + qty,
-      revenue: cur.revenue + total,
-      cost: cur.cost + purchasePrice * qty,
+      revenue: cur.revenue + total * r,
+      cost: cur.cost + purchasePrice * qty * r,
     });
   }
   return [...agg.entries()].map(([productId, v]) => ({
@@ -168,18 +176,20 @@ async function aggregateProductsFromSales(
 async function getSalesByCategory(
   supabase: ReturnType<typeof createClient>,
   saleIds: string[],
+  ratioById: Map<string, number>,
 ): Promise<CategorySales[]> {
   if (saleIds.length === 0) return [];
   const { data: items, error } = await supabase
     .from("sale_items")
     .select(
-      "quantity, total, product:products(id, name, category_id, category:categories(id, name))",
+      "sale_id, quantity, total, product:products(id, name, category_id, category:categories(id, name))",
     )
     .in("sale_id", saleIds);
   if (error) throw error;
   const agg = new Map<string, { name: string; revenue: number; qty: number }>();
   for (const row of items ?? []) {
     const m = row as {
+      sale_id?: string;
       quantity?: number;
       total?: number;
       product?: {
@@ -196,7 +206,7 @@ async function getSalesByCategory(
     const cur = agg.get(key) ?? { name, revenue: 0, qty: 0 };
     agg.set(key, {
       name: cur.name,
-      revenue: cur.revenue + Number(m.total ?? 0),
+      revenue: cur.revenue + Number(m.total ?? 0) * ratioFor(ratioById, m.sale_id),
       qty: cur.qty + Number(m.quantity ?? 0),
     });
   }
@@ -228,6 +238,34 @@ async function getPurchasesSummary(
   let totalAmount = 0;
   for (const p of data ?? []) {
     totalAmount += Number((p as { total?: number }).total ?? 0);
+  }
+  return { totalAmount, count: (data ?? []).length };
+}
+
+/**
+ * Total des dépenses (charges page Dépenses) sur une plage de dates (incluse).
+ * En vue boutique, ne compte que les dépenses rattachées à cette boutique
+ * (aligné filtre page Dépenses) ; en vue entreprise, toutes les boutiques.
+ */
+async function getExpensesSummary(
+  supabase: ReturnType<typeof createClient>,
+  companyId: string,
+  storeId: string | null,
+  fromDate: string,
+  toDate: string,
+): Promise<ExpensesSummary> {
+  let q = supabase
+    .from("expenses")
+    .select("id, amount")
+    .eq("company_id", companyId)
+    .gte("expense_date", fromDate)
+    .lte("expense_date", toDate);
+  if (storeId) q = q.eq("store_id", storeId);
+  const { data, error } = await q;
+  if (error) throw error;
+  let totalAmount = 0;
+  for (const e of data ?? []) {
+    totalAmount += Math.max(0, Number((e as { amount?: number }).amount ?? 0));
   }
   return { totalAmount, count: (data ?? []).length };
 }
@@ -307,6 +345,79 @@ async function fetchDashboardLowStock(
 }
 
 const CHUNK = 800;
+
+/**
+ * Part réellement encaissée de chaque vente (0..1) — pour reconnaître le CA et la
+ * marge « au prorata de l'encaissé » : une vente à crédit non remboursée ne compte
+ * pas encore comme bénéfice. Encaissé = Σ paiements réels (`method ≠ 'other'`, le
+ * solde à crédit POS étant justement enregistré en `'other'`). Les remboursements
+ * ultérieurs sont de vrais paiements et font monter le ratio. Une vente sans aucune
+ * ligne de paiement (héritage) est considérée soldée (ratio 1) pour ne rien casser.
+ */
+async function fetchSaleRecognitionRatios(
+  supabase: ReturnType<typeof createClient>,
+  saleIds: string[],
+): Promise<Map<string, number>> {
+  const ratioById = new Map<string, number>();
+  if (saleIds.length === 0) return ratioById;
+
+  const totalById = new Map<string, number>();
+  for (let i = 0; i < saleIds.length; i += CHUNK) {
+    const chunk = saleIds.slice(i, i + CHUNK);
+    const { data, error } = await supabase
+      .from("sales")
+      .select("id, total")
+      .in("id", chunk);
+    if (error) throw error;
+    for (const row of (data ?? []) as Array<{ id?: string; total?: number }>) {
+      if (row.id) totalById.set(row.id, Number(row.total ?? 0));
+    }
+  }
+
+  const paidById = new Map<string, number>();
+  const hasPaymentRow = new Set<string>();
+  for (let i = 0; i < saleIds.length; i += CHUNK) {
+    const chunk = saleIds.slice(i, i + CHUNK);
+    const { data, error } = await supabase
+      .from("sale_payments")
+      .select("sale_id, method, amount")
+      .in("sale_id", chunk);
+    if (error) throw error;
+    for (const row of (data ?? []) as Array<{
+      sale_id?: string;
+      method?: string;
+      amount?: number;
+    }>) {
+      const sid = row.sale_id;
+      if (!sid) continue;
+      hasPaymentRow.add(sid);
+      if (row.method !== "other") {
+        paidById.set(sid, (paidById.get(sid) ?? 0) + Number(row.amount ?? 0));
+      }
+    }
+  }
+
+  for (const id of saleIds) {
+    const total = totalById.get(id) ?? 0;
+    if (!hasPaymentRow.has(id) || total <= 0) {
+      ratioById.set(id, 1);
+      continue;
+    }
+    const paid = paidById.get(id) ?? 0;
+    ratioById.set(id, Math.max(0, Math.min(1, paid / total)));
+  }
+  return ratioById;
+}
+
+/** Ratio de reconnaissance d'une vente (défaut 1 si inconnu). */
+function ratioFor(
+  ratioById: Map<string, number>,
+  saleId: string | undefined | null,
+): number {
+  if (!saleId) return 1;
+  const r = ratioById.get(saleId);
+  return r == null ? 1 : r;
+}
 
 type SaleItemRow = {
   sale_id: string;
@@ -403,17 +514,19 @@ function filterSaleItems(
 async function fetchSalesRowsChunked(
   supabase: ReturnType<typeof createClient>,
   saleIds: string[],
-): Promise<Array<{ created_at: string; total: number }>> {
+): Promise<Array<{ id: string; created_at: string; total: number }>> {
   if (saleIds.length === 0) return [];
-  const out: Array<{ created_at: string; total: number }> = [];
+  const out: Array<{ id: string; created_at: string; total: number }> = [];
   for (let i = 0; i < saleIds.length; i += CHUNK) {
     const chunk = saleIds.slice(i, i + CHUNK);
     const { data, error } = await supabase
       .from("sales")
-      .select("created_at, total")
+      .select("id, created_at, total")
       .in("id", chunk);
     if (error) throw error;
-    out.push(...((data ?? []) as Array<{ created_at: string; total: number }>));
+    out.push(
+      ...((data ?? []) as Array<{ id: string; created_at: string; total: number }>),
+    );
   }
   return out;
 }
@@ -422,6 +535,7 @@ async function computeSalesSummaryFiltered(
   supabase: ReturnType<typeof createClient>,
   matchedSaleIds: string[],
   filteredItems: SaleItemRow[],
+  ratioById: Map<string, number>,
 ): Promise<SalesSummary> {
   if (matchedSaleIds.length === 0) return emptySummary();
   const rows: Array<{ id?: string; total?: number }> = [];
@@ -436,7 +550,7 @@ async function computeSalesSummaryFiltered(
   }
   let totalAmount = 0;
   for (const s of rows) {
-    totalAmount += Number(s.total ?? 0);
+    totalAmount += Number(s.total ?? 0) * ratioFor(ratioById, s.id);
   }
   let itemsSold = 0;
   let margin = 0;
@@ -445,7 +559,7 @@ async function computeSalesSummaryFiltered(
     const lineTotal = Number(row.total ?? 0);
     const purchasePrice = Number(row.product?.purchase_price ?? 0);
     itemsSold += qty;
-    margin += lineTotal - purchasePrice * qty;
+    margin += (lineTotal - purchasePrice * qty) * ratioFor(ratioById, row.sale_id);
   }
   return {
     totalAmount,
@@ -458,6 +572,7 @@ async function computeSalesSummaryFiltered(
 function aggregateCategoriesFromItems(
   items: SaleItemRow[],
   limit: number,
+  ratioById: Map<string, number>,
 ): CategorySales[] {
   const agg = new Map<string, { name: string; revenue: number; qty: number }>();
   for (const row of items) {
@@ -470,7 +585,7 @@ function aggregateCategoriesFromItems(
     const cur = agg.get(key) ?? { name, revenue: 0, qty: 0 };
     agg.set(key, {
       name: cur.name,
-      revenue: cur.revenue + Number(row.total ?? 0),
+      revenue: cur.revenue + Number(row.total ?? 0) * ratioFor(ratioById, row.sale_id),
       qty: cur.qty + Number(row.quantity ?? 0),
     });
   }
@@ -489,6 +604,7 @@ function aggregateTopLeastFromItems(
   items: SaleItemRow[],
   topLimit: number,
   leastLimit: number,
+  ratioById: Map<string, number>,
 ): { top: TopProduct[]; least: TopProduct[] } {
   const agg = new Map<
     string,
@@ -501,12 +617,13 @@ function aggregateTopLeastFromItems(
     const purchasePrice = Number(row.product?.purchase_price ?? 0);
     const qty = Number(row.quantity ?? 0);
     const total = Number(row.total ?? 0);
+    const r = ratioFor(ratioById, row.sale_id);
     const cur = agg.get(pid) ?? { name, qty: 0, revenue: 0, cost: 0 };
     agg.set(pid, {
       name,
       qty: cur.qty + qty,
-      revenue: cur.revenue + total,
-      cost: cur.cost + purchasePrice * qty,
+      revenue: cur.revenue + total * r,
+      cost: cur.cost + purchasePrice * qty * r,
     });
   }
   const list = [...agg.entries()].map(([productId, v]) => ({
@@ -658,16 +775,21 @@ export async function fetchReportsPageData(params: {
     ...new Set(filteredItems.map((i) => i.sale_id)),
   ];
 
+  // CA et marge reconnus au prorata de l'encaissé (une vente à crédit non
+  // remboursée ne compte pas encore comme bénéfice).
+  const ratioById = await fetchSaleRecognitionRatios(supabase, matchedSaleIds);
+
   let salesByDayComputed: SalesByDay[] = [];
   if (matchedSaleIds.length > 0) {
     const salesRows = await fetchSalesRowsChunked(supabase, matchedSaleIds);
-    salesByDayComputed = computeSalesByDay(salesRows);
+    salesByDayComputed = computeSalesByDay(salesRows, ratioById);
   }
 
   const salesSummary = await computeSalesSummaryFiltered(
     supabase,
     matchedSaleIds,
     filteredItems,
+    ratioById,
   );
   const ticketAverage =
     salesSummary.count > 0
@@ -682,8 +804,9 @@ export async function fetchReportsPageData(params: {
     filteredItems,
     10,
     5,
+    ratioById,
   );
-  const salesByCategory = aggregateCategoriesFromItems(filteredItems, 12);
+  const salesByCategory = aggregateCategoriesFromItems(filteredItems, 12, ratioById);
 
   const [purchasesSummary, stockValue, lowStock, stockReport] = await Promise.all([
       getPurchasesSummary(
@@ -757,19 +880,27 @@ export async function fetchDashboardData(params: {
     ),
   ]);
 
+  // CA et marge reconnus au prorata de l'encaissé (une vente à crédit non
+  // remboursée ne compte pas encore comme bénéfice).
+  const [ratioById, prevRatioById] = await Promise.all([
+    fetchSaleRecognitionRatios(supabase, saleIds),
+    fetchSaleRecognitionRatios(supabase, prevSaleIds),
+  ]);
+
   let salesByDayComputed: SalesByDay[] = [];
   if (saleIds.length > 0) {
     const { data: salesRows, error: salesErr } = await supabase
       .from("sales")
-      .select("created_at, total")
+      .select("id, created_at, total")
       .in("id", saleIds);
     if (salesErr) throw salesErr;
     salesByDayComputed = computeSalesByDay(
-      (salesRows ?? []) as Array<{ created_at: string; total: number }>,
+      (salesRows ?? []) as Array<{ id: string; created_at: string; total: number }>,
+      ratioById,
     );
   }
 
-  const productAggP = aggregateProductsFromSales(supabase, saleIds);
+  const productAggP = aggregateProductsFromSales(supabase, saleIds, ratioById);
 
   const [
     salesSummary,
@@ -778,13 +909,15 @@ export async function fetchDashboardData(params: {
     salesByCategory,
     purchasesSummary,
     previousPurchasesSummary,
+    expensesSummary,
+    previousExpensesSummary,
     stockValue,
     lowStock,
   ] = await Promise.all([
-    computeSalesSummaryFromIds(supabase, saleIds),
+    computeSalesSummaryFromIds(supabase, saleIds, ratioById),
     productAggP,
-    computeSalesSummaryFromIds(supabase, prevSaleIds),
-    getSalesByCategory(supabase, saleIds),
+    computeSalesSummaryFromIds(supabase, prevSaleIds, prevRatioById),
+    getSalesByCategory(supabase, saleIds, ratioById),
     getPurchasesSummary(
       supabase,
       params.companyId,
@@ -793,6 +926,20 @@ export async function fetchDashboardData(params: {
       range.to,
     ),
     getPurchasesSummary(
+      supabase,
+      params.companyId,
+      effectiveStoreId,
+      prevRange.from,
+      prevRange.to,
+    ),
+    getExpensesSummary(
+      supabase,
+      params.companyId,
+      effectiveStoreId,
+      range.from,
+      range.to,
+    ),
+    getExpensesSummary(
       supabase,
       params.companyId,
       effectiveStoreId,
@@ -827,9 +974,17 @@ export async function fetchDashboardData(params: {
     params.selectedDay,
     params.selectedDay,
   );
-  const [daySalesSummary, dayPurchasesSummary] = await Promise.all([
-    computeSalesSummaryFromIds(supabase, daySaleIds),
+  const dayRatioById = await fetchSaleRecognitionRatios(supabase, daySaleIds);
+  const [daySalesSummary, dayPurchasesSummary, dayExpenses] = await Promise.all([
+    computeSalesSummaryFromIds(supabase, daySaleIds, dayRatioById),
     getPurchasesSummary(
+      supabase,
+      params.companyId,
+      effectiveStoreId,
+      params.selectedDay,
+      params.selectedDay,
+    ),
+    getExpensesSummary(
       supabase,
       params.companyId,
       effectiveStoreId,
@@ -847,13 +1002,16 @@ export async function fetchDashboardData(params: {
     leastByRevenue,
     salesByCategory,
     purchasesSummary,
+    expensesSummary,
     stockValue,
     lowStockCount,
     stockWatchSamples,
     previousPeriodSummary,
     previousPurchasesSummary,
+    previousExpensesSummary,
     daySalesSummary,
     dayPurchasesSummary,
+    dayExpenses,
   };
 }
 

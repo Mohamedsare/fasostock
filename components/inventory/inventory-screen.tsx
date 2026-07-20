@@ -108,12 +108,12 @@ function StatCard({
   return (
     <div
       className={cn(
-        "flex min-h-[72px] items-center gap-2.5 rounded-[14px] border border-black/[0.08] bg-fs-card px-3.5 py-3 shadow-sm",
+        "flex min-h-[72px] items-center gap-2.5 rounded-[10px] border border-black/[0.08] bg-fs-card px-3.5 py-3 shadow-sm",
         accentLeft && "border-l-4",
         accentLeft && accentBorderClass,
       )}
     >
-      <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px]", iconBgClass)}>
+      <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-lg", iconBgClass)}>
         <Icon className={cn("h-5 w-5", colorClass)} aria-hidden />
       </div>
       <div className="min-w-0 flex-1">
@@ -146,7 +146,7 @@ function InventoryPagination({
   if (pageCount <= 1) return null;
 
   return (
-    <FsCard padding="p-3 sm:p-4" className="mt-4">
+    <FsCard padding="p-3 sm:p-4" className="mt-4 rounded-[10px] sm:rounded-[10px]">
       <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
         {!narrow ? (
           <span className="mr-2 text-xs text-neutral-600 sm:mr-4">
@@ -394,7 +394,7 @@ export function InventoryScreen() {
     return (
       <FsPage className={cn(isWide && "px-8 pt-7")}>
         <h1 className="text-[22px] font-bold text-fs-text min-[900px]:text-2xl">{uiTerms.inventoryTitle}</h1>
-        <FsCard className="mt-4" padding="p-4">
+        <FsCard className="mt-4 rounded-[10px] sm:rounded-[10px]" padding="p-4">
           <FsQueryErrorPanel
             error={ctxError ?? new Error("Impossible de charger le profil ou l’entreprise.")}
             onRetry={() => void refetchCtx()}
@@ -411,11 +411,11 @@ export function InventoryScreen() {
         <p className="mt-2 text-sm text-neutral-600">
           Session indisponible. Reconnectez-vous ou réessayez.
         </p>
-        <FsCard className="mt-6" padding="p-6">
+        <FsCard className="mt-6 rounded-[10px] sm:rounded-[10px]" padding="p-6">
           <button
             type="button"
             onClick={() => void refetchCtx()}
-            className="rounded-[10px] bg-fs-accent px-4 py-2.5 text-sm font-semibold text-white"
+            className="rounded-lg bg-fs-accent px-4 py-2.5 text-sm font-semibold text-white"
           >
             Réessayer
           </button>
@@ -442,7 +442,7 @@ export function InventoryScreen() {
         <p className="mt-2 text-sm text-neutral-600">
           Sélectionnez une boutique dans le menu pour voir le stock et les mouvements.
         </p>
-        <FsCard className="mt-6" padding="p-8">
+        <FsCard className="mt-6 rounded-[10px] sm:rounded-[10px]" padding="p-8">
           <div className="flex flex-col items-center text-center">
             <MdStorefront className="h-16 w-16 text-fs-accent/80" aria-hidden />
             <p className="mt-4 text-base font-semibold text-neutral-700">Choisissez une boutique</p>
@@ -491,7 +491,7 @@ export function InventoryScreen() {
                   if (dataQ.data) setThresholdInput(String(dataQ.data.defaultThreshold));
                 }
               }}
-              className="inline-flex items-center gap-2 rounded-[10px] bg-fs-surface-container px-3.5 py-2.5 text-sm font-semibold text-fs-text shadow-sm ring-1 ring-black/[0.06]"
+              className="inline-flex items-center gap-2 rounded-lg bg-fs-surface-container px-3.5 py-2.5 text-sm font-semibold text-fs-text shadow-sm ring-1 ring-black/[0.06]"
             >
               <MdSettings className="h-5 w-5" aria-hidden />
               Paramètres
@@ -515,7 +515,7 @@ export function InventoryScreen() {
                 })();
               }}
               disabled={filteredForTable.length === 0}
-              className="inline-flex items-center gap-2 rounded-[10px] bg-fs-surface-container px-3.5 py-2.5 text-sm font-semibold text-fs-text shadow-sm ring-1 ring-black/[0.06] disabled:opacity-40"
+              className="inline-flex items-center gap-2 rounded-lg bg-fs-surface-container px-3.5 py-2.5 text-sm font-semibold text-fs-text shadow-sm ring-1 ring-black/[0.06] disabled:opacity-40"
             >
               <MdDownload className="h-5 w-5" aria-hidden />
               Exporter Excel
@@ -524,7 +524,7 @@ export function InventoryScreen() {
         </div>
 
         {showSettings ? (
-          <FsCard padding="p-5" className="mt-4">
+          <FsCard padding="p-5" className="mt-4 rounded-[10px] sm:rounded-[10px]">
             <h2 className="text-sm font-semibold text-fs-text">Seuil d&apos;alerte par défaut</h2>
             <p className="mt-2 text-sm text-neutral-600">
               Utilisé pour les produits sans seuil défini. En dessous, le stock est en alerte.
@@ -548,7 +548,7 @@ export function InventoryScreen() {
                   }
                   thresholdMut.mutate(n);
                 }}
-                className="rounded-[10px] bg-fs-accent px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+                className="rounded-lg bg-fs-accent px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
               >
                 Enregistrer
               </button>
@@ -600,7 +600,7 @@ export function InventoryScreen() {
           />
         </div>
 
-        <FsCard padding="p-0" className="mt-4 overflow-hidden">
+        <FsCard padding="p-0" className="mt-4 overflow-hidden rounded-[10px] sm:rounded-[10px]">
           <div className="border-b border-black/[0.06] p-4 sm:p-5">
             {narrowFilters ? (
               <>
@@ -676,12 +676,12 @@ export function InventoryScreen() {
               </div>
             )}
 
-            <div className="mt-4 inline-flex rounded-xl border border-black/8 bg-fs-surface-container p-1">
+            <div className="mt-4 inline-flex rounded-lg border border-black/8 bg-fs-surface-container p-1">
               <button
                 type="button"
                 onClick={() => setTab("stock")}
                 className={cn(
-                  "rounded-lg px-4 py-2 text-sm font-semibold",
+                  "rounded-md px-4 py-2 text-sm font-semibold",
                   tab === "stock" ? "bg-fs-card text-fs-text shadow-sm" : "text-neutral-600",
                 )}
               >
@@ -691,7 +691,7 @@ export function InventoryScreen() {
                 type="button"
                 onClick={() => setTab("moves")}
                 className={cn(
-                  "inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold",
+                  "inline-flex items-center gap-1.5 rounded-md px-4 py-2 text-sm font-semibold",
                   tab === "moves" ? "bg-fs-card text-fs-text shadow-sm" : "text-neutral-600",
                 )}
               >

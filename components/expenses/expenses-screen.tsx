@@ -1,6 +1,6 @@
 "use client";
 
-import { useDeferredValue, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   MdAccountBalance,
@@ -172,6 +172,7 @@ export function ExpensesScreen() {
   const ctx = useAppContext();
   const { isLoading: permLoading, helpers: h } = usePermissions();
   const companyId = ctx.data?.companyId ?? "";
+  const ctxStoreId = ctx.data?.storeId ?? null;
   const stores = ctx.data?.stores;
   const storeList = useMemo(
     () => (stores ?? []).map((s) => ({ id: s.id, name: s.name })),
@@ -187,8 +188,19 @@ export function ExpensesScreen() {
 
   const [period, setPeriod] = useState<Period>("this_month");
   const [category, setCategory] = useState<string>("all");
+  const [storeFilter, setStoreFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
   const deferredSearch = useDeferredValue(search);
+
+  // Positionne le filtre sur la boutique courante au premier chargement
+  // (l'utilisateur reste libre de choisir « Toutes » ensuite).
+  const storeFilterInitedRef = useRef(false);
+  useEffect(() => {
+    if (storeFilterInitedRef.current) return;
+    if (!companyId) return;
+    storeFilterInitedRef.current = true;
+    if (ctxStoreId) setStoreFilter(ctxStoreId);
+  }, [companyId, ctxStoreId]);
 
   const { from, to } = useMemo(() => periodRange(period), [period]);
 
@@ -205,6 +217,11 @@ export function ExpensesScreen() {
     const q = deferredSearch.trim().toLowerCase();
     return rows.filter((e) => {
       if (category !== "all" && e.category !== category) return false;
+      if (storeFilter === "__none__") {
+        if (e.store_id) return false;
+      } else if (storeFilter !== "all" && e.store_id !== storeFilter) {
+        return false;
+      }
       if (!q) return true;
       return (
         (e.label ?? "").toLowerCase().includes(q) ||
@@ -212,7 +229,7 @@ export function ExpensesScreen() {
         expenseCategoryLabel(e.category).toLowerCase().includes(q)
       );
     });
-  }, [rows, category, deferredSearch]);
+  }, [rows, category, storeFilter, deferredSearch]);
 
   const stats = useMemo(() => {
     const total = filtered.reduce((s, e) => s + e.amount, 0);
@@ -405,19 +422,37 @@ export function ExpensesScreen() {
                 className={fsInputClass("pl-9")}
               />
             </div>
-            <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className={fsInputClass("sm:w-56")}
-              aria-label="Filtrer par catégorie"
-            >
-              <option value="all">Toutes les catégories</option>
-              {EXPENSE_CATEGORIES.map((c) => (
-                <option key={c.key} value={c.key}>
-                  {c.label}
-                </option>
-              ))}
-            </select>
+            <div className="grid grid-cols-1 gap-2 min-[420px]:grid-cols-2 sm:flex sm:flex-none">
+              {storeList.length > 0 ? (
+                <select
+                  value={storeFilter}
+                  onChange={(e) => setStoreFilter(e.target.value)}
+                  className={fsInputClass("sm:w-48")}
+                  aria-label="Filtrer par boutique"
+                >
+                  <option value="all">Toutes les boutiques</option>
+                  {storeList.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
+                  <option value="__none__">Sans boutique</option>
+                </select>
+              ) : null}
+              <select
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                className={fsInputClass("sm:w-56")}
+                aria-label="Filtrer par catégorie"
+              >
+                <option value="all">Toutes les catégories</option>
+                {EXPENSE_CATEGORIES.map((c) => (
+                  <option key={c.key} value={c.key}>
+                    {c.label}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
       </FsStickyMobileActions>

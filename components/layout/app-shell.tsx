@@ -324,7 +324,7 @@ export function AppShell({ children, userEmail }: AppShellProps) {
                       type="button"
                       onClick={() => setStoreSwitcherOpen((v) => !v)}
                       className={cn(
-                        "inline-flex items-center gap-1.5 rounded-xl border border-black/[0.07] bg-fs-surface-container/90 px-2.5 py-1.5",
+                        "inline-flex items-center gap-1.5 rounded-md border border-black/[0.07] bg-fs-surface-container/90 px-2.5 py-1.5",
                         "shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-colors hover:bg-fs-surface-container",
                         "dark:border-white/10 dark:bg-white/5",
                       )}
@@ -438,7 +438,7 @@ export function AppShell({ children, userEmail }: AppShellProps) {
                     type="button"
                     onClick={() => setStoreSwitcherOpen(true)}
                     className={cn(
-                      "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-black/[0.07] bg-fs-surface-container/90 text-fs-accent",
+                      "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-black/[0.07] bg-fs-surface-container/90 text-fs-accent",
                       "shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-transform active:scale-95 dark:border-white/10 dark:bg-white/5",
                     )}
                     aria-label={`Changer de boutique (actuelle : ${

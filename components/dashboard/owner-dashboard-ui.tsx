@@ -2,11 +2,6 @@
 
 import type { ActivityUiTerms } from "@/lib/features/activity/activity-profiles";
 import type { DashboardPeriod } from "@/lib/features/dashboard/date-range";
-import {
-  buildOwnerRecommendations,
-  OWNER_REC_PRIORITY_LABEL,
-  type OwnerRecommendation,
-} from "@/lib/features/dashboard/owner-recommendations";
 import type { DashboardData } from "@/lib/features/dashboard/types";
 import type { AccessHelpers } from "@/lib/features/permissions/access";
 import { P } from "@/lib/constants/permissions";
@@ -20,7 +15,6 @@ import { useRouter } from "next/navigation";
 import {
   startTransition,
   useEffect,
-  useMemo,
   useState,
   type ComponentType,
   type CSSProperties,
@@ -36,9 +30,11 @@ import {
   MdDescription,
   MdInventory2,
   MdLocalShipping,
+  MdPayments,
   MdPercent,
   MdPointOfSale,
   MdReceiptLong,
+  MdSavings,
   MdShoppingCart,
   MdShowChart,
   MdTrendingDown,
@@ -89,146 +85,6 @@ function formatDelta(pct: number | null): { text: string; up: boolean | null } {
     text: `${pct >= 0 ? "+" : ""}${rounded}%`,
     up: pct > 0 ? true : pct < 0 ? false : null,
   };
-}
-
-function commerceScore(d: DashboardData): { score: number; label: string } {
-  const prev = d.previousPeriodSummary;
-  const cur = d.salesSummary;
-  let points = 52;
-  if (prev.totalAmount > 0) {
-    const trend = (cur.totalAmount - prev.totalAmount) / prev.totalAmount;
-    points += Math.max(-18, Math.min(18, trend * 40));
-  }
-  const marginRate =
-    cur.totalAmount > 0 ? (cur.margin / cur.totalAmount) * 100 : 0;
-  points += Math.max(0, Math.min(22, (marginRate / 35) * 22));
-  points -= Math.min(12, d.lowStockCount * 0.28);
-  const score = Math.max(0, Math.min(100, Math.round(points)));
-  const label =
-    score >= 85 ? "Excellent" : score >= 70 ? "Bon" : score >= 50 ? "Moyen" : "À suivre";
-  return { score, label };
-}
-
-function CommerceGauge({ score, label }: { score: number; label: string }) {
-  const r = 46;
-  const c = 2 * Math.PI * r;
-  const p = Math.max(0, Math.min(100, score)) / 100;
-  return (
-    <div className="flex items-center gap-3">
-      <svg viewBox="0 0 112 112" className="h-[100px] w-[100px] shrink-0" aria-hidden>
-        <circle
-          cx="56"
-          cy="56"
-          r={r}
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="9"
-          className="text-neutral-200 dark:text-neutral-700"
-        />
-        <circle
-          cx="56"
-          cy="56"
-          r={r}
-          fill="none"
-          stroke="var(--owner-accent)"
-          strokeWidth="9"
-          strokeLinecap="round"
-          strokeDasharray={`${c * p} ${c}`}
-          transform="rotate(-90 56 56)"
-        />
-        <text
-          x="56"
-          y="54"
-          textAnchor="middle"
-          className="fill-neutral-800 dark:fill-neutral-100"
-          style={{ fontSize: 13, fontWeight: 800 }}
-        >
-          {score}
-        </text>
-        <text
-          x="56"
-          y="68"
-          textAnchor="middle"
-          className="fill-neutral-400 dark:fill-neutral-500"
-          style={{ fontSize: 8, fontWeight: 600 }}
-        >
-          / 100
-        </text>
-      </svg>
-      <div>
-        <p className="text-[11px] font-medium text-neutral-500">Score commerce</p>
-        <p className="text-base font-bold text-neutral-900">{label}</p>
-      </div>
-    </div>
-  );
-}
-
-const REC_PRIORITY_STYLES = {
-  urgent:
-    "bg-red-50 text-red-800 ring-red-200/90 dark:bg-red-950/50 dark:text-red-200 dark:ring-red-500/30",
-  important:
-    "bg-amber-50 text-amber-900 ring-amber-200/90 dark:bg-amber-950/45 dark:text-amber-100 dark:ring-amber-500/30",
-  conseil:
-    "bg-[color-mix(in_srgb,var(--owner-accent)_10%,white)] text-[var(--owner-accent)] ring-[color-mix(in_srgb,var(--owner-accent)_25%,transparent)] dark:bg-[color-mix(in_oklab,var(--owner-accent)_18%,var(--fs-surface-container))] dark:ring-[color-mix(in_srgb,var(--owner-accent)_35%,transparent)]",
-} as const;
-
-function OwnerRecommendationCard({ rec }: { rec: OwnerRecommendation }) {
-  return (
-    <article className="rounded-xl bg-fs-card px-3 py-3 ring-1 ring-black/6 dark:ring-white/10">
-      <div className="flex flex-wrap items-center gap-2">
-        <span
-          className={cn(
-            "inline-flex rounded-full px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide ring-1",
-            REC_PRIORITY_STYLES[rec.priority],
-          )}
-        >
-          {OWNER_REC_PRIORITY_LABEL[rec.priority]}
-        </span>
-        <h4 className="min-w-0 flex-1 text-xs font-extrabold leading-snug text-neutral-900 dark:text-fs-text">
-          {rec.title}
-        </h4>
-      </div>
-      <p className="mt-2 text-xs leading-relaxed text-neutral-700 dark:text-fs-on-surface-variant">
-        <span className="font-bold text-neutral-900 dark:text-fs-text">Ce que vos chiffres disent : </span>
-        {rec.situation}
-      </p>
-      <p className="mt-1.5 text-xs leading-relaxed text-neutral-800 dark:text-fs-text">
-        <span className="font-bold text-[var(--owner-accent)]">Que faire : </span>
-        {rec.action}
-      </p>
-      {rec.metric ? (
-        <p className="mt-2 rounded-lg bg-neutral-50 px-2.5 py-1.5 text-[11px] font-bold tabular-nums text-neutral-800 ring-1 ring-black/5 dark:bg-fs-surface-container dark:text-fs-text dark:ring-white/10">
-          {rec.metric}
-        </p>
-      ) : null}
-    </article>
-  );
-}
-
-function OwnerRecommendationList({
-  items,
-  compact = false,
-}: {
-  items: OwnerRecommendation[];
-  compact?: boolean;
-}) {
-  if (items.length === 0) {
-    return (
-      <p className="text-xs font-medium text-neutral-600 dark:text-fs-on-surface-variant">
-        Rien à signaler pour l&apos;instant. Enregistrez vos ventes pour recevoir des conseils
-        personnalisés.
-      </p>
-    );
-  }
-  return (
-    <ul className={cn("space-y-2.5", !compact && "min-[800px]:grid min-[800px]:grid-cols-2 min-[800px]:gap-3 min-[800px]:space-y-0")}>
-      {items.map((rec) => (
-        <li key={rec.id} className={cn(!compact && "min-[800px]:list-none")}>
-          <OwnerRecommendationCard rec={rec} />
-        </li>
-      ))}
-    </ul>
-  );
 }
 
 function SoftCard({
@@ -285,6 +141,8 @@ const FASO_BRAND = {
 const OWNER_KPI_THEMES = {
   revenue: { top: FASO_BRAND.accent, footer: FASO_BRAND.accentDark },
   margin: { top: FASO_BRAND.emerald, footer: FASO_BRAND.emeraldDark },
+  /** Bénéfice net (marge − dépenses) — vert profond, distinct de la marge brute. */
+  net: { top: FASO_BRAND.emeraldDark, footer: "#065F46" },
   sales: { top: FASO_BRAND.blue, footer: FASO_BRAND.blueDark },
   ticket: { top: FASO_BRAND.sky, footer: FASO_BRAND.skyDark },
   purchases: { top: FASO_BRAND.amber, footer: FASO_BRAND.amberDark },
@@ -532,14 +390,9 @@ export function OwnerDashboardUi(props: OwnerDashboardUiProps) {
   } = props;
 
   const router = useRouter();
-  const [recPanelOpen, setRecPanelOpen] = useState(false);
   const [stockPanelOpen, setStockPanelOpen] = useState(false);
 
   const reportsHref = helpers.canReports ? ROUTES.reports : ROUTES.sales;
-  const merchantRecs = useMemo(
-    () => buildOwnerRecommendations(d, period),
-    [d, period],
-  );
 
   useEffect(() => {
     const paths = new Set<string>([
@@ -580,6 +433,14 @@ export function OwnerDashboardUi(props: OwnerDashboardUiProps) {
     prev.count > 0 ? prev.totalAmount / prev.count : 0;
   const curTicket = d.ticketAverage;
 
+  // Bénéfice net = marge − dépenses (jour & période). Gardes anti-donnée périmée.
+  const dayExpensesTotal = d.dayExpenses?.totalAmount ?? 0;
+  const dayNet = d.daySalesSummary.margin - dayExpensesTotal;
+  const periodExpensesTotal = d.expensesSummary?.totalAmount ?? 0;
+  const prevExpensesTotal = d.previousExpensesSummary?.totalAmount ?? 0;
+  const periodNet = d.salesSummary.margin - periodExpensesTotal;
+  const prevPeriodNet = prev.margin - prevExpensesTotal;
+
   const welcomeTrend = pctVsPrev(d.salesSummary.totalAmount, prev.totalAmount);
   const welcome =
     welcomeTrend === null
@@ -590,7 +451,6 @@ export function OwnerDashboardUi(props: OwnerDashboardUiProps) {
           ? "Aujourd’hui, surveillez vos marges et votre stock."
           : "Aujourd’hui, votre activité est stable.";
 
-  const { score, label: scoreLabel } = commerceScore(d);
   const headerDate = (() => {
     try {
       return format(parseISO(selectedDay), "dd/MM/yyyy", { locale: fr });
@@ -712,7 +572,7 @@ export function OwnerDashboardUi(props: OwnerDashboardUiProps) {
             <p className="mt-1 text-sm font-medium leading-snug text-neutral-500">{description}</p>
           </div>
           <div className="flex flex-col gap-2 rounded-[14px] border border-black/6 bg-neutral-100/80 p-2 dark:bg-fs-surface-container/90 sm:flex-row sm:items-center sm:justify-end">
-            <div className="flex min-h-11 flex-wrap items-center gap-2 touch-manipulation">
+            <div className="flex min-h-9 flex-wrap items-center gap-2 touch-manipulation">
               <MdCalendarToday className="h-4 w-4 shrink-0 text-neutral-400" aria-hidden />
               <input
                 type="date"
@@ -721,7 +581,7 @@ export function OwnerDashboardUi(props: OwnerDashboardUiProps) {
                 onChange={(e) =>
                   startTransition(() => setSelectedDay(e.target.value))
                 }
-                className="min-h-11 min-w-0 flex-1 rounded-lg border border-black/8 bg-fs-card px-2 py-2 text-base font-semibold text-neutral-800 min-[900px]:max-w-[11rem] min-[900px]:py-1.5 min-[900px]:text-sm"
+                className="min-h-9 min-w-0 flex-1 rounded-lg border border-black/8 bg-fs-card px-2 py-1.5 text-base font-semibold text-neutral-800 min-[900px]:max-w-[11rem] min-[900px]:text-sm"
               />
               <button
                 type="button"
@@ -730,7 +590,7 @@ export function OwnerDashboardUi(props: OwnerDashboardUiProps) {
                     setSelectedDay(format(new Date(), "yyyy-MM-dd")),
                   )
                 }
-                className="min-h-11 shrink-0 rounded-lg bg-fs-card px-3 py-2 text-xs font-bold text-[var(--owner-accent)] ring-1 ring-black/8 touch-manipulation min-[900px]:text-xs dark:ring-white/12"
+                className="min-h-9 shrink-0 rounded-lg bg-fs-card px-3 py-1.5 text-xs font-bold text-[var(--owner-accent)] ring-1 ring-black/8 touch-manipulation min-[900px]:text-xs dark:ring-white/12"
               >
                 Aujourd&apos;hui
               </button>
@@ -741,150 +601,121 @@ export function OwnerDashboardUi(props: OwnerDashboardUiProps) {
           </div>
         </div>
 
-        {/* Bandeau accueil + stats jour + jauge + alertes */}
+        {/* Bandeau accueil + stats du jour + alertes stock */}
         <SoftCard className="mt-5 p-4 min-[900px]:p-5">
-          <div className="flex flex-col gap-5 min-[1100px]:flex-row min-[1100px]:items-center min-[1100px]:justify-between">
-            <div className="min-w-0 flex-1 space-y-4">
-              <p className="text-sm font-semibold text-neutral-800">
-                Bonjour ! <span aria-hidden>👋</span> {welcome}
-              </p>
-              <div className="grid grid-cols-2 gap-2 min-[600px]:grid-cols-4">
-                <OwnerDayStatCard
-                  label="CA aujourd'hui"
-                  value={formatCurrency(d.daySalesSummary.totalAmount)}
-                  theme={OWNER_KPI_THEMES.revenue}
-                  watermark={MdTrendingUp}
-                />
-                <OwnerDayStatCard
-                  label="Marge aujourd'hui"
-                  value={formatCurrency(d.daySalesSummary.margin)}
-                  theme={OWNER_KPI_THEMES.margin}
-                  watermark={MdPercent}
-                />
-                <OwnerDayStatCard
-                  label="Ventes"
-                  value={`${d.daySalesSummary.count}`}
-                  theme={OWNER_KPI_THEMES.sales}
-                  watermark={MdShoppingCart}
-                />
-                <OwnerDayStatCard
-                  label="Articles vendus"
-                  value={`${d.daySalesSummary.itemsSold}`}
-                  theme={OWNER_KPI_THEMES.items}
-                  watermark={MdInventory2}
-                />
-              </div>
-            </div>
-            <div className="flex flex-col items-stretch gap-3 min-[1100px]:flex-row min-[1100px]:items-center">
-              <CommerceGauge score={score} label={scoreLabel} />
-              <div className="flex min-w-0 flex-1 flex-col gap-2 min-[1100px]:max-w-[320px]">
-                <button
-                  type="button"
-                  aria-expanded={recPanelOpen}
-                  onClick={() => {
-                    setRecPanelOpen((o) => !o);
-                    setStockPanelOpen(false);
-                  }}
-                  className="flex min-h-12 w-full items-center justify-between gap-2 rounded-xl bg-[color-mix(in_srgb,var(--owner-accent)_14%,white)] px-3 py-2.5 text-left text-sm font-bold text-[var(--owner-accent)] ring-1 ring-[color-mix(in_srgb,var(--owner-accent)_28%,transparent)] transition hover:brightness-[1.02] touch-manipulation dark:bg-[color-mix(in_oklab,var(--owner-accent)_22%,var(--fs-surface-container))] dark:ring-[color-mix(in_srgb,var(--owner-accent)_42%,transparent)] dark:hover:brightness-110"
-                >
-                  <span>
-                    {merchantRecs.length} conseil{merchantRecs.length > 1 ? "s" : ""} pour votre
-                    commerce
-                  </span>
-                  <MdChevronRight
-                    className={cn(
-                      "h-5 w-5 shrink-0 opacity-80 transition-transform duration-300 ease-out",
-                      recPanelOpen && "rotate-90",
-                    )}
-                    aria-hidden
-                  />
-                </button>
-                {recPanelOpen ? (
-                  <div
-                    className="max-h-[min(420px,55vh)] overflow-y-auto overscroll-contain rounded-xl border border-[color-mix(in_srgb,var(--owner-accent)_22%,transparent)] bg-[color-mix(in_srgb,var(--owner-accent)_6%,white)] p-2.5 pr-1 dark:border-[color-mix(in_srgb,var(--owner-accent)_35%,transparent)] dark:bg-[color-mix(in_oklab,var(--owner-accent)_12%,var(--fs-surface-container))]"
-                    role="region"
-                    aria-label="Conseils détaillés pour votre commerce"
-                  >
-                    <OwnerRecommendationList items={merchantRecs} compact />
-                  </div>
-                ) : null}
-
-                <button
-                  type="button"
-                  aria-expanded={stockPanelOpen}
-                  onClick={() => {
-                    setStockPanelOpen((o) => !o);
-                    setRecPanelOpen(false);
-                  }}
-                  className="flex min-h-12 w-full items-center justify-between gap-2 rounded-xl bg-red-50 px-3 py-2.5 text-left text-sm font-bold text-red-700 ring-1 ring-red-100 transition hover:bg-red-50/90 touch-manipulation dark:bg-red-950/35 dark:text-red-300 dark:ring-red-500/25 dark:hover:bg-red-950/45"
-                >
-                  <span className="min-w-0 text-left leading-snug">
-                    {d.lowStockCount} alerte{d.lowStockCount > 1 ? "s" : ""} stock
-                    <span className="mt-0.5 block text-[11px] font-semibold opacity-90">
-                      {stockAlertScopeLabel}
-                    </span>
-                  </span>
-                  <MdChevronRight
-                    className={cn(
-                      "h-5 w-5 shrink-0 opacity-80 transition-transform duration-300 ease-out",
-                      stockPanelOpen && "rotate-90",
-                    )}
-                    aria-hidden
-                  />
-                </button>
-                {stockPanelOpen ? (
-                  <div
-                    className="space-y-1.5 rounded-xl border border-red-100 bg-red-50/80 p-2.5 dark:border-red-500/25 dark:bg-red-950/35"
-                    role="region"
-                    aria-label="Alertes stock détaillées"
-                  >
-                    <p className="text-sm font-medium leading-snug text-red-900 dark:text-red-100">
-                      Stock faible ou épuisé — {stockAlertScopeLabel}
-                    </p>
-                    {d.lowStockCount === 0 ? (
-                      <p className="text-xs text-neutral-600 dark:text-fs-on-surface-variant">
-                        Aucun produit en alerte pour le moment.
-                      </p>
-                    ) : d.stockWatchSamples.length === 0 ? (
-                      <p className="text-xs text-red-800 dark:text-red-200">
-                        {d.lowStockCount} produit{d.lowStockCount > 1 ? "s" : ""} en alerte. Ouvrez
-                        Inventaire pour voir la liste complète.
-                      </p>
-                    ) : (
-                      <>
-                        <ul className="max-h-[min(220px,40vh)] space-y-1.5 overflow-y-auto overscroll-contain pr-0.5">
-                          {d.stockWatchSamples.map((s, idx) => (
-                            <li
-                              key={`${s.storeName ?? ""}-${s.productName}-${idx}`}
-                              className="flex items-center justify-between gap-2 rounded-lg bg-fs-card/90 px-2.5 py-2 text-xs ring-1 ring-black/5 dark:ring-white/10"
-                            >
-                              <span className="min-w-0 truncate font-medium text-neutral-800 dark:text-fs-text">
-                                {s.productName}
-                                {s.storeName ? (
-                                  <span className="block truncate text-[10px] font-semibold text-neutral-500 dark:text-fs-on-surface-variant">
-                                    {s.storeName}
-                                  </span>
-                                ) : null}
+          <p className="text-sm font-semibold text-neutral-800">
+            Bonjour ! <span aria-hidden>👋</span> {welcome}
+          </p>
+          <div className="mt-4 grid grid-cols-2 gap-2 min-[600px]:grid-cols-3 min-[900px]:grid-cols-6">
+            <OwnerDayStatCard
+              label="CA aujourd'hui"
+              value={formatCurrency(d.daySalesSummary.totalAmount)}
+              theme={OWNER_KPI_THEMES.revenue}
+              watermark={MdTrendingUp}
+            />
+            <OwnerDayStatCard
+              label="Marge aujourd'hui"
+              value={formatCurrency(d.daySalesSummary.margin)}
+              theme={OWNER_KPI_THEMES.margin}
+              watermark={MdPercent}
+            />
+            <OwnerDayStatCard
+              label="Dépenses aujourd'hui"
+              value={formatCurrency(dayExpensesTotal)}
+              theme={OWNER_KPI_THEMES.purchases}
+              watermark={MdPayments}
+            />
+            <OwnerDayStatCard
+              label="Bénéfice net"
+              value={formatCurrency(dayNet)}
+              theme={OWNER_KPI_THEMES.net}
+              watermark={MdSavings}
+            />
+            <OwnerDayStatCard
+              label="Ventes"
+              value={`${d.daySalesSummary.count}`}
+              theme={OWNER_KPI_THEMES.sales}
+              watermark={MdShoppingCart}
+            />
+            <OwnerDayStatCard
+              label="Articles vendus"
+              value={`${d.daySalesSummary.itemsSold}`}
+              theme={OWNER_KPI_THEMES.items}
+              watermark={MdInventory2}
+            />
+          </div>
+          <div className="mt-3">
+            <button
+              type="button"
+              aria-expanded={stockPanelOpen}
+              onClick={() => setStockPanelOpen((o) => !o)}
+              className="flex min-h-12 w-full items-center justify-between gap-2 rounded-xl bg-red-50 px-3 py-2.5 text-left text-sm font-bold text-red-700 ring-1 ring-red-100 transition hover:bg-red-50/90 touch-manipulation dark:bg-red-950/35 dark:text-red-300 dark:ring-red-500/25 dark:hover:bg-red-950/45"
+            >
+              <span className="min-w-0 text-left leading-snug">
+                {d.lowStockCount} alerte{d.lowStockCount > 1 ? "s" : ""} stock
+                <span className="mt-0.5 block text-[11px] font-semibold opacity-90">
+                  {stockAlertScopeLabel}
+                </span>
+              </span>
+              <MdChevronRight
+                className={cn(
+                  "h-5 w-5 shrink-0 opacity-80 transition-transform duration-300 ease-out",
+                  stockPanelOpen && "rotate-90",
+                )}
+                aria-hidden
+              />
+            </button>
+            {stockPanelOpen ? (
+              <div
+                className="mt-2 space-y-1.5 rounded-xl border border-red-100 bg-red-50/80 p-2.5 dark:border-red-500/25 dark:bg-red-950/35"
+                role="region"
+                aria-label="Alertes stock détaillées"
+              >
+                <p className="text-sm font-medium leading-snug text-red-900 dark:text-red-100">
+                  Stock faible ou épuisé — {stockAlertScopeLabel}
+                </p>
+                {d.lowStockCount === 0 ? (
+                  <p className="text-xs text-neutral-600 dark:text-fs-on-surface-variant">
+                    Aucun produit en alerte pour le moment.
+                  </p>
+                ) : d.stockWatchSamples.length === 0 ? (
+                  <p className="text-xs text-red-800 dark:text-red-200">
+                    {d.lowStockCount} produit{d.lowStockCount > 1 ? "s" : ""} en alerte. Ouvrez
+                    Inventaire pour voir la liste complète.
+                  </p>
+                ) : (
+                  <>
+                    <ul className="max-h-[min(220px,40vh)] space-y-1.5 overflow-y-auto overscroll-contain pr-0.5">
+                      {d.stockWatchSamples.map((s, idx) => (
+                        <li
+                          key={`${s.storeName ?? ""}-${s.productName}-${idx}`}
+                          className="flex items-center justify-between gap-2 rounded-lg bg-fs-card/90 px-2.5 py-2 text-xs ring-1 ring-black/5 dark:ring-white/10"
+                        >
+                          <span className="min-w-0 truncate font-medium text-neutral-800 dark:text-fs-text">
+                            {s.productName}
+                            {s.storeName ? (
+                              <span className="block truncate text-[10px] font-semibold text-neutral-500 dark:text-fs-on-surface-variant">
+                                {s.storeName}
                               </span>
-                              <span className="shrink-0 rounded-md bg-red-100 px-1.5 py-0.5 text-[10px] font-bold leading-tight text-red-800 dark:bg-red-950/60 dark:text-red-200">
-                                {s.quantity} en stock
-                                {s.threshold > 0 ? ` · min. ${s.threshold}` : ""}
-                              </span>
-                            </li>
-                          ))}
-                        </ul>
-                        {d.lowStockCount > d.stockWatchSamples.length ? (
-                          <p className="pt-1 text-xs text-red-800/90 dark:text-red-200/90">
-                            … et {d.lowStockCount - d.stockWatchSamples.length} autre
-                            {d.lowStockCount - d.stockWatchSamples.length > 1 ? "s" : ""}
-                          </p>
-                        ) : null}
-                      </>
-                    )}
-                  </div>
-                ) : null}
+                            ) : null}
+                          </span>
+                          <span className="shrink-0 rounded-md bg-red-100 px-1.5 py-0.5 text-[10px] font-bold leading-tight text-red-800 dark:bg-red-950/60 dark:text-red-200">
+                            {s.quantity} en stock
+                            {s.threshold > 0 ? ` · min. ${s.threshold}` : ""}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                    {d.lowStockCount > d.stockWatchSamples.length ? (
+                      <p className="pt-1 text-xs text-red-800/90 dark:text-red-200/90">
+                        … et {d.lowStockCount - d.stockWatchSamples.length} autre
+                        {d.lowStockCount - d.stockWatchSamples.length > 1 ? "s" : ""}
+                      </p>
+                    ) : null}
+                  </>
+                )}
               </div>
-            </div>
+            ) : null}
           </div>
         </SoftCard>
 
@@ -903,7 +734,7 @@ export function OwnerDashboardUi(props: OwnerDashboardUiProps) {
                   })
                 }
                 className={cn(
-                  "min-h-11 touch-manipulation rounded-lg px-3 py-2 text-sm font-bold transition-colors",
+                  "min-h-9 touch-manipulation rounded-lg px-3 py-1.5 text-sm font-bold transition-colors",
                   scope === "company"
                     ? "bg-[color-mix(in_srgb,var(--owner-accent)_16%,white)] text-[var(--owner-accent)] ring-1 ring-[color-mix(in_srgb,var(--owner-accent)_35%,transparent)] dark:bg-[color-mix(in_oklab,var(--owner-accent)_26%,var(--fs-surface-container))] dark:ring-[color-mix(in_srgb,var(--owner-accent)_45%,transparent)]"
                     : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200/80 dark:bg-fs-surface-container dark:hover:bg-white/[0.08]",
@@ -923,7 +754,7 @@ export function OwnerDashboardUi(props: OwnerDashboardUiProps) {
                     });
                   }}
                   className={cn(
-                    "min-h-11 touch-manipulation rounded-lg px-3 py-2 text-sm font-bold transition-colors",
+                    "min-h-9 touch-manipulation rounded-lg px-3 py-1.5 text-sm font-bold transition-colors",
                     scope === "store"
                       ? "bg-[color-mix(in_srgb,var(--owner-accent)_16%,white)] text-[var(--owner-accent)] ring-1 ring-[color-mix(in_srgb,var(--owner-accent)_35%,transparent)] dark:bg-[color-mix(in_oklab,var(--owner-accent)_26%,var(--fs-surface-container))] dark:ring-[color-mix(in_srgb,var(--owner-accent)_45%,transparent)]"
                       : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200/80 dark:bg-fs-surface-container dark:hover:bg-white/[0.08]",
@@ -947,7 +778,7 @@ export function OwnerDashboardUi(props: OwnerDashboardUiProps) {
                       if (id) syncGlobalStoreFromDashboard(id);
                     });
                   }}
-                  className="min-h-11 w-full min-w-0 rounded-lg border border-black/10 bg-fs-card px-2 py-2 text-base font-semibold text-neutral-800 touch-manipulation min-[900px]:text-sm"
+                  className="min-h-9 w-full min-w-0 rounded-lg border border-black/10 bg-fs-card px-2 py-1.5 text-base font-semibold text-neutral-800 touch-manipulation min-[900px]:text-sm"
                 >
                   {stores.map((s) => (
                     <option key={s.id} value={s.id}>
@@ -961,7 +792,7 @@ export function OwnerDashboardUi(props: OwnerDashboardUiProps) {
                 <span className="text-[11px] font-bold uppercase tracking-wide text-neutral-400">
                   Boutique
                 </span>
-                <span className="rounded-lg bg-neutral-50 px-3 py-2 text-sm font-semibold text-neutral-500 ring-1 ring-black/5 dark:ring-white/10">
+                <span className="rounded-lg bg-neutral-50 px-3 py-1.5 text-sm font-semibold text-neutral-500 ring-1 ring-black/5 dark:ring-white/10">
                   Toutes les boutiques
                 </span>
               </div>
@@ -992,7 +823,7 @@ export function OwnerDashboardUi(props: OwnerDashboardUiProps) {
                     });
                   }}
                   className={cn(
-                    "min-h-11 touch-manipulation rounded-lg px-2.5 py-2 text-xs font-bold sm:py-1.5",
+                    "min-h-9 touch-manipulation rounded-lg px-2.5 py-1.5 text-xs font-bold",
                     period === p
                       ? "bg-[color-mix(in_srgb,var(--owner-accent)_16%,white)] text-[var(--owner-accent)] dark:bg-[color-mix(in_oklab,var(--owner-accent)_26%,var(--fs-surface-container))]"
                       : "bg-neutral-100 text-neutral-700 dark:bg-fs-surface-container dark:hover:bg-white/[0.06]",
@@ -1010,7 +841,7 @@ export function OwnerDashboardUi(props: OwnerDashboardUiProps) {
                 value="previous"
                 aria-label="Période de comparaison"
                 onChange={() => undefined}
-                className="min-h-11 w-full rounded-lg border border-black/8 bg-neutral-50 px-3 py-2 text-base font-semibold text-neutral-800 ring-1 ring-black/6 touch-manipulation min-[900px]:text-sm dark:bg-fs-surface-low"
+                className="min-h-9 w-full rounded-lg border border-black/8 bg-neutral-50 px-3 py-1.5 text-base font-semibold text-neutral-800 ring-1 ring-black/6 touch-manipulation min-[900px]:text-sm dark:bg-fs-surface-low"
               >
                 <option value="previous">Période précédente</option>
               </select>
@@ -1026,7 +857,7 @@ export function OwnerDashboardUi(props: OwnerDashboardUiProps) {
                   onChange={(e) =>
                     startTransition(() => setCustomFrom(e.target.value || null))
                   }
-                  className="ml-1 min-h-11 rounded-lg border border-black/10 bg-fs-card px-2 py-2 text-base touch-manipulation min-[900px]:py-1.5 min-[900px]:text-sm"
+                  className="ml-1 min-h-9 rounded-lg border border-black/10 bg-fs-card px-2 py-1.5 text-base touch-manipulation min-[900px]:text-sm"
                 />
               </label>
               <label className="text-xs font-semibold text-neutral-600">
@@ -1037,7 +868,7 @@ export function OwnerDashboardUi(props: OwnerDashboardUiProps) {
                   onChange={(e) =>
                     startTransition(() => setCustomTo(e.target.value || null))
                   }
-                  className="ml-1 min-h-11 rounded-lg border border-black/10 bg-fs-card px-2 py-2 text-base touch-manipulation min-[900px]:py-1.5 min-[900px]:text-sm"
+                  className="ml-1 min-h-9 rounded-lg border border-black/10 bg-fs-card px-2 py-1.5 text-base touch-manipulation min-[900px]:text-sm"
                 />
               </label>
             </div>
@@ -1045,7 +876,7 @@ export function OwnerDashboardUi(props: OwnerDashboardUiProps) {
         </SoftCard>
 
         {/* KPI */}
-        <div className="mt-4 grid grid-cols-2 gap-2 min-[700px]:grid-cols-4 min-[1200px]:grid-cols-8 min-[1200px]:gap-2.5">
+        <div className="mt-4 grid grid-cols-2 gap-2 min-[700px]:grid-cols-4 min-[1200px]:grid-cols-5 min-[1200px]:gap-2.5">
           <KpiTile
             title="Chiffre d'affaires"
             value={formatCurrency(d.salesSummary.totalAmount)}
@@ -1071,6 +902,32 @@ export function OwnerDashboardUi(props: OwnerDashboardUiProps) {
             theme={OWNER_KPI_THEMES.margin}
             deltaPct={pctVsPrev(d.salesSummary.margin, prev.margin)}
             href={helpers.canSales ? ROUTES.sales : undefined}
+          />
+          <KpiTile
+            title="Dépenses"
+            value={formatCurrency(periodExpensesTotal)}
+            sub={`${d.expensesSummary?.count ?? 0} charge${(d.expensesSummary?.count ?? 0) > 1 ? "s" : ""}`}
+            icon={MdPayments}
+            iconBg="rgba(255,255,255,0.22)"
+            iconColor="#ffffff"
+            theme={OWNER_KPI_THEMES.purchases}
+            deltaPct={pctVsPrev(periodExpensesTotal, prevExpensesTotal)}
+            href={helpers.canExpenses ? ROUTES.expenses : undefined}
+          />
+          <KpiTile
+            title="Bénéfice net"
+            value={formatCurrency(periodNet)}
+            sub={
+              d.salesSummary.totalAmount > 0
+                ? `${((periodNet / d.salesSummary.totalAmount) * 100).toFixed(1)}% du CA`
+                : "marge − dépenses"
+            }
+            icon={MdSavings}
+            iconBg="rgba(255,255,255,0.22)"
+            iconColor="#ffffff"
+            theme={OWNER_KPI_THEMES.net}
+            deltaPct={pctVsPrev(periodNet, prevPeriodNet)}
+            href={helpers.canReports ? reportsHref : undefined}
           />
           <KpiTile
             title="Ventes"

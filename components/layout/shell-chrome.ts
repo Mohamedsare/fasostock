@@ -8,7 +8,7 @@ export const shellTopBarClass = cn(
 
 /** Boutons icône (menu, déconnexion, etc.) — alignés sur les tuiles de la sidebar. */
 export const shellToolbarIconButtonClass = cn(
-  "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl",
+  "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md",
   "text-neutral-600 transition-[color,background-color,transform] duration-200 ease-out",
   "hover:bg-black/[0.035] hover:text-neutral-900",
   "active:scale-[0.99] dark:text-neutral-400 dark:hover:bg-white/[0.06] dark:hover:text-fs-text",
@@ -17,7 +17,7 @@ export const shellToolbarIconButtonClass = cn(
 
 /** Pilule horloge (header bureau). */
 export const shellClockPillClass = cn(
-  "inline-flex items-center gap-2 rounded-2xl border border-black/[0.07] bg-fs-surface-container/90 px-3.5 py-2",
+  "inline-flex items-center gap-2 rounded-md border border-black/[0.07] bg-fs-surface-container/90 px-3.5 py-2",
   "shadow-[0_1px_2px_rgba(0,0,0,0.04)] dark:border-white/[0.1] dark:bg-white/[0.05]",
   "dark:shadow-[0_1px_3px_rgba(0,0,0,0.35)]",
 );
