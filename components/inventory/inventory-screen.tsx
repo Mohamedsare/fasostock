@@ -35,6 +35,7 @@ import { cn } from "@/lib/utils/cn";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  MdAccountBalanceWallet,
   MdCalendarToday,
   MdCancel,
   MdChevronLeft,
@@ -44,10 +45,12 @@ import {
   MdHistory,
   MdInventory2,
   MdLockOutline,
+  MdSavings,
   MdSearch,
+  MdSell,
   MdSettings,
+  MdShoppingCart,
   MdStorefront,
-  MdTrendingUp,
   MdWarningAmber,
 } from "react-icons/md";
 
@@ -298,12 +301,25 @@ export function InventoryScreen() {
       (r) => r.alertThreshold > 0 && r.availableQuantity <= r.alertThreshold,
     ).length;
     const outOfStockCount = itemsSearchCategory.filter((r) => r.availableQuantity <= 0).length;
-    const stockValueSale = itemsSearchCategory.reduce((s, r) => s + r.salePrice * r.availableQuantity, 0);
+    // Valorisation sur la quantité disponible, en respectant le filtre / la recherche en cours.
+    const stockValuePurchase = itemsSearchCategory.reduce(
+      (s, r) => s + r.purchasePrice * r.availableQuantity,
+      0,
+    );
+    const stockValueSale = itemsSearchCategory.reduce(
+      (s, r) => s + r.salePrice * r.availableQuantity,
+      0,
+    );
+    const stockMargin = stockValueSale - stockValuePurchase;
+    const stockMarginPct = stockValueSale > 0 ? (stockMargin / stockValueSale) * 100 : 0;
     return {
       totalProducts: itemsSearchCategory.length,
       lowStockCount,
       outOfStockCount,
+      stockValuePurchase,
       stockValueSale,
+      stockMargin,
+      stockMarginPct,
     };
   }, [itemsSearchCategory]);
 
@@ -572,8 +588,8 @@ export function InventoryScreen() {
             accentBorderClass="border-l-fs-accent"
           />
           <StatCard
-            icon={MdTrendingUp}
-            label="Valeur totale"
+            icon={MdSell}
+            label="Valeur (vente)"
             value={formatCurrency(kpiStats.stockValueSale)}
             colorClass="text-emerald-700"
             iconBgClass="bg-emerald-500/12"
@@ -599,6 +615,68 @@ export function InventoryScreen() {
             accentBorderClass="border-l-red-600"
           />
         </div>
+
+        {/* Valorisation du stock — coût d'achat, valeur de vente et marge potentielle (sur le stock affiché). */}
+        <FsCard padding="p-0" className="mt-3 overflow-hidden rounded-[10px] sm:rounded-[10px]">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-black/[0.06] px-4 py-2.5">
+            <MdAccountBalanceWallet className="h-4 w-4 shrink-0 text-fs-accent" aria-hidden />
+            <p className="text-xs font-bold uppercase tracking-wide text-neutral-700">
+              Valorisation du stock
+            </p>
+            <span className="ml-auto text-[11px] text-neutral-400">Sur le stock disponible affiché</span>
+          </div>
+          <div className="grid grid-cols-1 divide-y divide-black/[0.06] sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+            <div className="flex items-center gap-3 px-4 py-3.5">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-500/12">
+                <MdShoppingCart className="h-5 w-5 text-slate-600" aria-hidden />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-medium leading-tight text-neutral-600">Valeur d&apos;achat (coût)</p>
+                <p className="mt-0.5 truncate text-base font-bold text-fs-text">
+                  {formatCurrency(kpiStats.stockValuePurchase)}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 px-4 py-3.5">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-500/12">
+                <MdSell className="h-5 w-5 text-emerald-700" aria-hidden />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-medium leading-tight text-neutral-600">Valeur de vente</p>
+                <p className="mt-0.5 truncate text-base font-bold text-fs-text">
+                  {formatCurrency(kpiStats.stockValueSale)}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 px-4 py-3.5">
+              <div
+                className={cn(
+                  "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg",
+                  kpiStats.stockMargin < 0 ? "bg-red-500/12" : "bg-fs-accent/12",
+                )}
+              >
+                <MdSavings
+                  className={cn("h-5 w-5", kpiStats.stockMargin < 0 ? "text-red-600" : "text-fs-accent")}
+                  aria-hidden
+                />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-medium leading-tight text-neutral-600">Marge potentielle</p>
+                <p
+                  className={cn(
+                    "mt-0.5 truncate text-base font-bold",
+                    kpiStats.stockMargin < 0 ? "text-red-600" : "text-fs-text",
+                  )}
+                >
+                  {formatCurrency(kpiStats.stockMargin)}
+                </p>
+                <p className="text-[11px] font-medium leading-tight text-neutral-500">
+                  {Math.round(kpiStats.stockMarginPct)} % du prix de vente
+                </p>
+              </div>
+            </div>
+          </div>
+        </FsCard>
 
         <FsCard padding="p-0" className="mt-4 overflow-hidden rounded-[10px] sm:rounded-[10px]">
           <div className="border-b border-black/[0.06] p-4 sm:p-5">
