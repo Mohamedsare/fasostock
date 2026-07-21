@@ -19,6 +19,8 @@ export const ROUTES = {
   engineRegistration: "/immatriculation",
   stores: "/stores",
   inventory: "/inventory",
+  /** Sessions d'inventaire physique (comptage, écarts, validation). */
+  inventorySessions: "/inventaire",
   stockCashier: "/stock-c",
   /** Suivi des dates de péremption (DLC/DLUO) — métiers à suivi de lots (pharmacie, supermarché). */
   expiry: "/peremption",

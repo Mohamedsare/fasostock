@@ -32,12 +32,15 @@ import { messageFromUnknownError, toast, toastMutationError } from "@/lib/toast"
 import { downloadProSpreadsheet } from "@/lib/utils/spreadsheet-export-pro";
 import { formatCurrency } from "@/lib/utils/currency";
 import { cn } from "@/lib/utils/cn";
+import { ROUTES } from "@/lib/config/routes";
+import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   MdAccountBalanceWallet,
   MdCalendarToday,
   MdCancel,
+  MdChecklist,
   MdChevronLeft,
   MdChevronRight,
   MdDownload,
@@ -497,6 +500,15 @@ export function InventoryScreen() {
               narrowHeader ? "w-full" : "shrink-0 justify-end",
             )}
           >
+            {canAdjust ? (
+              <Link
+                href={ROUTES.inventorySessions}
+                className="inline-flex items-center gap-2 rounded-lg bg-fs-accent px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm"
+              >
+                <MdChecklist className="h-5 w-5" aria-hidden />
+                Faire un inventaire
+              </Link>
+            ) : null}
             <button
               type="button"
               onClick={() => {

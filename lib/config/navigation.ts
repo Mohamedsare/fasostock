@@ -11,6 +11,7 @@ import {
   History,
   Store,
   Warehouse,
+  ClipboardCheck,
   AlertTriangle,
   CalendarClock,
   Truck,
@@ -58,6 +59,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: ROUTES.engineRegistration, label: "Immatriculation Engins", icon: IdCard, iconBg: "#B91C1C" },
   { href: ROUTES.stores, label: "Boutiques", icon: Store, iconBg: "#C2410C" },
   { href: ROUTES.inventory, label: "Stock", icon: Warehouse, iconBg: "#78350F" },
+  { href: ROUTES.inventorySessions, label: "Inventaire", icon: ClipboardCheck, iconBg: "#166534" },
   {
     href: ROUTES.stockCashier,
     label: "Stock (alertes)",

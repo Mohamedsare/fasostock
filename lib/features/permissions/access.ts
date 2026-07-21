@@ -266,6 +266,10 @@ export function filterNavItemsForPermissions(
     if (href === ROUTES.engineRegistration) return h.canEngineRegistration;
     if (href === ROUTES.stores) return h.canStores;
     if (href === ROUTES.inventory) return h.canInventory && !h.isCashier;
+    if (href === ROUTES.inventorySessions) {
+      // Faire un inventaire = ajuster le stock (ou propriétaire). Masqué aux caissiers.
+      return (h.isOwner || h.hasPermission(P.stockAdjust)) && !h.isCashier;
+    }
     if (href === ROUTES.expiry) {
       // Page réservée aux métiers à suivi de péremption (pharmacie, supermarché…).
       return h.canExpiry && activityConfig(businessTypeSlug).expiryDashboard;
@@ -321,6 +325,7 @@ const APP_SHELL_ROUTE_PREFIXES: readonly string[] = [
   ROUTES.engineRegistration,
   ROUTES.stores,
   ROUTES.inventory,
+  ROUTES.inventorySessions,
   ROUTES.stockCashier,
   ROUTES.expiry,
   ROUTES.purchases,
