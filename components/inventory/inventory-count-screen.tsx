@@ -2,7 +2,9 @@
 
 import { FsCard, FsPage, FsQueryErrorPanel } from "@/components/ui/fs-screen-primitives";
 import { FsConfirmDialog } from "@/components/ui/fs-confirm-dialog";
+import { ProductListThumbnail, firstProductImageUrl } from "@/components/products/product-list-thumbnail";
 import { P } from "@/lib/constants/permissions";
+import { listProducts } from "@/lib/features/products/api";
 import { ROUTES } from "@/lib/config/routes";
 import {
   cancelInventorySession,
@@ -36,6 +38,21 @@ export function InventoryCountScreen({ sessionId }: { sessionId: string }) {
   const { data: ctx, hasPermission } = usePermissions();
   const isOwner = ctx?.roleSlug === "owner";
   const canDoInventory = isOwner || hasPermission(P.stockAdjust);
+  const companyId = ctx?.companyId ?? "";
+
+  // Miniatures produit — chargées en direct (pas dans le snapshot de session).
+  const imagesQ = useQuery({
+    queryKey: ["inventory-session-images", companyId] as const,
+    queryFn: async () => {
+      const products = await listProducts(companyId);
+      const m = new Map<string, string | null>();
+      for (const p of products) m.set(p.id, firstProductImageUrl(p));
+      return m;
+    },
+    enabled: !!companyId,
+    staleTime: 60_000,
+  });
+  const imageMap = imagesQ.data;
 
   const sessionKey = ["inventory-session", sessionId] as const;
   const itemsKey = ["inventory-session-items", sessionId] as const;
@@ -264,6 +281,7 @@ export function InventoryCountScreen({ sessionId }: { sessionId: string }) {
               <CountRow
                 key={it.id}
                 item={it}
+                imageUrl={imageMap?.get(it.productId) ?? null}
                 editable={editable}
                 draft={drafts[it.id] ?? (it.countedQty != null ? String(it.countedQty) : "")}
                 onDraftChange={(v) => setDrafts((d) => ({ ...d, [it.id]: v }))}
@@ -373,6 +391,7 @@ function MiniStat({
 
 function CountRow({
   item,
+  imageUrl,
   editable,
   draft,
   onDraftChange,
@@ -380,6 +399,7 @@ function CountRow({
   onAcceptExpected,
 }: {
   item: InventorySessionItem;
+  imageUrl: string | null;
   editable: boolean;
   draft: string;
   onDraftChange: (v: string) => void;
@@ -392,6 +412,7 @@ function CountRow({
 
   return (
     <li className="flex items-center gap-3 px-3 py-2.5 sm:px-4">
+      <ProductListThumbnail imageUrl={imageUrl} previewOnTap />
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-semibold text-fs-text">{item.productName}</p>
         <p className="mt-0.5 text-xs text-neutral-500">
