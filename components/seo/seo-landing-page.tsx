@@ -7,6 +7,8 @@ import {
   MdWhatsapp,
 } from "react-icons/md";
 import { SiteHeader } from "@/components/marketing/site-header";
+import { WhatsappFloat } from "@/components/marketing/whatsapp-float";
+import { VideoModalButton } from "@/components/marketing/video-modal-button";
 import { SeoFaq } from "./seo-faq";
 
 export type SeoFeature = {
@@ -41,7 +43,7 @@ const STATS = [
 
 const TRUST_BADGES = [
   "Essai gratuit",
-  "Fonctionne hors ligne",
+  "Faible connexion gérée",
   "Mobile & PC",
   "Sans engagement",
 ] as const;
@@ -94,6 +96,7 @@ export function SeoLandingPage({
                 >
                   Se connecter
                 </Link>
+                <VideoModalButton className="inline-flex min-h-12 items-center justify-center gap-2 rounded-md border border-black/10 bg-white px-6 py-3 text-sm font-bold text-neutral-800 dark:border-white/15 dark:bg-transparent dark:text-neutral-200" />
               </div>
               <div className="mt-5 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs text-neutral-500">
                 {TRUST_BADGES.map((t) => (
@@ -239,6 +242,9 @@ export function SeoLandingPage({
             </p>
           </div>
         </footer>
+
+        {/* Bouton WhatsApp flottant */}
+        <WhatsappFloat />
       </div>
     </>
   );

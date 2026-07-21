@@ -8,7 +8,7 @@ export default function manifest(): MetadataRoute.Manifest {
     id: "/",
     name: "FasoStock",
     short_name: "FasoStock",
-    description: "Gestion de stock et ventes — mode hors ligne",
+    description: "Gestion de stock et ventes — même en faible connexion",
     start_url: "/",
     scope: "/",
     display: "standalone",

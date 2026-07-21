@@ -78,7 +78,7 @@ const benefits: string[] = [
   "Ticket de caisse imprimable ou envoyable sur WhatsApp sans imprimante",
   "Clôture de caisse automatique en fin de journée avec rapport complet",
   "Multi-caissiers avec droits et permissions différenciés par rôle",
-  "Fonctionne même sans internet — pas de panne, pas d'interruption de ventes",
+  "Fonctionne même avec une faible connexion internet — pas d'interruption de ventes",
   "Visible depuis votre téléphone partout où vous êtes, même en déplacement",
 ];
 
@@ -108,8 +108,8 @@ const faqs: SeoFaqItem[] = [
     a: "Oui. Depuis votre téléphone, où que vous soyez à Ouagadougou ou hors de la ville, vous consultez les ventes de votre boutique en temps réel et recevez des résumés journaliers.",
   },
   {
-    q: "FasoStock fonctionne-t-il sans internet à Ouagadougou ?",
-    a: "Oui. En cas de coupure de réseau, FasoStock continue à fonctionner en mode offline. Vos ventes et mouvements de stock se synchronisent automatiquement dès le retour de la connexion.",
+    q: "FasoStock fonctionne-t-il avec une connexion internet faible à Ouagadougou ?",
+    a: "Oui. FasoStock est optimisé pour les faibles débits : il continue de fonctionner même avec une connexion internet faible ou instable. Vos ventes et mouvements de stock se synchronisent automatiquement dès que le débit s'améliore.",
   },
 ];
 

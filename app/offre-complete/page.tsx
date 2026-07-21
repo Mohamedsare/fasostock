@@ -26,8 +26,9 @@ import {
   MdVerifiedUser,
   MdWhatsapp,
 } from "react-icons/md";
-import { FaWhatsapp } from "react-icons/fa6";
 import { SiteHeader } from "@/components/marketing/site-header";
+import { WhatsappFloat } from "@/components/marketing/whatsapp-float";
+import { VideoModalButton } from "@/components/marketing/video-modal-button";
 import { SeoFaq } from "@/components/seo/seo-faq";
 import { getCachedLandingSettings } from "@/lib/features/landing/server";
 import { cn } from "@/lib/utils/cn";
@@ -38,9 +39,6 @@ const canonicalUrl = `${siteUrl}/offre-complete`;
 const OFFER_PRICE = "380 000";
 const WHATSAPP_ORDER = `https://wa.me/22664712044?text=${encodeURIComponent(
   "Bonjour FasoStock, je souhaite commander l'Offre Complète (Matériels + Abonnement logiciel) à 380 000 CFA.",
-)}`;
-const WHATSAPP_FLOAT = `https://wa.me/22664712044?text=${encodeURIComponent(
-  "Bonjour ! Je suis intéressé par votre offre complète logiciel FasoStock + Matériel complet !",
 )}`;
 
 // Réglages publics (image « offre » modifiable dans GPublique) — revalidés toutes les 60 s
@@ -448,6 +446,7 @@ export default async function OffreCompletePage() {
                   Essayer le logiciel
                   <MdArrowForward className="h-4 w-4" aria-hidden />
                 </Link>
+                <VideoModalButton className="inline-flex min-h-12 items-center justify-center gap-2 rounded-md border border-black/10 bg-white px-5 text-sm font-bold text-neutral-800 dark:border-white/15 dark:bg-transparent dark:text-neutral-200" />
               </div>
             </div>
 
@@ -601,24 +600,7 @@ export default async function OffreCompletePage() {
         </footer>
 
         {/* ── Bouton WhatsApp flottant ── */}
-        <a
-          href={WHATSAPP_FLOAT}
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label="Contacter FasoStock sur WhatsApp pour l'offre complète"
-          title="Discuter sur WhatsApp"
-          className="fixed bottom-5 right-5 z-50 inline-flex h-14 w-14 items-center justify-center rounded-full bg-[#25D366] text-white shadow-[0_14px_34px_-8px_rgba(37,211,102,0.7)] transition hover:scale-105 active:scale-95 sm:bottom-6 sm:right-6 sm:h-16 sm:w-16"
-        >
-          <span
-            className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#25D366]/40"
-            aria-hidden
-          />
-          <span
-            className="absolute inline-flex h-full w-full rounded-full bg-[#25D366]/20 blur-md"
-            aria-hidden
-          />
-          <FaWhatsapp className="relative h-7 w-7 sm:h-8 sm:w-8" aria-hidden />
-        </a>
+        <WhatsappFloat message="Bonjour ! Je suis intéressé par votre offre complète logiciel FasoStock + Matériel complet !" />
       </main>
     </>
   );

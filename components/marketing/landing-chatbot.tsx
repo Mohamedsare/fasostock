@@ -10,7 +10,7 @@ const SUGGESTED = [
   "Quelles sont les fonctionnalités ?",
   "Combien ça coûte ?",
   "Avez-vous un essai gratuit ?",
-  "Ça marche hors ligne ?",
+  "Ça marche en faible connexion ?",
 ];
 
 const WELCOME: Msg = {

@@ -24,8 +24,8 @@ type FaqItem = {
 const FAQS: FaqItem[] = [
   {
     id: 1,
-    q: "FasoStock fonctionne-t-il sans internet ?",
-    a: "Oui. FasoStock utilise un système offline + synchronisation. Vous pouvez continuer certaines opérations même avec une connexion instable, puis les données se synchronisent lorsque la connexion revient.",
+    q: "FasoStock fonctionne-t-il avec une connexion internet faible ?",
+    a: "Oui. FasoStock est optimisé pour les faibles débits : vous continuez à travailler même avec une connexion internet faible ou instable, puis les données se synchronisent dès que le débit s'améliore.",
   },
   { id: 2, q: "Est-ce que je peux gérer plusieurs boutiques ?", a: "Oui, vous pouvez gérer plusieurs boutiques depuis un seul compte." },
   { id: 3, q: "Est-ce que mes employés peuvent avoir leurs propres accès ?", a: "Oui, avec des rôles et permissions par utilisateur." },
@@ -67,7 +67,7 @@ export function FaqSection() {
             {item.id === 1 ? (
               <div className="mt-3 rounded-md border border-[#f7d8c7] bg-[#fff7f1] px-3 py-2">
                 <p className="text-sm font-bold text-[#b45309]">
-                  Vous vendez, encaissez et gérez votre stock même sans internet.
+                  Vous vendez, encaissez et gérez votre stock même avec une faible connexion internet.
                 </p>
                 <p className="text-sm text-neutral-700">Aucune vente ne sera perdue.</p>
               </div>
@@ -135,7 +135,7 @@ export function FaqSection() {
         <div className="mt-4 overflow-hidden rounded-md border border-black/8 bg-white">
           <div className="grid grid-cols-1 divide-y divide-black/8 min-[860px]:grid-cols-5 min-[860px]:divide-x min-[860px]:divide-y-0">
             {[
-              { icon: MdWifi, title: "Fonctionne hors ligne", text: "Continuez à vendre même sans connexion." },
+              { icon: MdWifi, title: "Faible connexion", text: "Continuez à vendre même avec une connexion faible." },
               { icon: MdShield, title: "Données sécurisées", text: "Vos données sont protégées et sauvegardées." },
               { icon: MdAutorenew, title: "Synchronisation automatique", text: "Vos données se synchronisent dès que la connexion revient." },
               { icon: MdHeadsetMic, title: "Support réactif", text: "Notre équipe vous accompagne à chaque étape." },

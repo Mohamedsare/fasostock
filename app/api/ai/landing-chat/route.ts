@@ -31,7 +31,7 @@ Ton rôle est double :
 
 À propos de FasoStock :
 - Logiciel SaaS de gestion de stock, caisse (POS), crédits clients, rapports, employés
-- Fonctionne hors ligne (synchronisation automatique quand internet revient)
+- Optimisé pour les faibles débits : fonctionne même avec une connexion internet faible ou instable (synchronisation automatique quand le débit s'améliore)
 - Application mobile (Android/iOS) + interface web
 - Adapté aux commerces : épiceries, pharmacies, quincailleries, boutiques, restaurants, etc.
 - Basé au Burkina Faso — paiement via Orange Money, Moov Money, Wave, VISA, MasterCard
@@ -43,7 +43,7 @@ Fonctionnalités clés :
 - Crédits clients : suivi des dettes et remboursements
 - Rapports : chiffre d'affaires, bénéfices, mouvements, employés
 - Multi-boutiques : gérer plusieurs points de vente depuis un seul compte
-- Hors ligne : fonctionne sans connexion internet
+- Faible connexion : fonctionne même avec une connexion internet faible (jamais bloqué par un réseau lent)
 - IA intégrée : prévisions de ventes et réapprovisionnement
 
 Tarification :

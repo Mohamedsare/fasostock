@@ -61,8 +61,8 @@ const features: SeoFeature[] = [
   },
   {
     icon: MdWifiOff,
-    title: "Mode hors ligne intégré",
-    text: "Continuez à vendre et gérer votre stock même sans connexion internet. Vos données se synchronisent automatiquement dès que le réseau revient.",
+    title: "Faible connexion gérée",
+    text: "Continuez à vendre et gérer votre stock même avec une connexion internet faible ou instable. Vos données se synchronisent automatiquement dès que le débit s'améliore.",
   },
   {
     icon: MdStorefront,
@@ -75,7 +75,7 @@ const benefits: string[] = [
   "Conçu spécialement pour les commerçants du Burkina Faso et d'Afrique de l'Ouest",
   "Interface entièrement en français, simple et intuitive, même pour les non-techniciens",
   "Fonctionne sur téléphone Android, iPhone, tablette et ordinateur Windows ou Mac",
-  "Mode offline intégré : pas de connexion internet ne signifie pas d'interruption d'activité",
+  "Optimisé pour les faibles débits : une connexion internet faible n'interrompt pas votre activité",
   "Données 100 % sécurisées et sauvegardées automatiquement dans le cloud",
   "Prix accessibles et adaptés aux réalités économiques des petits et moyens commerces",
   "Support client disponible sur WhatsApp en français, réponse rapide garantie",
@@ -84,8 +84,8 @@ const benefits: string[] = [
 
 const faqs: SeoFaqItem[] = [
   {
-    q: "Est-ce que FasoStock fonctionne sans internet au Burkina Faso ?",
-    a: "Oui. FasoStock dispose d'un mode hors ligne complet. Vous pouvez encaisser vos ventes, enregistrer des entrées de stock et gérer vos clients même sans connexion. Tout se synchronise automatiquement dès que vous retrouvez internet.",
+    q: "Est-ce que FasoStock fonctionne avec une connexion internet faible au Burkina Faso ?",
+    a: "Oui. FasoStock est optimisé pour les faibles débits. Vous pouvez encaisser vos ventes, enregistrer des entrées de stock et gérer vos clients même avec une connexion internet faible ou instable. Tout se synchronise automatiquement dès que le débit s'améliore.",
   },
   {
     q: "En combien de temps puis-je démarrer avec FasoStock ?",
@@ -145,7 +145,7 @@ const jsonLd = {
       "@type": "WebPage",
       name: "Logiciel de Gestion de Stock au Burkina Faso",
       description:
-        "FasoStock — logiciel de gestion de stock pour commerces au Burkina Faso. Simple, rapide, fonctionne hors ligne.",
+        "FasoStock — logiciel de gestion de stock pour commerces au Burkina Faso. Simple, rapide, fonctionne même en faible connexion.",
       url: canonicalUrl,
       inLanguage: "fr",
       isPartOf: { "@type": "WebSite", url: siteUrl, name: "FasoStock" },
@@ -158,7 +158,7 @@ export default function LogicielGestionStockBurkinaFaso() {
     <SeoLandingPage
       badge="Logiciel N°1 · Burkina Faso"
       h1="Le logiciel de gestion de stock N°1 au Burkina Faso"
-      heroSubtitle="FasoStock aide les commerçants burkinabè à gérer leur stock, leurs ventes, leurs crédits clients et leur caisse depuis un téléphone ou un ordinateur. Simple, rapide, disponible même sans internet."
+      heroSubtitle="FasoStock aide les commerçants burkinabè à gérer leur stock, leurs ventes, leurs crédits clients et leur caisse depuis un téléphone ou un ordinateur. Simple, rapide, fonctionne même avec une faible connexion internet."
       features={features}
       benefits={benefits}
       faqs={faqs}

@@ -110,11 +110,11 @@ export function SiteHeader({ sectionHrefPrefix = "" }: SiteHeaderProps) {
           </Link>
           <Link
             href="/login"
-            className="mt-2 rounded-md border border-fs-accent/45 bg-fs-accent/8 px-3 py-2.5 text-sm font-extrabold text-fs-accent shadow-[0_10px_24px_-18px_rgba(232,93,44,0.85)]"
+            className="mt-2 rounded-md border border-fs-accent/45 bg-fs-accent/8 px-3 py-2.5 text-center text-sm font-extrabold text-fs-accent shadow-[0_10px_24px_-18px_rgba(232,93,44,0.85)]"
           >
             Se connecter
           </Link>
-          <Link href="/register/select-activity" className="mt-1.5 rounded-md bg-fs-accent px-3 py-2.5 text-sm font-bold text-white">
+          <Link href="/register/select-activity" className="mt-1.5 rounded-md bg-fs-accent px-3 py-2.5 text-center text-sm font-bold text-white">
             Essai gratuit
           </Link>
           <a

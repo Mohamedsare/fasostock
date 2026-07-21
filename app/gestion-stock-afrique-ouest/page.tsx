@@ -47,7 +47,7 @@ const features: SeoFeature[] = [
   {
     icon: MdWifiOff,
     title: "Adapté aux réalités africaines",
-    text: "Mode offline complet, Mobile Money intégré, interface en français. FasoStock est conçu pour fonctionner dans les conditions réelles des marchés d'Afrique de l'Ouest.",
+    text: "Optimisé pour les faibles connexions, Mobile Money intégré, interface en français. FasoStock est conçu pour fonctionner dans les conditions réelles des marchés d'Afrique de l'Ouest.",
   },
   {
     icon: MdWallet,
@@ -74,7 +74,7 @@ const features: SeoFeature[] = [
 const benefits: string[] = [
   "Disponible dans tous les pays d'Afrique de l'Ouest francophone de l'UEMOA",
   "Franc CFA (XOF) intégré nativement, pas de configuration nécessaire",
-  "Fonctionne sans connexion stable, essentiel dans les zones à réseau variable",
+  "Fonctionne même avec une faible connexion internet, essentiel dans les zones à réseau variable",
   "Conçu avec les retours de commerçants burkinabè, ivoiriens, maliens et plus",
   "Mobile Money pris en charge : Orange Money, Moov Money, Wave et autres",
   "Prix très accessibles, adaptés aux marchés et revenus d'Afrique de l'Ouest",
@@ -93,7 +93,7 @@ const faqs: SeoFaqItem[] = [
   },
   {
     q: "Est-ce que FasoStock fonctionne en zone rurale avec peu d'internet ?",
-    a: "Oui. Le mode hors ligne permet de travailler sans connexion. Les données se synchronisent automatiquement dès qu'internet est disponible, que ce soit en ville ou en zone rurale.",
+    a: "Oui. FasoStock est optimisé pour les faibles débits : il fonctionne même avec une connexion internet faible ou instable. Les données se synchronisent automatiquement dès que le débit s'améliore, que ce soit en ville ou en zone rurale.",
   },
   {
     q: "Puis-je gérer une boutique à Abidjan et une autre à Ouagadougou ?",
@@ -162,7 +162,7 @@ export default function GestionStockAfriqueOuest() {
     <SeoLandingPage
       badge="Burkina Faso · Côte d'Ivoire · Mali · Niger · Togo · Bénin"
       h1="La solution de gestion de stock pour l'Afrique de l'Ouest"
-      heroSubtitle="FasoStock est conçu pour les commerçants d'Afrique de l'Ouest. Disponible au Burkina Faso, en Côte d'Ivoire, au Mali, au Niger, au Togo et au Bénin. Franc CFA natif, mode offline, Mobile Money — une solution adaptée à votre réalité."
+      heroSubtitle="FasoStock est conçu pour les commerçants d'Afrique de l'Ouest. Disponible au Burkina Faso, en Côte d'Ivoire, au Mali, au Niger, au Togo et au Bénin. Franc CFA natif, faible connexion gérée, Mobile Money — une solution adaptée à votre réalité."
       features={features}
       benefits={benefits}
       faqs={faqs}

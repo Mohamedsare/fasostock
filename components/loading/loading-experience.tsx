@@ -20,7 +20,7 @@ const STATUS_LINES = [
 ] as const;
 
 const TIPS = [
-  "Astuce : le mode hors ligne garde vos ventes en file d'attente.",
+  "Astuce : même en connexion faible, vos ventes sont gardées en file d'attente.",
   "Astuce : scannez un code-barres depuis la caisse rapide.",
   "Astuce : consultez le tableau de bord pour vos KPI du jour.",
 ] as const;

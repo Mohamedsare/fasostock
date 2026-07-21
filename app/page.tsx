@@ -12,6 +12,8 @@ import { NewsletterSubscribeForm } from "@/components/marketing/newsletter-subsc
 import { SiteHeader } from "@/components/marketing/site-header";
 import { ScrollDirectionFab } from "@/components/marketing/scroll-direction-fab";
 import { LandingChatbot } from "@/components/marketing/landing-chatbot";
+import { WhatsappFloat } from "@/components/marketing/whatsapp-float";
+import { VideoModalButton } from "@/components/marketing/video-modal-button";
 import { ScrollProgress } from "@/components/marketing/scroll-progress";
 import { LottiePlayer } from "@/components/marketing/lottie-player";
 import { InstallAppButton } from "@/components/pwa/install-app-button";
@@ -37,7 +39,6 @@ import {
   MdMailOutline,
   MdOutlinePhoneAndroid,
   MdOfflineBolt,
-  MdOutlinePlayCircleFilled,
   MdPointOfSale,
   MdSecurity,
   MdSpeed,
@@ -49,6 +50,7 @@ import {
   MdVerifiedUser,
   MdWallet,
   MdWhatsapp,
+  MdWifi,
   MdWifiOff,
 } from "react-icons/md";
 import { FaFacebookF, FaLinkedinIn, FaTiktok, FaWhatsapp, FaYoutube } from "react-icons/fa6";
@@ -85,7 +87,7 @@ const bannerFeatureStrip = [
   { icon: MdCreditCard, title: "Crédits clients", subtitle: "Gérez les dettes et encaissements" },
   { icon: MdTrendingUp, title: "Rapports clairs", subtitle: "Prenez de meilleures décisions" },
   { icon: MdGroups, title: "Employés & accès", subtitle: "Gérez vos employés et leurs droits" },
-  { icon: MdWifiOff, title: "Mode offline", subtitle: "Travaillez même sans connexion internet" },
+  { icon: MdWifi, title: "Faible connexion", subtitle: "Fonctionne même avec une connexion internet faible" },
 ] as const;
 
 const bannerTrustStrip = [
@@ -197,9 +199,9 @@ const solutionCapabilities = [
     tone: "cyan",
   },
   {
-    icon: MdWifiOff,
-    title: "Offline + synchronisation",
-    text: "Travaillez même sans connexion internet et synchronisez vos données dès que la connexion revient.",
+    icon: MdWifi,
+    title: "Faible connexion + sync",
+    text: "Fonctionne même avec une faible connexion internet et synchronise vos données dès que le débit s'améliore.",
     tone: "indigo",
   },
 ] as const;
@@ -242,8 +244,8 @@ const landingFonctionnalitesPrincipales = [
   },
   {
     icon: MdSync,
-    title: "Offline + synchronisation",
-    text: "Travaillez même sans connexion internet et synchronisez automatiquement vos données.",
+    title: "Faible connexion + sync",
+    text: "Fonctionne même avec une faible connexion internet et synchronise automatiquement vos données.",
   },
 ] as const;
 
@@ -448,13 +450,7 @@ export default async function Home({
                   <MdWhatsapp className="h-5 w-5" aria-hidden />
                   Démonstration
                 </Link>
-                <Link
-                  href="/register/select-activity"
-                  className="inline-flex min-h-10 items-center justify-center gap-2 whitespace-nowrap rounded-md border border-black/10 bg-white px-4 py-2 text-xs font-bold text-neutral-800 sm:min-h-11 sm:px-5 sm:py-2.5 sm:text-sm"
-                >
-                  <MdOutlinePlayCircleFilled className="h-4 w-4 text-neutral-500 sm:h-5 sm:w-5" aria-hidden />
-                  Voir en vidéo
-                </Link>
+                <VideoModalButton className="inline-flex min-h-10 items-center justify-center gap-2 whitespace-nowrap rounded-md border border-black/10 bg-white px-4 py-2 text-xs font-bold text-neutral-800 sm:min-h-11 sm:px-5 sm:py-2.5 sm:text-sm" />
                 <InstallAppButton className="inline-flex min-h-10 items-center justify-center gap-2 whitespace-nowrap rounded-md border border-fs-accent/45 bg-white px-4 py-2 text-xs font-bold text-fs-accent sm:min-h-11 sm:px-5 sm:py-2.5 sm:text-sm" />
               </div>
             </div>
@@ -1299,6 +1295,8 @@ export default async function Home({
       </footer>
       <ScrollDirectionFab />
       <LandingChatbot />
+      {/* Bouton WhatsApp flottant — à gauche (le coin droit est occupé par le chatbot + FAB de scroll). */}
+      <WhatsappFloat side="left" />
     </main>
   );
 }
