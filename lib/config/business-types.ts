@@ -8,6 +8,7 @@ import {
   Pill,
   Shirt,
   Smartphone,
+  Sparkles,
   Store,
   Truck,
   UtensilsCrossed,
@@ -59,6 +60,13 @@ export const BUSINESS_TYPES: readonly BusinessTypeOption[] = [
     description: "Médicaments, soins et bien-être.",
     icon: Pill,
     storeNamePlaceholderNoun: "pharmacie",
+  },
+  {
+    slug: "cosmetiques",
+    label: "Cosmétiques",
+    description: "Beauté, parfums, soins et maquillage.",
+    icon: Sparkles,
+    storeNamePlaceholderNoun: "boutique",
   },
   {
     slug: "pieces-moto",
