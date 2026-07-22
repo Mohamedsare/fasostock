@@ -77,6 +77,7 @@ import {
   formatOperationNowDateFull,
 } from "@/lib/utils/operation-datetime";
 import { CreditDetailPanel } from "./credit-detail-panel";
+import { CustomerCreditPanel } from "./customer-credit-panel";
 import { CreditQuickPayDialog } from "./credit-quick-pay-dialog";
 import { LegacyCreditSection } from "./legacy-credit-section";
 
@@ -259,6 +260,7 @@ export function CreditScreen() {
   const [salePage, setSalePage] = useState(0);
   const [customerPage, setCustomerPage] = useState(0);
   const [detailId, setDetailId] = useState<string | null>(null);
+  const [customerDetailId, setCustomerDetailId] = useState<string | null>(null);
   const [dispatchDetailId, setDispatchDetailId] = useState<string | null>(null);
   const [dispatchPayInvoice, setDispatchPayInvoice] = useState<{
     id: string;
@@ -1441,11 +1443,20 @@ export function CreditScreen() {
                 </tr>
               ) : (
                 paginatedCustomerRows.map((c) => (
-                  <tr key={c.customerId} className="border-b border-black/6 dark:border-white/6">
+                  <tr
+                    key={c.customerId}
+                    className="cursor-pointer border-b border-black/6 hover:bg-black/2 dark:border-white/6 dark:hover:bg-white/5"
+                    onClick={() => setCustomerDetailId(c.customerId)}
+                    title="Voir tous les crédits de ce client"
+                  >
                     <td className="max-w-[200px] truncate px-3 py-2.5 font-semibold">{c.customerName}</td>
                     <td className="max-w-[9rem] truncate px-3 py-2.5">
                       {c.phone ? (
-                        <a className="text-fs-accent hover:underline" href={`tel:${c.phone}`}>
+                        <a
+                          className="text-fs-accent hover:underline"
+                          href={`tel:${c.phone}`}
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           {c.phone}
                         </a>
                       ) : (
@@ -1482,12 +1493,25 @@ export function CreditScreen() {
                       </span>
                     </td>
                     <td className="px-3 py-2.5">
-                      <Link
-                        href={ROUTES.customers}
-                        className="inline-flex whitespace-nowrap rounded-lg bg-fs-accent/15 px-2 py-1 text-xs font-bold text-fs-accent"
-                      >
-                        Clients
-                      </Link>
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setCustomerDetailId(c.customerId);
+                          }}
+                          className="inline-flex whitespace-nowrap rounded-lg bg-fs-accent px-2 py-1 text-xs font-bold text-white"
+                        >
+                          Détail
+                        </button>
+                        <Link
+                          href={ROUTES.customers}
+                          onClick={(e) => e.stopPropagation()}
+                          className="inline-flex whitespace-nowrap rounded-lg bg-fs-accent/15 px-2 py-1 text-xs font-bold text-fs-accent"
+                        >
+                          Clients
+                        </Link>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -1621,6 +1645,15 @@ export function CreditScreen() {
         </Link>{" "}
         vous pouvez aussi imprimer ticket ou facture. Rappels SMS / WhatsApp : à brancher côté intégration.
       </p>
+
+      <CustomerCreditPanel
+        customerId={customerDetailId}
+        allSales={rawRows}
+        canRecordPayment={canRecordPayment}
+        onClose={() => setCustomerDetailId(null)}
+        onOpenSaleDetail={(saleId) => setDetailId(saleId)}
+        onPay={(sale) => setPaySale(sale)}
+      />
 
       <CreditDetailPanel
         saleId={detailId}
