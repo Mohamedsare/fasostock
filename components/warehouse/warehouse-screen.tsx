@@ -1,6 +1,7 @@
 "use client";
 
 import { ProductListThumbnail } from "@/components/products/product-list-thumbnail";
+import { WarehouseInventoryTab } from "@/components/warehouse/warehouse-inventory-tab";
 import { ROUTES } from "@/lib/config/routes";
 import { InvoicePdfPreviewDialog } from "@/components/invoices/invoice-pdf-preview-dialog";
 import { P } from "@/lib/constants/permissions";
@@ -56,6 +57,7 @@ import {
   MdBarChart,
   MdCategory,
   MdCheckCircle,
+  MdChecklist,
   MdChevronLeft,
   MdChevronRight,
   MdClose,
@@ -102,6 +104,7 @@ const TAB_LABELS = [
   "Mouvements",
   "Transfert",
   "Historiques des bons",
+  "Inventaire",
 ] as const;
 
 const STOCK_PAGE = 20;
@@ -1041,7 +1044,7 @@ export function WarehouseScreen() {
         <FsPullToRefresh onRefresh={refreshAll}>
           {tab === 0 ? (
             <div className="mt-3 space-y-3.5 sm:space-y-4">
-              <FsCard padding="p-3.5 sm:p-4">
+              <FsCard padding="p-3.5 sm:p-4" className="sm:rounded-lg">
                 <p className="text-[13px] font-semibold leading-snug text-fs-text sm:text-sm">
                   Tout gérer depuis le dépôt
                 </p>
@@ -1052,7 +1055,7 @@ export function WarehouseScreen() {
                   <button
                     type="button"
                     onClick={() => setEntryOpen(true)}
-                    className="inline-flex min-h-[36px] min-w-[44px] items-center gap-1.5 rounded-[12px] border-0 bg-[#F97316] px-3 py-1.5 text-[13px] font-bold text-white shadow-sm active:opacity-90 sm:min-h-[38px] sm:gap-2 sm:rounded-[14px] sm:px-4 sm:py-2 sm:text-sm"
+                    className="inline-flex min-h-[36px] min-w-[44px] items-center gap-1.5 rounded-lg border-0 bg-[#F97316] px-3 py-1.5 text-[13px] font-bold text-white shadow-sm active:opacity-90 sm:min-h-[38px] sm:gap-2 sm:rounded-lg sm:px-4 sm:py-2 sm:text-sm"
                   >
                     <MdAddCircleOutline className="h-[18px] w-[18px] shrink-0 sm:h-5 sm:w-5" />
                     Réception
@@ -1063,7 +1066,7 @@ export function WarehouseScreen() {
                       setDispatchDialogInvoiceId(null);
                       setDispatchOpen(true);
                     }}
-                    className="inline-flex min-h-[36px] min-w-[44px] items-center gap-1.5 rounded-[12px] border-0 bg-[#F97316] px-3 py-1.5 text-[13px] font-bold text-white shadow-sm active:opacity-90 sm:min-h-[38px] sm:gap-2 sm:rounded-[14px] sm:px-4 sm:py-2 sm:text-sm"
+                    className="inline-flex min-h-[36px] min-w-[44px] items-center gap-1.5 rounded-lg border-0 bg-[#F97316] px-3 py-1.5 text-[13px] font-bold text-white shadow-sm active:opacity-90 sm:min-h-[38px] sm:gap-2 sm:rounded-lg sm:px-4 sm:py-2 sm:text-sm"
                   >
                     <MdReceiptLong className="h-[18px] w-[18px] shrink-0 sm:h-5 sm:w-5" />
                     Facture / sortie
@@ -1071,7 +1074,7 @@ export function WarehouseScreen() {
                   <button
                     type="button"
                     onClick={() => setTab(1)}
-                    className="inline-flex min-h-[36px] min-w-[44px] items-center gap-1.5 rounded-[12px] bg-[#E6DDF6] px-3 py-1.5 text-[13px] font-bold text-[#7C3AED] active:opacity-90 sm:min-h-[38px] sm:gap-2 sm:rounded-[14px] sm:px-4 sm:py-2 sm:text-sm"
+                    className="inline-flex min-h-[36px] min-w-[44px] items-center gap-1.5 rounded-lg bg-[#E6DDF6] px-3 py-1.5 text-[13px] font-bold text-[#7C3AED] active:opacity-90 sm:min-h-[38px] sm:gap-2 sm:rounded-lg sm:px-4 sm:py-2 sm:text-sm"
                   >
                     <MdCategory className="h-[18px] w-[18px] shrink-0 sm:h-5 sm:w-5" />
                     Produits
@@ -1079,16 +1082,24 @@ export function WarehouseScreen() {
                   <button
                     type="button"
                     onClick={openTransferDialog}
-                    className="inline-flex min-h-[36px] min-w-[44px] items-center gap-1.5 rounded-[12px] bg-[#DCE5F3] px-3 py-1.5 text-[13px] font-bold text-[#2563EB] active:opacity-90 sm:min-h-[38px] sm:gap-2 sm:rounded-[14px] sm:px-4 sm:py-2 sm:text-sm"
+                    className="inline-flex min-h-[36px] min-w-[44px] items-center gap-1.5 rounded-lg bg-[#DCE5F3] px-3 py-1.5 text-[13px] font-bold text-[#2563EB] active:opacity-90 sm:min-h-[38px] sm:gap-2 sm:rounded-lg sm:px-4 sm:py-2 sm:text-sm"
                   >
                     <MdSwapHoriz className="h-[18px] w-[18px] shrink-0 sm:h-5 sm:w-5" />
                     Transferts
                   </button>
                   <button
                     type="button"
+                    onClick={() => setTab(5)}
+                    className="inline-flex min-h-[36px] min-w-[44px] items-center gap-1.5 rounded-lg bg-[#DFF3E7] px-3 py-1.5 text-[13px] font-bold text-[#15803D] active:opacity-90 sm:min-h-[38px] sm:gap-2 sm:rounded-lg sm:px-4 sm:py-2 sm:text-sm"
+                  >
+                    <MdChecklist className="h-[18px] w-[18px] shrink-0 sm:h-5 sm:w-5" />
+                    Inventaire
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => void exportWarehouseProductsPdf()}
                     disabled={exportingProductsPdf}
-                    className="inline-flex min-h-0 min-w-[38px] items-center gap-1 rounded-[11px] bg-[#FDECEC] px-2 py-0.5 text-[12px] font-bold leading-none text-[#B42318] active:opacity-90 disabled:opacity-60 sm:min-h-0 sm:gap-1.5 sm:rounded-[12px] sm:px-2.5 sm:py-1 sm:text-[13px]"
+                    className="inline-flex min-h-0 min-w-[38px] items-center gap-1 rounded-lg bg-[#FDECEC] px-2 py-0.5 text-[12px] font-bold leading-none text-[#B42318] active:opacity-90 disabled:opacity-60 sm:min-h-0 sm:gap-1.5 sm:rounded-lg sm:px-2.5 sm:py-1 sm:text-[13px]"
                   >
                     <MdPictureAsPdf className="h-[18px] w-[18px] shrink-0 sm:h-5 sm:w-5" />
                     {exportingProductsPdf ? "Export…" : "Produits PDF"}
@@ -1143,7 +1154,7 @@ export function WarehouseScreen() {
                     />
                   </div>
 
-                  <FsCard padding="p-3.5 sm:p-4">
+                  <FsCard padding="p-3.5 sm:p-4" className="sm:rounded-lg">
                     <div className="flex items-center gap-1.5 sm:gap-2">
                       <MdBarChart className="h-[18px] w-[18px] text-[#F97316] sm:h-5 sm:w-5" aria-hidden />
                       <p className="text-[13px] font-semibold leading-snug text-fs-text sm:text-sm">
@@ -1503,6 +1514,15 @@ export function WarehouseScreen() {
             />
             </div>
           ) : null}
+
+          {tab === 5 ? (
+            <WarehouseInventoryTab
+              companyId={companyId}
+              warehouseId={activeWarehouseId}
+              warehouseName={activeWarehouseName}
+              canManage={canWarehouse}
+            />
+          ) : null}
         </FsPullToRefresh>
       )}
 
@@ -1520,7 +1540,7 @@ export function WarehouseScreen() {
           <button
             type="button"
             onClick={() => setActionMenuOpen(true)}
-            className="fixed bottom-8 right-8 z-40 hidden items-center gap-2 rounded-2xl bg-[#F97316] px-5 py-3.5 text-sm font-semibold text-white shadow-[0_4px_5px_rgba(0,0,0,0.12),0_2px_4px_rgba(0,0,0,0.08)] min-[900px]:inline-flex"
+            className="fixed bottom-8 right-8 z-40 hidden items-center gap-2 rounded-lg bg-[#F97316] px-5 py-3.5 text-sm font-semibold text-white shadow-[0_4px_5px_rgba(0,0,0,0.12),0_2px_4px_rgba(0,0,0,0.08)] min-[900px]:inline-flex"
           >
             <MdAdd className="h-5 w-5" />
             Gérer le dépôt
@@ -2074,7 +2094,7 @@ function Kpi({
   return (
     <FsCard
       padding="px-2 py-1.5 sm:p-3"
-      className="min-h-[80px] border border-black/6 shadow-none sm:min-h-0 sm:rounded-2xl"
+      className="min-h-[80px] rounded-lg border border-black/6 shadow-none sm:min-h-0 sm:rounded-lg"
     >
       <div
         className="[&>svg]:h-[18px] [&>svg]:w-[18px] sm:[&>svg]:h-5 sm:[&>svg]:w-5"

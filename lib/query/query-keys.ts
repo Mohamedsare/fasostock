@@ -97,6 +97,9 @@ export const queryKeys = {
   warehouseMovements: (companyId: string) => ["warehouse", companyId, "movements"] as const,
   warehouseDispatch: (companyId: string) => ["warehouse", companyId, "dispatch"] as const,
   warehouseTransfers: (companyId: string) => ["warehouse", companyId, "transfers"] as const,
+  /** Sessions d'inventaire physique d'un dépôt (comptage / écarts / validation). */
+  warehouseInventorySessions: (companyId: string, warehouseId: string | null) =>
+    ["warehouse", companyId, "inventory-sessions", warehouseId ?? "__primary__"] as const,
   /** Panneau owner (ruptures, tendances…) — aligné `OwnerNotificationsDialog` Flutter. */
   ownerNotifications: (companyId: string, storeId: string | null) =>
     ["owner-notifications", companyId, storeId ?? "__all__"] as const,
