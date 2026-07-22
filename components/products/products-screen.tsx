@@ -78,6 +78,7 @@ import {
 } from "react-icons/md";
 import { StockRangeIndicator } from "@/components/products/stock-range-indicator";
 import { ImportProductsCsvDialog } from "@/components/products/import-products-csv-dialog";
+import { QuickPackagingDialog } from "@/components/products/quick-packaging-dialog";
 import {
   ProductListThumbnail,
   firstProductImageUrl,
@@ -145,11 +146,13 @@ export function ProductsScreen() {
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
   const [brandFilter, setBrandFilter] = useState("");
+  const [packagingFilter, setPackagingFilter] = useState<"" | "with" | "without">("");
   const [page, setPage] = useState(0);
   const [showForm, setShowForm] = useState(false);
   const [showImportCsv, setShowImportCsv] = useState(false);
   const [editing, setEditing] = useState<ProductItem | null>(null);
   const [batchesProduct, setBatchesProduct] = useState<ProductItem | null>(null);
+  const [quickPkgProduct, setQuickPkgProduct] = useState<ProductItem | null>(null);
   const [newCategory, setNewCategory] = useState("");
   const [newBrand, setNewBrand] = useState("");
 
@@ -414,9 +417,14 @@ export function ProductsScreen() {
       }
       if (categoryFilter && p.category_id !== categoryFilter) return false;
       if (brandFilter && p.brand_id !== brandFilter) return false;
+      if (packagingFilter) {
+        const hasPackaging = (p.product_packagings?.length ?? 0) > 0;
+        if (packagingFilter === "with" && !hasPackaging) return false;
+        if (packagingFilter === "without" && hasPackaging) return false;
+      }
       return true;
     });
-  }, [products, search, categoryFilter, brandFilter]);
+  }, [products, search, categoryFilter, brandFilter, packagingFilter]);
 
   const pageCount = filtered.length === 0 ? 0 : Math.ceil(filtered.length / PAGE_SIZE);
   const safePage = Math.min(page, Math.max(0, pageCount - 1));
@@ -621,6 +629,23 @@ export function ProductsScreen() {
                   ))}
                 </select>
               </div>
+              <div className="min-w-0 flex-1">
+                <label className="mb-1 block text-xs font-medium text-neutral-600">
+                  Conditionnement
+                </label>
+                <select
+                  value={packagingFilter}
+                  onChange={(e) => {
+                    setPackagingFilter(e.target.value as "" | "with" | "without");
+                    setPage(0);
+                  }}
+                  className={fsInputClass()}
+                >
+                  <option value="">Tous</option>
+                  <option value="with">Avec conditionnement</option>
+                  <option value="without">Sans conditionnement</option>
+                </select>
+              </div>
             </div>
           </div>
 
@@ -634,10 +659,10 @@ export function ProductsScreen() {
               return (
                 <article
                   key={p.id}
-                  className="rounded-xl border border-black/[0.06] bg-fs-card p-3 shadow-sm sm:rounded-2xl"
+                  className="rounded-lg border border-black/[0.06] bg-fs-card p-3 shadow-sm"
                 >
                   <div className="flex items-start gap-3">
-                    <ProductListThumbnail imageUrl={thumbUrl} previewOnTap />
+                    <ProductListThumbnail imageUrl={thumbUrl} previewOnTap className="rounded-md" />
                     <div className="min-w-0 flex-1">
                       <h3
                         className={cn(
@@ -650,12 +675,12 @@ export function ProductsScreen() {
                       {p.prescription_required || p.dosage_form ? (
                         <div className="mt-0.5 flex flex-wrap items-center gap-1">
                           {p.prescription_required ? (
-                            <span className="inline-flex items-center rounded-md bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold text-red-700">
+                            <span className="inline-flex items-center rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold text-red-700">
                               Sur ordonnance
                             </span>
                           ) : null}
                           {p.dosage_form ? (
-                            <span className="inline-flex items-center rounded-md bg-fs-accent/10 px-1.5 py-0.5 text-[10px] font-medium text-fs-accent">
+                            <span className="inline-flex items-center rounded bg-fs-accent/10 px-1.5 py-0.5 text-[10px] font-medium text-fs-accent">
                               {p.dosage_form}
                             </span>
                           ) : null}
@@ -665,6 +690,30 @@ export function ProductsScreen() {
                         {p.sku || "—"} · {formatCurrency(p.sale_price)} ·{" "}
                         {p.category?.name ?? "—"} · {p.brand?.name ?? "—"}
                       </p>
+                      {(p.product_packagings?.length ?? 0) > 0 ? (
+                        <div className="mt-1 flex flex-wrap items-center gap-1">
+                          {(p.product_packagings ?? [])
+                            .slice()
+                            .sort((a, b) => a.position - b.position)
+                            .map((pk) => {
+                              const effPrice = pk.price ?? pk.factor * p.sale_price;
+                              return (
+                                <span
+                                  key={pk.id}
+                                  className="inline-flex items-center gap-1 rounded bg-fs-surface-container px-1.5 py-0.5 text-[10px] font-medium text-neutral-600"
+                                  title={`${pk.label} = ${pk.factor} pièce${pk.factor > 1 ? "s" : ""}${
+                                    pk.barcode ? ` · code-barres ${pk.barcode}` : ""
+                                  }`}
+                                >
+                                  <MdInventory2 className="h-3 w-3 shrink-0 text-fs-accent" aria-hidden />
+                                  <span className="font-semibold text-fs-text">{pk.label}</span>
+                                  <span className="text-neutral-400">×{pk.factor}</span>
+                                  <span className="text-neutral-500">{formatCurrency(effPrice)}</span>
+                                </span>
+                              );
+                            })}
+                        </div>
+                      ) : null}
                       {storeId ? (
                         <div className="mt-1">
                           <StockRangeIndicator
@@ -682,17 +731,28 @@ export function ProductsScreen() {
                             setEditing(p);
                             setShowForm(true);
                           }}
-                          className="rounded-lg border border-black/[0.08] bg-fs-card px-2 py-1 text-xs font-semibold text-fs-accent"
+                          className="rounded-md border border-black/[0.08] bg-fs-card px-2 py-1 text-xs font-semibold text-fs-accent"
                           aria-label="Modifier"
                         >
                           <MdEdit className="h-4 w-4" aria-hidden />
+                        </button>
+                      ) : null}
+                      {canUpdateProduct ? (
+                        <button
+                          type="button"
+                          onClick={() => setQuickPkgProduct(p)}
+                          className="rounded-md border border-fs-accent/30 bg-fs-accent/[0.06] px-2 py-1 text-xs font-semibold text-fs-accent"
+                          aria-label="Ajouter un conditionnement"
+                          title="Ajouter rapidement un conditionnement (carton, paquet…)"
+                        >
+                          <MdInventory2 className="h-4 w-4" aria-hidden />
                         </button>
                       ) : null}
                       {activityCfg.batchTracking ? (
                         <button
                           type="button"
                           onClick={() => setBatchesProduct(p)}
-                          className="inline-flex items-center gap-1 rounded-lg border border-fs-accent/30 bg-fs-accent/[0.06] px-2 py-1 text-xs font-semibold text-fs-accent"
+                          className="inline-flex items-center gap-1 rounded-md border border-fs-accent/30 bg-fs-accent/[0.06] px-2 py-1 text-xs font-semibold text-fs-accent"
                           aria-label="Dates de péremption"
                           title="Enregistrer / voir les dates de péremption"
                         >
@@ -706,7 +766,7 @@ export function ProductsScreen() {
                           onClick={() =>
                             mutateToggle.mutate({ id: p.id, active: !p.is_active })
                           }
-                          className="rounded-lg border border-black/[0.08] bg-fs-card px-2 py-1 text-xs font-semibold text-neutral-700"
+                          className="rounded-md border border-black/[0.08] bg-fs-card px-2 py-1 text-xs font-semibold text-neutral-700"
                           aria-label={p.is_active ? "Désactiver" : "Activer"}
                         >
                           {p.is_active ? (
@@ -724,7 +784,7 @@ export function ProductsScreen() {
                               mutateDelete.mutate(p.id);
                             }
                           }}
-                          className="rounded-lg border border-black/[0.08] bg-fs-card px-2 py-1 text-xs font-semibold text-red-600"
+                          className="rounded-md border border-black/[0.08] bg-fs-card px-2 py-1 text-xs font-semibold text-red-600"
                           aria-label="Supprimer"
                         >
                           <MdDeleteOutline className="h-4 w-4" aria-hidden />
@@ -1024,6 +1084,18 @@ export function ProductsScreen() {
           productName={batchesProduct.name}
           stores={ctx.data?.stores ?? []}
           onClose={() => setBatchesProduct(null)}
+        />
+      ) : null}
+
+      {quickPkgProduct && companyId ? (
+        <QuickPackagingDialog
+          companyId={companyId}
+          product={quickPkgProduct}
+          allProducts={products}
+          onClose={() => setQuickPkgProduct(null)}
+          onSaved={() => {
+            void qc.invalidateQueries({ queryKey: queryKeys.products(companyId) });
+          }}
         />
       ) : null}
 
