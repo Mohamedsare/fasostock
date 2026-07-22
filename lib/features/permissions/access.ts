@@ -267,8 +267,8 @@ export function filterNavItemsForPermissions(
     if (href === ROUTES.stores) return h.canStores;
     if (href === ROUTES.inventory) return h.canInventory && !h.isCashier;
     if (href === ROUTES.inventorySessions) {
-      // Faire un inventaire = ajuster le stock (ou propriétaire). Masqué aux caissiers.
-      return (h.isOwner || h.hasPermission(P.stockAdjust)) && !h.isCashier;
+      // Droit dédié « Faire l'inventaire » (ou propriétaire). Masqué aux caissiers.
+      return (h.isOwner || h.hasPermission(P.inventoryManage)) && !h.isCashier;
     }
     if (href === ROUTES.expiry) {
       // Page réservée aux métiers à suivi de péremption (pharmacie, supermarché…).

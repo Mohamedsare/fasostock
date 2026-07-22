@@ -37,7 +37,7 @@ export function InventoryCountScreen({ sessionId }: { sessionId: string }) {
   const router = useRouter();
   const { data: ctx, hasPermission } = usePermissions();
   const isOwner = ctx?.roleSlug === "owner";
-  const canDoInventory = isOwner || hasPermission(P.stockAdjust);
+  const canDoInventory = isOwner || hasPermission(P.inventoryManage);
   const companyId = ctx?.companyId ?? "";
 
   // Miniatures produit — chargées en direct (pas dans le snapshot de session).

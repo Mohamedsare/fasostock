@@ -1,6 +1,7 @@
 "use client";
 
 import { fsInputClass } from "@/components/ui/fs-screen-primitives";
+import { FsSearchSelect } from "@/components/ui/fs-search-select";
 import {
   createBrand,
   createCategory,
@@ -58,6 +59,22 @@ function parseScope(v: string | null | undefined): ProductScope {
   return "both";
 }
 
+/** Types de conditionnement proposés (libellé = choix obligatoire dans une liste). */
+const PACKAGING_LABELS = [
+  "Carton",
+  "Paquet",
+  "Sachet",
+  "Boîte",
+  "Sac",
+  "Fardeau",
+  "Casier",
+  "Lot",
+  "Douzaine",
+  "Plaquette",
+  "Rouleau",
+  "Palette",
+] as const;
+
 /** Ligne de conditionnement éditable (champs numériques en chaînes). */
 type PackagingRow = {
   key: string;
@@ -73,23 +90,6 @@ function newRowKey(): string {
     return crypto.randomUUID();
   }
   return `pkg-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-}
-
-/**
- * Astuce non bloquante : si le prix du conditionnement n'est pas un multiple du
- * nombre de pièces, le prix par pièce tombe « juste » (ex. 459 au lieu de 458,33)
- * et le ticket peut afficher une multiplication qui ne tombe pas rond. On suggère
- * les deux multiples les plus proches. Retourne `null` si tout va bien.
- */
-function packagingPriceHint(factorStr: string, priceStr: string): string | null {
-  if (!priceStr.trim()) return null;
-  const f = Math.round(toNumber(factorStr));
-  const p = toNumber(priceStr);
-  if (f < 2 || p <= 0 || p % f === 0) return null;
-  const lower = Math.floor(p / f) * f;
-  const upper = Math.ceil(p / f) * f;
-  const opts = [lower, upper].filter((v) => v > 0);
-  return `Astuce : un multiple de ${f} donne un ticket net (ex. ${opts.join(" ou ")}).`;
 }
 
 type Props = {
@@ -162,12 +162,11 @@ export function ProductFormDialog({
   const [salePrice, setSalePrice] = useState(
     initial?.sale_price != null ? String(initial.sale_price) : "",
   );
-  const [wholesalePrice, setWholesalePrice] = useState(
-    initial?.wholesale_price != null ? String(initial.wholesale_price) : "",
-  );
-  const [wholesaleQty, setWholesaleQty] = useState(
-    initial?.wholesale_qty != null ? String(initial.wholesale_qty) : "",
-  );
+  // Prix gros / seuil gros : masqués du formulaire (la vente en gros passe par les
+  // conditionnements). Valeurs conservées telles quelles à l'édition ; « 0 » pour un
+  // nouveau produit. La logique caisse (posEffectiveUnitPrice) et les colonnes DB restent.
+  const wholesalePrice = initial?.wholesale_price != null ? String(initial.wholesale_price) : "";
+  const wholesaleQty = initial?.wholesale_qty != null ? String(initial.wholesale_qty) : "";
   const [stockMin, setStockMin] = useState(
     String(initial != null ? initial.stock_min ?? 0 : 5),
   );
@@ -675,37 +674,6 @@ export function ProductFormDialog({
               </label>
             </div>
 
-            <div
-              className={cn(
-                "flex flex-col gap-3 min-[401px]:flex-row min-[401px]:gap-3",
-              )}
-            >
-              <label className="min-w-0 flex-1">
-                <span className="mb-1 block text-xs font-medium text-neutral-600">
-                  Prix gros (optionnel)
-                </span>
-                <input
-                  value={wholesalePrice}
-                  onChange={(e) => setWholesalePrice(e.target.value)}
-                  inputMode="decimal"
-                  className={fsInputClass()}
-                  placeholder="FCFA / unité"
-                />
-              </label>
-              <label className="min-w-0 flex-1">
-                <span className="mb-1 block text-xs font-medium text-neutral-600">
-                  Qté seuil gros
-                </span>
-                <input
-                  value={wholesaleQty}
-                  onChange={(e) => setWholesaleQty(e.target.value)}
-                  inputMode="numeric"
-                  className={fsInputClass()}
-                  placeholder="≥ cette qté → prix gros"
-                />
-              </label>
-            </div>
-
             {/* Conditionnements : paquet / carton avec leur code-barres et prix.
                 Le stock reste compté en pièces ; scanner un conditionnement ajoute
                 `factor` pièces au panier (caisse rapide). */}
@@ -726,16 +694,30 @@ export function ProductFormDialog({
                       key={r.key}
                       className="rounded-lg border border-black/[0.08] bg-fs-surface-container/40 p-2.5"
                     >
-                      <div className="flex items-start gap-2">
-                        <input
-                          value={r.label}
-                          onChange={(e) =>
-                            updatePackaging(r.key, "label", e.target.value)
-                          }
-                          placeholder="Libellé (ex. Carton)"
-                          className={cn(fsInputClass(), "min-w-0 flex-1")}
-                          autoComplete="off"
-                        />
+                      <div className="flex items-end gap-2">
+                        <label className="min-w-0 flex-1">
+                          <span className="mb-1 block text-[11px] font-medium text-neutral-600">
+                            Type *
+                          </span>
+                          <select
+                            value={r.label}
+                            onChange={(e) =>
+                              updatePackaging(r.key, "label", e.target.value)
+                            }
+                            className={fsInputClass()}
+                            aria-label="Type de conditionnement"
+                          >
+                            <option value="">Choisir…</option>
+                            {r.label && !PACKAGING_LABELS.includes(r.label as (typeof PACKAGING_LABELS)[number]) ? (
+                              <option value={r.label}>{r.label}</option>
+                            ) : null}
+                            {PACKAGING_LABELS.map((l) => (
+                              <option key={l} value={l}>
+                                {l}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
                         <button
                           type="button"
                           onClick={() => removePackaging(r.key)}
@@ -773,11 +755,6 @@ export function ProductFormDialog({
                             placeholder="Sinon nb × prix pièce"
                             className={fsInputClass()}
                           />
-                          {packagingPriceHint(r.factor, r.price) ? (
-                            <span className="mt-1 block text-[10px] leading-snug text-amber-600">
-                              {packagingPriceHint(r.factor, r.price)}
-                            </span>
-                          ) : null}
                         </label>
                       </div>
                       <label className="mt-2 block">
@@ -902,18 +879,14 @@ export function ProductFormDialog({
                 Catégorie
               </span>
               <div className="flex flex-col gap-2 min-[321px]:flex-row min-[321px]:items-start">
-                <select
+                <FsSearchSelect
                   value={categoryId}
-                  onChange={(e) => setCategoryId(e.target.value)}
-                  className={cn(fsInputClass(), "min-[321px]:min-w-0 min-[321px]:flex-[2]")}
-                >
-                  <option value="">—</option>
-                  {categories.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
+                  options={categories}
+                  onChange={setCategoryId}
+                  ariaLabel="Catégorie"
+                  searchPlaceholder="Rechercher une catégorie…"
+                  className="min-[321px]:min-w-0 min-[321px]:flex-[2]"
+                />
                 <div className="flex min-w-0 flex-1 items-start gap-1">
                   <input
                     value={newCategory}
@@ -946,18 +919,14 @@ export function ProductFormDialog({
                 Marque
               </span>
               <div className="flex flex-col gap-2 min-[321px]:flex-row min-[321px]:items-start">
-                <select
+                <FsSearchSelect
                   value={brandId}
-                  onChange={(e) => setBrandId(e.target.value)}
-                  className={cn(fsInputClass(), "min-[321px]:min-w-0 min-[321px]:flex-[2]")}
-                >
-                  <option value="">—</option>
-                  {brands.map((b) => (
-                    <option key={b.id} value={b.id}>
-                      {b.name}
-                    </option>
-                  ))}
-                </select>
+                  options={brands}
+                  onChange={setBrandId}
+                  ariaLabel="Marque"
+                  searchPlaceholder="Rechercher une marque…"
+                  className="min-[321px]:min-w-0 min-[321px]:flex-[2]"
+                />
                 <div className="flex min-w-0 flex-1 items-start gap-1">
                   <input
                     value={newBrand}

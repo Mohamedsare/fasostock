@@ -61,7 +61,7 @@ export function InventorySessionsScreen() {
   const storeId = ctx?.storeId ?? null;
   const storeName = ctx?.stores?.find((s) => s.id === storeId)?.name ?? null;
   const isOwner = ctx?.roleSlug === "owner";
-  const canDoInventory = isOwner || hasPermission(P.stockAdjust);
+  const canDoInventory = isOwner || hasPermission(P.inventoryManage);
 
   const [note, setNote] = useState("");
   const [confirm, setConfirm] = useState<

@@ -223,6 +223,7 @@ export function InventoryScreen() {
   const canAccessStock =
     hasPermission(P.stockView) || hasPermission(P.stockAdjust) || hasPermission(P.stockTransfer);
   const canAdjust = hasPermission(P.stockAdjust);
+  const canManageInventory = hasPermission(P.inventoryManage);
 
   const [tab, setTab] = useState<"stock" | "moves">("stock");
   const [q, setQ] = useState("");
@@ -500,7 +501,7 @@ export function InventoryScreen() {
               narrowHeader ? "w-full" : "shrink-0 justify-end",
             )}
           >
-            {canAdjust ? (
+            {canManageInventory ? (
               <Link
                 href={ROUTES.inventorySessions}
                 className="inline-flex items-center gap-2 rounded-lg bg-fs-accent px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm"

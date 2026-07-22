@@ -27,6 +27,8 @@ export const P = {
   stockAdjust: "stock.adjust",
   stockTransfer: "stock.transfer",
   stockView: "stock.view",
+  /** Sessions d'inventaire physique (comptage / écarts / validation) — distinct de stock.adjust. */
+  inventoryManage: "inventory.manage",
   /** Dépôt central : RPC + inventaire — rôle Magasinier (stock_manager) par défaut. */
   warehouseManage: "warehouse.manage",
   reportsViewGlobal: "reports.view_global",
@@ -100,6 +102,7 @@ export const PERMISSION_LABELS_FR: Record<string, string> = {
   [P.stockAdjust]: "Ajuster le stock",
   [P.stockTransfer]: "Transferer le stock",
   [P.stockView]: "Voir le stock / inventaire",
+  [P.inventoryManage]: "Faire l'inventaire (comptage physique)",
   [P.warehouseManage]: "Gerer le depot magasin (complet)",
   [P.reportsViewGlobal]: "Voir les rapports (global)",
   [P.reportsViewStore]: "Voir les rapports (boutique)",

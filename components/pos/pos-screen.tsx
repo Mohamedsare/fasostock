@@ -34,6 +34,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { createClient } from "@/lib/supabase/client";
 import { InvoicePostSaleDialog } from "@/components/invoices/invoice-post-sale-dialog";
 import { PosBarcodeScannerDialog } from "@/components/pos/pos-barcode-scanner-dialog";
@@ -291,6 +292,11 @@ export function PosScreen({
   const products = useMemo(
     () => filterByStoreCatalog(posQ.data?.products ?? [], storeCatalog),
     [posQ.data?.products, storeCatalog],
+  );
+  type PosProduct = (typeof products)[number];
+  // Sélecteur de conditionnement à l'ajout au panier (Pièce par défaut).
+  const [pkgChooser, setPkgChooser] = useState<{ productId: string; thumb: string | null } | null>(
+    null,
   );
   const rawStockByProductId = useMemo(
     () => ensureStringNumberMap(posQ.data?.stockByProductId),
@@ -963,6 +969,41 @@ export function PosScreen({
     setSearch("");
     // Re-focus pour permettre le scan immédiat du produit suivant.
     searchInputRef.current?.focus();
+  }
+
+  /** Conditionnements valides d'un produit (libellé + facteur ≥ 1). */
+  function validPackagings(p: PosProduct) {
+    return (p.product_packagings ?? [])
+      .filter((pk) => Math.floor(Number(pk.factor)) >= 1 && (pk.label ?? "").trim().length > 0)
+      .map((pk) => ({
+        label: String(pk.label),
+        factor: Math.max(1, Math.floor(Number(pk.factor))),
+        price: pk.price != null ? Number(pk.price) : null,
+      }));
+  }
+
+  /** Ajout au panier depuis une carte produit : si le produit a des conditionnements,
+   *  on propose de choisir (Pièce par défaut) ; sinon ajout direct d'une pièce. */
+  function onPickProduct(p: PosProduct, thumb: string | null) {
+    if (validPackagings(p).length === 0) {
+      addToCart(p.id, p.name, p.unit, thumb);
+      setSearch("");
+      searchInputRef.current?.focus();
+      return;
+    }
+    setPkgChooser({ productId: p.id, thumb });
+  }
+
+  /** Applique un conditionnement choisi (même calcul que le scan d'un pack). */
+  function addChosenPackaging(
+    p: PosProduct,
+    thumb: string | null,
+    pkg: { label: string; factor: number; price: number | null },
+  ) {
+    const packTotal = pkg.price != null ? pkg.price : Number(p.sale_price ?? 0) * pkg.factor;
+    const pieceUnitPrice = Math.ceil(packTotal / pkg.factor);
+    const ok = addUnitsToCart(p.id, p.name, p.unit, thumb, pkg.factor, pieceUnitPrice, packTotal);
+    if (ok) toast.success(`${pkg.label} · ${p.name} (${pkg.factor})`);
   }
 
   // Capture clavier globale pour douchette code-barres / QR (caisse rapide).
@@ -1742,8 +1783,7 @@ export function PosScreen({
                           type="button"
                           disabled={noStock}
                           onClick={() => {
-                            if (!noStock)
-                              addToCart(p.id, p.name, p.unit, thumb);
+                            if (!noStock) onPickProduct(p, thumb);
                           }}
                           className={cn(
                             "relative flex min-h-0 w-full min-w-0 flex-col items-center justify-center rounded-[14px] border bg-white px-2 py-1.5 text-center transition active:scale-[0.98]",
@@ -1802,13 +1842,7 @@ export function PosScreen({
                       <button
                         key={p.id}
                         type="button"
-                        onClick={() => {
-                          addToCart(p.id, p.name, p.unit, thumb);
-                          // Évite que le texte de recherche résiduel pollue le scan
-                          // suivant et redonne le focus pour scanner immédiatement.
-                          setSearch("");
-                          searchInputRef.current?.focus();
-                        }}
+                        onClick={() => onPickProduct(p, thumb)}
                         className={cn(
                           "relative flex min-h-0 w-full min-w-0 flex-col items-center overflow-hidden rounded-xl bg-white px-2 py-1.5 text-center transition active:scale-[0.98]",
                           "aspect-[0.82] @[400px]:aspect-[0.88] @[600px]:aspect-[0.93]",
@@ -1959,6 +1993,90 @@ export function PosScreen({
           onClose={() => setReceiptDialog(null)}
         />
       ) : null}
+
+      {pkgChooser && typeof document !== "undefined"
+        ? (() => {
+            const cp = products.find((x) => x.id === pkgChooser.productId);
+            if (!cp) return null;
+            const pkgs = validPackagings(cp);
+            const closeAndFocus = () => {
+              setPkgChooser(null);
+              setSearch("");
+              searchInputRef.current?.focus();
+            };
+            return createPortal(
+              <div
+                className="fixed inset-0 z-[2147483647] flex items-end justify-center bg-black/45 p-3 sm:items-center"
+                role="dialog"
+                aria-modal="true"
+                aria-label="Choisir le conditionnement"
+                onMouseDown={(e) => {
+                  if (e.target === e.currentTarget) setPkgChooser(null);
+                }}
+              >
+                <div className="w-full max-w-md rounded-2xl bg-fs-card p-4 shadow-xl sm:p-5">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <h2 className="text-base font-bold text-fs-text">Conditionnement</h2>
+                      <p className="mt-0.5 truncate text-sm text-neutral-600">{cp.name}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setPkgChooser(null)}
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-black/[0.08] text-neutral-600"
+                      aria-label="Fermer"
+                    >
+                      <MdClose className="h-5 w-5" aria-hidden />
+                    </button>
+                  </div>
+
+                  <div className="mt-3 grid gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        addToCart(cp.id, cp.name, cp.unit, pkgChooser.thumb);
+                        closeAndFocus();
+                      }}
+                      className="flex items-center justify-between gap-2 rounded-xl border-2 border-fs-accent bg-fs-accent/[0.06] px-4 py-3 text-left"
+                    >
+                      <span className="text-sm font-bold text-fs-text">Pièce ({cp.unit || "pce"})</span>
+                      <span className="text-sm font-extrabold text-fs-accent">
+                        {formatCurrency(Number(cp.sale_price ?? 0))}
+                      </span>
+                    </button>
+
+                    {pkgs.map((pk) => {
+                      const packTotal =
+                        pk.price != null ? pk.price : Number(cp.sale_price ?? 0) * pk.factor;
+                      return (
+                        <button
+                          key={`${pk.label}-${pk.factor}`}
+                          type="button"
+                          onClick={() => {
+                            addChosenPackaging(cp, pkgChooser.thumb, pk);
+                            closeAndFocus();
+                          }}
+                          className="flex items-center justify-between gap-2 rounded-xl border border-black/[0.1] bg-white px-4 py-3 text-left"
+                        >
+                          <span className="min-w-0">
+                            <span className="block text-sm font-bold text-fs-text">{pk.label}</span>
+                            <span className="block text-[11px] text-neutral-500">
+                              {pk.factor} {cp.unit || "pce"}
+                            </span>
+                          </span>
+                          <span className="text-sm font-extrabold text-fs-accent">
+                            {formatCurrency(packTotal)}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>,
+              document.body,
+            );
+          })()
+        : null}
 
       {mode === "quick" ? (
         <PosBarcodeScannerDialog
