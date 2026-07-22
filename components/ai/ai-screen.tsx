@@ -234,7 +234,10 @@ export function AiScreen() {
       });
     } catch (e) {
       const msg = messageFromUnknownError(e);
-      setError(msg);
+      const detail = e instanceof Error ? e.message.trim() : String(e ?? "").trim();
+      // Diagnostic : on remonte le vrai message technique (souvent masqué par la traduction générique).
+      console.error("[AI predictions] échec génération:", e);
+      setError(detail && detail !== msg ? `${msg}\n\nDétail technique : ${detail}` : msg);
       toast.error(msg);
     } finally {
       setLoading(false);
@@ -394,7 +397,7 @@ export function AiScreen() {
         <FsCard className="border border-red-300/50 bg-red-50/40 dark:bg-red-950/20" padding="p-4">
           <div className="flex gap-3">
             <MdErrorOutline className="mt-0.5 h-6 w-6 shrink-0 text-red-600" aria-hidden />
-            <p className="min-w-0 text-sm text-red-900 dark:text-red-200">{error}</p>
+            <p className="min-w-0 whitespace-pre-line text-sm text-red-900 dark:text-red-200">{error}</p>
           </div>
         </FsCard>
       ) : null}
