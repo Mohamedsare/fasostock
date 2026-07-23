@@ -288,6 +288,7 @@ export function AppShell({ children, userEmail }: AppShellProps) {
 
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           {isDesktop ? (
+            isPosQuickRoute ? null : (
             <header
               className={cn(
                 "sticky top-0 z-40 flex h-[58px] shrink-0 items-center gap-2 px-3",
@@ -378,6 +379,7 @@ export function AppShell({ children, userEmail }: AppShellProps) {
                 </button>
               </div>
             </header>
+            )
           ) : isPosQuickRoute ? null : (
             <header
               className={cn(
