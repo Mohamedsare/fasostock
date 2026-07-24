@@ -75,7 +75,9 @@ export function AppShell({ children, userEmail }: AppShellProps) {
   const isPosRoute = /^\/stores\/[^/]+\/(pos(-quick)?|facture-tab)\/?$/.test(
     pathname,
   );
-  const isPosQuickRoute = /^\/stores\/[^/]+\/pos-quick\/?$/.test(pathname);
+  // Écrans POS plein cadre (caisse rapide, Facture A4, Facture A4 tableau) :
+  // pas de barre supérieure, plus d'espace pour la vente — comme la caisse rapide.
+  const hidePosTopBar = isPosRoute;
   const [moreOpen, setMoreOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -288,7 +290,7 @@ export function AppShell({ children, userEmail }: AppShellProps) {
 
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           {isDesktop ? (
-            isPosQuickRoute ? null : (
+            hidePosTopBar ? null : (
             <header
               className={cn(
                 "sticky top-0 z-40 flex h-[58px] shrink-0 items-center gap-2 px-3",
@@ -380,7 +382,7 @@ export function AppShell({ children, userEmail }: AppShellProps) {
               </div>
             </header>
             )
-          ) : isPosQuickRoute ? null : (
+          ) : hidePosTopBar ? null : (
             <header
               className={cn(
                 "sticky top-0 z-40 flex h-[58px] shrink-0 items-center justify-between gap-2",
