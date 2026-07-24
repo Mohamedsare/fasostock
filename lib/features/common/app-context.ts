@@ -126,6 +126,15 @@ async function fetchAppContext(): Promise<AppContextData | null> {
   if (pErr) throw mapSupabaseError(pErr);
   const isSuperAdmin = profile?.is_super_admin === true;
 
+  // Flag GLOBAL plateforme (super admin) : génération d'affiches publicitaires IA. Défaut off.
+  let promoAdGenerationEnabled = false;
+  try {
+    const { data: flag } = await supabase.rpc("promo_ad_generation_enabled");
+    promoAdGenerationEnabled = flag === true;
+  } catch {
+    promoAdGenerationEnabled = false;
+  }
+
   /**
    * Même logique que `CompanyRepository.getCompaniesForUser` (Flutter) :
    * `user_company_roles` actifs → ids entreprise → ligne `companies`.
@@ -166,6 +175,7 @@ async function fetchAppContext(): Promise<AppContextData | null> {
       warehouseKpiShowSaleValue: true,
       accountingModuleEnabled: false,
       hrModuleEnabled: false,
+      promoAdGenerationEnabled,
     };
   }
 
@@ -207,6 +217,7 @@ async function fetchAppContext(): Promise<AppContextData | null> {
       warehouseKpiShowSaleValue: true,
       accountingModuleEnabled: false,
       hrModuleEnabled: false,
+      promoAdGenerationEnabled,
     };
   }
 
@@ -275,6 +286,7 @@ async function fetchAppContext(): Promise<AppContextData | null> {
       warehouseKpiShowSaleValue,
       accountingModuleEnabled,
       hrModuleEnabled,
+      promoAdGenerationEnabled,
     };
   }
 
@@ -332,6 +344,7 @@ async function fetchAppContext(): Promise<AppContextData | null> {
     warehouseKpiShowSaleValue,
     accountingModuleEnabled,
     hrModuleEnabled,
+    promoAdGenerationEnabled,
   };
 }
 

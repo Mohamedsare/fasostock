@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   MdAdd,
+  MdAutoAwesome,
   MdBadge,
   MdDelete,
   MdEdit,
@@ -27,6 +28,7 @@ import { formatOperationCalendarDayYmd } from "@/lib/utils/operation-datetime";
 import { messageFromUnknownError, toast } from "@/lib/toast";
 import { cn } from "@/lib/utils/cn";
 import { PromotionFormDialog } from "./promotion-form-dialog";
+import { PromoPosterDialog } from "./promo-poster-dialog";
 
 function statusPillClass(s: PromotionStatus): string {
   switch (s) {
@@ -65,10 +67,13 @@ export function PromotionsScreen() {
   );
   const isPharmacy = ctx.data?.businessTypeSlug === "pharmacie";
   const canManage = h?.canPromotions ?? false;
+  // Interrupteur GLOBAL (super admin) : affiches publicitaires IA. Désactivé par défaut.
+  const promoAdsEnabled = ctx.data?.promoAdGenerationEnabled === true;
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Promotion | null>(null);
   const [toDelete, setToDelete] = useState<Promotion | null>(null);
+  const [posterPromo, setPosterPromo] = useState<Promotion | null>(null);
 
   const promosQ = useQuery({
     queryKey: ["promotions", companyId],
@@ -240,6 +245,18 @@ export function PromotionsScreen() {
                     </p>
                   </div>
                   <div className="flex shrink-0 items-center gap-1.5">
+                    {promoAdsEnabled ? (
+                      <button
+                        type="button"
+                        onClick={() => setPosterPromo(p)}
+                        disabled={p.productCount === 0}
+                        title="Générer une affiche publicitaire (IA)"
+                        className="inline-flex items-center gap-1 rounded-sm bg-linear-to-r from-fuchsia-600 to-fs-accent px-2.5 py-1.5 text-xs font-bold text-white disabled:opacity-40"
+                      >
+                        <MdAutoAwesome className="h-4 w-4" aria-hidden />
+                        Affiche
+                      </button>
+                    ) : null}
                     <button
                       type="button"
                       onClick={() => activeMut.mutate({ id: p.id, active: !p.isActive })}
@@ -285,6 +302,17 @@ export function PromotionsScreen() {
         products={productsQ.data ?? []}
         editing={editing}
         onSaved={() => void qc.invalidateQueries({ queryKey: ["promotions", companyId] })}
+      />
+
+      <PromoPosterDialog
+        open={promoAdsEnabled && posterPromo !== null}
+        onClose={() => setPosterPromo(null)}
+        promotion={posterPromo}
+        products={productsQ.data ?? []}
+        companyId={companyId}
+        companyName={ctx.data?.companyName ?? ""}
+        companyLogoUrl={ctx.data?.companyLogoUrl ?? null}
+        storeNameById={storeName}
       />
 
       <FsConfirmDialog

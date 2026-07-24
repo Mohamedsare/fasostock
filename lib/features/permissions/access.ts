@@ -51,6 +51,8 @@ export type AppContextData = {
   accountingModuleEnabled: boolean;
   /** Module R. Humaine + Paie — désactivé par défaut ; activé par la plateforme. */
   hrModuleEnabled: boolean;
+  /** Génération d'affiches publicitaires IA (promotions) — flag GLOBAL super admin, désactivé par défaut. */
+  promoAdGenerationEnabled: boolean;
 };
 
 export type AccessHelpers = {

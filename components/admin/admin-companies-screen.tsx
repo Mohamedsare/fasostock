@@ -2,7 +2,9 @@
 
 import { AdminCard, AdminPageHeader } from "@/components/admin/admin-page-header";
 import { FsHorizontalScroll } from "@/components/ui/fs-horizontal-scroll";
+import { BUSINESS_TYPES } from "@/lib/config/business-types";
 import {
+  adminCreateCompanyAccount,
   adminDeleteCompany,
   adminDeleteStore,
   adminListCompanies,
@@ -14,11 +16,33 @@ import type { AdminCompany, AdminStore } from "@/lib/features/admin/types";
 import { messageFromUnknownError, toast } from "@/lib/toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Fragment, useMemo, useState } from "react";
-import { MdDelete, MdExpandMore, MdChevronRight, MdAutoAwesome, MdPowerSettingsNew, MdWarehouse, MdAdd, MdRemove } from "react-icons/md";
+import { MdDelete, MdExpandMore, MdChevronRight, MdAutoAwesome, MdPowerSettingsNew, MdWarehouse, MdAdd, MdRemove, MdStorefront } from "react-icons/md";
+
+type CreateForm = {
+  companyName: string;
+  ownerFullName: string;
+  ownerEmail: string;
+  ownerPassword: string;
+  firstStoreName: string;
+  firstStorePhone: string;
+  businessTypeSlug: string;
+};
+
+const EMPTY_CREATE_FORM: CreateForm = {
+  companyName: "",
+  ownerFullName: "",
+  ownerEmail: "",
+  ownerPassword: "",
+  firstStoreName: "",
+  firstStorePhone: "",
+  businessTypeSlug: "",
+};
 
 export function AdminCompaniesScreen() {
   const qc = useQueryClient();
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createForm, setCreateForm] = useState<CreateForm>(EMPTY_CREATE_FORM);
 
   const q = useQuery({
     queryKey: ["admin-companies"] as const,
@@ -84,6 +108,40 @@ export function AdminCompaniesScreen() {
     onError: (e) => toast.error(messageFromUnknownError(e)),
   });
 
+  const mutCreate = useMutation({
+    mutationFn: async (form: CreateForm) => {
+      return adminCreateCompanyAccount({
+        companyName: form.companyName.trim(),
+        ownerFullName: form.ownerFullName.trim() || undefined,
+        ownerEmail: form.ownerEmail.trim(),
+        ownerPassword: form.ownerPassword,
+        firstStoreName: form.firstStoreName.trim(),
+        firstStorePhone: form.firstStorePhone.trim() || undefined,
+        businessTypeSlug: form.businessTypeSlug || null,
+      });
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["admin-companies"] });
+      toast.success("Entreprise créée. Le propriétaire peut se connecter immédiatement.");
+      setCreateOpen(false);
+      setCreateForm(EMPTY_CREATE_FORM);
+    },
+    onError: (e) => toast.error(messageFromUnknownError(e)),
+  });
+
+  function submitCreate() {
+    const f = createForm;
+    if (!f.companyName.trim() || !f.ownerEmail.trim() || !f.firstStoreName.trim()) {
+      toast.error("Renseignez l'entreprise, l'email du propriétaire et la première boutique.");
+      return;
+    }
+    if (f.ownerPassword.length < 6) {
+      toast.error("Le mot de passe doit contenir au moins 6 caractères.");
+      return;
+    }
+    mutCreate.mutate(f);
+  }
+
   function confirmDeleteCompany(c: AdminCompany) {
     if (!window.confirm(`Supprimer l'entreprise « ${c.name} » ? Irréversible.`)) return;
     mutDelCompany.mutate(c.id);
@@ -114,10 +172,23 @@ export function AdminCompaniesScreen() {
 
   return (
     <div className="space-y-6 p-5 md:p-8">
-      <AdminPageHeader
-        title="Entreprises"
-        description="Gestion des entreprises et de leurs boutiques"
-      />
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <AdminPageHeader
+          title="Entreprises"
+          description="Gestion des entreprises et de leurs boutiques"
+        />
+        <button
+          type="button"
+          className="inline-flex items-center gap-2 rounded-xl bg-orange-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-orange-700"
+          onClick={() => {
+            setCreateForm(EMPTY_CREATE_FORM);
+            setCreateOpen(true);
+          }}
+        >
+          <MdStorefront className="h-5 w-5" />
+          Nouvelle entreprise
+        </button>
+      </div>
 
       <AdminCard padding="p-0">
         <FsHorizontalScroll>
@@ -284,6 +355,123 @@ export function AdminCompaniesScreen() {
         </table>
         </FsHorizontalScroll>
       </AdminCard>
+
+      {createOpen ? (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4">
+          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-xl">
+            <h3 className="text-lg font-bold text-slate-900">Créer une entreprise</h3>
+            <p className="mt-1 text-sm text-slate-500">
+              Le compte propriétaire est créé avec email confirmé automatiquement — le
+              client peut se connecter tout de suite avec l&apos;email et le mot de passe saisis.
+            </p>
+
+            <div className="mt-4 space-y-3">
+              <label className="block text-sm font-medium text-slate-700">
+                Nom de l&apos;entreprise *
+                <input
+                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                  value={createForm.companyName}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, companyName: e.target.value }))}
+                  placeholder="Ex. ETS COULIBALY"
+                />
+              </label>
+
+              <label className="block text-sm font-medium text-slate-700">
+                Type d&apos;activité
+                <select
+                  className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                  value={createForm.businessTypeSlug}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, businessTypeSlug: e.target.value }))}
+                >
+                  <option value="">— Non précisé —</option>
+                  {BUSINESS_TYPES.map((b) => (
+                    <option key={b.slug} value={b.slug}>
+                      {b.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="block text-sm font-medium text-slate-700">
+                Nom de la première boutique *
+                <input
+                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                  value={createForm.firstStoreName}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, firstStoreName: e.target.value }))}
+                  placeholder="Ex. Boutique principale"
+                />
+              </label>
+
+              <label className="block text-sm font-medium text-slate-700">
+                Téléphone de la boutique
+                <input
+                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                  value={createForm.firstStorePhone}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, firstStorePhone: e.target.value }))}
+                  placeholder="Ex. 70 00 00 00"
+                />
+              </label>
+
+              <div className="mt-2 border-t border-slate-100 pt-3">
+                <p className="text-sm font-semibold text-slate-800">Compte propriétaire</p>
+              </div>
+
+              <label className="block text-sm font-medium text-slate-700">
+                Nom du propriétaire
+                <input
+                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                  value={createForm.ownerFullName}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, ownerFullName: e.target.value }))}
+                  placeholder="Ex. Amadou Coulibaly"
+                />
+              </label>
+
+              <label className="block text-sm font-medium text-slate-700">
+                Email de connexion *
+                <input
+                  type="email"
+                  autoComplete="off"
+                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                  value={createForm.ownerEmail}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, ownerEmail: e.target.value }))}
+                  placeholder="proprietaire@entreprise.com"
+                />
+              </label>
+
+              <label className="block text-sm font-medium text-slate-700">
+                Mot de passe * (min. 6 caractères)
+                <input
+                  type="text"
+                  autoComplete="new-password"
+                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                  value={createForm.ownerPassword}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, ownerPassword: e.target.value }))}
+                  placeholder="À communiquer au client"
+                />
+              </label>
+            </div>
+
+            <div className="mt-6 flex justify-end gap-2">
+              <button
+                type="button"
+                className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold"
+                disabled={mutCreate.isPending}
+                onClick={() => setCreateOpen(false)}
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                className="rounded-xl bg-orange-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                disabled={mutCreate.isPending}
+                onClick={submitCreate}
+              >
+                {mutCreate.isPending ? "Création…" : "Créer l'entreprise"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -73,6 +73,47 @@ export async function adminListCompanies(): Promise<AdminCompany[]> {
   });
 }
 
+/**
+ * Crée un compte entreprise complet (propriétaire + entreprise + première boutique)
+ * à remettre à un client. L'email est confirmé automatiquement côté serveur.
+ * Réservé au super admin (contrôlé par la route API).
+ */
+export async function adminCreateCompanyAccount(params: {
+  companyName: string;
+  companySlug?: string;
+  ownerEmail: string;
+  ownerPassword: string;
+  ownerFullName?: string;
+  firstStoreName: string;
+  firstStorePhone?: string;
+  businessTypeSlug?: string | null;
+}): Promise<{ userId: string; companyId: string | null; storeId: string | null }> {
+  const res = await fetch("/api/admin/create-company", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
+    body: JSON.stringify(params),
+  });
+  const raw = await res.text();
+  let parsed: {
+    error?: string;
+    userId?: string;
+    companyId?: string | null;
+    storeId?: string | null;
+  } = {};
+  try {
+    parsed = JSON.parse(raw) as typeof parsed;
+  } catch {
+    /* ignore */
+  }
+  if (!res.ok) throw new Error(parsed.error || raw || `Erreur API ${res.status}`);
+  return {
+    userId: String(parsed.userId ?? ""),
+    companyId: parsed.companyId ?? null,
+    storeId: parsed.storeId ?? null,
+  };
+}
+
 export async function adminListStores(companyId?: string | null): Promise<AdminStore[]> {
   const supabase = createClient();
   let q = supabase

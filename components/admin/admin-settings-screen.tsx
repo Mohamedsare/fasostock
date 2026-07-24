@@ -105,6 +105,20 @@ export function AdminSettingsScreen() {
           />
           Chatbot landing activé
         </label>
+        <label className="mt-2 flex items-start gap-2 text-sm">
+          <input
+            type="checkbox"
+            className="mt-0.5"
+            checked={get("promo_ad_generation_enabled") === "true"}
+            onChange={(e) => set("promo_ad_generation_enabled", e.target.checked ? "true" : "false")}
+          />
+          <span>
+            Affiches publicitaires IA (Promotions)
+            <span className="block text-xs font-normal text-slate-500">
+              Autorise le bouton « Affiche » qui génère des visuels publicitaires par IA (OpenAI). Global à toutes les entreprises.
+            </span>
+          </span>
+        </label>
       </AdminCard>
 
       <button

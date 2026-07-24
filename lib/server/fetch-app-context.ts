@@ -83,6 +83,8 @@ export async function fetchAppContextForCompany(
       warehouseKpiShowSaleValue: cr.warehouse_kpi_show_sale_value !== false,
       accountingModuleEnabled: cr.accounting_module_enabled === true,
       hrModuleEnabled: cr.hr_module_enabled === true,
+      // Flag évalué côté client (bouton uniquement) ; non requis pour les gardes de route serveur.
+      promoAdGenerationEnabled: false,
     };
   }
 
@@ -123,6 +125,8 @@ export async function fetchAppContextForCompany(
     warehouseKpiShowSaleValue: cr.warehouse_kpi_show_sale_value !== false,
     accountingModuleEnabled: cr.accounting_module_enabled === true,
     hrModuleEnabled: cr.hr_module_enabled === true,
+    // Flag évalué côté client (bouton uniquement) ; non requis pour les gardes de route serveur.
+    promoAdGenerationEnabled: false,
   };
 }
 
