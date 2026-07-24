@@ -10,6 +10,7 @@ import type { SaleItem } from "@/lib/features/sales/types";
 import {
   createPosSale,
   fetchPosData,
+  fetchStoreBestSellerQty,
   updateCompletedPosSale,
 } from "@/lib/features/pos/api";
 import { posEffectiveUnitPrice } from "@/lib/features/pos/wholesale-unit-price";
@@ -252,6 +253,17 @@ export function PosScreen({
     refetchInterval: mode === "quick" && !isSaleEditEntry ? 15_000 : false,
   });
 
+  // « En vedette » : classement des meilleures ventes de la boutique (30 derniers jours)
+  // pour remonter les produits les plus vendus en tête de grille POS.
+  const bestSellerQtyQ = useQuery({
+    queryKey: ["pos-best-sellers", companyId, storeId] as const,
+    queryFn: () =>
+      fetchStoreBestSellerQty({ companyId, storeId, sinceDays: 30 }),
+    enabled: Boolean(companyId && storeId && canAccess),
+    staleTime: 5 * 60_000,
+  });
+  const bestSellerQty = bestSellerQtyQ.data;
+
   const store = posQ.data?.store ?? null;
   // Priorité au format ticket réglé sur la boutique (dialogue « Caisse rapide » de
   // la page Boutiques), sinon préférence locale (page Imprimantes), sinon 80 mm.
@@ -350,7 +362,7 @@ export function PosScreen({
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return products.filter((p) => {
+    const list = products.filter((p) => {
       if (!p.is_active) return false;
       if (!isBoutiqueScope(p.product_scope)) return false;
       const stock = stockByProductId.get(p.id) ?? 0;
@@ -366,7 +378,15 @@ export function PosScreen({
         )
       );
     });
-  }, [products, stockByProductId, categoryId, search]);
+    // « En vedette » : les meilleures ventes (30 j) remontent en tête, triées par
+    // quantité vendue décroissante ; le reste (quantité 0) garde l'ordre du catalogue
+    // grâce au tri stable de `Array.prototype.sort`.
+    if (bestSellerQty && bestSellerQty.size > 0) {
+      const qtyOf = (id: string) => bestSellerQty.get(id) ?? 0;
+      list.sort((a, b) => qtyOf(b.id) - qtyOf(a.id));
+    }
+    return list;
+  }, [products, stockByProductId, categoryId, search, bestSellerQty]);
 
   const subtotal = useMemo(
     () =>
