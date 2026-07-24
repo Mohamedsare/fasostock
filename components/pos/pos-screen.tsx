@@ -14,6 +14,8 @@ import {
   updateCompletedPosSale,
 } from "@/lib/features/pos/api";
 import { posEffectiveUnitPrice } from "@/lib/features/pos/wholesale-unit-price";
+import { listActiveStorePromotions } from "@/lib/features/promotions/api";
+import { applyPromoPercent } from "@/lib/features/promotions/promo-math";
 import { defaultInvoiceUnitForProduct, INVOICE_UNITS } from "@/lib/features/pos/invoice-units";
 import { factureTabStripHeightPx } from "@/lib/utils/facture-tab-layout";
 import { fetchInvoiceTablePosEnabled } from "@/lib/features/settings/invoice-table-pos";
@@ -263,6 +265,20 @@ export function PosScreen({
     staleTime: 5 * 60_000,
   });
   const bestSellerQty = bestSellerQtyQ.data;
+
+  // Promotions actives (remise %) pour cette boutique — appliquées automatiquement au prix.
+  const promosQ = useQuery({
+    queryKey: ["pos-promos", companyId, storeId] as const,
+    queryFn: () => listActiveStorePromotions(storeId),
+    enabled: Boolean(companyId && storeId && canAccess),
+    staleTime: 60_000,
+    refetchInterval: mode === "quick" && !isSaleEditEntry ? 60_000 : false,
+  });
+  const promoPctByProductId = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const r of promosQ.data ?? []) m.set(r.productId, r.discountPercent);
+    return m;
+  }, [promosQ.data]);
 
   const store = posQ.data?.store ?? null;
   // Priorité au format ticket réglé sur la boutique (dialogue « Caisse rapide » de
@@ -814,12 +830,15 @@ export function PosScreen({
   function catalogUnitPrice(productId: string, quantity: number): number {
     const p = products.find((x) => x.id === productId);
     if (!p) return 0;
-    return posEffectiveUnitPrice(
+    const base = posEffectiveUnitPrice(
       p.sale_price,
       p.wholesale_price ?? 0,
       p.wholesale_qty ?? 0,
       quantity,
     );
+    // Promotion active sur ce produit dans cette boutique : remise appliquée au prix.
+    const pct = promoPctByProductId.get(productId) ?? 0;
+    return pct > 0 ? applyPromoPercent(base, pct) : base;
   }
 
   function addToCart(
@@ -1792,10 +1811,12 @@ export function PosScreen({
                       const stock = stockByProductId.get(p.id) ?? 0;
                       const thumb = p.product_images?.[0]?.url ?? null;
                       const price = Number(p.sale_price ?? 0);
+                      const promoPct = promoPctByProductId.get(p.id) ?? 0;
+                      const promoPrice = promoPct > 0 ? applyPromoPercent(price, promoPct) : price;
                       const priceLine =
                         stock >= 0
-                          ? `${formatCurrency(price)} · ${stock}`
-                          : formatCurrency(price);
+                          ? `${formatCurrency(promoPrice)} · ${stock}`
+                          : formatCurrency(promoPrice);
                       const noStock = stock <= 0;
                       return (
                         <button
@@ -1818,6 +1839,14 @@ export function PosScreen({
                               title="Délivrance sur ordonnance"
                             >
                               Ord.
+                            </span>
+                          ) : null}
+                          {promoPct > 0 ? (
+                            <span
+                              className="absolute left-1 top-1 z-10 rounded bg-[#DB2777] px-1 py-0.5 text-[8px] font-bold leading-none text-white"
+                              title={`Promotion -${promoPct}%`}
+                            >
+                              -{promoPct}%
                             </span>
                           ) : null}
                           <div className="mx-auto flex size-[clamp(3rem,52%,4.5rem)] max-h-[72px] max-w-[72px] shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[#F8F9FA]">
@@ -1854,10 +1883,12 @@ export function PosScreen({
                     const stock = stockByProductId.get(p.id) ?? 0;
                     const thumb = p.product_images?.[0]?.url ?? null;
                     const price = Number(p.sale_price ?? 0);
+                    const promoPct = promoPctByProductId.get(p.id) ?? 0;
+                    const promoPrice = promoPct > 0 ? applyPromoPercent(price, promoPct) : price;
                     const priceLine =
                       stock >= 0
-                        ? `${formatCurrency(price)} · ${stock}`
-                        : formatCurrency(price);
+                        ? `${formatCurrency(promoPrice)} · ${stock}`
+                        : formatCurrency(promoPrice);
                     return (
                       <button
                         key={p.id}
@@ -1875,6 +1906,14 @@ export function PosScreen({
                             title="Délivrance sur ordonnance"
                           >
                             Ord.
+                          </span>
+                        ) : null}
+                        {promoPct > 0 ? (
+                          <span
+                            className="absolute left-1 top-1 z-10 rounded bg-[#DB2777] px-1 py-0.5 text-[8px] font-bold leading-none text-white"
+                            title={`Promotion -${promoPct}%`}
+                          >
+                            -{promoPct}%
                           </span>
                         ) : null}
                         <div className="mx-auto flex h-[72px] w-[72px] shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[#F8F9FA] sm:h-[76px] sm:w-[76px]">
@@ -1895,12 +1934,22 @@ export function PosScreen({
                           >
                             {p.name}
                           </p>
-                          <p
-                            className="mt-0.5 w-full truncate text-center text-[10px] font-bold text-[#F97316] @[400px]:text-[11px]"
-                            title={priceLine}
-                          >
-                            {priceLine}
-                          </p>
+                          {promoPct > 0 ? (
+                            <p
+                              className="mt-0.5 w-full truncate text-center text-[10px] font-bold @[400px]:text-[11px]"
+                              title={priceLine}
+                            >
+                              <span className="text-neutral-400 line-through">{formatCurrency(price)}</span>{" "}
+                              <span className="text-[#F97316]">{priceLine}</span>
+                            </p>
+                          ) : (
+                            <p
+                              className="mt-0.5 w-full truncate text-center text-[10px] font-bold text-[#F97316] @[400px]:text-[11px]"
+                              title={priceLine}
+                            >
+                              {priceLine}
+                            </p>
+                          )}
                         </div>
                       </button>
                     );

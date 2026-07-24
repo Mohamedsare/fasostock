@@ -13,6 +13,8 @@ export const ROUTES = {
   products: "/products",
   barcodes: "/barcodes",
   sales: "/sales",
+  /** Promotions (remises % par produit / boutique) — tous métiers sauf pharmacie. */
+  promotions: "/promotions",
   /** Module Vente Engins (motos) — activé par boutique par le super admin. */
   engines: "/engins",
   /** Module Immatriculation Engins (CMC/WW/récépissé/carte grise) — activé par boutique. */

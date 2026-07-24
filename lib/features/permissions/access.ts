@@ -81,6 +81,8 @@ export type AccessHelpers = {
   canCredit: boolean;
   /** Propriétaire ou permission page Code Barre. */
   canBarcodes: boolean;
+  /** Propriétaire ou permission page Promotions. */
+  canPromotions: boolean;
   /** Propriétaire ou permission page Péremptions (DLC/DLUO). */
   canExpiry: boolean;
   /** Propriétaire ou permission de consultation des dépenses. */
@@ -177,6 +179,7 @@ export function buildAccessHelpers(
     data.warehouseFeatureEnabled !== false;
   const canCredit = isOwner || hasPermission(P.creditView);
   const canBarcodes = isOwner || hasPermission(P.barcodesManage);
+  const canPromotions = isOwner || hasPermission(P.promotionsManage);
   const canExpiry = isOwner || hasPermission(P.expiryView);
   const canManageExpenses = isOwner || hasPermission(P.expensesManage);
   const canExpenses =
@@ -216,6 +219,7 @@ export function buildAccessHelpers(
     canWarehouse,
     canCredit,
     canBarcodes,
+    canPromotions,
     canExpiry,
     canExpenses,
     canManageExpenses,
@@ -262,6 +266,7 @@ export function filterNavItemsForPermissions(
     if (href === ROUTES.products) return h.canProducts;
     if (href === ROUTES.barcodes) return h.canBarcodes;
     if (href === ROUTES.sales) return h.canSales;
+    if (href === ROUTES.promotions) return h.canPromotions;
     if (href === ROUTES.engines) return h.canEngineSales;
     if (href === ROUTES.engineRegistration) return h.canEngineRegistration;
     if (href === ROUTES.stores) return h.canStores;
@@ -321,6 +326,7 @@ const APP_SHELL_ROUTE_PREFIXES: readonly string[] = [
   ROUTES.products,
   ROUTES.barcodes,
   ROUTES.sales,
+  ROUTES.promotions,
   ROUTES.engines,
   ROUTES.engineRegistration,
   ROUTES.stores,

@@ -24,7 +24,8 @@ const ACTIVITY_PROFILES: ActivityProfile[] = [
     slug: "pharmacie",
     // Officine unique : pas de dépôt central, ni transferts inter-boutiques,
     // ni code-barres (peu utilisé au comptoir). Réactivables pour une chaîne.
-    hiddenNavHrefs: [ROUTES.warehouse, ROUTES.transfers, ROUTES.barcodes],
+    // Promotions exclues : pas de remises commerciales sur les médicaments.
+    hiddenNavHrefs: [ROUTES.warehouse, ROUTES.transfers, ROUTES.barcodes, ROUTES.promotions],
     navLabelOverrides: {
       [ROUTES.products]: "Médicaments",
       [ROUTES.inventory]: "Stock pharmacie",

@@ -46,6 +46,8 @@ export const P = {
   creditView: "credit.view",
   /** Page Code Barre — owner par défaut ; accord explicite aux autres. */
   barcodesManage: "barcodes.manage",
+  /** Page Promotions — owner par défaut ; accord explicite aux autres. */
+  promotionsManage: "promotions.manage",
   /** Page Péremptions (DLC/DLUO) — owner par défaut ; accord explicite aux autres. */
   expiryView: "expiry.view",
   /** Page Dépenses — consultation ; owner par défaut, accordable aux autres. */
@@ -117,6 +119,7 @@ export const PERMISSION_LABELS_FR: Record<string, string> = {
   [P.customersManage]: "Gerer les clients",
   [P.creditView]: "Voir la page Credit (creances clients)",
   [P.barcodesManage]: "Gerer / imprimer les codes-barres produits",
+  [P.promotionsManage]: "Gerer les promotions (remises %)",
   [P.expiryView]: "Voir la page Peremptions (DLC/DLUO)",
   [P.expensesView]: "Voir la page Depenses (charges)",
   [P.expensesManage]: "Gerer les depenses (ajout / modif / suppression)",
