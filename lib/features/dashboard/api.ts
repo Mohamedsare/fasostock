@@ -124,6 +124,26 @@ function computeSalesByDay(
     .sort((a, b) => a.date.localeCompare(b.date));
 }
 
+/**
+ * Fusionne la courbe (nombre de ventes par jour = base vente) avec la recette CAISSE par jour
+ * (`total` = encaissé du jour). Ajoute les jours qui n'ont que des remboursements (count 0).
+ */
+function mergeSalesByDayWithCash(
+  saleBased: SalesByDay[],
+  cashByDay: Map<string, { revenue: number; margin: number }>,
+): SalesByDay[] {
+  const map = new Map<string, { total: number; count: number }>();
+  for (const d of saleBased) map.set(d.date, { total: 0, count: d.count });
+  for (const [date, v] of cashByDay) {
+    const cur = map.get(date) ?? { total: 0, count: 0 };
+    cur.total = v.revenue;
+    map.set(date, cur);
+  }
+  return [...map.entries()]
+    .map(([date, v]) => ({ date, total: v.total, count: v.count }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
+
 async function aggregateProductsFromSales(
   supabase: ReturnType<typeof createClient>,
   saleIds: string[],
@@ -407,6 +427,126 @@ async function fetchSaleRecognitionRatios(
     ratioById.set(id, Math.max(0, Math.min(1, paid / total)));
   }
   return ratioById;
+}
+
+/**
+ * Reconnaissance CAISSE : recette (et marge) attribuées au JOUR DE L'ENCAISSEMENT.
+ * Somme des paiements réels (`method ≠ 'other'`) dont la date tombe dans [fromDate, toDate],
+ * quelle que soit la date de la vente d'origine → un vieux crédit remboursé aujourd'hui
+ * compte comme recette d'aujourd'hui. La marge est reconnue au prorata de la marge de la vente.
+ * Ventes annulées/remboursées exclues (status = 'completed').
+ */
+async function fetchCashRecognizedInRange(
+  supabase: ReturnType<typeof createClient>,
+  companyId: string,
+  storeId: string | null,
+  fromDate: string,
+  toDate: string,
+  createdBy?: string | null,
+): Promise<{
+  revenue: number;
+  margin: number;
+  /** Part de la recette provenant du remboursement de crédits d'anciennes ventes (créées AVANT la période). */
+  creditRepayments: number;
+  byDay: Map<string, { revenue: number; margin: number }>;
+}> {
+  const byDay = new Map<string, { revenue: number; margin: number }>();
+
+  // 1) Paiements réels encaissés sur la période (RLS = entreprise courante).
+  const { data: payRows, error: pErr } = await supabase
+    .from("sale_payments")
+    .select("sale_id, amount, method, created_at")
+    .neq("method", "other")
+    .gte("created_at", localDayStartIso(fromDate))
+    .lte("created_at", localDayEndIso(toDate));
+  if (pErr) throw pErr;
+  const payments = ((payRows ?? []) as Array<{
+    sale_id?: string;
+    amount?: number;
+    created_at?: string;
+  }>)
+    .filter((r) => r.sale_id)
+    .map((r) => ({
+      saleId: String(r.sale_id),
+      amount: Number(r.amount ?? 0),
+      createdAt: String(r.created_at ?? ""),
+    }));
+  if (payments.length === 0) return { revenue: 0, margin: 0, creditRepayments: 0, byDay };
+
+  const saleIds = [...new Set(payments.map((p) => p.saleId))];
+
+  // 2) Ventes éligibles (entreprise / boutique / caissier / complétées) + total + date de vente.
+  const totalById = new Map<string, number>();
+  const saleDayById = new Map<string, string>();
+  const eligible = new Set<string>();
+  for (let i = 0; i < saleIds.length; i += CHUNK) {
+    const chunk = saleIds.slice(i, i + CHUNK);
+    let q = supabase
+      .from("sales")
+      .select("id, total, store_id, status, company_id, created_by, created_at")
+      .in("id", chunk)
+      .eq("company_id", companyId)
+      .eq("status", "completed");
+    if (storeId) q = q.eq("store_id", storeId);
+    if (createdBy) q = q.eq("created_by", createdBy);
+    const { data, error } = await q;
+    if (error) throw error;
+    for (const row of (data ?? []) as Array<{ id?: string; total?: number; created_at?: string }>) {
+      if (!row.id) continue;
+      eligible.add(row.id);
+      totalById.set(row.id, Number(row.total ?? 0));
+      saleDayById.set(row.id, row.created_at ? localDateFromIso(row.created_at) : "");
+    }
+  }
+  if (eligible.size === 0) return { revenue: 0, margin: 0, creditRepayments: 0, byDay };
+
+  // 3) Coût des ventes éligibles → ratio de marge par vente.
+  const costById = new Map<string, number>();
+  const eligibleIds = [...eligible];
+  for (let i = 0; i < eligibleIds.length; i += CHUNK) {
+    const chunk = eligibleIds.slice(i, i + CHUNK);
+    const { data, error } = await supabase
+      .from("sale_items")
+      .select("sale_id, quantity, product:products(purchase_price)")
+      .in("sale_id", chunk);
+    if (error) throw error;
+    for (const row of (data ?? []) as Array<{
+      sale_id?: string;
+      quantity?: number;
+      product?: { purchase_price?: number } | null;
+    }>) {
+      if (!row.sale_id) continue;
+      const qty = Number(row.quantity ?? 0);
+      const pp = Number(row.product?.purchase_price ?? 0);
+      costById.set(row.sale_id, (costById.get(row.sale_id) ?? 0) + pp * qty);
+    }
+  }
+
+  // 4) Agrégation : recette = Σ paiements ; marge = Σ paiement × ratio de marge de la vente.
+  //    creditRepayments = paiements sur des ventes créées AVANT la période (remboursement de vieux crédits).
+  let revenue = 0;
+  let margin = 0;
+  let creditRepayments = 0;
+  for (const p of payments) {
+    if (!eligible.has(p.saleId)) continue;
+    const total = totalById.get(p.saleId) ?? 0;
+    const cost = costById.get(p.saleId) ?? 0;
+    const marginRatio = total > 0 ? Math.max(0, Math.min(1, (total - cost) / total)) : 0;
+    const rev = p.amount;
+    const mar = p.amount * marginRatio;
+    revenue += rev;
+    margin += mar;
+    const saleDay = saleDayById.get(p.saleId) ?? "";
+    if (saleDay && saleDay < fromDate) creditRepayments += rev;
+    const day = p.createdAt ? localDateFromIso(p.createdAt) : "";
+    if (day) {
+      const cur = byDay.get(day) ?? { revenue: 0, margin: 0 };
+      cur.revenue += rev;
+      cur.margin += mar;
+      byDay.set(day, cur);
+    }
+  }
+  return { revenue, margin, creditRepayments, byDay };
 }
 
 /** Ratio de reconnaissance d'une vente (défaut 1 si inconnu). */
@@ -785,16 +925,30 @@ export async function fetchReportsPageData(params: {
     salesByDayComputed = computeSalesByDay(salesRows, ratioById);
   }
 
-  const salesSummary = await computeSalesSummaryFiltered(
+  const salesSummaryBase = await computeSalesSummaryFiltered(
     supabase,
     matchedSaleIds,
     filteredItems,
     ratioById,
   );
+  // Logique CAISSE : recette/marge = argent réellement encaissé sur la période
+  // (crédits remboursés inclus, au jour du paiement). Uniquement SANS filtre produit/
+  // catégorie — un encaissement n'est pas rattachable à un produit précis.
+  let salesSummary = salesSummaryBase;
+  if (!productId && !categoryId) {
+    const cash = await fetchCashRecognizedInRange(
+      supabase,
+      companyId,
+      storeId,
+      fromDate,
+      toDate,
+      cashierUserId,
+    );
+    salesSummary = { ...salesSummaryBase, totalAmount: cash.revenue, margin: cash.margin };
+    salesByDayComputed = mergeSalesByDayWithCash(salesByDayComputed, cash.byDay);
+  }
   const ticketAverage =
-    salesSummary.count > 0
-      ? salesSummary.totalAmount / salesSummary.count
-      : 0;
+    salesSummary.count > 0 ? salesSummary.totalAmount / salesSummary.count : 0;
   const marginRatePercent =
     salesSummary.totalAmount > 0
       ? (salesSummary.margin / salesSummary.totalAmount) * 100
@@ -993,10 +1147,28 @@ export async function fetchDashboardData(params: {
     ),
   ]);
 
+  // Logique CAISSE : recette/marge attribuées au JOUR DE L'ENCAISSEMENT
+  // (un vieux crédit remboursé aujourd'hui compte dans l'encaissé d'aujourd'hui).
+  const [cashRange, cashPrev, cashDay] = await Promise.all([
+    fetchCashRecognizedInRange(supabase, params.companyId, effectiveStoreId, range.from, range.to),
+    fetchCashRecognizedInRange(supabase, params.companyId, effectiveStoreId, prevRange.from, prevRange.to),
+    fetchCashRecognizedInRange(supabase, params.companyId, effectiveStoreId, params.selectedDay, params.selectedDay),
+  ]);
+  const salesSummaryCash = { ...salesSummary, totalAmount: cashRange.revenue, margin: cashRange.margin };
+  const previousPeriodSummaryCash = {
+    ...previousPeriodSummary,
+    totalAmount: cashPrev.revenue,
+    margin: cashPrev.margin,
+  };
+  const daySalesSummaryCash = { ...daySalesSummary, totalAmount: cashDay.revenue, margin: cashDay.margin };
+  const ticketAverageCash =
+    salesSummary.count > 0 ? cashRange.revenue / salesSummary.count : 0;
+  const salesByDayCash = mergeSalesByDayWithCash(salesByDayComputed, cashRange.byDay);
+
   return {
-    salesSummary,
-    ticketAverage,
-    salesByDay: salesByDayComputed,
+    salesSummary: salesSummaryCash,
+    ticketAverage: ticketAverageCash,
+    salesByDay: salesByDayCash,
     topProducts,
     topByMargin,
     leastByRevenue,
@@ -1006,12 +1178,14 @@ export async function fetchDashboardData(params: {
     stockValue,
     lowStockCount,
     stockWatchSamples,
-    previousPeriodSummary,
+    previousPeriodSummary: previousPeriodSummaryCash,
     previousPurchasesSummary,
     previousExpensesSummary,
-    daySalesSummary,
+    daySalesSummary: daySalesSummaryCash,
     dayPurchasesSummary,
     dayExpenses,
+    dayCreditRepayments: cashDay.creditRepayments,
+    periodCreditRepayments: cashRange.creditRepayments,
   };
 }
 

@@ -8,6 +8,7 @@ import {
   formatQuantity,
   hexToRgb,
   isElofTemplate,
+  isModel3Template,
   sanitizeForPdfLikeFlutter,
   stripTelPrefix,
 } from "@/lib/features/invoices/invoice-a4-helpers";
@@ -309,6 +310,9 @@ function signatureBlock(store: InvoiceA4Data["store"]): string {
 }
 
 export function renderInvoiceA4Html(data: InvoiceA4Data): string {
+  if (isModel3Template(data.store.invoice_template)) {
+    return renderInvoiceA4Model3Html(data);
+  }
   const store = data.store;
   const primaryCss = rgbTupleToCss(store.primary_color);
   const currency = store.currency ?? "XOF";
@@ -548,6 +552,260 @@ export function renderInvoiceA4Html(data: InvoiceA4Data): string {
   <footer class="footer">
     <hr class="footer-rule" />
     <div class="footer-text">${tx(store.footer_text ?? "Merci pour votre confiance.")}</div>
+  </footer>
+</div>
+</body></html>`;
+}
+
+/* ─────────────────────────── Modèle 3 (classique Burkina) ─────────────────────────── */
+
+const MODEL3_MONTHS_FR = [
+  "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
+  "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre",
+];
+
+/** Date longue « le 09 Janvier 2026 » (heure locale, comme le reste du PDF). */
+function formatLongDateFr(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `le ${pad(d.getDate())} ${MODEL3_MONTHS_FR[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+/** Nombre groupé par milliers avec espace (ex. 4 598 500), sans symbole devise. */
+function groupThousands(n: number): string {
+  const neg = n < 0;
+  const s = Math.round(Math.abs(n))
+    .toString()
+    .replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+  return neg ? `-${s}` : s;
+}
+
+function model3HeaderLines(store: InvoiceA4Data["store"]): string[] {
+  const lines: string[] = [];
+  const slogan = (store.slogan ?? "").trim();
+  if (slogan) {
+    for (const l of slogan.split(/\r\n|\n|\r/)) {
+      if (l.trim()) lines.push(`<div class="m3-sub">${tx(l.trim())}</div>`);
+    }
+  }
+  const activity = (store.activity ?? "").trim();
+  if (activity) {
+    for (const l of activity.split(/\r\n|\n|\r/)) {
+      if (l.trim()) lines.push(`<div class="m3-sub">${tx(l.trim())}</div>`);
+    }
+  }
+  if (store.phone?.trim()) {
+    const phone = stripTelPrefix(store.phone);
+    if (phone) lines.push(`<div class="m3-contact">Tél : ${tx(phone)}</div>`);
+  }
+  if (store.mobile_money?.trim()) {
+    const mm = stripTelPrefix(store.mobile_money);
+    if (mm) lines.push(`<div class="m3-contact">Mobile money ${tx(mm)}</div>`);
+  }
+  if (store.address?.trim()) {
+    lines.push(`<div class="m3-contact">${tx(store.address.trim())}</div>`);
+  }
+  if (store.city?.trim()) {
+    lines.push(`<div class="m3-contact">${tx(store.city.trim())}</div>`);
+  }
+  if (store.country?.trim()) {
+    lines.push(`<div class="m3-contact">${tx(store.country.trim())}</div>`);
+  }
+  return lines;
+}
+
+/** Bloc « DOIT : … » (client destinataire de la facture). */
+function model3DoitBlock(data: InvoiceA4Data): string {
+  if (!data.customerName && !data.customerPhone && !data.customerAddress) return "";
+  const parts: string[] = [];
+  if (data.customerName) {
+    parts.push(`<span class="m3-doit-name">${txUpper(data.customerName)}</span>`);
+  }
+  const extra: string[] = [];
+  if (data.customerPhone) extra.push(tx(data.customerPhone));
+  if (data.customerAddress) extra.push(tx(data.customerAddress));
+  const extraHtml = extra.length ? `<div class="m3-doit-extra">${extra.join(" — ")}</div>` : "";
+  return `<div class="m3-doit"><span class="m3-doit-lbl">DOIT :</span> ${parts.join("")}${extraHtml}</div>`;
+}
+
+function model3Table(data: InvoiceA4Data, currency: string): string {
+  const rows = data.items.map((line) => {
+    const qty = formatQuantity(line.quantity);
+    return `<tr>
+      <td class="m3-c-desc">${txUpper(line.description)}</td>
+      <td class="m3-c-qty">${escapeHtml(qty)}</td>
+      <td class="m3-c-price">${escapeHtml(formatCurrencyInvoice(line.unitPrice, currency))}</td>
+      <td class="m3-c-tot">${escapeHtml(formatCurrencyInvoice(line.total, currency))}</td>
+    </tr>`;
+  });
+  return `<table class="m3-table">
+    <colgroup>
+      <col style="width:52%" /><col style="width:12%" /><col style="width:18%" /><col style="width:18%" />
+    </colgroup>
+    <thead><tr class="m3-head">
+      <th class="m3-h-desc">Désignation</th>
+      <th class="m3-h-qty">Qté</th>
+      <th class="m3-h-price">P. Unitaire</th>
+      <th class="m3-h-tot">P. Total</th>
+    </tr></thead>
+    <tbody>
+      ${rows.join("")}
+      <tr class="m3-total-row">
+        <td class="m3-total-lbl" colspan="3">TOTAL</td>
+        <td class="m3-total-val">${escapeHtml(formatCurrencyInvoice(data.total, currency))}</td>
+      </tr>
+    </tbody>
+  </table>`;
+}
+
+/** Règlement compact (encaissé / reste), aligné sur la logique de `totalsBlock`. */
+function model3Reglement(data: InvoiceA4Data, currency: string): string {
+  const linesList = data.paymentLines;
+  let encaisseImmediate = 0;
+  if (linesList != null) {
+    for (const pl of linesList) if (pl.isImmediateEncaisse) encaisseImmediate += pl.amount;
+  }
+  const hasLines = linesList != null && linesList.length > 0;
+  let encaisseEffectif: number;
+  if (hasLines) encaisseEffectif = encaisseImmediate;
+  else if (data.depositAmount != null) encaisseEffectif = Math.max(0, data.depositAmount);
+  else encaisseEffectif = 0;
+
+  const resteDu = Math.max(0, data.total - encaisseEffectif);
+  const totalPositive = data.total > 0.001;
+  const dep = data.depositAmount ?? 0;
+  const showReglement =
+    totalPositive && (hasLines || (data.depositAmount != null && dep > 0.001));
+  if (!showReglement) return "";
+
+  const rows: string[] = [];
+  if (linesList != null && linesList.length > 0) {
+    for (const pl of linesList) {
+      rows.push(
+        `<div class="m3-reg-line"><span>${tx(pl.label)}</span><span>${escapeHtml(formatCurrencyInvoice(pl.amount, currency))}</span></div>`,
+      );
+    }
+  }
+  rows.push(
+    `<div class="m3-reg-line m3-reg-strong"><span>Total encaissé</span><span>${escapeHtml(formatCurrencyInvoice(encaisseEffectif, currency))}</span></div>`,
+  );
+  rows.push(
+    `<div class="m3-reg-line m3-reg-strong"><span>Reste à payer</span><span>${escapeHtml(formatCurrencyInvoice(resteDu, currency))}</span></div>`,
+  );
+  let statut: string;
+  if (resteDu < 0.01) statut = "Facture intégralement réglée";
+  else if (encaisseEffectif < 0.01) statut = "Paiement à crédit — solde à régler";
+  else statut = "Règlement partiel — solde à régler";
+  rows.push(`<div class="m3-reg-stat">${tx("Statut : " + statut)}</div>`);
+  return `<div class="m3-reg">${rows.join("")}</div>`;
+}
+
+export function renderInvoiceA4Model3Html(data: InvoiceA4Data): string {
+  const store = data.store;
+  const currency = store.currency ?? "XOF";
+  // Modèle 3 : en-tête texte uniquement, sans logo (volontaire).
+  const storeTitle = store.commercial_name ?? store.name;
+
+  const headerLines = model3HeaderLines(store);
+  const cityForDate = store.city?.trim() || store.address?.trim() || "";
+  const dateLong = formatLongDateFr(data.date);
+  const dateLineText = cityForDate ? `${cityForDate}, ${dateLong}` : dateLong;
+
+  const doit = model3DoitBlock(data);
+
+  const words = data.amountInWords?.trim();
+  const amountLine = words
+    ? `Arrêtée la présente facture à la somme de : ${tx(words)} (${escapeHtml(groupThousands(data.total))}) Francs CFA.`
+    : `Arrêtée la présente facture à la somme de : ${escapeHtml(groupThousands(data.total))} Francs CFA.`;
+
+  const signerTitle = store.invoice_signer_title?.trim() || "Le Responsable";
+  const signerName = store.invoice_signer_name?.trim() ?? "";
+
+  return `<!DOCTYPE html>
+<html lang="fr"><head><meta charset="utf-8"/>
+<style>
+  * { box-sizing: border-box; }
+  html { height: 100%; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    font-family: Helvetica, Arial, "DejaVu Sans", sans-serif;
+    font-size: 11px;
+    color: #000;
+    padding: 32px;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .m3-sheet { flex: 1 1 auto; display: flex; flex-direction: column; width: 100%; min-height: 0; }
+  .m3-main { flex: 1 1 auto; display: flex; flex-direction: column; width: 100%; }
+  /* En-tête centré */
+  .m3-header { text-align: center; }
+  .m3-name { font-size: 30px; font-weight: 800; letter-spacing: 1px; line-height: 1.1; }
+  .m3-sub { font-size: 12px; font-weight: 700; margin-top: 2px; }
+  .m3-contact { font-size: 11px; margin-top: 1px; }
+  .m3-hr { border: none; border-top: 2px solid #000; margin: 10px 0 2px; height: 0; }
+  .m3-hr-thin { border: none; border-top: 1px solid #000; margin: 0 0 14px; height: 0; }
+  /* Date + titre */
+  .m3-date { text-align: right; font-size: 12px; margin-bottom: 14px; }
+  .m3-title { text-align: center; font-size: 15px; font-weight: 800; text-decoration: underline; text-underline-offset: 3px; margin-bottom: 14px; }
+  .m3-doit { font-size: 13px; margin-bottom: 12px; }
+  .m3-doit-lbl { font-weight: 800; text-decoration: underline; }
+  .m3-doit-name { font-weight: 700; }
+  .m3-doit-extra { font-size: 11px; margin-top: 2px; }
+  /* Tableau 4 colonnes, noir & blanc */
+  .m3-table { width: 100%; border-collapse: collapse; table-layout: fixed; border: 1px solid #000; }
+  .m3-table th, .m3-table td { border: 1px solid #000; padding: 5px 8px; font-size: 12px; vertical-align: middle; line-height: 1.25; }
+  .m3-head th { background: #d9d9d9; font-weight: 700; }
+  .m3-h-desc { text-align: left; }
+  .m3-h-qty { text-align: center; }
+  .m3-h-price, .m3-h-tot { text-align: right; }
+  .m3-c-desc { text-align: left; }
+  .m3-c-qty { text-align: center; }
+  .m3-c-price, .m3-c-tot { text-align: right; }
+  .m3-total-row td { background: #d9d9d9; font-weight: 800; font-size: 13px; }
+  .m3-total-lbl { text-align: center; letter-spacing: 2px; }
+  .m3-total-val { text-align: right; }
+  .m3-amount { font-size: 12px; font-weight: 700; margin-top: 12px; line-height: 1.4; }
+  /* Règlement compact à droite */
+  .m3-reg { width: 260px; margin-left: auto; margin-top: 12px; }
+  .m3-reg-line { display: flex; justify-content: space-between; padding: 2px 0; font-size: 11px; }
+  .m3-reg-strong { font-weight: 700; border-top: 1px solid #000; margin-top: 2px; padding-top: 4px; }
+  .m3-reg-stat { font-size: 10px; font-style: italic; color: #424242; margin-top: 4px; }
+  /* Signature */
+  .m3-sign { text-align: right; margin-top: 40px; }
+  .m3-sign-title { font-size: 13px; font-weight: 700; text-decoration: underline; }
+  .m3-sign-name { font-size: 12px; margin-top: 4px; }
+  .m3-sign-space { height: 64px; }
+  /* Pied de page */
+  .m3-footer { flex-shrink: 0; width: 100%; margin-top: auto; text-align: center; }
+  .m3-footer-hr { border: none; border-top: 1px solid #000; margin: 0 0 6px; height: 0; }
+  .m3-footer-text { font-size: 9px; line-height: 1.35; }
+</style></head><body>
+<div class="m3-sheet">
+  <div class="m3-main">
+    <div class="m3-header">
+      <div class="m3-name">${txUpper(storeTitle)}</div>
+      ${headerLines.join("")}
+    </div>
+    <hr class="m3-hr" />
+    <hr class="m3-hr-thin" />
+    <div class="m3-date">${tx(dateLineText)}</div>
+    <div class="m3-title">FACTURE N° ${tx(data.saleNumber)}</div>
+    ${doit}
+    ${model3Table(data, currency)}
+    ${model3Reglement(data, currency)}
+    <div class="m3-amount">${amountLine}</div>
+    <div class="m3-sign">
+      <div class="m3-sign-title">${txUpper(signerTitle)}</div>
+      ${signerName ? `<div class="m3-sign-name">${txUpper(signerName)}</div>` : ""}
+      <div class="m3-sign-space"></div>
+    </div>
+  </div>
+  <footer class="m3-footer">
+    <hr class="m3-footer-hr" />
+    <div class="m3-footer-text">${tx(store.footer_text ?? "Merci pour votre confiance.")}</div>
   </footer>
 </div>
 </body></html>`;

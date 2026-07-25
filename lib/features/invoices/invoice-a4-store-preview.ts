@@ -37,7 +37,7 @@ export type StoreEditFormFields = {
   stampUrl: string;
   invoiceSignerTitle: string;
   invoiceSignerName: string;
-  invoiceTemplate: "classic" | "elof";
+  invoiceTemplate: "classic" | "elof" | "model3";
 };
 
 /**
@@ -73,7 +73,12 @@ export function storeFromEditForm(base: Store, f: StoreEditFormFields): Store {
     stamp_url: trimOrNull(f.stampUrl),
     invoice_signer_title: trimOrNull(f.invoiceSignerTitle),
     invoice_signer_name: trimOrNull(f.invoiceSignerName),
-    invoice_template: f.invoiceTemplate === "elof" ? "elof" : "classic",
+    invoice_template:
+      f.invoiceTemplate === "elof"
+        ? "elof"
+        : f.invoiceTemplate === "model3"
+          ? "model3"
+          : "classic",
   };
 }
 

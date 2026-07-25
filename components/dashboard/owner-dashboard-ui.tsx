@@ -207,11 +207,14 @@ function OwnerDayStatCard({
   value,
   theme,
   watermark,
+  sub,
 }: {
   label: string;
   value: string;
   theme: OwnerKpiTheme;
   watermark: ComponentType<{ className?: string }>;
+  /** Petite ligne de ventilation sous la valeur (ex. « Ventes X · Crédits Y »). */
+  sub?: string;
 }) {
   return (
     <OwnerKpiCardShell theme={theme} watermark={watermark} compact>
@@ -221,6 +224,11 @@ function OwnerDayStatCard({
       <p className="mt-0.5 min-w-0 max-w-full break-words text-xs font-extrabold leading-snug tracking-tight text-white tabular-nums min-[600px]:text-sm">
         {value}
       </p>
+      {sub ? (
+        <p className="mt-0.5 min-w-0 max-w-full truncate text-[8px] font-semibold leading-tight text-white/75 tabular-nums min-[600px]:text-[9px]">
+          {sub}
+        </p>
+      ) : null}
     </OwnerKpiCardShell>
   );
 }
@@ -608,13 +616,13 @@ export function OwnerDashboardUi(props: OwnerDashboardUiProps) {
           </p>
           <div className="mt-4 grid grid-cols-2 gap-2 min-[600px]:grid-cols-3 min-[900px]:grid-cols-6">
             <OwnerDayStatCard
-              label="CA aujourd'hui"
+              label="Encaissé aujourd'hui"
               value={formatCurrency(d.daySalesSummary.totalAmount)}
               theme={OWNER_KPI_THEMES.revenue}
               watermark={MdTrendingUp}
             />
             <OwnerDayStatCard
-              label="Marge aujourd'hui"
+              label="Marge encaissée (jour)"
               value={formatCurrency(d.daySalesSummary.margin)}
               theme={OWNER_KPI_THEMES.margin}
               watermark={MdPercent}
@@ -644,6 +652,41 @@ export function OwnerDashboardUi(props: OwnerDashboardUiProps) {
               watermark={MdInventory2}
             />
           </div>
+
+          {d.dayCreditRepayments > 0
+            ? (() => {
+                const total = Math.max(0, d.daySalesSummary.totalAmount);
+                const credit = Math.min(total, Math.max(0, d.dayCreditRepayments));
+                const sales = Math.max(0, total - credit);
+                const salesPct = total > 0 ? (sales / total) * 100 : 0;
+                const creditPct = total > 0 ? 100 - salesPct : 0;
+                return (
+                  <div className="mt-2.5 rounded-xl border border-black/[0.06] bg-fs-surface-container/60 p-3 dark:border-white/10">
+                    <div className="flex items-center justify-between gap-3 text-xs">
+                      <span className="inline-flex items-center gap-1.5 font-semibold text-emerald-700 dark:text-emerald-400">
+                        <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-500" aria-hidden />
+                        Ventes du jour
+                        <span className="tabular-nums">{formatCurrency(sales)}</span>
+                      </span>
+                      <span className="inline-flex items-center gap-1.5 font-semibold text-amber-700 dark:text-amber-400">
+                        <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-amber-500" aria-hidden />
+                        Crédits remboursés
+                        <span className="tabular-nums">{formatCurrency(credit)}</span>
+                      </span>
+                    </div>
+                    <div className="mt-2 flex h-2.5 w-full overflow-hidden rounded-full bg-black/5 dark:bg-white/10">
+                      <div className="h-full bg-emerald-500" style={{ width: `${salesPct}%` }} aria-hidden />
+                      <div className="h-full bg-amber-500" style={{ width: `${creditPct}%` }} aria-hidden />
+                    </div>
+                    <p className="mt-1.5 text-[11px] leading-snug text-neutral-500">
+                      Sur {formatCurrency(total)} encaissés aujourd&apos;hui, {formatCurrency(credit)} proviennent
+                      de crédits d&apos;anciennes ventes — votre vente réelle du jour est de{" "}
+                      <span className="font-semibold text-fs-text">{formatCurrency(sales)}</span>.
+                    </p>
+                  </div>
+                );
+              })()
+            : null}
           <div className="mt-3">
             <button
               type="button"
@@ -878,9 +921,13 @@ export function OwnerDashboardUi(props: OwnerDashboardUiProps) {
         {/* KPI */}
         <div className="mt-4 grid grid-cols-2 gap-2 min-[700px]:grid-cols-4 min-[1200px]:grid-cols-5 min-[1200px]:gap-2.5">
           <KpiTile
-            title="Chiffre d'affaires"
+            title="CA encaissé"
             value={formatCurrency(d.salesSummary.totalAmount)}
-            sub={`${d.salesSummary.count} vente${d.salesSummary.count > 1 ? "s" : ""}`}
+            sub={
+              d.periodCreditRepayments > 0
+                ? `${d.salesSummary.count} vente${d.salesSummary.count > 1 ? "s" : ""} · dont ${formatCurrency(d.periodCreditRepayments)} crédits`
+                : `${d.salesSummary.count} vente${d.salesSummary.count > 1 ? "s" : ""}`
+            }
             icon={MdTrendingUp}
             iconBg="rgba(255,255,255,0.22)"
             iconColor="#ffffff"

@@ -614,7 +614,7 @@ export function ReportsScreen() {
               )}
             >
               <KpiCard
-                label="Chiffre d'affaires"
+                label={!productId && !categoryId ? "CA encaissé" : "Chiffre d'affaires"}
                 value={formatCurrency(d.salesSummary.totalAmount)}
                 icon={MdTrendingUp}
                 colorClass="bg-fs-accent/15 text-fs-accent"

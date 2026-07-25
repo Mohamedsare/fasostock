@@ -90,9 +90,9 @@ export function StoreInvoiceA4Dialog({
   const [invoiceSignerName, setInvoiceSignerName] = useState("");
   const [engineSignatory, setEngineSignatory] = useState("");
   const [engineExtraPhones, setEngineExtraPhones] = useState("");
-  const [invoiceTemplate, setInvoiceTemplate] = useState<"classic" | "elof">(
-    "classic",
-  );
+  const [invoiceTemplate, setInvoiceTemplate] = useState<
+    "classic" | "elof" | "model3"
+  >("classic");
 
   const [previewBlob, setPreviewBlob] = useState<Blob | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -126,7 +126,7 @@ export function StoreInvoiceA4Dialog({
     setEngineSignatory(store.engine_invoice_signatory ?? "");
     setEngineExtraPhones(store.engine_invoice_extra_phones ?? "");
     const t = (store.invoice_template ?? "classic").toLowerCase().trim();
-    setInvoiceTemplate(t === "elof" ? "elof" : "classic");
+    setInvoiceTemplate(t === "elof" ? "elof" : t === "model3" ? "model3" : "classic");
     setError(null);
     setLoading(false);
     setMobileTab("form");
@@ -144,7 +144,7 @@ export function StoreInvoiceA4Dialog({
         const fresh = await getStore(store.id);
         if (cancelled || !fresh) return;
         const t = (fresh.invoice_template ?? "classic").toLowerCase().trim();
-        setInvoiceTemplate(t === "elof" ? "elof" : "classic");
+        setInvoiceTemplate(t === "elof" ? "elof" : t === "model3" ? "model3" : "classic");
       } catch {
         /* garde la valeur issue de la liste */
       }
@@ -271,7 +271,12 @@ export function StoreInvoiceA4Dialog({
         invoice_signer_name: trimOrNull(invoiceSignerName),
         engine_invoice_signatory: trimOrNull(engineSignatory),
         engine_invoice_extra_phones: trimOrNull(engineExtraPhones),
-        invoice_template: invoiceTemplate === "elof" ? "elof" : "classic",
+        invoice_template:
+          invoiceTemplate === "elof"
+            ? "elof"
+            : invoiceTemplate === "model3"
+              ? "model3"
+              : "classic",
       });
       toast.success("Facture A4 mise à jour");
       onUpdated();
@@ -371,13 +376,16 @@ export function StoreInvoiceA4Dialog({
           <select
             value={invoiceTemplate}
             onChange={(e) => {
-              setInvoiceTemplate(e.target.value as "classic" | "elof");
+              setInvoiceTemplate(
+                e.target.value as "classic" | "elof" | "model3",
+              );
               markStale();
             }}
             className={cn(fieldCls, "min-h-12")}
           >
             <option value="classic">Classique (en-tête actuel)</option>
-            <option value="elof">ELOF (ordre fixe, Orange money en orange)</option>
+            <option value="elof">Modèle ELOF</option>
+            <option value="model3">Modèle 3</option>
           </select>
         </label>
         <label className={labelCls}>

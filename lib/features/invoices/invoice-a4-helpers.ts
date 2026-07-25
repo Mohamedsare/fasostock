@@ -111,6 +111,12 @@ export function isElofTemplate(invoiceTemplate: string | null | undefined): bool
   return t === "elof";
 }
 
+/** Modèle 3 : facture « classique Burkina » (en-tête centré, DOIT, tableau 4 colonnes, Le Responsable). */
+export function isModel3Template(invoiceTemplate: string | null | undefined): boolean {
+  const t = (invoiceTemplate ?? "").trim().toLowerCase();
+  return t === "model3";
+}
+
 /**
  * Montants facture A4 : alignés sur `format_currency.dart` / `InvoiceA4PdfService`
  * (symbol FCFA, pas le code devise ISO dans le PDF Flutter).

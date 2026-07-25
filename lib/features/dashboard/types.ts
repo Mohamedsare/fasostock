@@ -60,6 +60,10 @@ export type DashboardData = {
   dayPurchasesSummary: PurchasesSummary;
   /** Dépenses du jour sélectionné (charges saisies page Dépenses). */
   dayExpenses: ExpensesSummary;
+  /** Logique caisse : part de l'encaissé du JOUR provenant de crédits d'anciennes ventes remboursés ce jour. */
+  dayCreditRepayments: number;
+  /** Logique caisse : part de l'encaissé de la PÉRIODE provenant de crédits d'anciennes ventes. */
+  periodCreditRepayments: number;
 };
 
 /** Aligné `StockAlerts` / `getStockAlerts` (Flutter `reports_offline_repository.dart`). */
