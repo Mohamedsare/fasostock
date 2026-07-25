@@ -8,6 +8,7 @@ import {
   MdChevronLeft,
   MdChevronRight,
   MdCreditScore,
+  MdDownload,
   MdPayments,
   MdRefresh,
   MdSearch,
@@ -18,8 +19,11 @@ import {
   listCreditRepaymentsForDay,
   listCreditsGrantedForDay,
 } from "@/lib/features/credit/api";
+import { exportCreditDayXlsx } from "@/lib/features/credit/credit-day-export";
+import { useAppContext } from "@/lib/features/common/app-context";
 import { paymentMethodLabel } from "@/lib/features/receipt/build-receipt-ticket-data";
 import { formatCurrency } from "@/lib/utils/currency";
+import { messageFromUnknownError, toast } from "@/lib/toast";
 import { cn } from "@/lib/utils/cn";
 
 function todayYmd(): string {
@@ -44,10 +48,17 @@ export function CreditRepaymentsPanel({
   storeId: string | null;
   onOpenSaleDetail: (saleId: string) => void;
 }) {
+  const ctx = useAppContext();
+  const companyName = ctx.data?.companyName ?? "";
+  const storeLabel = storeId
+    ? ctx.data?.stores.find((s) => s.id === storeId)?.name ?? "Boutique"
+    : "Toutes boutiques";
+
   const today = todayYmd();
   const [day, setDay] = useState<string>(() => today);
   const [search, setSearch] = useState("");
   const [sub, setSub] = useState<SubView>("granted");
+  const [exporting, setExporting] = useState(false);
 
   const grantedQ = useQuery({
     queryKey: ["credit-granted", companyId, storeId, day],
@@ -118,6 +129,25 @@ export function CreditRepaymentsPanel({
   const isToday = day === today;
   const loading = sub === "granted" ? grantedQ.isLoading : repaidQ.isLoading;
   const fetching = grantedQ.isFetching || repaidQ.isFetching;
+  const nothingToExport = grantedRows.length === 0 && repaidRows.length === 0;
+
+  async function onExport() {
+    setExporting(true);
+    try {
+      await exportCreditDayXlsx({
+        day,
+        companyName,
+        storeLabel,
+        granted: grantedRows,
+        repaid: repaidRows,
+      });
+      toast.success("Export Excel enregistré.");
+    } catch (e) {
+      toast.error(messageFromUnknownError(e, "Export Excel impossible."));
+    } finally {
+      setExporting(false);
+    }
+  }
 
   return (
     <div className="mt-6">
@@ -160,17 +190,29 @@ export function CreditRepaymentsPanel({
           >
             Aujourd&apos;hui
           </button>
-          <button
-            type="button"
-            onClick={() => {
-              void grantedQ.refetch();
-              void repaidQ.refetch();
-            }}
-            className="ml-auto inline-flex h-10 items-center gap-1.5 rounded-lg border border-black/10 bg-fs-surface-container px-3 text-xs font-semibold dark:border-white/10"
-          >
-            <MdRefresh className={cn("h-4 w-4", fetching && "animate-spin")} aria-hidden />
-            Actualiser
-          </button>
+          <div className="ml-auto flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => void onExport()}
+              disabled={exporting || nothingToExport}
+              title="Exporter la journée en Excel (accordés + remboursés)"
+              className="inline-flex h-10 items-center gap-1.5 rounded-lg bg-emerald-600 px-3 text-xs font-bold text-white disabled:opacity-50"
+            >
+              <MdDownload className={cn("h-4 w-4", exporting && "animate-pulse")} aria-hidden />
+              {exporting ? "Export…" : "Excel"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                void grantedQ.refetch();
+                void repaidQ.refetch();
+              }}
+              className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-black/10 bg-fs-surface-container px-3 text-xs font-semibold dark:border-white/10"
+            >
+              <MdRefresh className={cn("h-4 w-4", fetching && "animate-spin")} aria-hidden />
+              Actualiser
+            </button>
+          </div>
         </div>
         <p className="mt-2 text-xs capitalize text-neutral-500">{dayLabel}</p>
       </FsCard>
