@@ -105,6 +105,159 @@ export async function listCreditSales(params: {
   }));
 }
 
+export type CreditRepaymentRow = {
+  paymentId: string;
+  saleId: string;
+  saleNumber: string;
+  storeId: string | null;
+  customerName: string | null;
+  customerPhone: string | null;
+  amount: number;
+  method: string;
+  reference: string | null;
+  /** Instant du remboursement (ISO). */
+  paidAt: string;
+  saleCreatedAt: string;
+  /** Vente créée un jour ANTÉRIEUR à la date consultée (ancien crédit) vs crédit du jour. */
+  isOldCredit: boolean;
+};
+
+/**
+ * Remboursements de crédit RÉELS encaissés un jour précis (par DATE DE PAIEMENT).
+ * = paiements `method ≠ 'other'` effectués APRÈS la création de la vente (> 10 s : exclut le
+ * paiement encaissé au moment de la vente, inséré dans la même transaction → écart ≈ 0).
+ * Inclut les remboursements d'anciens crédits ET ceux pris & remboursés le même jour.
+ */
+export async function listCreditRepaymentsForDay(params: {
+  companyId: string;
+  storeId: string | null;
+  day: string;
+}): Promise<CreditRepaymentRow[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("sale_payments")
+    .select(
+      "id, amount, method, reference, created_at, sale:sales!inner(id, sale_number, company_id, store_id, status, created_at, customer:customers(id, name, phone))",
+    )
+    .neq("method", "other")
+    .gte("created_at", localDayStartIso(params.day))
+    .lte("created_at", localDayEndIso(params.day))
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+
+  const dayStr = params.day.slice(0, 10);
+  const out: CreditRepaymentRow[] = [];
+  for (const raw of (data ?? []) as Array<Record<string, unknown>>) {
+    const saleRaw = raw.sale;
+    const sale = (Array.isArray(saleRaw) ? saleRaw[0] : saleRaw) as
+      | {
+          id?: string;
+          sale_number?: string;
+          company_id?: string;
+          store_id?: string | null;
+          status?: string;
+          created_at?: string;
+          customer?: unknown;
+        }
+      | undefined;
+    if (!sale?.id) continue;
+    if (sale.company_id !== params.companyId) continue;
+    if (sale.status !== "completed") continue;
+    if (params.storeId && sale.store_id !== params.storeId) continue;
+
+    const paidAt = String(raw.created_at ?? "");
+    const saleCreatedAt = String(sale.created_at ?? "");
+    const gap = Date.parse(paidAt) - Date.parse(saleCreatedAt);
+    if (!(Number.isFinite(gap) && gap > 10_000)) continue;
+
+    const custRaw = sale.customer;
+    const cust = (Array.isArray(custRaw) ? custRaw[0] : custRaw) as
+      | { name?: string; phone?: string | null }
+      | null
+      | undefined;
+
+    out.push({
+      paymentId: String(raw.id ?? ""),
+      saleId: sale.id,
+      saleNumber: String(sale.sale_number ?? ""),
+      storeId: (sale.store_id ?? null) as string | null,
+      customerName: cust?.name ?? null,
+      customerPhone: cust?.phone ?? null,
+      amount: Number(raw.amount ?? 0),
+      method: String(raw.method ?? ""),
+      reference: (raw.reference as string | null) ?? null,
+      paidAt,
+      saleCreatedAt,
+      isOldCredit: saleCreatedAt.slice(0, 10) < dayStr,
+    });
+  }
+  return out;
+}
+
+export type CreditGrantedRow = {
+  saleId: string;
+  saleNumber: string;
+  customerName: string | null;
+  customerPhone: string | null;
+  createdAt: string;
+  saleTotal: number;
+  /** Montant mis à crédit à la vente (Σ lignes `method = 'other'`) = dette créée ce jour. */
+  creditGranted: number;
+  /** Encaissé immédiatement à la vente (total − crédit accordé). */
+  paidAtSale: number;
+};
+
+/**
+ * Crédits ACCORDÉS un jour précis : ventes complétées créées ce jour dont une partie a été
+ * mise à crédit (ligne `sale_payments.method = 'other'`). `creditGranted` = dette née ce jour.
+ */
+export async function listCreditsGrantedForDay(params: {
+  companyId: string;
+  storeId: string | null;
+  day: string;
+}): Promise<CreditGrantedRow[]> {
+  const supabase = createClient();
+  let q = supabase
+    .from("sales")
+    .select(
+      "id, sale_number, created_at, total, store_id, status, company_id, customer:customers(id, name, phone), sale_payments(method, amount)",
+    )
+    .eq("company_id", params.companyId)
+    .eq("status", "completed")
+    .gte("created_at", localDayStartIso(params.day))
+    .lte("created_at", localDayEndIso(params.day))
+    .order("created_at", { ascending: false });
+  if (params.storeId) q = q.eq("store_id", params.storeId);
+  const { data, error } = await q;
+  if (error) throw error;
+
+  const out: CreditGrantedRow[] = [];
+  for (const raw of (data ?? []) as Array<Record<string, unknown>>) {
+    const pays = (raw.sale_payments as Array<{ method?: string; amount?: number }> | null) ?? [];
+    const creditGranted = pays
+      .filter((p) => p.method === "other")
+      .reduce((s, p) => s + Number(p.amount ?? 0), 0);
+    if (creditGranted <= 0.005) continue;
+    const custRaw = raw.customer;
+    const cust = (Array.isArray(custRaw) ? custRaw[0] : custRaw) as
+      | { name?: string; phone?: string | null }
+      | null
+      | undefined;
+    const total = Number(raw.total ?? 0);
+    out.push({
+      saleId: String(raw.id ?? ""),
+      saleNumber: String(raw.sale_number ?? ""),
+      customerName: cust?.name ?? null,
+      customerPhone: cust?.phone ?? null,
+      createdAt: String(raw.created_at ?? ""),
+      saleTotal: total,
+      creditGranted,
+      paidAtSale: Math.max(0, total - creditGranted),
+    });
+  }
+  return out;
+}
+
 export type AppendSalePaymentResult = {
   paymentId: string;
   createdAtIso: string;

@@ -467,6 +467,18 @@ export function OwnerDashboardUi(props: OwnerDashboardUiProps) {
     }
   })();
 
+  // Libellés du bandeau « jour » : « aujourd'hui » si la date choisie EST aujourd'hui,
+  // sinon la date sélectionnée (ex. « le 20/07 ») — évite d'écrire « aujourd'hui » sur un jour passé.
+  const isSelectedToday = selectedDay === format(new Date(), "yyyy-MM-dd");
+  const dayShort = (() => {
+    try {
+      return format(parseISO(selectedDay), "dd/MM", { locale: fr });
+    } catch {
+      return selectedDay;
+    }
+  })();
+  const daySuffix = isSelectedToday ? "aujourd'hui" : `le ${dayShort}`;
+
   const totalCat =
     d.salesByCategory.reduce((s, e) => s + e.revenue, 0) ?? 0;
 
@@ -616,19 +628,19 @@ export function OwnerDashboardUi(props: OwnerDashboardUiProps) {
           </p>
           <div className="mt-4 grid grid-cols-2 gap-2 min-[600px]:grid-cols-3 min-[900px]:grid-cols-6">
             <OwnerDayStatCard
-              label="Encaissé aujourd'hui"
+              label={`Encaissé ${daySuffix}`}
               value={formatCurrency(d.daySalesSummary.totalAmount)}
               theme={OWNER_KPI_THEMES.revenue}
               watermark={MdTrendingUp}
             />
             <OwnerDayStatCard
-              label="Marge encaissée (jour)"
+              label={`Marge encaissée ${daySuffix}`}
               value={formatCurrency(d.daySalesSummary.margin)}
               theme={OWNER_KPI_THEMES.margin}
               watermark={MdPercent}
             />
             <OwnerDayStatCard
-              label="Dépenses aujourd'hui"
+              label={`Dépenses ${daySuffix}`}
               value={formatCurrency(dayExpensesTotal)}
               theme={OWNER_KPI_THEMES.purchases}
               watermark={MdPayments}
@@ -679,7 +691,7 @@ export function OwnerDashboardUi(props: OwnerDashboardUiProps) {
                       <div className="h-full bg-amber-500" style={{ width: `${creditPct}%` }} aria-hidden />
                     </div>
                     <p className="mt-1.5 text-[11px] leading-snug text-neutral-500">
-                      Sur {formatCurrency(total)} encaissés aujourd&apos;hui, {formatCurrency(credit)} proviennent
+                      Sur {formatCurrency(total)} encaissés {daySuffix}, {formatCurrency(credit)} proviennent
                       de crédits d&apos;anciennes ventes — votre vente réelle du jour est de{" "}
                       <span className="font-semibold text-fs-text">{formatCurrency(sales)}</span>.
                     </p>

@@ -3,7 +3,14 @@
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, type ComponentType } from "react";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { format, subMonths } from "date-fns";
+import {
+  differenceInCalendarDays,
+  format,
+  isToday,
+  isYesterday,
+  parseISO,
+  subMonths,
+} from "date-fns";
 import {
   MdAccountBalanceWallet,
   MdCalendarToday,
@@ -44,6 +51,7 @@ import {
   effectiveDueDate,
   isDueThisWeek,
   isDueToday,
+  maxRealizedPaymentDate,
   paidTotal,
   remainingTotal,
   saleHadCreditBooking,
@@ -77,6 +85,7 @@ import {
   formatOperationNowDateFull,
 } from "@/lib/utils/operation-datetime";
 import { CreditDetailPanel } from "./credit-detail-panel";
+import { CreditRepaymentsPanel } from "./credit-repayments-panel";
 import { CustomerCreditPanel } from "./customer-credit-panel";
 import { CreditQuickPayDialog } from "./credit-quick-pay-dialog";
 import { LegacyCreditSection } from "./legacy-credit-section";
@@ -161,6 +170,18 @@ function toIsoDate(d: Date): string {
 
 function formatDateFr(ymd: string) {
   return formatOperationCalendarDayYmd(ymd);
+}
+
+/** Libellé UX de la date du dernier remboursement : « Aujourd'hui » / « Hier » / « 24/07 · il y a 3 j ». */
+function lastPaymentLabel(iso: string | null): { text: string; today: boolean } | null {
+  if (!iso) return null;
+  const d = parseISO(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  if (isToday(d)) return { text: "Aujourd'hui", today: true };
+  if (isYesterday(d)) return { text: "Hier", today: false };
+  const days = differenceInCalendarDays(new Date(), d);
+  const dm = format(d, "dd/MM");
+  return { text: days > 0 ? `${dm} · il y a ${days} j` : dm, today: false };
 }
 
 function KpiCard({
@@ -256,7 +277,7 @@ export function CreditScreen() {
   const isMainSearchStale = search.trim() !== deferredSearch;
   const [sellerId, setSellerId] = useState("");
   const [chip, setChip] = useState<QuickChip>("all");
-  const [view, setView] = useState<"sale" | "customer">("sale");
+  const [view, setView] = useState<"sale" | "customer" | "repayments">("sale");
   const [salePage, setSalePage] = useState(0);
   const [customerPage, setCustomerPage] = useState(0);
   const [detailId, setDetailId] = useState<string | null>(null);
@@ -1172,6 +1193,16 @@ export function CreditScreen() {
               >
                 Par client
               </button>
+              <button
+                type="button"
+                onClick={() => setView("repayments")}
+                className={cn(
+                  "min-h-[40px] rounded-lg px-3 py-1.5 text-xs font-bold",
+                  view === "repayments" ? "bg-fs-accent text-white" : "text-neutral-600",
+                )}
+              >
+                Par jour
+              </button>
             </div>
             <span className="inline-flex min-h-[40px] items-center rounded-lg bg-fs-accent/10 px-2.5 text-xs font-bold text-fs-accent">
               Filtres actifs: {activeFilterCount}
@@ -1218,6 +1249,13 @@ export function CreditScreen() {
         ) : null}
       </FsCard>
 
+      {view === "repayments" ? (
+        <CreditRepaymentsPanel
+          companyId={companyId}
+          storeId={effectiveStoreId}
+          onOpenSaleDetail={(id) => setDetailId(id)}
+        />
+      ) : (
       <FsCard className="mt-6 overflow-hidden p-0" padding="p-0">
         {creditQ.isLoading ? (
           <div className="flex justify-center py-16">
@@ -1280,8 +1318,25 @@ export function CreditScreen() {
                           </td>
                           <td className="max-w-[130px] truncate px-3 py-2.5">{s.store?.name ?? "—"}</td>
                           <td className="px-3 py-2.5 text-right tabular-nums">{formatCurrency(s.total)}</td>
-                          <td className="px-3 py-2.5 text-right tabular-nums text-emerald-700 dark:text-emerald-400">
-                            {formatCurrency(paidTotal(s))}
+                          <td className="px-3 py-2.5 text-right tabular-nums">
+                            <span className="block text-emerald-700 dark:text-emerald-400">
+                              {formatCurrency(paidTotal(s))}
+                            </span>
+                            {(() => {
+                              const lp = lastPaymentLabel(maxRealizedPaymentDate(s));
+                              if (!lp) return null;
+                              return (
+                                <span
+                                  className={cn(
+                                    "mt-0.5 block whitespace-nowrap text-[10px] font-semibold",
+                                    lp.today ? "text-fs-accent" : "text-neutral-500",
+                                  )}
+                                  title="Dernier remboursement"
+                                >
+                                  {lp.today ? "Remb. aujourd'hui" : `Remb. ${lp.text}`}
+                                </span>
+                              );
+                            })()}
                           </td>
                           <td className="px-3 py-2.5 text-right tabular-nums font-bold text-fs-accent">
                             {formatCurrency(rem)}
@@ -1521,6 +1576,7 @@ export function CreditScreen() {
           </FsHorizontalScroll>
         )}
       </FsCard>
+      )}
       {view === "sale" && salePageCount > 1 ? (
         <FsCard className="mt-4" padding="px-4 py-3 sm:py-3">
           <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">

@@ -475,9 +475,9 @@ async function fetchCashRecognizedInRange(
 
   const saleIds = [...new Set(payments.map((p) => p.saleId))];
 
-  // 2) Ventes éligibles (entreprise / boutique / caissier / complétées) + total + date de vente.
+  // 2) Ventes éligibles (entreprise / boutique / caissier / complétées) + total + instant de vente.
   const totalById = new Map<string, number>();
-  const saleDayById = new Map<string, string>();
+  const saleCreatedMsById = new Map<string, number>();
   const eligible = new Set<string>();
   for (let i = 0; i < saleIds.length; i += CHUNK) {
     const chunk = saleIds.slice(i, i + CHUNK);
@@ -495,7 +495,8 @@ async function fetchCashRecognizedInRange(
       if (!row.id) continue;
       eligible.add(row.id);
       totalById.set(row.id, Number(row.total ?? 0));
-      saleDayById.set(row.id, row.created_at ? localDateFromIso(row.created_at) : "");
+      const ms = row.created_at ? Date.parse(row.created_at) : NaN;
+      saleCreatedMsById.set(row.id, Number.isFinite(ms) ? ms : 0);
     }
   }
   if (eligible.size === 0) return { revenue: 0, margin: 0, creditRepayments: 0, byDay };
@@ -523,7 +524,11 @@ async function fetchCashRecognizedInRange(
   }
 
   // 4) Agrégation : recette = Σ paiements ; marge = Σ paiement × ratio de marge de la vente.
-  //    creditRepayments = paiements sur des ventes créées AVANT la période (remboursement de vieux crédits).
+  //    creditRepayments = tout paiement effectué APRÈS la création de la vente (remboursement d'un
+  //    crédit — ancien OU pris et remboursé le même jour, même à quelques minutes). Les paiements
+  //    « à la vente » sont insérés dans la MÊME transaction que la vente (create_sale_with_stock →
+  //    même `now()`, écart ≈ 0) ; tout paiement à un instant distinct est un remboursement.
+  const REPAYMENT_GAP_MS = 10_000; // 10 s : absorbe le jitter d'insert, bien en deçà d'un vrai remboursement
   let revenue = 0;
   let margin = 0;
   let creditRepayments = 0;
@@ -536,8 +541,11 @@ async function fetchCashRecognizedInRange(
     const mar = p.amount * marginRatio;
     revenue += rev;
     margin += mar;
-    const saleDay = saleDayById.get(p.saleId) ?? "";
-    if (saleDay && saleDay < fromDate) creditRepayments += rev;
+    const saleMs = saleCreatedMsById.get(p.saleId) ?? 0;
+    const payMs = p.createdAt ? Date.parse(p.createdAt) : NaN;
+    if (saleMs > 0 && Number.isFinite(payMs) && payMs - saleMs > REPAYMENT_GAP_MS) {
+      creditRepayments += rev;
+    }
     const day = p.createdAt ? localDateFromIso(p.createdAt) : "";
     if (day) {
       const cur = byDay.get(day) ?? { revenue: 0, margin: 0 };

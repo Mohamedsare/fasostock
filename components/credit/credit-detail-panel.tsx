@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { format } from "date-fns";
+import { format, isToday, isYesterday, parseISO } from "date-fns";
 import {
   fsInputClass,
 } from "@/components/ui/fs-screen-primitives";
@@ -200,18 +200,60 @@ export function CreditDetailPanel({
                 <div>
                   <p className="text-xs font-semibold text-neutral-600">Historique des paiements</p>
                   <ul className="mt-2 space-y-2">
-                    {paginatedPayments.map((p) => (
+                    {paginatedPayments.map((p) => {
+                      const isBooking = p.method === "other";
+                      const saleMs = sale.created_at ? parseISO(sale.created_at).getTime() : NaN;
+                      const payMs = parseISO(p.created_at).getTime();
+                      // Remboursement = paiement postérieur à la vente (>10 s) ; sinon paiement à la vente.
+                      const isRepay =
+                        !isBooking &&
+                        (!Number.isFinite(saleMs) || !Number.isFinite(payMs) || payMs - saleMs > 10_000);
+                      const d = parseISO(p.created_at);
+                      const valid = !Number.isNaN(d.getTime());
+                      const today = valid && isToday(d);
+                      const yest = valid && isYesterday(d);
+                      return (
                         <li
                           key={p.id}
-                          className="flex justify-between rounded-xl border border-black/8 px-3 py-2 text-xs dark:border-white/10"
+                          className={cn(
+                            "flex items-center gap-3 rounded-xl border px-3 py-2 text-xs",
+                            isBooking
+                              ? "border-dashed border-black/10 bg-black/[0.015] dark:border-white/10 dark:bg-white/[0.03]"
+                              : today
+                                ? "border-fs-accent/40 bg-fs-accent/5"
+                                : "border-black/8 dark:border-white/10",
+                          )}
                         >
-                          <span>
-                            {formatOperationDateTime(p.created_at)} —{" "}
-                            {paymentMethodLabel(p.method)}
+                          <div className="flex min-w-0 flex-col">
+                            <span className="flex flex-wrap items-center gap-1.5 font-semibold text-fs-text">
+                              {formatOperationDateTime(p.created_at)}
+                              {today ? (
+                                <span className="rounded bg-fs-accent/15 px-1.5 py-0.5 text-[9px] font-bold uppercase text-fs-accent">
+                                  Aujourd&apos;hui
+                                </span>
+                              ) : yest ? (
+                                <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-bold uppercase text-amber-700 dark:text-amber-300">
+                                  Hier
+                                </span>
+                              ) : null}
+                            </span>
+                            <span className="text-[11px] text-neutral-500">
+                              {isBooking
+                                ? "Mise à crédit (émission)"
+                                : `${isRepay ? "Remboursement" : "Paiement à la vente"} · ${paymentMethodLabel(p.method)}`}
+                            </span>
+                          </div>
+                          <span
+                            className={cn(
+                              "ml-auto shrink-0 font-bold tabular-nums",
+                              isBooking ? "text-neutral-400" : "text-emerald-700 dark:text-emerald-400",
+                            )}
+                          >
+                            {isBooking ? "à crédit" : `+${formatCurrency(p.amount)}`}
                           </span>
-                          <span className="font-bold">{formatCurrency(p.amount)}</span>
                         </li>
-                      ))}
+                      );
+                    })}
                   </ul>
                   {paymentsPageCount > 1 ? (
                     <div className="mt-3 flex flex-wrap items-center justify-center gap-2">

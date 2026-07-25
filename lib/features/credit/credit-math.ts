@@ -118,7 +118,8 @@ export const CREDIT_STATUS_LABELS: Record<CreditLineStatus, string> = {
   annule: "Annulé",
 };
 
-function maxRealizedPaymentDate(sale: CreditSaleRow): string | null {
+/** Date (ISO) du dernier remboursement RÉEL (method ≠ 'other'), ou null si aucun. */
+export function maxRealizedPaymentDate(sale: CreditSaleRow): string | null {
   const pays = (sale.sale_payments ?? []).filter((p) => p.method !== "other");
   if (pays.length === 0) return null;
   let best = pays[0]!.created_at;
