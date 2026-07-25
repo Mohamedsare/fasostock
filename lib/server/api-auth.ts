@@ -1,7 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 
-import { P } from "@/lib/constants/permissions";
 import { normalizeSupabaseUrl } from "@/lib/supabase/normalize-url";
 
 export type AuthUser = { id: string };
@@ -97,38 +96,6 @@ export async function userHasActiveCompanyMembership(
     .eq("is_active", true);
   if (error) return false;
   return (count ?? 0) > 0;
-}
-
-const QZ_SIGN_ROLE_SLUGS = new Set(["owner", "store_manager"]);
-
-/** Signature QZ : propriétaire, manager ou permission paramètres (page imprimantes). */
-export async function userCanSignQzRequests(
-  supabase: SupabaseClient,
-  userId: string,
-): Promise<boolean> {
-  const { data: roles, error } = await supabase
-    .from("user_company_roles")
-    .select("company_id, roles!inner(slug)")
-    .eq("user_id", userId)
-    .eq("is_active", true);
-  if (error || !roles?.length) return false;
-
-  for (const row of roles) {
-    const rolesRaw = (row as { roles?: { slug?: string } | { slug?: string }[] }).roles;
-    const role = Array.isArray(rolesRaw) ? rolesRaw[0] : rolesRaw;
-    const slug = String(role?.slug ?? "").trim();
-    if (QZ_SIGN_ROLE_SLUGS.has(slug)) return true;
-
-    const companyId = String((row as { company_id?: string }).company_id ?? "").trim();
-    if (!companyId) continue;
-    const { data: keys, error: kErr } = await supabase.rpc("get_my_permission_keys", {
-      p_company_id: companyId,
-    });
-    if (!kErr && Array.isArray(keys)) {
-      if (keys.map((k) => String(k)).includes(P.settingsManage)) return true;
-    }
-  }
-  return false;
 }
 
 /** Pour PDF ticket : lecture vente sous RLS (doit correspondre au numéro affiché). */

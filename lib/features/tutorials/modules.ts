@@ -14,7 +14,6 @@ export const TUTORIAL_MODULES: readonly TutorialModule[] = [
   { key: "credit", label: "Crédits" },
   { key: "reports", label: "Rapports" },
   { key: "employees", label: "Employés" },
-  { key: "printers", label: "Imprimantes" },
   { key: "settings", label: "Paramètres" },
   { key: "ai", label: "Prédictions IA" },
   { key: "transfers", label: "Transferts" },

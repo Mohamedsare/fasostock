@@ -103,6 +103,14 @@ export type ProgressiveMovementResult = {
   balance: number;
 };
 
+/** Résultat d'une annulation : le solde éventuel a été remboursé au client. */
+export type ProgressiveCancellationResult = {
+  /** Ligne de remboursement créée (`null` si le dossier était déjà à zéro). */
+  refundLedgerId: string | null;
+  refundReceiptNumber: string | null;
+  refundedAmount: number;
+};
+
 export type ProgressiveConversionResult = {
   saleId: string;
   saleNumber: string;

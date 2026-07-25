@@ -6,6 +6,7 @@ import {
   MdAddCard,
   MdCancel,
   MdClose,
+  MdDeleteForever,
   MdEdit,
   MdInventory2,
   MdOutlineReceiptLong,
@@ -62,6 +63,7 @@ export function ProgressivePlanDetail({
   onConvert,
   onReprint,
   onCancelPlan,
+  onDeletePlan,
 }: {
   plan: ProgressivePlan;
   terms: ProgressiveTerms;
@@ -75,6 +77,8 @@ export function ProgressivePlanDetail({
   onConvert: (item: ProgressiveEligibleItem) => void;
   onReprint: (ledgerId: string) => void;
   onCancelPlan: () => void;
+  /** Suppression définitive — fourni au propriétaire uniquement. */
+  onDeletePlan?: () => void;
 }) {
   const ledgerQ = useQuery({
     queryKey: queryKeys.progressiveLedger(plan.id),
@@ -219,21 +223,51 @@ export function ProgressivePlanDetail({
                 type="button"
                 onClick={onCancelPlan}
                 className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl border border-black/10 px-3 text-xs font-bold text-red-600 dark:border-white/10"
+                title={
+                  plan.balance > 0
+                    ? "Clôture le dossier et rembourse l'épargne au client"
+                    : "Clôture le dossier"
+                }
               >
                 <MdCancel className="h-4 w-4" aria-hidden />
                 Annuler
               </button>
+              {onDeletePlan ? (
+                <button
+                  type="button"
+                  onClick={onDeletePlan}
+                  className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl border border-red-500/40 px-3 text-xs font-bold text-red-600"
+                  title="Supprimer définitivement (solde remboursé exigé)"
+                >
+                  <MdDeleteForever className="h-4 w-4" aria-hidden />
+                  Supprimer
+                </button>
+              ) : null}
             </div>
-          ) : plan.balance > 0 ? (
-            <button
-              type="button"
-              onClick={onRefund}
-              className="mt-3 inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl border border-black/10 px-3 text-xs font-bold text-amber-700 dark:border-white/10"
-            >
-              <MdUndo className="h-4 w-4" aria-hidden />
-              Rembourser le reliquat ({formatCurrency(plan.balance)})
-            </button>
-          ) : null}
+          ) : (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {plan.balance > 0 ? (
+                <button
+                  type="button"
+                  onClick={onRefund}
+                  className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl border border-black/10 px-3 text-xs font-bold text-amber-700 dark:border-white/10"
+                >
+                  <MdUndo className="h-4 w-4" aria-hidden />
+                  Rembourser le reliquat ({formatCurrency(plan.balance)})
+                </button>
+              ) : null}
+              {onDeletePlan && plan.status === "cancelled" ? (
+                <button
+                  type="button"
+                  onClick={onDeletePlan}
+                  className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl border border-red-500/40 px-3 text-xs font-bold text-red-600"
+                >
+                  <MdDeleteForever className="h-4 w-4" aria-hidden />
+                  Supprimer définitivement
+                </button>
+              ) : null}
+            </div>
+          )}
         </div>
 
         <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-4">

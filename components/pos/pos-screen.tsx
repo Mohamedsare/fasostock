@@ -19,7 +19,6 @@ import { applyPromoPercent } from "@/lib/features/promotions/promo-math";
 import { defaultInvoiceUnitForProduct, INVOICE_UNITS } from "@/lib/features/pos/invoice-units";
 import { factureTabStripHeightPx } from "@/lib/utils/facture-tab-layout";
 import { fetchInvoiceTablePosEnabled } from "@/lib/features/settings/invoice-table-pos";
-import { getPrinterSelectionForSession } from "@/lib/features/printers/printer-config-storage";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { ROUTES, storeFactureTabPath } from "@/lib/config/routes";
 import { queryKeys } from "@/lib/query/query-keys";
@@ -174,29 +173,6 @@ export function PosScreen({
     },
     staleTime: 5 * 60_000,
   });
-  const authUserIdQ = useQuery({
-    queryKey: ["pos-auth-user-id"] as const,
-    queryFn: async () => {
-      const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      return user?.id ?? null;
-    },
-    staleTime: 5 * 60_000,
-  });
-  const localThermalPaperWidthMm: 58 | 80 = useMemo(() => {
-    if (!companyId || !authUserIdQ.data) return 80;
-    try {
-      return (
-        getPrinterSelectionForSession(authUserIdQ.data, companyId)
-          ?.thermalPaperWidthMm ?? 80
-      );
-    } catch {
-      return 80;
-    }
-  }, [companyId, authUserIdQ.data]);
-
   useEffect(() => {
     const t = setInterval(() => {
       setClock(new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }));
@@ -281,12 +257,12 @@ export function PosScreen({
   }, [promosQ.data]);
 
   const store = posQ.data?.store ?? null;
-  // Priorité au format ticket réglé sur la boutique (dialogue « Caisse rapide » de
-  // la page Boutiques), sinon préférence locale (page Imprimantes), sinon 80 mm.
+  // Format ticket réglé sur la boutique (dialogue « Caisse rapide » de la page
+  // Boutiques), sinon 80 mm par défaut.
   const thermalPaperWidthMm: 58 | 80 =
     store?.receipt_paper_width_mm === 58 || store?.receipt_paper_width_mm === 80
       ? store.receipt_paper_width_mm
-      : localThermalPaperWidthMm;
+      : 80;
 
   const stripCol1900 = useMediaQuery("(min-width: 1900px)");
   const stripCol1400 = useMediaQuery("(min-width: 1400px)");

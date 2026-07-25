@@ -44,8 +44,6 @@ export const ROUTES = {
   /** Module R. Humaine + Paie — activé par la plateforme. */
   hr: "/rh",
   settings: "/settings",
-  /** Imprimantes locales (QZ Tray) — association ticket / facture A4. */
-  printers: "/printers",
   users: "/users",
   audit: "/audit",
   help: "/help",

@@ -1,7 +1,9 @@
 "use client";
 
+import { UserFriendlyError } from "@/lib/errors/app-error-mapper";
 import { createClient } from "@/lib/supabase/client";
 import type {
+  ProgressiveCancellationResult,
   ProgressiveConversionResult,
   ProgressiveLedgerEntry,
   ProgressiveLedgerKind,
@@ -11,6 +13,16 @@ import type {
   ProgressivePlanInput,
   ProgressivePlanStatus,
 } from "./types";
+
+/**
+ * Les RPC de ce module lèvent des messages métier explicites (« remboursez d'abord
+ * le solde… »). Le mapper d'erreurs générique les remplacerait par un texte passe-partout :
+ * on les repackage en `UserFriendlyError` pour que l'utilisateur lise la vraie raison.
+ */
+function rpcError(error: { message?: string } | null, fallback: string): Error {
+  const msg = String(error?.message ?? "").trim();
+  return new UserFriendlyError(msg.length > 0 ? msg : fallback);
+}
 
 function num(v: unknown): number {
   const n = Number(v ?? 0);
@@ -74,7 +86,7 @@ export async function listProgressivePlans(params: {
     p_company_id: params.companyId,
     p_store_id: params.storeId,
   });
-  if (error) throw error;
+  if (error) throw rpcError(error, "Chargement des dossiers impossible.");
   return ((data ?? []) as Array<Record<string, unknown>>).map(mapPlan);
 }
 
@@ -86,7 +98,7 @@ export async function listProgressiveLedger(
   const { data, error } = await supabase.rpc("progressive_ledger_list", {
     p_plan_id: planId,
   });
-  if (error) throw error;
+  if (error) throw rpcError(error, "Chargement du relevé impossible.");
   return ((data ?? []) as Array<Record<string, unknown>>).map((row) => ({
     id: String(row.id),
     kind: String(row.kind ?? "deposit") as ProgressiveLedgerKind,
@@ -118,7 +130,7 @@ export async function saveProgressivePlan(input: ProgressivePlanInput): Promise<
     p_notes: input.notes ?? null,
     p_customer_id: input.customerId ?? null,
   });
-  if (error) throw error;
+  if (error) throw rpcError(error, "Enregistrement du dossier impossible.");
   return String(data ?? "");
 }
 
@@ -147,7 +159,7 @@ export async function addProgressiveDeposit(params: {
     p_reference: params.reference ?? null,
     p_note: params.note ?? null,
   });
-  if (error) throw error;
+  if (error) throw rpcError(error, "Versement impossible.");
   return mapMovement(data);
 }
 
@@ -167,20 +179,42 @@ export async function addProgressiveRefund(params: {
     p_reference: params.reference ?? null,
     p_note: params.note ?? null,
   });
-  if (error) throw error;
+  if (error) throw rpcError(error, "Remboursement impossible.");
   return mapMovement(data);
 }
 
-export async function cancelProgressivePlan(planId: string): Promise<void> {
+/**
+ * Annule un dossier. L'épargne restante est TOUJOURS remboursée au client dans la
+ * même opération : le ticket de remboursement à lui remettre est renvoyé ici.
+ */
+export async function cancelProgressivePlan(params: {
+  planId: string;
+  method?: ProgressivePaymentMethod;
+  reason?: string | null;
+}): Promise<ProgressiveCancellationResult> {
   const supabase = createClient();
-  const { error } = await supabase.rpc("progressive_plan_cancel", { p_plan_id: planId });
-  if (error) throw error;
+  const { data, error } = await supabase.rpc("progressive_plan_cancel", {
+    p_plan_id: params.planId,
+    p_method: params.method ?? "cash",
+    p_reason: params.reason ?? null,
+  });
+  if (error) throw rpcError(error, "Annulation impossible.");
+  const row = (Array.isArray(data) ? data[0] : data) as Record<string, unknown> | null;
+  return {
+    refundLedgerId: str(row?.refund_ledger_id),
+    refundReceiptNumber: str(row?.refund_receipt_number),
+    refundedAmount: num(row?.refunded_amount),
+  };
 }
 
+/**
+ * Suppression définitive (propriétaire). Refusée tant que le client a de l'épargne
+ * non remboursée, ou si une vente est née du dossier.
+ */
 export async function deleteProgressivePlan(planId: string): Promise<void> {
   const supabase = createClient();
   const { error } = await supabase.rpc("progressive_plan_delete", { p_plan_id: planId });
-  if (error) throw error;
+  if (error) throw rpcError(error, "Suppression impossible.");
 }
 
 /**
@@ -201,7 +235,7 @@ export async function convertProgressivePlan(params: {
     p_unit_price: params.unitPrice ?? null,
     p_client_request_id: crypto.randomUUID(),
   });
-  if (error) throw error;
+  if (error) throw rpcError(error, "Conversion impossible.");
   const row = (Array.isArray(data) ? data[0] : data) as Record<string, unknown> | null;
   return {
     saleId: String(row?.sale_id ?? ""),

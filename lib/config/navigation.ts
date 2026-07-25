@@ -33,7 +33,6 @@ import {
   HelpCircle,
   Crown,
   KeyRound,
-  Printer,
   Settings,
 } from "lucide-react";
 import { ROUTES } from "./routes";
@@ -91,7 +90,6 @@ export const NAV_ITEMS: NavItem[] = [
     iconBg: "#9A3412",
     showInSidebar: false,
   },
-  { href: ROUTES.printers, label: "Imprimantes", icon: Printer, iconBg: "#B45309" },
   { href: ROUTES.settings, label: "Paramètres", icon: Settings, iconBg: "#92400E" },
   { href: ROUTES.help, label: "Aide", icon: HelpCircle, iconBg: "#D97706" },
   { href: ROUTES.subscription, label: "Abonnement", icon: Crown, iconBg: "#CA8A04" },
@@ -180,7 +178,6 @@ export const RESTAURANT_NAV_ITEMS: NavItem[] = [
   { kind: "section", href: "/restaurant/_sec_parametres", label: "Parametres", icon: Settings },
   { href: "/restaurant/parametres/general", label: "General", icon: Settings, child: true },
   { href: "/restaurant/parametres/restaurant", label: "Restaurant", icon: Settings, child: true },
-  { href: ROUTES.printers, label: "Imprimantes", icon: Printer, child: true },
   { href: "/restaurant/parametres/taxes", label: "Taxes", icon: Settings, child: true },
   { href: "/restaurant/parametres/paiements", label: "Paiements", icon: Settings, child: true },
 ];

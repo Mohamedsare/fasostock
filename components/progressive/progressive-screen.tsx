@@ -30,7 +30,11 @@ import { usePermissions } from "@/lib/features/permissions/use-permissions";
 import { listProducts, listStoreInventory } from "@/lib/features/products/api";
 import { filterByStoreCatalog } from "@/lib/features/stores/store-catalog";
 import { useStoreCatalog } from "@/lib/features/stores/use-store-catalog";
-import { cancelProgressivePlan, listProgressivePlans } from "@/lib/features/progressive/api";
+import {
+  cancelProgressivePlan,
+  deleteProgressivePlan,
+  listProgressivePlans,
+} from "@/lib/features/progressive/api";
 import {
   cheapestAvailablePrice,
   eligibleItems,
@@ -100,6 +104,8 @@ export function ProgressiveScreen() {
   const storeEnabled = store?.progressivePurchasesEnabled === true;
   const engineModuleOn = store?.engineSalesEnabled === true;
   const canManage = (h?.canProgressive ?? false) && storeEnabled;
+  // Suppression définitive : propriétaire uniquement (le RPC le revérifie).
+  const isOwner = h?.isOwner ?? false;
   // Vocabulaire adapté au métier (engin / article / produit) — le module vaut
   // pour toutes les activités, pas seulement la vente de motos.
   const businessTypeSlug = ctx.data?.businessTypeSlug ?? null;
@@ -120,7 +126,8 @@ export function ProgressiveScreen() {
     item: ProgressiveEligibleItem;
   } | null>(null);
   const [toCancel, setToCancel] = useState<ProgressivePlan | null>(null);
-  const [cancelBusy, setCancelBusy] = useState(false);
+  const [toDelete, setToDelete] = useState<ProgressivePlan | null>(null);
+  const [actionBusy, setActionBusy] = useState(false);
 
   const plansQ = useQuery({
     queryKey: queryKeys.progressivePlans({ companyId, storeId }),
@@ -199,19 +206,46 @@ export function ProgressiveScreen() {
     }
   }
 
+  /** Annulation : le solde éventuel est remboursé au client, ticket à la clé. */
   async function confirmCancel() {
     if (!toCancel) return;
-    setCancelBusy(true);
+    const planId = toCancel.id;
+    setActionBusy(true);
     try {
-      await cancelProgressivePlan(toCancel.id);
-      toast.success("Dossier annulé.");
+      const res = await cancelProgressivePlan({ planId });
       setToCancel(null);
       setDetailId(null);
-      refreshAll();
+      refreshAll(planId);
+      if (res.refundLedgerId) {
+        toast.success(
+          `Dossier annulé — ${formatCurrency(res.refundedAmount)} remboursés au client.`,
+        );
+        // Ticket de remboursement à remettre au client.
+        setTicketId(res.refundLedgerId);
+      } else {
+        toast.success("Dossier annulé.");
+      }
     } catch (e) {
       toast.error(messageFromUnknownError(e, "Annulation impossible."));
     } finally {
-      setCancelBusy(false);
+      setActionBusy(false);
+    }
+  }
+
+  async function confirmDelete() {
+    if (!toDelete) return;
+    const planId = toDelete.id;
+    setActionBusy(true);
+    try {
+      await deleteProgressivePlan(planId);
+      toast.success("Dossier supprimé définitivement.");
+      setToDelete(null);
+      setDetailId(null);
+      refreshAll(planId);
+    } catch (e) {
+      toast.error(messageFromUnknownError(e, "Suppression impossible."));
+    } finally {
+      setActionBusy(false);
     }
   }
 
@@ -442,6 +476,7 @@ export function ProgressiveScreen() {
           onConvert={(item) => setConverting({ planId: detailPlan.id, item })}
           onReprint={(ledgerId) => setTicketId(ledgerId)}
           onCancelPlan={() => setToCancel(detailPlan)}
+          onDeletePlan={isOwner ? () => setToDelete(detailPlan) : undefined}
         />
       ) : null}
 
@@ -489,15 +524,60 @@ export function ProgressiveScreen() {
         title="Annuler ce dossier ?"
         message={
           toCancel
-            ? `Le dossier ${toCancel.planNumber} de ${toCancel.clientName} sera clôturé. Le solde doit d'abord être remboursé au client.`
+            ? toCancel.balance > 0
+              ? `Le dossier ${toCancel.planNumber} de ${toCancel.clientName} sera clôturé et ses ${formatCurrency(
+                  toCancel.balance,
+                )} d'épargne seront remboursés au client.
+
+Remettez-lui bien l'argent : le ticket de remboursement s'ouvre juste après pour impression.`
+              : `Le dossier ${toCancel.planNumber} de ${toCancel.clientName} sera clôturé. Il n'a plus d'épargne à rembourser.`
             : undefined
         }
         tone="danger"
-        confirmLabel="Annuler le dossier"
+        confirmLabel={
+          toCancel && toCancel.balance > 0
+            ? `Rembourser ${formatCurrency(toCancel.balance)} et annuler`
+            : "Annuler le dossier"
+        }
         cancelLabel="Retour"
-        busy={cancelBusy}
+        busy={actionBusy}
         onCancel={() => setToCancel(null)}
         onConfirm={() => void confirmCancel()}
+      />
+
+      <FsConfirmDialog
+        open={toDelete !== null}
+        title="Supprimer définitivement ?"
+        message={
+          toDelete
+            ? toDelete.balance > 0
+              ? `Impossible pour l'instant : ${toDelete.clientName} a encore ${formatCurrency(
+                  toDelete.balance,
+                )} d'épargne.
+
+Remboursez-le d'abord (bouton « Rembourser » ou annulation du dossier), puis supprimez.`
+              : `Le dossier ${toDelete.planNumber} de ${toDelete.clientName} et ses ${
+                  toDelete.depositCount
+                } versement${toDelete.depositCount > 1 ? "s" : ""} seront effacés. Cette action est irréversible.`
+            : undefined
+        }
+        tone="danger"
+        confirmLabel={
+          toDelete && toDelete.balance > 0 ? "Rembourser d'abord" : "Supprimer définitivement"
+        }
+        cancelLabel="Retour"
+        busy={actionBusy}
+        onCancel={() => setToDelete(null)}
+        onConfirm={() => {
+          if (toDelete && toDelete.balance > 0) {
+            // Raccourci : on bascule sur le remboursement du solde.
+            const plan = toDelete;
+            setToDelete(null);
+            setMovement({ planId: plan.id, mode: "refund" });
+            return;
+          }
+          void confirmDelete();
+        }}
       />
     </FsPage>
   );

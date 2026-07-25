@@ -68,7 +68,6 @@ const ACTIVITY_PROFILES: ActivityProfile[] = [
       ROUTES.suppliers,
       ROUTES.ai,
       ROUTES.users,
-      ROUTES.printers,
       ROUTES.settings,
       ROUTES.help,
       ROUTES.subscription,

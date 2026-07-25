@@ -18,7 +18,6 @@ const APP_ZONE_ROOTS: string[] = [
   ROUTES.reports,
   ROUTES.ai,
   ROUTES.settings,
-  ROUTES.printers,
   ROUTES.users,
   ROUTES.audit,
   ROUTES.help,
