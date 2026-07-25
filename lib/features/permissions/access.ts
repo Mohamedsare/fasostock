@@ -29,6 +29,7 @@ export type AppContextData = {
     isPrimary?: boolean;
     engineSalesEnabled?: boolean;
     engineRegistrationEnabled?: boolean;
+    progressivePurchasesEnabled?: boolean;
   }[];
   isSuperAdmin: boolean;
   permissionKeys: string[];
@@ -66,6 +67,8 @@ export type AccessHelpers = {
   canEngineSales: boolean;
   /** Module Immatriculation Engins — boutique autorisée ET droit ventes. */
   canEngineRegistration: boolean;
+  /** Module Achats Progressifs — boutique autorisée ET droit dédié (ou propriétaire). */
+  canProgressive: boolean;
   canStores: boolean;
   canInventory: boolean;
   canPurchases: boolean;
@@ -158,6 +161,13 @@ export function buildAccessHelpers(
       hasPermission(P.salesCreate) ||
       hasPermission(P.salesView) ||
       hasPermission(P.salesUpdate));
+  // Achats Progressifs : même gating par boutique que les modules engins, mais
+  // avec un droit dédié (owner par défaut) car il s'agit d'argent encaissé.
+  const progressiveStoreOn = data.storeId
+    ? activeStore?.progressivePurchasesEnabled === true
+    : data.stores.some((s) => s.progressivePurchasesEnabled === true);
+  const canProgressive =
+    progressiveStoreOn && (isOwner || hasPermission(P.progressiveManage));
   const canStores =
     hasPermission(P.storesView) || hasPermission(P.storesCreate);
   const canInventory =
@@ -207,6 +217,7 @@ export function buildAccessHelpers(
     canSales,
     canEngineSales,
     canEngineRegistration,
+    canProgressive,
     canStores,
     canInventory,
     canPurchases,
@@ -271,6 +282,7 @@ export function filterNavItemsForPermissions(
     if (href === ROUTES.promotions) return h.canPromotions;
     if (href === ROUTES.engines) return h.canEngineSales;
     if (href === ROUTES.engineRegistration) return h.canEngineRegistration;
+    if (href === ROUTES.progressive) return h.canProgressive;
     if (href === ROUTES.stores) return h.canStores;
     if (href === ROUTES.inventory) return h.canInventory && !h.isCashier;
     if (href === ROUTES.inventorySessions) {
@@ -331,6 +343,7 @@ const APP_SHELL_ROUTE_PREFIXES: readonly string[] = [
   ROUTES.promotions,
   ROUTES.engines,
   ROUTES.engineRegistration,
+  ROUTES.progressive,
   ROUTES.stores,
   ROUTES.inventory,
   ROUTES.inventorySessions,

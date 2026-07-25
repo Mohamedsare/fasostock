@@ -118,7 +118,7 @@ export async function adminListStores(companyId?: string | null): Promise<AdminS
   const supabase = createClient();
   let q = supabase
     .from("stores")
-    .select("id, company_id, name, code, phone, is_active, is_primary, engine_sales_enabled, engine_registration_enabled, created_at")
+    .select("id, company_id, name, code, phone, is_active, is_primary, engine_sales_enabled, engine_registration_enabled, progressive_purchases_enabled, created_at")
     .order("created_at", { ascending: false });
   if (companyId) q = q.eq("company_id", companyId);
   const { data, error } = await q;
@@ -135,6 +135,7 @@ export async function adminListStores(companyId?: string | null): Promise<AdminS
       isPrimary: r.is_primary === true,
       engineSalesEnabled: r.engine_sales_enabled === true,
       engineRegistrationEnabled: r.engine_registration_enabled === true,
+      progressivePurchasesEnabled: r.progressive_purchases_enabled === true,
       createdAt: r.created_at != null ? String(r.created_at) : null,
     };
   });
@@ -235,6 +236,16 @@ export async function adminSetStoreEngineRegistration(id: string, enabled: boole
   const { error } = await supabase
     .from("stores")
     .update({ engine_registration_enabled: enabled })
+    .eq("id", id);
+  if (error) throw mapSupabaseError(error);
+}
+
+/** Active/désactive le module Achats Progressifs pour une boutique (super admin). */
+export async function adminSetStoreProgressive(id: string, enabled: boolean): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("stores")
+    .update({ progressive_purchases_enabled: enabled })
     .eq("id", id);
   if (error) throw mapSupabaseError(error);
 }

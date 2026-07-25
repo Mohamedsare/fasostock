@@ -255,7 +255,7 @@ async function fetchAppContext(): Promise<AppContextData | null> {
   if (isSuperAdmin) {
     const { data: stores } = await supabase
       .from("stores")
-      .select("id, name, is_primary, engine_sales_enabled, engine_registration_enabled")
+      .select("id, name, is_primary, engine_sales_enabled, engine_registration_enabled, progressive_purchases_enabled")
       .eq("company_id", companyId)
       .order("is_primary", { ascending: false })
       .order("name", { ascending: true });
@@ -266,6 +266,8 @@ async function fetchAppContext(): Promise<AppContextData | null> {
       engineSalesEnabled: (s as { engine_sales_enabled?: boolean }).engine_sales_enabled === true,
       engineRegistrationEnabled:
         (s as { engine_registration_enabled?: boolean }).engine_registration_enabled === true,
+      progressivePurchasesEnabled:
+        (s as { progressive_purchases_enabled?: boolean }).progressive_purchases_enabled === true,
     }));
     return {
       companyId,
@@ -292,7 +294,7 @@ async function fetchAppContext(): Promise<AppContextData | null> {
 
   const { data: stores, error: sErr } = await supabase
     .from("stores")
-    .select("id, name, is_primary, engine_sales_enabled, engine_registration_enabled")
+    .select("id, name, is_primary, engine_sales_enabled, engine_registration_enabled, progressive_purchases_enabled")
     .eq("company_id", companyId)
     .order("is_primary", { ascending: false })
     .order("name", { ascending: true });
@@ -305,6 +307,8 @@ async function fetchAppContext(): Promise<AppContextData | null> {
     engineSalesEnabled: (s as { engine_sales_enabled?: boolean }).engine_sales_enabled === true,
     engineRegistrationEnabled:
       (s as { engine_registration_enabled?: boolean }).engine_registration_enabled === true,
+    progressivePurchasesEnabled:
+      (s as { progressive_purchases_enabled?: boolean }).progressive_purchases_enabled === true,
   }));
 
   let permissionKeys: string[] = [];

@@ -19,6 +19,8 @@ export const ROUTES = {
   engines: "/engins",
   /** Module Immatriculation Engins (CMC/WW/récépissé/carte grise) — activé par boutique. */
   engineRegistration: "/immatriculation",
+  /** Module Achats Progressifs (épargne par versements vers un engin) — activé par boutique. */
+  progressive: "/achats-progressifs",
   stores: "/stores",
   inventory: "/inventory",
   /** Sessions d'inventaire physique (comptage, écarts, validation). */

@@ -24,6 +24,11 @@ export const queryKeys = {
   /** Dossiers d'immatriculation engins (module Immatriculation Engins). */
   engineRegistrations: (params: { companyId: string; storeId: string | null }) =>
     ["engine-registrations", params] as const,
+  /** Dossiers d'achat progressif (module Achats Progressifs). */
+  progressivePlans: (params: { companyId: string; storeId: string | null }) =>
+    ["progressive-plans", params] as const,
+  /** Relevé (versements / remboursements) d'un dossier d'achat progressif. */
+  progressiveLedger: (planId: string) => ["progressive-ledger", planId] as const,
   customers: (companyId: string) => ["customers", companyId] as const,
   suppliers: (companyId: string) => ["suppliers", companyId] as const,
   /** Dépenses sur une plage de dates (filtres catégorie/recherche côté client). */
