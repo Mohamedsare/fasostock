@@ -118,7 +118,7 @@ export async function adminListStores(companyId?: string | null): Promise<AdminS
   const supabase = createClient();
   let q = supabase
     .from("stores")
-    .select("id, company_id, name, code, phone, is_active, is_primary, engine_sales_enabled, engine_registration_enabled, progressive_purchases_enabled, created_at")
+    .select("id, company_id, name, code, phone, is_active, is_primary, engine_sales_enabled, engine_registration_enabled, progressive_purchases_enabled, rental_module_enabled, created_at")
     .order("created_at", { ascending: false });
   if (companyId) q = q.eq("company_id", companyId);
   const { data, error } = await q;
@@ -136,6 +136,7 @@ export async function adminListStores(companyId?: string | null): Promise<AdminS
       engineSalesEnabled: r.engine_sales_enabled === true,
       engineRegistrationEnabled: r.engine_registration_enabled === true,
       progressivePurchasesEnabled: r.progressive_purchases_enabled === true,
+      rentalModuleEnabled: r.rental_module_enabled === true,
       createdAt: r.created_at != null ? String(r.created_at) : null,
     };
   });
@@ -246,6 +247,16 @@ export async function adminSetStoreProgressive(id: string, enabled: boolean): Pr
   const { error } = await supabase
     .from("stores")
     .update({ progressive_purchases_enabled: enabled })
+    .eq("id", id);
+  if (error) throw mapSupabaseError(error);
+}
+
+/** Module Location (gestion locative immobilière) — activation par boutique. */
+export async function adminSetStoreRental(id: string, enabled: boolean): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("stores")
+    .update({ rental_module_enabled: enabled })
     .eq("id", id);
   if (error) throw mapSupabaseError(error);
 }

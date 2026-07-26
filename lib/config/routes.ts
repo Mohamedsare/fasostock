@@ -21,6 +21,8 @@ export const ROUTES = {
   engineRegistration: "/immatriculation",
   /** Module Achats Progressifs (épargne par versements vers un engin) — activé par boutique. */
   progressive: "/achats-progressifs",
+  /** Module Location (gestion locative immobilière) — activé par boutique. */
+  rental: "/location",
   stores: "/stores",
   inventory: "/inventory",
   /** Sessions d'inventaire physique (comptage, écarts, validation). */

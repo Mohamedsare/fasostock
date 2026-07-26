@@ -29,6 +29,27 @@ export const queryKeys = {
     ["progressive-plans", params] as const,
   /** Relevé (versements / remboursements) d'un dossier d'achat progressif. */
   progressiveLedger: (planId: string) => ["progressive-ledger", planId] as const,
+  /** Module Location — baux et leurs agrégats de règlement. */
+  rentalLeases: (params: { companyId: string; storeId: string | null }) =>
+    ["rental-leases", params] as const,
+  /** Module Location — biens immobiliers (occupation, rendement). */
+  rentalProperties: (params: { companyId: string; storeId: string | null }) =>
+    ["rental-properties", params] as const,
+  /** Module Location — lots louables. */
+  rentalUnits: (params: { companyId: string; storeId: string | null }) =>
+    ["rental-units", params] as const,
+  /** Module Location — locataires. */
+  rentalTenants: (companyId: string) => ["rental-tenants", companyId] as const,
+  /** Module Location — charges du bailleur. */
+  rentalCharges: (params: { companyId: string; storeId: string | null }) =>
+    ["rental-charges", params] as const,
+  /** Module Location — indicateurs du mois. */
+  rentalStats: (params: { companyId: string; storeId: string | null; month: string | null }) =>
+    ["rental-stats", params] as const,
+  /** Module Location — échéancier d'un bail. */
+  rentalSchedule: (leaseId: string) => ["rental-schedule", leaseId] as const,
+  /** Module Location — encaissements d'un bail. */
+  rentalPayments: (leaseId: string) => ["rental-payments", leaseId] as const,
   customers: (companyId: string) => ["customers", companyId] as const,
   suppliers: (companyId: string) => ["suppliers", companyId] as const,
   /** Dépenses sur une plage de dates (filtres catégorie/recherche côté client). */

@@ -1,6 +1,7 @@
 "use client";
 
 import { AdminCard, AdminPageHeader } from "@/components/admin/admin-page-header";
+import { AdminRentalModuleCard } from "@/components/admin/admin-rental-module-card";
 import { adminGetPlatformSettings, adminSetPlatformSettings } from "@/lib/features/admin/api";
 import { messageFromUnknownError, toast } from "@/lib/toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -120,6 +121,9 @@ export function AdminSettingsScreen() {
           </span>
         </label>
       </AdminCard>
+
+      {/* Activation du module Location, boutique par boutique. */}
+      <AdminRentalModuleCard />
 
       <button
         type="button"

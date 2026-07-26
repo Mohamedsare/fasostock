@@ -42,6 +42,8 @@ export type AdminStore = {
   engineRegistrationEnabled: boolean;
   /** Module Achats Progressifs activé pour cette boutique (super admin). */
   progressivePurchasesEnabled: boolean;
+  /** Module Location (gestion locative) activé pour cette boutique (super admin). */
+  rentalModuleEnabled: boolean;
   createdAt: string | null;
 };
 
