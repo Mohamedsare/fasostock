@@ -129,6 +129,17 @@ export async function cancelInventorySession(sessionId: string): Promise<void> {
   if (error) throw mapSupabaseError(error);
 }
 
+/**
+ * Rouvre une session clôturée ou annulée pour continuer le comptage.
+ * Le stock théorique est re-snapshoté côté base : les écarts déjà appliqués ne le
+ * seront pas une seconde fois à la prochaine validation.
+ */
+export async function reopenInventorySession(sessionId: string): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase.rpc("inventory_session_reopen", { p_session_id: sessionId });
+  if (error) throw mapSupabaseError(error);
+}
+
 /** Supprime définitivement une session annulée. */
 export async function deleteInventorySession(sessionId: string): Promise<void> {
   const supabase = createClient();

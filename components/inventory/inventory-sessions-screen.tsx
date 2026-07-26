@@ -8,6 +8,7 @@ import {
   cancelInventorySession,
   deleteInventorySession,
   listInventorySessions,
+  reopenInventorySession,
   startInventorySession,
 } from "@/lib/features/inventory/sessions/api";
 import type { InventorySessionStatus, InventorySessionSummary } from "@/lib/features/inventory/sessions/types";
@@ -29,6 +30,7 @@ import {
   MdInventory2,
   MdLockOutline,
   MdPlayArrow,
+  MdReplay,
   MdStorefront,
 } from "react-icons/md";
 
@@ -65,7 +67,7 @@ export function InventorySessionsScreen() {
 
   const [note, setNote] = useState("");
   const [confirm, setConfirm] = useState<
-    { kind: "cancel" | "delete"; session: InventorySessionSummary } | null
+    { kind: "cancel" | "delete" | "reopen"; session: InventorySessionSummary } | null
   >(null);
 
   const q = useQuery({
@@ -109,7 +111,21 @@ export function InventorySessionsScreen() {
     onError: (e) => toast.error(messageFromUnknownError(e)),
   });
 
-  const confirmBusy = cancelMut.isPending || deleteMut.isPending;
+  const reopenMut = useMutation({
+    mutationFn: (sessionId: string) => reopenInventorySession(sessionId),
+    onSuccess: async (_v, sessionId) => {
+      setConfirm(null);
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["inventory-sessions", storeId] }),
+        qc.invalidateQueries({ queryKey: ["inventory-session", sessionId] }),
+        qc.invalidateQueries({ queryKey: ["inventory-session-items", sessionId] }),
+      ]);
+      router.push(`${ROUTES.inventorySessions}/${sessionId}`);
+    },
+    onError: (e) => toast.error(messageFromUnknownError(e)),
+  });
+
+  const confirmBusy = cancelMut.isPending || deleteMut.isPending || reopenMut.isPending;
 
   if (permLoading) {
     return (
@@ -244,8 +260,10 @@ export function InventorySessionsScreen() {
             <SessionCard
               key={s.id}
               session={s}
+              reopenBlocked={openSession != null}
               onCancel={() => setConfirm({ kind: "cancel", session: s })}
               onDelete={() => setConfirm({ kind: "delete", session: s })}
+              onReopen={() => setConfirm({ kind: "reopen", session: s })}
             />
           ))}
         </div>
@@ -253,20 +271,38 @@ export function InventorySessionsScreen() {
 
       <FsConfirmDialog
         open={confirm != null}
-        tone="danger"
+        tone={confirm?.kind === "reopen" ? "default" : "danger"}
         busy={confirmBusy}
-        title={confirm?.kind === "delete" ? "Supprimer l'inventaire" : "Annuler l'inventaire"}
+        title={
+          confirm?.kind === "delete"
+            ? "Supprimer l'inventaire"
+            : confirm?.kind === "reopen"
+              ? "Reprendre l'inventaire"
+              : "Annuler l'inventaire"
+        }
         message={
           confirm?.kind === "delete"
             ? "Cette session annulée sera définitivement supprimée. Cette action est irréversible."
-            : "La session sera annulée. Le stock ne sera pas modifié."
+            : confirm?.kind === "reopen"
+              ? `La session repasse « En cours » et vous continuez le comptage des ${Math.max(
+                  0,
+                  (confirm.session.itemCount ?? 0) - (confirm.session.countedCount ?? 0),
+                )} produits restants.\n\nLe stock théorique est remis à jour : les écarts déjà appliqués ne le seront pas une seconde fois.`
+              : "La session sera annulée. Le stock ne sera pas modifié."
         }
-        confirmLabel={confirm?.kind === "delete" ? "Supprimer" : "Annuler la session"}
+        confirmLabel={
+          confirm?.kind === "delete"
+            ? "Supprimer"
+            : confirm?.kind === "reopen"
+              ? "Reprendre"
+              : "Annuler la session"
+        }
         cancelLabel="Retour"
         onCancel={() => (confirmBusy ? undefined : setConfirm(null))}
         onConfirm={() => {
           if (!confirm) return;
           if (confirm.kind === "delete") deleteMut.mutate(confirm.session.id);
+          else if (confirm.kind === "reopen") reopenMut.mutate(confirm.session.id);
           else cancelMut.mutate(confirm.session.id);
         }}
       />
@@ -276,12 +312,17 @@ export function InventorySessionsScreen() {
 
 function SessionCard({
   session,
+  reopenBlocked,
   onCancel,
   onDelete,
+  onReopen,
 }: {
   session: InventorySessionSummary;
+  /** Une autre session est ouverte : impossible d'en rouvrir une seconde. */
+  reopenBlocked: boolean;
   onCancel: () => void;
   onDelete: () => void;
+  onReopen: () => void;
 }) {
   const meta = STATUS_META[session.status];
   const progress = session.itemCount > 0 ? Math.round((session.countedCount / session.itemCount) * 100) : 0;
@@ -356,16 +397,34 @@ function SessionCard({
           >
             Annuler
           </button>
-        ) : session.status === "cancelled" ? (
-          <button
-            type="button"
-            onClick={onDelete}
-            className="inline-flex items-center gap-1 text-xs font-semibold text-red-600 hover:underline"
-          >
-            <MdDeleteOutline className="h-4 w-4" aria-hidden />
-            Supprimer
-          </button>
-        ) : null}
+        ) : (
+          <div className="flex shrink-0 items-center gap-3">
+            <button
+              type="button"
+              onClick={onReopen}
+              disabled={reopenBlocked}
+              title={
+                reopenBlocked
+                  ? "Un autre inventaire est en cours — terminez-le d'abord."
+                  : "Continuer le comptage de cet inventaire"
+              }
+              className="inline-flex items-center gap-1 text-xs font-bold text-fs-accent hover:underline disabled:cursor-not-allowed disabled:text-neutral-400 disabled:no-underline"
+            >
+              <MdReplay className="h-4 w-4" aria-hidden />
+              Reprendre
+            </button>
+            {session.status === "cancelled" ? (
+              <button
+                type="button"
+                onClick={onDelete}
+                className="inline-flex items-center gap-1 text-xs font-semibold text-red-600 hover:underline"
+              >
+                <MdDeleteOutline className="h-4 w-4" aria-hidden />
+                Supprimer
+              </button>
+            ) : null}
+          </div>
+        )}
       </div>
     </FsCard>
   );

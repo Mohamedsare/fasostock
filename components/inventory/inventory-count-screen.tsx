@@ -10,6 +10,7 @@ import {
   cancelInventorySession,
   getInventorySession,
   listInventorySessionItems,
+  reopenInventorySession,
   setInventoryCount,
   validateInventorySession,
 } from "@/lib/features/inventory/sessions/api";
@@ -27,6 +28,7 @@ import {
   MdCheck,
   MdCheckCircle,
   MdClose,
+  MdReplay,
   MdSearch,
 } from "react-icons/md";
 
@@ -73,7 +75,7 @@ export function InventoryCountScreen({ sessionId }: { sessionId: string }) {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<CountFilter>("all");
   const [drafts, setDrafts] = useState<Record<string, string>>({});
-  const [confirm, setConfirm] = useState<"validate" | "cancel" | null>(null);
+  const [confirm, setConfirm] = useState<"validate" | "cancel" | "reopen" | null>(null);
 
   const items = useMemo(() => itemsQ.data ?? [], [itemsQ.data]);
 
@@ -134,6 +136,19 @@ export function InventoryCountScreen({ sessionId }: { sessionId: string }) {
         qc.invalidateQueries({ queryKey: itemsKey }),
       ]);
       router.push(ROUTES.inventorySessions);
+    },
+    onError: (e) => toast.error(messageFromUnknownError(e)),
+  });
+
+  const reopenMut = useMutation({
+    mutationFn: () => reopenInventorySession(sessionId),
+    onSuccess: async () => {
+      toast.success("Inventaire repris — vous pouvez continuer le comptage.");
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["inventory-sessions", session?.storeId] }),
+        qc.invalidateQueries({ queryKey: sessionKey }),
+        qc.invalidateQueries({ queryKey: itemsKey }),
+      ]);
     },
     onError: (e) => toast.error(messageFromUnknownError(e)),
   });
@@ -201,6 +216,34 @@ export function InventoryCountScreen({ sessionId }: { sessionId: string }) {
             <span className="text-xs font-semibold text-amber-600">Lecture seule (droit insuffisant)</span>
           ) : null}
         </div>
+
+        {/* Session terminée : on peut la rouvrir pour finir le comptage. */}
+        {!isOpen && canDoInventory ? (
+          <div className="mt-3 flex flex-col gap-2 rounded-lg border border-fs-accent/25 bg-fs-accent/[0.06] p-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-neutral-700">
+              {session.status === "closed"
+                ? `Inventaire validé. Il reste ${Math.max(0, stats.total - stats.counted)} produits non comptés — vous pouvez reprendre là où vous en étiez.`
+                : "Session annulée. Vous pouvez la reprendre pour continuer le comptage."}
+            </p>
+            <button
+              type="button"
+              disabled={reopenMut.isPending}
+              onClick={() => setConfirm("reopen")}
+              className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-lg bg-fs-accent px-5 text-sm font-bold text-white disabled:opacity-50"
+            >
+              <MdReplay className="h-5 w-5" aria-hidden />
+              {reopenMut.isPending ? "Reprise…" : "Reprendre le comptage"}
+            </button>
+          </div>
+        ) : null}
+
+        {/* Rassure sur l'enregistrement automatique : rien à cliquer pour continuer plus tard. */}
+        {editable ? (
+          <p className="mt-2 text-xs text-neutral-500">
+            Chaque quantité est enregistrée automatiquement. Vous pouvez quitter cette page et
+            reprendre plus tard — ne validez qu&apos;une fois le comptage terminé.
+          </p>
+        ) : null}
 
         {/* Progression */}
         <div className="mt-3">
@@ -322,24 +365,43 @@ export function InventoryCountScreen({ sessionId }: { sessionId: string }) {
 
       <FsConfirmDialog
         open={confirm != null}
-        tone={confirm === "cancel" ? "danger" : "default"}
-        busy={validateMut.isPending || cancelMut.isPending}
-        title={confirm === "cancel" ? "Annuler l'inventaire" : "Valider l'inventaire"}
+        tone={confirm === "cancel" || (confirm === "validate" && stats.counted < stats.total) ? "danger" : "default"}
+        busy={validateMut.isPending || cancelMut.isPending || reopenMut.isPending}
+        title={
+          confirm === "cancel"
+            ? "Annuler l'inventaire"
+            : confirm === "reopen"
+              ? "Reprendre l'inventaire"
+              : "Valider l'inventaire"
+        }
         message={
           confirm === "cancel"
             ? "La session sera annulée. Le stock ne sera pas modifié."
-            : stats.counted < stats.total
-              ? `${stats.counted}/${stats.total} produits comptés. Les non comptés resteront inchangés.\n\n${stats.varianceCount} écart(s) seront appliqués au stock.`
-              : `${stats.varianceCount} écart(s) seront appliqués au stock.`
+            : confirm === "reopen"
+              ? "La session repasse « En cours ».\n\nLe stock théorique est remis à jour : les écarts déjà appliqués ne le seront pas une seconde fois."
+              : stats.counted < stats.total
+                ? `Attention : ${stats.total - stats.counted} produits sur ${stats.total} ne sont pas encore comptés et resteront inchangés.\n\n${stats.varianceCount} écart(s) seront appliqués au stock, et la session sera clôturée.\n\nPour continuer plus tard sans clôturer, quittez simplement la page : votre comptage est déjà enregistré.`
+                : `${stats.varianceCount} écart(s) seront appliqués au stock.`
         }
-        confirmLabel={confirm === "cancel" ? "Annuler la session" : "Valider"}
+        confirmLabel={
+          confirm === "cancel"
+            ? "Annuler la session"
+            : confirm === "reopen"
+              ? "Reprendre"
+              : stats.counted < stats.total
+                ? "Valider quand même"
+                : "Valider"
+        }
         cancelLabel="Retour"
         onCancel={() => {
-          if (!validateMut.isPending && !cancelMut.isPending) setConfirm(null);
+          if (!validateMut.isPending && !cancelMut.isPending && !reopenMut.isPending) setConfirm(null);
         }}
         onConfirm={() => {
           if (confirm === "cancel") cancelMut.mutate();
-          else if (confirm === "validate") validateMut.mutate();
+          else if (confirm === "reopen") {
+            setConfirm(null);
+            reopenMut.mutate();
+          } else if (confirm === "validate") validateMut.mutate();
         }}
       />
     </FsPage>

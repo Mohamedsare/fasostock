@@ -11,6 +11,7 @@ import {
   getWarehouseInventorySession,
   listWarehouseInventorySessionItems,
   listWarehouseInventorySessions,
+  reopenWarehouseInventorySession,
   setWarehouseInventoryCount,
   startWarehouseInventorySession,
   validateWarehouseInventorySession,
@@ -36,6 +37,7 @@ import {
   MdDeleteOutline,
   MdInventory2,
   MdPlayArrow,
+  MdReplay,
   MdSearch,
 } from "react-icons/md";
 
@@ -125,7 +127,7 @@ function WarehouseInventoryList({
   const sessionsKey = queryKeys.warehouseInventorySessions(companyId, warehouseId);
   const [note, setNote] = useState("");
   const [confirm, setConfirm] = useState<
-    { kind: "cancel" | "delete"; session: WarehouseInventorySessionSummary } | null
+    { kind: "cancel" | "delete" | "reopen"; session: WarehouseInventorySessionSummary } | null
   >(null);
 
   const q = useQuery({
@@ -169,7 +171,21 @@ function WarehouseInventoryList({
     onError: (e) => toast.error(messageFromUnknownError(e)),
   });
 
-  const confirmBusy = cancelMut.isPending || deleteMut.isPending;
+  const reopenMut = useMutation({
+    mutationFn: (sessionId: string) => reopenWarehouseInventorySession(sessionId),
+    onSuccess: async (_v, sessionId) => {
+      setConfirm(null);
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: sessionsKey }),
+        qc.invalidateQueries({ queryKey: ["warehouse-inventory-session", sessionId] }),
+        qc.invalidateQueries({ queryKey: ["warehouse-inventory-session-items", sessionId] }),
+      ]);
+      onOpen(sessionId);
+    },
+    onError: (e) => toast.error(messageFromUnknownError(e)),
+  });
+
+  const confirmBusy = cancelMut.isPending || deleteMut.isPending || reopenMut.isPending;
 
   return (
     <div className="mt-3">
@@ -262,9 +278,11 @@ function WarehouseInventoryList({
             <SessionCard
               key={s.id}
               session={s}
+              reopenBlocked={openSession != null}
               onOpen={() => onOpen(s.id)}
               onCancel={() => setConfirm({ kind: "cancel", session: s })}
               onDelete={() => setConfirm({ kind: "delete", session: s })}
+              onReopen={() => setConfirm({ kind: "reopen", session: s })}
             />
           ))}
         </div>
@@ -272,20 +290,38 @@ function WarehouseInventoryList({
 
       <FsConfirmDialog
         open={confirm != null}
-        tone="danger"
+        tone={confirm?.kind === "reopen" ? "default" : "danger"}
         busy={confirmBusy}
-        title={confirm?.kind === "delete" ? "Supprimer l'inventaire" : "Annuler l'inventaire"}
+        title={
+          confirm?.kind === "delete"
+            ? "Supprimer l'inventaire"
+            : confirm?.kind === "reopen"
+              ? "Reprendre l'inventaire"
+              : "Annuler l'inventaire"
+        }
         message={
           confirm?.kind === "delete"
             ? "Cette session annulée sera définitivement supprimée. Cette action est irréversible."
-            : "La session sera annulée. Le stock du dépôt ne sera pas modifié."
+            : confirm?.kind === "reopen"
+              ? `La session repasse « En cours » et vous continuez le comptage des ${Math.max(
+                  0,
+                  (confirm.session.itemCount ?? 0) - (confirm.session.countedCount ?? 0),
+                )} produits restants.\n\nLe stock théorique du dépôt est remis à jour : les écarts déjà appliqués ne le seront pas une seconde fois.`
+              : "La session sera annulée. Le stock du dépôt ne sera pas modifié."
         }
-        confirmLabel={confirm?.kind === "delete" ? "Supprimer" : "Annuler la session"}
+        confirmLabel={
+          confirm?.kind === "delete"
+            ? "Supprimer"
+            : confirm?.kind === "reopen"
+              ? "Reprendre"
+              : "Annuler la session"
+        }
         cancelLabel="Retour"
         onCancel={() => (confirmBusy ? undefined : setConfirm(null))}
         onConfirm={() => {
           if (!confirm) return;
           if (confirm.kind === "delete") deleteMut.mutate(confirm.session.id);
+          else if (confirm.kind === "reopen") reopenMut.mutate(confirm.session.id);
           else cancelMut.mutate(confirm.session.id);
         }}
       />
@@ -295,14 +331,19 @@ function WarehouseInventoryList({
 
 function SessionCard({
   session,
+  reopenBlocked,
   onOpen,
   onCancel,
   onDelete,
+  onReopen,
 }: {
   session: WarehouseInventorySessionSummary;
+  /** Une autre session est ouverte : impossible d'en rouvrir une seconde. */
+  reopenBlocked: boolean;
   onOpen: () => void;
   onCancel: () => void;
   onDelete: () => void;
+  onReopen: () => void;
 }) {
   const meta = STATUS_META[session.status];
   const progress =
@@ -386,16 +427,34 @@ function SessionCard({
           >
             Annuler
           </button>
-        ) : session.status === "cancelled" ? (
-          <button
-            type="button"
-            onClick={onDelete}
-            className="inline-flex items-center gap-1 text-xs font-semibold text-red-600 hover:underline"
-          >
-            <MdDeleteOutline className="h-4 w-4" aria-hidden />
-            Supprimer
-          </button>
-        ) : null}
+        ) : (
+          <div className="flex shrink-0 items-center gap-3">
+            <button
+              type="button"
+              onClick={onReopen}
+              disabled={reopenBlocked}
+              title={
+                reopenBlocked
+                  ? "Un autre inventaire est en cours — terminez-le d'abord."
+                  : "Continuer le comptage de cet inventaire"
+              }
+              className="inline-flex items-center gap-1 text-xs font-bold text-fs-accent hover:underline disabled:cursor-not-allowed disabled:text-neutral-400 disabled:no-underline"
+            >
+              <MdReplay className="h-4 w-4" aria-hidden />
+              Reprendre
+            </button>
+            {session.status === "cancelled" ? (
+              <button
+                type="button"
+                onClick={onDelete}
+                className="inline-flex items-center gap-1 text-xs font-semibold text-red-600 hover:underline"
+              >
+                <MdDeleteOutline className="h-4 w-4" aria-hidden />
+                Supprimer
+              </button>
+            ) : null}
+          </div>
+        )}
       </div>
     </FsCard>
   );
@@ -451,7 +510,7 @@ function WarehouseInventoryCount({
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<CountFilter>("all");
   const [drafts, setDrafts] = useState<Record<string, string>>({});
-  const [confirm, setConfirm] = useState<"validate" | "cancel" | null>(null);
+  const [confirm, setConfirm] = useState<"validate" | "cancel" | "reopen" | null>(null);
 
   const items = useMemo(() => itemsQ.data ?? [], [itemsQ.data]);
 
@@ -517,6 +576,19 @@ function WarehouseInventoryCount({
     onError: (e) => toast.error(messageFromUnknownError(e)),
   });
 
+  const reopenMut = useMutation({
+    mutationFn: () => reopenWarehouseInventorySession(sessionId),
+    onSuccess: async () => {
+      toast.success("Inventaire repris — vous pouvez continuer le comptage.");
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: sessionsKey }),
+        qc.invalidateQueries({ queryKey: sessionKey }),
+        qc.invalidateQueries({ queryKey: itemsKey }),
+      ]);
+    },
+    onError: (e) => toast.error(messageFromUnknownError(e)),
+  });
+
   const cancelMut = useMutation({
     mutationFn: () => cancelWarehouseInventorySession(sessionId),
     onSuccess: async () => {
@@ -577,6 +649,32 @@ function WarehouseInventoryCount({
             </p>
           </div>
         </div>
+
+        {/* Session terminée : on peut la rouvrir pour finir le comptage. */}
+        {!isOpen ? (
+          <div className="mt-3 flex flex-col gap-2 rounded-lg border border-fs-accent/25 bg-fs-accent/[0.06] p-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-neutral-700">
+              {session.status === "closed"
+                ? `Inventaire validé. Il reste ${Math.max(0, stats.total - stats.counted)} produits non comptés — vous pouvez reprendre là où vous en étiez.`
+                : "Session annulée. Vous pouvez la reprendre pour continuer le comptage."}
+            </p>
+            <button
+              type="button"
+              disabled={reopenMut.isPending}
+              onClick={() => setConfirm("reopen")}
+              className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-lg bg-fs-accent px-5 text-sm font-bold text-white disabled:opacity-50"
+            >
+              <MdReplay className="h-5 w-5" aria-hidden />
+              {reopenMut.isPending ? "Reprise…" : "Reprendre le comptage"}
+            </button>
+          </div>
+        ) : (
+          /* Rassure sur l'enregistrement automatique : rien à cliquer pour continuer plus tard. */
+          <p className="mt-2 text-xs text-neutral-500">
+            Chaque quantité est enregistrée automatiquement. Vous pouvez quitter cette page et
+            reprendre plus tard — ne validez qu&apos;une fois le comptage terminé.
+          </p>
+        )}
 
         {/* Progression */}
         <div className="mt-3">
@@ -704,24 +802,43 @@ function WarehouseInventoryCount({
 
       <FsConfirmDialog
         open={confirm != null}
-        tone={confirm === "cancel" ? "danger" : "default"}
-        busy={validateMut.isPending || cancelMut.isPending}
-        title={confirm === "cancel" ? "Annuler l'inventaire" : "Valider l'inventaire"}
+        tone={confirm === "cancel" || (confirm === "validate" && stats.counted < stats.total) ? "danger" : "default"}
+        busy={validateMut.isPending || cancelMut.isPending || reopenMut.isPending}
+        title={
+          confirm === "cancel"
+            ? "Annuler l'inventaire"
+            : confirm === "reopen"
+              ? "Reprendre l'inventaire"
+              : "Valider l'inventaire"
+        }
         message={
           confirm === "cancel"
             ? "La session sera annulée. Le stock du dépôt ne sera pas modifié."
-            : stats.counted < stats.total
-              ? `${stats.counted}/${stats.total} produits comptés. Les non comptés resteront inchangés.\n\n${stats.varianceCount} écart(s) seront appliqués au stock du dépôt.`
-              : `${stats.varianceCount} écart(s) seront appliqués au stock du dépôt.`
+            : confirm === "reopen"
+              ? "La session repasse « En cours ».\n\nLe stock théorique du dépôt est remis à jour : les écarts déjà appliqués ne le seront pas une seconde fois."
+              : stats.counted < stats.total
+                ? `Attention : ${stats.total - stats.counted} produits sur ${stats.total} ne sont pas encore comptés et resteront inchangés.\n\n${stats.varianceCount} écart(s) seront appliqués au stock du dépôt, et la session sera clôturée.\n\nPour continuer plus tard sans clôturer, revenez simplement en arrière : votre comptage est déjà enregistré.`
+                : `${stats.varianceCount} écart(s) seront appliqués au stock du dépôt.`
         }
-        confirmLabel={confirm === "cancel" ? "Annuler la session" : "Valider"}
+        confirmLabel={
+          confirm === "cancel"
+            ? "Annuler la session"
+            : confirm === "reopen"
+              ? "Reprendre"
+              : stats.counted < stats.total
+                ? "Valider quand même"
+                : "Valider"
+        }
         cancelLabel="Retour"
         onCancel={() => {
-          if (!validateMut.isPending && !cancelMut.isPending) setConfirm(null);
+          if (!validateMut.isPending && !cancelMut.isPending && !reopenMut.isPending) setConfirm(null);
         }}
         onConfirm={() => {
           if (confirm === "cancel") cancelMut.mutate();
-          else if (confirm === "validate") validateMut.mutate();
+          else if (confirm === "reopen") {
+            setConfirm(null);
+            reopenMut.mutate();
+          } else if (confirm === "validate") validateMut.mutate();
         }}
       />
     </div>
