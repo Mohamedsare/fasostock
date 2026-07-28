@@ -52,6 +52,24 @@ export const queryKeys = {
   rentalPayments: (leaseId: string) => ["rental-payments", leaseId] as const,
   customers: (companyId: string) => ["customers", companyId] as const,
   suppliers: (companyId: string) => ["suppliers", companyId] as const,
+  /** Fournisseurs + situation de dette (RPC `supplier_payables_overview`). */
+  supplierAccounts: (companyId: string) => ["supplier-accounts", companyId] as const,
+  /** Dettes fournisseurs — `settled` inclut l'historique soldé. */
+  supplierInvoices: (params: {
+    companyId: string;
+    supplierId: string | null;
+    settled: boolean;
+  }) => ["supplier-invoices", params] as const,
+  /** Règlements versés aux fournisseurs. */
+  supplierPayments: (params: {
+    companyId: string;
+    supplierId: string | null;
+    from: string | null;
+    to: string | null;
+  }) => ["supplier-payments", params] as const,
+  /** Imputations règlement → dette, pour le relevé d'un fournisseur. */
+  supplierAllocations: (companyId: string, supplierId: string) =>
+    ["supplier-allocations", companyId, supplierId] as const,
   /** Dépenses sur une plage de dates (filtres catégorie/recherche côté client). */
   expenses: (params: { companyId: string; from: string; to: string }) =>
     ["expenses", params] as const,
