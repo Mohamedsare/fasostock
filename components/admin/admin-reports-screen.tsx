@@ -421,6 +421,8 @@ export function AdminReportsScreen() {
         stockValue: { totalValue: 0, productCount: 0 },
         lowStockCount: 0,
         stockReport: null,
+        // Vue plateforme : pas de comparatif période précédente (non utilisé par le PDF).
+        previousSummary: { totalAmount: 0, count: 0, itemsSold: 0, margin: 0 },
       };
 
       const blob = await fetchReportsPdfBlob(pdfData, {

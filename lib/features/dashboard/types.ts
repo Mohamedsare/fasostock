@@ -99,4 +99,64 @@ export type ReportsPageData = {
   stockValue: StockValue;
   lowStockCount: number;
   stockReport: StockReportData | null;
+  /** Même durée que la période courante, décalée en arrière — sert aux deltas « vs période précédente ». */
+  previousSummary: SalesSummary;
+};
+
+/** Ventilation par moyen de paiement (`sale_payments.method`). */
+export type PaymentBreakdown = {
+  method: string;
+  amount: number;
+  count: number;
+};
+
+/**
+ * Performance d'un membre de l'équipe (caissier / vendeur) sur la période.
+ * Le propriétaire y voit « qui a vendu combien », la marge apportée, les crédits
+ * accordés, les heures d'activité et les produits phares de chacun.
+ */
+export type CashierPerformance = {
+  userId: string;
+  displayName: string;
+  roleName: string;
+  /** Encaissé sur la période attribué à ce vendeur (remboursements de ses crédits inclus). */
+  revenue: number;
+  /** Marge reconnue au prorata de l'encaissé. */
+  margin: number;
+  marginRatePercent: number;
+  /** Nombre de ventes créées sur la période. */
+  salesCount: number;
+  itemsSold: number;
+  /** Panier moyen = facturé / nb ventes. */
+  ticketAverage: number;
+  /** Total facturé (Σ `sales.total`) sur ses ventes de la période. */
+  billedTotal: number;
+  /** Remises accordées (Σ `sales.discount`). */
+  discountTotal: number;
+  /** Reste dû sur ses ventes de la période (crédit accordé non remboursé). */
+  creditOutstanding: number;
+  /** Part de l'encaissé provenant du remboursement de crédits antérieurs. */
+  creditRepayments: number;
+  byDay: SalesByDay[];
+  /** 24 cases (heure locale) — profil d'activité. */
+  byHour: { hour: number; count: number; revenue: number }[];
+  payments: PaymentBreakdown[];
+  topProducts: TopProduct[];
+  /** Nombre de jours distincts avec au moins une vente. */
+  activeDays: number;
+  firstSaleAt: string | null;
+  lastSaleAt: string | null;
+  storeNames: string[];
+};
+
+export type TeamPerformanceData = {
+  cashiers: CashierPerformance[];
+  totals: {
+    revenue: number;
+    margin: number;
+    salesCount: number;
+    itemsSold: number;
+    billedTotal: number;
+    creditOutstanding: number;
+  };
 };

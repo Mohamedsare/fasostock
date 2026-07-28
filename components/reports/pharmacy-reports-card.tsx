@@ -122,7 +122,7 @@ export function PharmacyReportsCard({
           <p className="mb-1.5 text-xs font-semibold text-neutral-600">
             Lots les plus urgents
           </p>
-          <ul className="divide-y divide-black/[0.05] rounded-lg border border-black/[0.06]">
+          <ul className="divide-y divide-black/[0.05] rounded-[6px] border border-black/[0.06]">
             {expiry.items.map((it, i) => (
               <li
                 key={`${it.productId}-${i}`}
@@ -138,8 +138,8 @@ export function PharmacyReportsCard({
                 <span
                   className={
                     it.daysLeft < 0
-                      ? "shrink-0 rounded-md bg-red-100 px-1.5 py-0.5 font-semibold text-red-700"
-                      : "shrink-0 rounded-md bg-amber-100 px-1.5 py-0.5 font-semibold text-amber-700"
+                      ? "shrink-0 rounded-[4px] bg-red-100 px-1.5 py-0.5 font-semibold text-red-700"
+                      : "shrink-0 rounded-[4px] bg-amber-100 px-1.5 py-0.5 font-semibold text-amber-700"
                   }
                 >
                   {it.daysLeft < 0 ? "Périmé" : `J-${it.daysLeft}`}
@@ -173,7 +173,7 @@ function Tile({
         ? "border-amber-200 bg-amber-50 text-amber-700"
         : "border-fs-accent/30 bg-fs-accent/[0.06] text-fs-accent";
   return (
-    <div className={`rounded-lg border p-3 ${toneClass}`}>
+    <div className={`rounded-[6px] border p-3 ${toneClass}`}>
       <div className="flex items-center gap-1">
         {icon ? <MdReceiptLong className="h-4 w-4" aria-hidden /> : null}
         <p className="text-2xl font-bold leading-none">{value}</p>

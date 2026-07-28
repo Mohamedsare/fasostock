@@ -12,6 +12,7 @@ import {
   localDayStartIso,
 } from "@/lib/utils/local-day";
 import type {
+  CashierPerformance,
   CategorySales,
   DashboardData,
   ExpensesSummary,
@@ -23,6 +24,7 @@ import type {
   StockReportData,
   StockValue,
   StockWatchSample,
+  TeamPerformanceData,
   TopProduct,
 } from "@/lib/features/dashboard/types";
 import { countLowStockAlerts } from "@/lib/features/inventory/stock-alert-count";
@@ -993,6 +995,17 @@ export async function fetchReportsPageData(params: {
 
   const { lowStockCount } = lowStock;
 
+  const previousSummary = await computePreviousReportsSummary({
+    supabase,
+    companyId,
+    storeId,
+    fromDate,
+    toDate,
+    cashierUserId,
+    productId,
+    categoryId,
+  });
+
   return {
     salesSummary,
     ticketAverage,
@@ -1005,7 +1018,478 @@ export async function fetchReportsPageData(params: {
     stockValue,
     lowStockCount,
     stockReport,
+    previousSummary,
   };
+}
+
+/**
+ * Synthèse de la période précédente de même durée — sert uniquement aux deltas
+ * « vs période précédente » affichés sur les cartes KPI. Même logique de
+ * reconnaissance (caisse hors filtre produit/catégorie, prorata sinon).
+ */
+async function computePreviousReportsSummary(params: {
+  supabase: ReturnType<typeof createClient>;
+  companyId: string;
+  storeId: string | null;
+  fromDate: string;
+  toDate: string;
+  cashierUserId: string | null;
+  productId: string | null;
+  categoryId: string | null;
+}): Promise<SalesSummary> {
+  const {
+    supabase,
+    companyId,
+    storeId,
+    fromDate,
+    toDate,
+    cashierUserId,
+    productId,
+    categoryId,
+  } = params;
+  const prev = getPreviousComparableRange({ from: fromDate, to: toDate });
+  const prevSaleIds = await fetchSalesIdsInRange(
+    supabase,
+    companyId,
+    storeId,
+    prev.from,
+    prev.to,
+    cashierUserId,
+  );
+  const prevItems = filterSaleItems(
+    await fetchSaleItemsForSaleIds(supabase, prevSaleIds),
+    productId,
+    categoryId,
+  );
+  const prevMatched = [...new Set(prevItems.map((i) => i.sale_id))];
+  const prevRatios = await fetchSaleRecognitionRatios(supabase, prevMatched);
+  const base = await computeSalesSummaryFiltered(
+    supabase,
+    prevMatched,
+    prevItems,
+    prevRatios,
+  );
+  if (productId || categoryId) return base;
+  const cash = await fetchCashRecognizedInRange(
+    supabase,
+    companyId,
+    storeId,
+    prev.from,
+    prev.to,
+    cashierUserId,
+  );
+  return { ...base, totalAmount: cash.revenue, margin: cash.margin };
+}
+
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  cash: "Espèces",
+  mobile_money: "Mobile Money",
+  card: "Carte",
+  transfer: "Virement",
+  other: "Crédit / autre",
+};
+
+export function paymentMethodLabel(method: string): string {
+  return PAYMENT_METHOD_LABELS[method] ?? method;
+}
+
+/**
+ * Performance par membre de l'équipe — « qui a vendu combien ».
+ *
+ * Deux angles complémentaires, volontairement distincts :
+ *  • activité (nb ventes, articles, remises, crédit accordé, heures) = ventes
+ *    CRÉÉES sur la période par la personne ;
+ *  • recette (CA encaissé, marge) = argent RÉELLEMENT encaissé sur la période sur
+ *    ses ventes, remboursements de ses anciens crédits inclus — même logique
+ *    caisse que la carte « CA encaissé » de la page.
+ */
+export async function fetchTeamPerformance(params: {
+  companyId: string;
+  storeId: string | null;
+  fromDate: string;
+  toDate: string;
+}): Promise<TeamPerformanceData> {
+  const supabase = createClient();
+  const { companyId, storeId, fromDate, toDate } = params;
+
+  // 1) Ventes créées sur la période (activité).
+  let salesQ = supabase
+    .from("sales")
+    .select("id, created_at, total, discount, created_by, store_id")
+    .eq("company_id", companyId)
+    .eq("status", "completed")
+    .gte("created_at", localDayStartIso(fromDate))
+    .lte("created_at", localDayEndIso(toDate));
+  if (storeId) salesQ = salesQ.eq("store_id", storeId);
+  const { data: salesRaw, error: salesErr } = await salesQ;
+  if (salesErr) throw salesErr;
+  const periodSales = ((salesRaw ?? []) as Array<{
+    id: string;
+    created_at: string;
+    total?: number;
+    discount?: number;
+    created_by?: string;
+    store_id?: string;
+  }>).filter((s) => Boolean(s.created_by));
+
+  const periodSaleIds = periodSales.map((s) => s.id);
+  const sellerBySaleId = new Map<string, string>();
+  for (const s of periodSales) sellerBySaleId.set(s.id, String(s.created_by));
+
+  // 2) Encaissements de la période (recette) — peuvent porter sur des ventes
+  //    antérieures (remboursement de crédit) : on remonte à leur vendeur.
+  const { data: payRaw, error: payErr } = await supabase
+    .from("sale_payments")
+    .select("sale_id, amount, method, created_at")
+    .neq("method", "other")
+    .gte("created_at", localDayStartIso(fromDate))
+    .lte("created_at", localDayEndIso(toDate));
+  if (payErr) throw payErr;
+  const rangePayments = ((payRaw ?? []) as Array<{
+    sale_id?: string;
+    amount?: number;
+    method?: string;
+    created_at?: string;
+  }>).filter((p) => p.sale_id);
+
+  const externalSaleIds = [
+    ...new Set(
+      rangePayments
+        .map((p) => String(p.sale_id))
+        .filter((id) => !sellerBySaleId.has(id)),
+    ),
+  ];
+  const externalSaleMeta = new Map<
+    string,
+    { total: number; sellerId: string; createdMs: number }
+  >();
+  for (let i = 0; i < externalSaleIds.length; i += CHUNK) {
+    const chunk = externalSaleIds.slice(i, i + CHUNK);
+    let q = supabase
+      .from("sales")
+      .select("id, total, created_by, created_at, store_id")
+      .in("id", chunk)
+      .eq("company_id", companyId)
+      .eq("status", "completed");
+    if (storeId) q = q.eq("store_id", storeId);
+    const { data, error } = await q;
+    if (error) throw error;
+    for (const row of (data ?? []) as Array<{
+      id?: string;
+      total?: number;
+      created_by?: string;
+      created_at?: string;
+    }>) {
+      if (!row.id || !row.created_by) continue;
+      externalSaleMeta.set(row.id, {
+        total: Number(row.total ?? 0),
+        sellerId: String(row.created_by),
+        createdMs: row.created_at ? Date.parse(row.created_at) : 0,
+      });
+    }
+  }
+
+  // 3) Lignes de vente de la période → articles, marge, top produits, coût.
+  const items = await fetchSaleItemsForSaleIds(supabase, periodSaleIds);
+
+  // Coût des ventes concernées par un encaissement externe (marge des remboursements).
+  const externalCost = new Map<string, number>();
+  const externalIds = [...externalSaleMeta.keys()];
+  for (let i = 0; i < externalIds.length; i += CHUNK) {
+    const chunk = externalIds.slice(i, i + CHUNK);
+    const { data, error } = await supabase
+      .from("sale_items")
+      .select("sale_id, quantity, product:products(purchase_price)")
+      .in("sale_id", chunk);
+    if (error) throw error;
+    for (const row of (data ?? []) as Array<{
+      sale_id?: string;
+      quantity?: number;
+      product?: { purchase_price?: number } | null;
+    }>) {
+      if (!row.sale_id) continue;
+      externalCost.set(
+        row.sale_id,
+        (externalCost.get(row.sale_id) ?? 0) +
+          Number(row.product?.purchase_price ?? 0) * Number(row.quantity ?? 0),
+      );
+    }
+  }
+
+  // 4) Encaissé total par vente de la période → crédit restant dû.
+  const paidByPeriodSale = new Map<string, number>();
+  for (let i = 0; i < periodSaleIds.length; i += CHUNK) {
+    const chunk = periodSaleIds.slice(i, i + CHUNK);
+    const { data, error } = await supabase
+      .from("sale_payments")
+      .select("sale_id, method, amount")
+      .in("sale_id", chunk);
+    if (error) throw error;
+    for (const row of (data ?? []) as Array<{
+      sale_id?: string;
+      method?: string;
+      amount?: number;
+    }>) {
+      if (!row.sale_id || row.method === "other") continue;
+      paidByPeriodSale.set(
+        row.sale_id,
+        (paidByPeriodSale.get(row.sale_id) ?? 0) + Number(row.amount ?? 0),
+      );
+    }
+  }
+
+  const storeNameById = new Map<string, string>();
+  {
+    const { data } = await supabase
+      .from("stores")
+      .select("id, name")
+      .eq("company_id", companyId);
+    for (const s of (data ?? []) as Array<{ id?: string; name?: string }>) {
+      if (s.id) storeNameById.set(s.id, String(s.name ?? "—"));
+    }
+  }
+
+  // 5) Agrégation par vendeur.
+  type Acc = {
+    revenue: number;
+    margin: number;
+    salesCount: number;
+    itemsSold: number;
+    billedTotal: number;
+    discountTotal: number;
+    creditOutstanding: number;
+    creditRepayments: number;
+    byDay: Map<string, { total: number; count: number }>;
+    byHour: Map<number, { count: number; revenue: number }>;
+    payments: Map<string, { amount: number; count: number }>;
+    products: Map<string, { name: string; qty: number; revenue: number; cost: number }>;
+    days: Set<string>;
+    stores: Set<string>;
+    firstMs: number | null;
+    lastMs: number | null;
+  };
+  const acc = new Map<string, Acc>();
+  const ensure = (userId: string): Acc => {
+    let a = acc.get(userId);
+    if (!a) {
+      a = {
+        revenue: 0,
+        margin: 0,
+        salesCount: 0,
+        itemsSold: 0,
+        billedTotal: 0,
+        discountTotal: 0,
+        creditOutstanding: 0,
+        creditRepayments: 0,
+        byDay: new Map(),
+        byHour: new Map(),
+        payments: new Map(),
+        products: new Map(),
+        days: new Set(),
+        stores: new Set(),
+        firstMs: null,
+        lastMs: null,
+      };
+      acc.set(userId, a);
+    }
+    return a;
+  };
+
+  const totalBySaleId = new Map<string, number>();
+  const createdMsBySaleId = new Map<string, number>();
+  for (const s of periodSales) {
+    const sellerId = String(s.created_by);
+    const a = ensure(sellerId);
+    const total = Number(s.total ?? 0);
+    totalBySaleId.set(s.id, total);
+    a.salesCount += 1;
+    a.billedTotal += total;
+    a.discountTotal += Number(s.discount ?? 0);
+    a.creditOutstanding += Math.max(0, total - (paidByPeriodSale.get(s.id) ?? 0));
+    const day = s.created_at ? localDateFromIso(s.created_at) : "";
+    if (day) {
+      a.days.add(day);
+      const cur = a.byDay.get(day) ?? { total: 0, count: 0 };
+      a.byDay.set(day, { total: cur.total, count: cur.count + 1 });
+    }
+    const ms = s.created_at ? Date.parse(s.created_at) : NaN;
+    if (Number.isFinite(ms)) {
+      createdMsBySaleId.set(s.id, ms);
+      a.firstMs = a.firstMs === null ? ms : Math.min(a.firstMs, ms);
+      a.lastMs = a.lastMs === null ? ms : Math.max(a.lastMs, ms);
+      const hour = new Date(ms).getHours();
+      const h = a.byHour.get(hour) ?? { count: 0, revenue: 0 };
+      a.byHour.set(hour, { count: h.count + 1, revenue: h.revenue + total });
+    }
+    if (s.store_id) a.stores.add(storeNameById.get(s.store_id) ?? "—");
+  }
+
+  // Coût par vente de la période (pour le ratio de marge) + top produits.
+  const costBySaleId = new Map<string, number>();
+  for (const row of items) {
+    const sellerId = sellerBySaleId.get(row.sale_id);
+    const qty = Number(row.quantity ?? 0);
+    const lineTotal = Number(row.total ?? 0);
+    const cost = Number(row.product?.purchase_price ?? 0) * qty;
+    costBySaleId.set(row.sale_id, (costBySaleId.get(row.sale_id) ?? 0) + cost);
+    if (!sellerId) continue;
+    const a = ensure(sellerId);
+    a.itemsSold += qty;
+    const pid = row.product_id;
+    if (!pid) continue;
+    const cur =
+      a.products.get(pid) ?? {
+        name: row.product?.name ?? "—",
+        qty: 0,
+        revenue: 0,
+        cost: 0,
+      };
+    a.products.set(pid, {
+      name: cur.name,
+      qty: cur.qty + qty,
+      revenue: cur.revenue + lineTotal,
+      cost: cur.cost + cost,
+    });
+  }
+
+  const REPAYMENT_GAP_MS = 10_000;
+  for (const p of rangePayments) {
+    const saleId = String(p.sale_id);
+    const amount = Number(p.amount ?? 0);
+    const method = String(p.method ?? "cash");
+    let sellerId: string | undefined;
+    let total = 0;
+    let cost = 0;
+    let saleMs = 0;
+    if (sellerBySaleId.has(saleId)) {
+      sellerId = sellerBySaleId.get(saleId);
+      total = totalBySaleId.get(saleId) ?? 0;
+      cost = costBySaleId.get(saleId) ?? 0;
+      saleMs = createdMsBySaleId.get(saleId) ?? 0;
+    } else {
+      const meta = externalSaleMeta.get(saleId);
+      if (!meta) continue;
+      sellerId = meta.sellerId;
+      total = meta.total;
+      cost = externalCost.get(saleId) ?? 0;
+      saleMs = meta.createdMs;
+    }
+    if (!sellerId) continue;
+    const a = ensure(sellerId);
+    const marginRatio =
+      total > 0 ? Math.max(0, Math.min(1, (total - cost) / total)) : 0;
+    a.revenue += amount;
+    a.margin += amount * marginRatio;
+    const pm = a.payments.get(method) ?? { amount: 0, count: 0 };
+    a.payments.set(method, { amount: pm.amount + amount, count: pm.count + 1 });
+    const payMs = p.created_at ? Date.parse(p.created_at) : NaN;
+    if (saleMs > 0 && Number.isFinite(payMs) && payMs - saleMs > REPAYMENT_GAP_MS) {
+      a.creditRepayments += amount;
+    }
+    const day = p.created_at ? localDateFromIso(p.created_at) : "";
+    if (day) {
+      const cur = a.byDay.get(day) ?? { total: 0, count: 0 };
+      a.byDay.set(day, { total: cur.total + amount, count: cur.count });
+    }
+  }
+
+  // 6) Identités (nom + rôle).
+  const userIds = [...acc.keys()];
+  const nameById = new Map<string, string>();
+  const roleById = new Map<string, string>();
+  if (userIds.length > 0) {
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("id, full_name")
+      .in("id", userIds);
+    for (const p of (profiles ?? []) as Array<{ id?: string; full_name?: string | null }>) {
+      if (p.id && p.full_name?.trim()) nameById.set(p.id, p.full_name.trim());
+    }
+    const { data: roles } = await supabase
+      .from("user_company_roles")
+      .select("user_id, role:roles(name, slug)")
+      .eq("company_id", companyId)
+      .in("user_id", userIds);
+    for (const r of (roles ?? []) as Array<{
+      user_id?: string;
+      role?: { name?: string; slug?: string } | { name?: string; slug?: string }[] | null;
+    }>) {
+      const raw = Array.isArray(r.role) ? r.role[0] : r.role;
+      if (r.user_id && raw) {
+        roleById.set(r.user_id, String(raw.name ?? raw.slug ?? "Utilisateur"));
+      }
+    }
+  }
+
+  const cashiers = userIds.map((userId) => {
+    const a = acc.get(userId)!;
+    const byDay = [...a.byDay.entries()]
+      .map(([date, v]) => ({ date, total: v.total, count: v.count }))
+      .sort((x, y) => x.date.localeCompare(y.date));
+    const byHour = Array.from({ length: 24 }, (_, hour) => {
+      const v = a.byHour.get(hour);
+      return { hour, count: v?.count ?? 0, revenue: v?.revenue ?? 0 };
+    });
+    const payments = [...a.payments.entries()]
+      .map(([method, v]) => ({ method, amount: v.amount, count: v.count }))
+      .sort((x, y) => y.amount - x.amount);
+    const topProducts = [...a.products.entries()]
+      .map(([productId, v]) => ({
+        productId,
+        productName: v.name,
+        quantitySold: v.qty,
+        revenue: v.revenue,
+        margin: v.revenue - v.cost,
+      }))
+      .sort((x, y) => y.revenue - x.revenue)
+      .slice(0, 5);
+    return {
+      userId,
+      displayName: nameById.get(userId) ?? `Utilisateur ${userId.slice(0, 6)}`,
+      roleName: roleById.get(userId) ?? "Utilisateur",
+      revenue: a.revenue,
+      margin: a.margin,
+      marginRatePercent: a.revenue > 0 ? (a.margin / a.revenue) * 100 : 0,
+      salesCount: a.salesCount,
+      itemsSold: a.itemsSold,
+      ticketAverage: a.salesCount > 0 ? a.billedTotal / a.salesCount : 0,
+      billedTotal: a.billedTotal,
+      discountTotal: a.discountTotal,
+      creditOutstanding: a.creditOutstanding,
+      creditRepayments: a.creditRepayments,
+      byDay,
+      byHour,
+      payments,
+      topProducts,
+      activeDays: a.days.size,
+      firstSaleAt: a.firstMs === null ? null : new Date(a.firstMs).toISOString(),
+      lastSaleAt: a.lastMs === null ? null : new Date(a.lastMs).toISOString(),
+      storeNames: [...a.stores],
+    } satisfies CashierPerformance;
+  });
+
+  cashiers.sort((x, y) => y.revenue - x.revenue || y.billedTotal - x.billedTotal);
+
+  const totals = cashiers.reduce(
+    (t, c) => ({
+      revenue: t.revenue + c.revenue,
+      margin: t.margin + c.margin,
+      salesCount: t.salesCount + c.salesCount,
+      itemsSold: t.itemsSold + c.itemsSold,
+      billedTotal: t.billedTotal + c.billedTotal,
+      creditOutstanding: t.creditOutstanding + c.creditOutstanding,
+    }),
+    {
+      revenue: 0,
+      margin: 0,
+      salesCount: 0,
+      itemsSold: 0,
+      billedTotal: 0,
+      creditOutstanding: 0,
+    },
+  );
+
+  return { cashiers, totals };
 }
 
 export async function fetchDashboardData(params: {

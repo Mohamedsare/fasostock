@@ -126,6 +126,13 @@ export const queryKeys = {
     productId: string | null;
     categoryId: string | null;
   }) => ["reports", params] as const,
+  /** Performance par membre de l'équipe (page Rapports, onglet Équipe). */
+  reportsTeam: (params: {
+    companyId: string;
+    storeId: string | null;
+    fromDate: string;
+    toDate: string;
+  }) => ["reports-team", params] as const,
   /** Liste complète par entreprise — filtres appliqués côté client (aligné `TransfersPage` Flutter). */
   stockTransfers: (companyId: string) => ["stock-transfers", companyId] as const,
   stockTransferDetail: (id: string) => ["stock-transfer", id] as const,
