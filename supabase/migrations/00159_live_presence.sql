@@ -5,8 +5,14 @@
 -- matière première de la prospection commerciale : « 14 sessions à Bobo-Dioulasso cette
 -- semaine, dont 3 entreprises qui ne sont pas encore clientes ».
 --
+-- Sont suivis **les visiteurs anonymes comme les utilisateurs connectés** : quelqu'un qui lit la
+-- page d'accueil ou la page Offre sans compte est justement le prospect à rappeler. Une session
+-- anonyme qui se connecte garde la même ligne : on voit le parcours « visite → inscription ».
+--
 -- Modèle — volontairement une seule table, écrasée par battement de cœur :
---   1 ligne = 1 **session d'onglet/appareil** (`user_id` + `session_id`).
+--   1 ligne = 1 **session d'onglet** (`session_id`, unique). `user_id` NULL = anonyme.
+--   `visitor_id` (localStorage) survit à la fermeture du navigateur : il distingue le nouveau
+--   venu du visiteur qui revient pour la troisième fois.
 --   Le client envoie un « heartbeat » toutes les ~25 s via /api/presence/heartbeat ;
 --   la route serveur y ajoute IP + ville (en-têtes de l'hébergeur, non falsifiables côté
 --   navigateur) puis appelle `record_presence`.
@@ -25,9 +31,12 @@
 -- ─────────────────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.user_presence (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  /** Identifiant d'onglet/appareil (sessionStorage) : un même compte peut être ouvert deux fois. */
+  /** NULL = visiteur anonyme (site public). Renseigné dès qu'il se connecte, sur la même ligne. */
+  user_id uuid NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  /** Identifiant d'onglet (sessionStorage) : clé d'unicité de la session. */
   session_id text NOT NULL,
+  /** Identifiant de navigateur (localStorage), persistant : reconnaît un visiteur qui revient. */
+  visitor_id text NULL,
   company_id uuid NULL REFERENCES public.companies(id) ON DELETE SET NULL,
   store_id uuid NULL REFERENCES public.stores(id) ON DELETE SET NULL,
 
@@ -40,6 +49,8 @@ CREATE TABLE IF NOT EXISTS public.user_presence (
   pathname text NULL,
   activity text NULL,
   page_views integer NOT NULL DEFAULT 1,
+  /** D'où vient le visiteur (Google, Facebook, lien direct…) — matière première de la prospection. */
+  referrer text NULL,
 
   /** Origine — renseignée côté serveur uniquement. */
   ip text NULL,
@@ -53,7 +64,9 @@ CREATE TABLE IF NOT EXISTS public.user_presence (
   device_kind text NULL CHECK (device_kind IN ('mobile', 'tablet', 'desktop')),
   client_kind text NOT NULL DEFAULT 'web',
 
-  CONSTRAINT user_presence_session_unique UNIQUE (user_id, session_id)
+  -- Unicité sur l'onglet seul : une session anonyme (`user_id` NULL) doit pouvoir être
+  -- retrouvée puis rattachée à un compte lors de la connexion, sans créer de doublon.
+  CONSTRAINT user_presence_session_unique UNIQUE (session_id)
 );
 
 COMMENT ON TABLE public.user_presence IS
@@ -71,6 +84,11 @@ CREATE INDEX IF NOT EXISTS idx_user_presence_company
   ON public.user_presence(company_id);
 CREATE INDEX IF NOT EXISTS idx_user_presence_city
   ON public.user_presence(city);
+CREATE INDEX IF NOT EXISTS idx_user_presence_visitor
+  ON public.user_presence(visitor_id);
+/** Garde-fou anti-abus sur l'endpoint public : compter vite les sessions anonymes d'une IP. */
+CREATE INDEX IF NOT EXISTS idx_user_presence_anon_ip
+  ON public.user_presence(ip, first_seen_at DESC) WHERE user_id IS NULL;
 
 ALTER TABLE public.user_presence ENABLE ROW LEVEL SECURITY;
 
@@ -86,8 +104,11 @@ USING (public.is_super_admin());
 -- 2. Battement de cœur (appelé par la route API avec la clé service_role)
 -- ─────────────────────────────────────────────────────────────────────────────
 CREATE OR REPLACE FUNCTION public.record_presence(
+  /** NULL = visiteur anonyme du site public. */
   p_user_id uuid,
   p_session_id text,
+  p_visitor_id text DEFAULT NULL,
+  p_referrer text DEFAULT NULL,
   p_pathname text DEFAULT NULL,
   p_activity text DEFAULT NULL,
   p_company_id uuid DEFAULT NULL,
@@ -108,21 +129,56 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
+DECLARE
+  v_session   text := btrim(COALESCE(p_session_id, ''));
+  v_ip        text := left(NULLIF(btrim(p_ip), ''), 60);
+  v_company   uuid := p_company_id;
+  v_anon_seen integer;
 BEGIN
-  IF p_user_id IS NULL OR p_session_id IS NULL OR btrim(p_session_id) = '' THEN
+  IF v_session = '' THEN
     RETURN;
   END IF;
 
+  /**
+   * Endpoint public (visiteurs anonymes) : plafonner les sessions créées par IP et par heure,
+   * sinon n'importe qui peut gonfler la table en changeant d'identifiant d'onglet.
+   * Au-delà du plafond, on continue de rafraîchir les sessions existantes, sans en créer.
+   */
+  IF p_user_id IS NULL THEN
+    SELECT count(*) INTO v_anon_seen
+    FROM public.user_presence
+    WHERE user_id IS NULL
+      AND ip IS NOT DISTINCT FROM v_ip
+      AND first_seen_at > now() - interval '1 hour';
+
+    IF v_anon_seen > 40
+       AND NOT EXISTS (
+         SELECT 1 FROM public.user_presence WHERE session_id = v_session
+       ) THEN
+      RETURN;
+    END IF;
+  END IF;
+
+  /** Entreprise non transmise par le client : la déduire du compte (source de vérité). */
+  IF v_company IS NULL AND p_user_id IS NOT NULL THEN
+    SELECT ucr.company_id INTO v_company
+    FROM public.user_company_roles ucr
+    WHERE ucr.user_id = p_user_id AND ucr.is_active
+    ORDER BY ucr.company_id
+    LIMIT 1;
+  END IF;
+
   INSERT INTO public.user_presence AS up (
-    user_id, session_id, company_id, store_id,
-    pathname, activity,
+    user_id, session_id, visitor_id, company_id, store_id,
+    pathname, activity, referrer,
     ip, city, region, country, latitude, longitude,
     user_agent, device_kind, client_kind,
     last_seen_at, ended_at
   ) VALUES (
-    p_user_id, btrim(p_session_id), p_company_id, p_store_id,
+    p_user_id, v_session, left(NULLIF(btrim(p_visitor_id), ''), 100), v_company, p_store_id,
     left(NULLIF(btrim(p_pathname), ''), 300), left(NULLIF(btrim(p_activity), ''), 120),
-    left(NULLIF(btrim(p_ip), ''), 60), NULLIF(btrim(p_city), ''), NULLIF(btrim(p_region), ''),
+    left(NULLIF(btrim(p_referrer), ''), 300),
+    v_ip, NULLIF(btrim(p_city), ''), NULLIF(btrim(p_region), ''),
     NULLIF(btrim(p_country), ''), p_latitude, p_longitude,
     left(NULLIF(btrim(p_user_agent), ''), 400),
     CASE WHEN p_device_kind IN ('mobile', 'tablet', 'desktop') THEN p_device_kind END,
@@ -130,7 +186,7 @@ BEGIN
     now(),
     CASE WHEN p_leaving THEN now() END
   )
-  ON CONFLICT (user_id, session_id) DO UPDATE SET
+  ON CONFLICT (session_id) DO UPDATE SET
     last_seen_at = now(),
     ended_at     = CASE WHEN p_leaving THEN now() ELSE NULL END,
     -- Une page vue de plus seulement si l'écran a changé (le simple battement n'en est pas une).
@@ -142,6 +198,11 @@ BEGIN
                      END,
     pathname     = COALESCE(EXCLUDED.pathname, up.pathname),
     activity     = COALESCE(EXCLUDED.activity, up.activity),
+    /** Le visiteur anonyme vient de se connecter : la session lui est rattachée sans doublon. */
+    user_id      = COALESCE(EXCLUDED.user_id, up.user_id),
+    visitor_id   = COALESCE(EXCLUDED.visitor_id, up.visitor_id),
+    /** Le référent n'a de sens qu'à l'arrivée : on ne l'écrase jamais. */
+    referrer     = COALESCE(up.referrer, EXCLUDED.referrer),
     company_id   = COALESCE(EXCLUDED.company_id, up.company_id),
     store_id     = COALESCE(EXCLUDED.store_id, up.store_id),
     ip           = COALESCE(EXCLUDED.ip, up.ip),
@@ -161,11 +222,11 @@ END;
 $$;
 
 REVOKE ALL ON FUNCTION public.record_presence(
-  uuid, text, text, text, uuid, uuid, text, text, text, text,
+  uuid, text, text, text, text, text, uuid, uuid, text, text, text, text,
   numeric, numeric, text, text, text, boolean
 ) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.record_presence(
-  uuid, text, text, text, uuid, uuid, text, text, text, text,
+  uuid, text, text, text, text, text, uuid, uuid, text, text, text, text,
   numeric, numeric, text, text, text, boolean
 ) TO service_role;
 
@@ -179,6 +240,10 @@ CREATE OR REPLACE FUNCTION public.admin_live_presence(
 RETURNS TABLE (
   id uuid,
   user_id uuid,
+  is_anonymous boolean,
+  visitor_id text,
+  visit_count integer,
+  referrer text,
   full_name text,
   email text,
   company_id uuid,
@@ -214,8 +279,21 @@ BEGIN
   SELECT
     up.id,
     up.user_id,
-    COALESCE(NULLIF(btrim(p.full_name), ''), split_part(u.email, '@', 1)) AS full_name,
-    u.email::text,
+    (up.user_id IS NULL) AS is_anonymous,
+    up.visitor_id,
+    /** Nombre de visites déjà faites par ce navigateur — un « revenant » est un signal d'achat. */
+    (
+      SELECT COUNT(DISTINCT prev.session_id)::integer
+      FROM public.user_presence prev
+      WHERE up.visitor_id IS NOT NULL AND prev.visitor_id = up.visitor_id
+    ) AS visit_count,
+    up.referrer,
+    COALESCE(
+      NULLIF(btrim(p.full_name), ''),
+      NULLIF(split_part(COALESCE(u.email, ''), '@', 1), ''),
+      'Visiteur anonyme'
+    ) AS full_name,
+    COALESCE(u.email, '')::text AS email,
     up.company_id,
     c.name AS company_name,
     up.store_id,
@@ -261,7 +339,9 @@ RETURNS TABLE (
   users_count integer,
   companies_count integer,
   sessions_count integer,
-  last_seen_at timestamptz
+  last_seen_at timestamptz,
+  /** Navigateurs distincts jamais connectés : le vivier de prospection de cette ville. */
+  anonymous_visitors_count integer
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -282,12 +362,17 @@ BEGIN
     COUNT(DISTINCT up.user_id)::integer    AS users_count,
     COUNT(DISTINCT up.company_id)::integer AS companies_count,
     COUNT(*)::integer                      AS sessions_count,
-    MAX(up.last_seen_at)                   AS last_seen_at
+    MAX(up.last_seen_at)                   AS last_seen_at,
+    COUNT(DISTINCT up.visitor_id) FILTER (WHERE up.user_id IS NULL)::integer
+      AS anonymous_visitors_count
   FROM public.user_presence up
   WHERE up.last_seen_at > now() - make_interval(days => v_days)
   GROUP BY COALESCE(up.city, 'Ville inconnue')
-  -- Tri positionnel : `users_count` désignerait aussi le paramètre de sortie (ambiguïté plpgsql).
-  ORDER BY 4 DESC, 6 DESC;
+  -- Expressions répétées et non les alias : un alias serait ambigu avec le paramètre de sortie.
+  ORDER BY
+    (COUNT(DISTINCT up.user_id)
+     + COUNT(DISTINCT up.visitor_id) FILTER (WHERE up.user_id IS NULL)) DESC,
+    COUNT(*) DESC;
 END;
 $$;
 

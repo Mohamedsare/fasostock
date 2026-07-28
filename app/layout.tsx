@@ -1,4 +1,5 @@
 import { AppProviders } from "@/components/providers/app-providers";
+import { PresenceTracker } from "@/components/presence/presence-tracker";
 import { RegisterServiceWorker } from "@/components/pwa/register-sw";
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
@@ -148,6 +149,8 @@ export default function RootLayout({
       <body className="min-h-dvh bg-fs-surface font-sans text-fs-text antialiased">
         <AppProviders>
           {children}
+          {/* Présence temps réel (page Admin › Live) — visiteurs anonymes compris. */}
+          <PresenceTracker />
           <RegisterServiceWorker />
         </AppProviders>
       </body>

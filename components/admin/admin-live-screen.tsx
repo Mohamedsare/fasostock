@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import {
   MdComputer,
   MdLocationCity,
+  MdPersonOutline,
   MdPhoneIphone,
   MdRefresh,
   MdTabletMac,
@@ -42,18 +43,19 @@ function Kpi({
   value,
   hint,
   accent = false,
+  tone,
 }: {
   label: string;
   value: string | number;
   hint?: string;
   accent?: boolean;
+  tone?: "sky";
 }) {
+  const color = tone === "sky" ? "text-sky-600" : accent ? "text-emerald-600" : "text-slate-900";
   return (
     <AdminCard>
       <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</p>
-      <p
-        className={`mt-1 text-3xl font-bold tabular-nums ${accent ? "text-emerald-600" : "text-slate-900"}`}
-      >
+      <p className={`mt-1 text-3xl font-bold tabular-nums ${color}`}>
         {value}
       </p>
       {hint ? <p className="mt-1 text-xs text-slate-500">{hint}</p> : null}
@@ -71,21 +73,51 @@ function LiveDot() {
   );
 }
 
+/** Source de trafic lisible : « google.com » plutôt qu'une URL complète. */
+function referrerHost(referrer: string | null): string | null {
+  if (!referrer) return null;
+  try {
+    return new URL(referrer).host.replace(/^www\./, "");
+  } catch {
+    return referrer.slice(0, 40);
+  }
+}
+
 function SessionRow({ s }: { s: LivePresenceSession }) {
+  const source = referrerHost(s.referrer);
   return (
     <tr className="border-t border-slate-100 align-top">
       <td className="py-2.5 pr-3">
         <div className="flex items-center gap-2">
           {s.isOnline ? <LiveDot /> : <span className="h-2.5 w-2.5 rounded-full bg-slate-300" />}
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-slate-900">{s.fullName}</p>
-            <p className="truncate text-xs text-slate-500">{s.email}</p>
+            <p className="flex items-center gap-1.5 truncate text-sm font-semibold text-slate-900">
+              {s.isAnonymous ? (
+                <MdPersonOutline className="h-4 w-4 shrink-0 text-sky-500" aria-hidden />
+              ) : null}
+              <span className="truncate">{s.fullName}</span>
+            </p>
+            <p className="truncate text-xs text-slate-500">
+              {s.isAnonymous
+                ? s.visitCount > 1
+                  ? `Visite n° ${s.visitCount}${source ? ` · via ${source}` : ""}`
+                  : `Première visite${source ? ` · via ${source}` : ""}`
+                : s.email}
+            </p>
           </div>
         </div>
       </td>
       <td className="py-2.5 pr-3">
-        <p className="truncate text-sm text-slate-800">{s.companyName ?? "—"}</p>
-        {s.storeName ? <p className="truncate text-xs text-slate-500">{s.storeName}</p> : null}
+        {s.isAnonymous ? (
+          <span className="inline-flex rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-sky-800 ring-1 ring-sky-200">
+            Prospect
+          </span>
+        ) : (
+          <>
+            <p className="truncate text-sm text-slate-800">{s.companyName ?? "—"}</p>
+            {s.storeName ? <p className="truncate text-xs text-slate-500">{s.storeName}</p> : null}
+          </>
+        )}
       </td>
       <td className="py-2.5 pr-3">
         <p className="truncate text-sm font-medium text-slate-800">{s.activity ?? "—"}</p>
@@ -112,7 +144,7 @@ function SessionRow({ s }: { s: LivePresenceSession }) {
 }
 
 export function AdminLiveScreen() {
-  const [onlineOnly, setOnlineOnly] = useState(true);
+  const [view, setView] = useState<"online" | "prospects" | "day">("online");
   const [cityDays, setCityDays] = useState(30);
 
   const sessionsQ = useQuery({
@@ -130,20 +162,30 @@ export function AdminLiveScreen() {
 
   const sessions = useMemo(() => sessionsQ.data ?? [], [sessionsQ.data]);
   const online = useMemo(() => sessions.filter((s) => s.isOnline), [sessions]);
-  const visible = onlineOnly ? online : sessions;
+  const onlineProspects = useMemo(() => online.filter((s) => s.isAnonymous), [online]);
+
+  const visible =
+    view === "online" ? online : view === "prospects" ? onlineProspects : sessions;
 
   const stats = useMemo(() => {
-    const users = new Set(online.map((s) => s.userId));
+    /** Un compte = une personne ; un visiteur anonyme = un navigateur (`visitorId`). */
+    const users = new Set(online.filter((s) => !s.isAnonymous).map((s) => s.userId));
+    const anon = new Set(
+      onlineProspects.map((s) => s.visitorId ?? s.id),
+    );
     const companies = new Set(online.map((s) => s.companyId).filter(Boolean));
     const cities = new Set(online.map((s) => s.city).filter(Boolean));
-    const users24 = new Set(sessions.map((s) => s.userId));
+    const people24 = new Set(
+      sessions.map((s) => (s.isAnonymous ? `v:${s.visitorId ?? s.id}` : `u:${s.userId}`)),
+    );
     return {
       users: users.size,
+      anon: anon.size,
       companies: companies.size,
       cities: cities.size,
-      users24: users24.size,
+      people24: people24.size,
     };
-  }, [online, sessions]);
+  }, [online, onlineProspects, sessions]);
 
   /** Ce qui occupe les gens en ce moment — utile pour savoir quels modules « portent ». */
   const activities = useMemo(() => {
@@ -156,14 +198,17 @@ export function AdminLiveScreen() {
   }, [online]);
 
   const cities = citiesQ.data ?? [];
-  const maxCityUsers = cities.length > 0 ? Math.max(...cities.map((c) => c.usersCount)) : 1;
+  /** La barre représente le total « clients + visiteurs » : c'est le potentiel de la ville. */
+  const cityWeight = (c: { usersCount: number; anonymousVisitorsCount: number }) =>
+    c.usersCount + c.anonymousVisitorsCount;
+  const maxCityWeight = cities.length > 0 ? Math.max(1, ...cities.map(cityWeight)) : 1;
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <AdminPageHeader
           title="Live"
-          description="Qui utilise FasoStock en ce moment : activité, ville et appareil. Actualisé toutes les 5 secondes."
+          description="Qui est sur FasoStock en ce moment — clients connectés et visiteurs anonymes du site : activité, ville, IP et appareil. Actualisé toutes les 5 secondes."
         />
         <div className="flex items-center gap-2">
           <span className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-800 ring-1 ring-emerald-200">
@@ -198,39 +243,51 @@ export function AdminLiveScreen() {
         </AdminCard>
       ) : null}
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <Kpi
           label="En ligne maintenant"
-          value={stats.users}
+          value={stats.users + stats.anon}
           hint={`${online.length} session${online.length > 1 ? "s" : ""} ouverte${online.length > 1 ? "s" : ""}`}
           accent
         />
-        <Kpi label="Entreprises actives" value={stats.companies} hint="distinctes, en ce moment" />
-        <Kpi label="Villes actives" value={stats.cities} hint="d'où viennent les connexions" />
-        <Kpi label="Utilisateurs (24 h)" value={stats.users24} hint="au moins une session" />
+        <Kpi label="Clients connectés" value={stats.users} hint="comptes identifiés" />
+        <Kpi
+          label="Visiteurs anonymes"
+          value={stats.anon}
+          hint="sans compte — à prospecter"
+          tone="sky"
+        />
+        <Kpi label="Villes actives" value={stats.cities} hint="d’où viennent les connexions" />
+        <Kpi label="Personnes (24 h)" value={stats.people24} hint={`${stats.companies} entreprise${stats.companies > 1 ? "s" : ""} active${stats.companies > 1 ? "s" : ""}`} />
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[2fr_1fr]">
         <AdminCard padding="p-0">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 p-4">
             <h2 className="text-base font-bold text-slate-900">
-              {onlineOnly ? "Sessions en cours" : "Sessions des 24 dernières heures"}
+              {view === "online"
+                ? "Sessions en cours"
+                : view === "prospects"
+                  ? "Visiteurs anonymes en ligne"
+                  : "Sessions des 24 dernières heures"}
             </h2>
             <div className="inline-flex rounded-lg border border-slate-200 p-0.5">
-              <button
-                type="button"
-                onClick={() => setOnlineOnly(true)}
-                className={`rounded-md px-3 py-1.5 text-xs font-semibold ${onlineOnly ? "bg-slate-900 text-white" : "text-slate-600"}`}
-              >
-                En ligne ({online.length})
-              </button>
-              <button
-                type="button"
-                onClick={() => setOnlineOnly(false)}
-                className={`rounded-md px-3 py-1.5 text-xs font-semibold ${!onlineOnly ? "bg-slate-900 text-white" : "text-slate-600"}`}
-              >
-                24 h ({sessions.length})
-              </button>
+              {(
+                [
+                  ["online", `En ligne (${online.length})`],
+                  ["prospects", `Prospects (${onlineProspects.length})`],
+                  ["day", `24 h (${sessions.length})`],
+                ] as const
+              ).map(([key, label]) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setView(key)}
+                  className={`rounded-md px-3 py-1.5 text-xs font-semibold ${view === key ? "bg-slate-900 text-white" : "text-slate-600"}`}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
           </div>
 
@@ -258,9 +315,11 @@ export function AdminLiveScreen() {
             <p className="p-8 text-center text-sm text-slate-500">
               {sessionsQ.isLoading
                 ? "Chargement…"
-                : onlineOnly
+                : view === "online"
                   ? "Personne n’est connecté à cet instant."
-                  : "Aucune session sur les 24 dernières heures."}
+                  : view === "prospects"
+                    ? "Aucun visiteur anonyme sur le site en ce moment."
+                    : "Aucune session sur les 24 dernières heures."}
             </p>
           ) : null}
         </AdminCard>
@@ -321,14 +380,17 @@ export function AdminLiveScreen() {
                         ) : null}
                       </span>
                       <span className="shrink-0 text-xs tabular-nums text-slate-500">
-                        {c.usersCount} pers. · {c.companiesCount} ent.
+                        {c.usersCount} client{c.usersCount > 1 ? "s" : ""}
+                        {c.anonymousVisitorsCount > 0 ? (
+                          <span className="text-sky-600"> · {c.anonymousVisitorsCount} visiteur{c.anonymousVisitorsCount > 1 ? "s" : ""}</span>
+                        ) : null}
                       </span>
                     </div>
                     <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
                       <div
                         className="h-full rounded-full bg-orange-500"
                         style={{
-                          width: `${Math.max(4, Math.round((c.usersCount / maxCityUsers) * 100))}%`,
+                          width: `${Math.max(4, Math.round((cityWeight(c) / maxCityWeight) * 100))}%`,
                         }}
                       />
                     </div>

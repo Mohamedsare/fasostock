@@ -4,7 +4,13 @@ import { mapSupabaseError } from "@/lib/supabase/map-error";
 /** Une session d'onglet/appareil vue par la page Live. */
 export type LivePresenceSession = {
   id: string;
-  userId: string;
+  userId: string | null;
+  /** Pas de compte : visiteur du site vitrine — un prospect. */
+  isAnonymous: boolean;
+  visitorId: string | null;
+  /** Nombre de visites déjà faites par ce navigateur (1 = première fois). */
+  visitCount: number;
+  referrer: string | null;
   fullName: string;
   email: string;
   companyId: string | null;
@@ -35,6 +41,8 @@ export type PresenceCity = {
   companiesCount: number;
   sessionsCount: number;
   lastSeenAt: string;
+  /** Navigateurs jamais connectés vus dans cette ville : le vivier de prospection. */
+  anonymousVisitorsCount: number;
 };
 
 function str(v: unknown): string {
@@ -61,8 +69,12 @@ export async function adminListLivePresence(params?: {
   if (error) throw mapSupabaseError(error);
   return ((data ?? []) as Record<string, unknown>[]).map((r) => ({
     id: str(r.id),
-    userId: str(r.user_id),
-    fullName: str(r.full_name) || "Utilisateur",
+    userId: strOrNull(r.user_id),
+    isAnonymous: r.is_anonymous === true,
+    visitorId: strOrNull(r.visitor_id),
+    visitCount: num(r.visit_count),
+    referrer: strOrNull(r.referrer),
+    fullName: str(r.full_name) || "Visiteur anonyme",
     email: str(r.email),
     companyId: strOrNull(r.company_id),
     companyName: strOrNull(r.company_name),
@@ -96,5 +108,6 @@ export async function adminListPresenceCities(days = 30): Promise<PresenceCity[]
     companiesCount: num(r.companies_count),
     sessionsCount: num(r.sessions_count),
     lastSeenAt: str(r.last_seen_at),
+    anonymousVisitorsCount: num(r.anonymous_visitors_count),
   }));
 }

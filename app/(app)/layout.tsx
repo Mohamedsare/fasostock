@@ -1,6 +1,5 @@
 import { AppShell } from "@/components/layout/app-shell";
 import { AppRouteGuard } from "@/components/permissions/app-route-guard";
-import { PresenceTracker } from "@/components/presence/presence-tracker";
 import { ServerRouteGuard } from "@/components/permissions/server-route-guard";
 import { hasSupabaseConfig } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
@@ -20,7 +19,6 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   return (
     <ServerRouteGuard>
       <AppShell userEmail={user.email}>
-        <PresenceTracker />
         <AppRouteGuard>{children}</AppRouteGuard>
       </AppShell>
     </ServerRouteGuard>

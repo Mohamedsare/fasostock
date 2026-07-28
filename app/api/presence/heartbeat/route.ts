@@ -8,6 +8,9 @@ export const runtime = "nodejs";
 
 type HeartbeatBody = {
   sessionId?: string;
+  /** Identifiant de navigateur persistant : distingue le nouveau venu du visiteur qui revient. */
+  visitorId?: string;
+  referrer?: string;
   pathname?: string;
   activity?: string;
   companyId?: string | null;
@@ -70,9 +73,14 @@ function isUuid(v: unknown): v is string {
 /**
  * Battement de cœur de présence (page Live du super admin).
  *
+ * Route **publique** : les visiteurs anonymes du site vitrine comptent autant que les clients —
+ * ce sont les prospects. Sans session, `p_user_id` vaut NULL ; si la personne se connecte
+ * ensuite dans le même onglet, la ligne est rattachée à son compte (parcours visite → client).
+ *
  * L'identité vient **du cookie de session** et l'origine (IP, ville) **des en-têtes serveur** :
  * le navigateur ne peut donc ni se faire passer pour un autre compte, ni maquiller sa ville.
- * L'écriture passe par `record_presence`, réservée à `service_role`.
+ * L'écriture passe par `record_presence`, réservée à `service_role`, qui plafonne aussi le
+ * nombre de sessions anonymes créées par IP et par heure.
  */
 export async function POST(req: Request) {
   let body: HeartbeatBody;
@@ -83,16 +91,20 @@ export async function POST(req: Request) {
   }
 
   const sessionId = body.sessionId?.trim();
-  if (!sessionId || sessionId.length > 100) {
-    return NextResponse.json({ error: "sessionId requis" }, { status: 400 });
+  if (!sessionId || !isUuid(sessionId)) {
+    return NextResponse.json({ error: "sessionId invalide" }, { status: 400 });
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  // Anonyme accepté : `user` reste null et la session est comptée comme visite.
+  let userId: string | null = null;
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    userId = user?.id ?? null;
+  } catch {
+    userId = null;
   }
 
   let svc;
@@ -105,8 +117,10 @@ export async function POST(req: Request) {
 
   const geo = clientGeo(req);
   const { error } = await svc.rpc("record_presence", {
-    p_user_id: user.id,
+    p_user_id: userId,
     p_session_id: sessionId,
+    p_visitor_id: isUuid(body.visitorId) ? body.visitorId : null,
+    p_referrer: body.referrer?.slice(0, 300) ?? null,
     p_pathname: body.pathname ?? null,
     p_activity: body.activity ?? null,
     p_company_id: isUuid(body.companyId) ? body.companyId : null,
