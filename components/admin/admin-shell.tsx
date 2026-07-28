@@ -23,6 +23,7 @@ import {
   MdOndemandVideo,
   MdPeople,
   MdPublic,
+  MdSensors,
   MdSettings,
   MdShield,
   MdStore,
@@ -34,6 +35,7 @@ const ACCENT = "#EA580C";
 
 const NAV = [
   { href: "/admin", label: "Tableau", icon: MdDashboard, exact: true },
+  { href: ROUTES.adminLive, label: "Live", icon: MdSensors },
   { href: "/admin/companies", label: "Entreprises", icon: MdBusiness },
   { href: "/admin/fonctionnalites", label: "Fonctionnalités", icon: MdTune },
   { href: "/admin/stores", label: "Boutiques", icon: MdStore },

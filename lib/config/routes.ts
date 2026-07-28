@@ -54,6 +54,8 @@ export const ROUTES = {
   integrations: "/integrations",
   /** Espace super-admin (shell dédié, aligné Flutter `AppRoutes.admin`). */
   admin: "/admin",
+  /** Présence en temps réel : qui utilise l'app maintenant, où et pour quoi faire. */
+  adminLive: "/admin/live",
   adminCompanies: "/admin/companies",
   adminStores: "/admin/stores",
   adminUsers: "/admin/users",
