@@ -8,10 +8,103 @@ import { reportHandledClientError } from "@/lib/monitoring/remote-error-logger";
 import { createClient } from "@/lib/supabase/client";
 import { mapSupabaseError } from "@/lib/supabase/map-error";
 import { queryKeys } from "@/lib/query/query-keys";
+import { formatUnknownErrorMessage } from "@/lib/utils/format-unknown-error";
 
 export type { AppContextData };
 
 const FETCH_TIMEOUT_MS = 25_000;
+
+/**
+ * La session n'a **pas pu être vérifiée** (réseau coupé, délai dépassé, Supabase injoignable).
+ * À ne jamais confondre avec « pas de session » : l'utilisateur est probablement encore connecté.
+ * Remontée en erreur (et non en `null`), React Query conserve alors le contexte précédent
+ * et l'app continue de fonctionner au lieu d'afficher « Session non synchronisée ».
+ */
+export class SessionUnavailableError extends Error {
+  constructor(message = "Connexion au serveur impossible pour le moment.") {
+    super(message);
+    this.name = "SessionUnavailableError";
+  }
+}
+
+/** Panne passagère (réseau / serveur) plutôt que refus d'authentification. */
+function isTransientAuthFailure(err: unknown): boolean {
+  if (err instanceof SessionUnavailableError) return true;
+  if (typeof navigator !== "undefined" && navigator.onLine === false) return true;
+  if (err instanceof TypeError) return true;
+
+  const name = (err as { name?: string } | null)?.name ?? "";
+  if (name === "AuthRetryableFetchError" || name === "AbortError") return true;
+
+  const status = (err as { status?: number } | null)?.status;
+  if (typeof status === "number" && (status === 0 || status === 408 || status === 429 || status >= 500)) {
+    return true;
+  }
+
+  const msg = formatUnknownErrorMessage(err).toLowerCase();
+  return (
+    msg.includes("failed to fetch") ||
+    msg.includes("networkerror") ||
+    msg.includes("network request failed") ||
+    msg.includes("load failed") ||
+    msg.includes("délai dépassé") ||
+    msg.includes("timeout")
+  );
+}
+
+/**
+ * Résout l'utilisateur courant côté navigateur.
+ * - `User`  → session valide
+ * - `null`  → **certitude** qu'il n'y a plus de session (jeton refusé par le serveur)
+ * - throw `SessionUnavailableError` → indécidable (réseau) : surtout ne pas déconnecter l'écran
+ */
+async function resolveCurrentUser(
+  supabase: ReturnType<typeof createClient>,
+): Promise<{ id: string } | null> {
+  // 1) Lecture locale (cookies) — instantanée dans le cas nominal.
+  try {
+    const {
+      data: { session },
+    } = await withTimeout(supabase.auth.getSession(), 8_000, "Lecture de session");
+    if (session?.user) return session.user;
+  } catch (e) {
+    if (isTransientAuthFailure(e)) throw new SessionUnavailableError();
+  }
+
+  // 2) Après une longue inactivité, le jeton d'accès a pu expirer sans rafraîchissement
+  //    (timers d'onglet en veille throttlés par le navigateur) : on force le refresh.
+  try {
+    const { data, error } = await withTimeout(
+      supabase.auth.refreshSession(),
+      10_000,
+      "Rafraîchissement de session",
+    );
+    if (error) throw error;
+    const u = data.session?.user ?? data.user ?? null;
+    if (u) return u;
+  } catch (e) {
+    if (isTransientAuthFailure(e)) throw new SessionUnavailableError();
+    // Refresh token refusé / déjà consommé (le proxy serveur a pu le faire tourner) :
+    // ce n'est pas concluant, on demande l'avis du serveur ci-dessous.
+  }
+
+  // 3) Vérification serveur : cookie rafraîchi par le proxy, ou connexion depuis un autre onglet.
+  try {
+    const { data, error } = await withTimeout(
+      supabase.auth.getUser(),
+      10_000,
+      "Authentification",
+    );
+    if (error) {
+      if (isTransientAuthFailure(error)) throw new SessionUnavailableError();
+      return null;
+    }
+    return data.user ?? null;
+  } catch (e) {
+    if (isTransientAuthFailure(e)) throw new SessionUnavailableError();
+    return null;
+  }
+}
 
 /** Préférence utilisateur (Paramètres) — même idée que `CompanyProvider` Flutter. */
 function pickActiveCompanyId(orderedIds: string[]): string {
@@ -80,42 +173,8 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
 async function fetchAppContext(): Promise<AppContextData | null> {
   const supabase = createClient();
 
-  /**
-   * D’abord `getSession()` (rapide, lecture locale). Si vide juste après hydratation,
-   * on tente `getUser()` avec un court délai max (évite blocage infini connu sur certains navigateurs).
-   */
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  let user = session?.user ?? null;
-  if (!user) {
-    // Après une longue inactivité, le jeton d'accès a pu expirer sans rafraîchissement
-    // (timers d'onglet en veille throttlés par le navigateur). On force d'abord un
-    // rafraîchissement via le refresh token — évite un faux « Session non synchronisée »
-    // alors que la session est en réalité encore récupérable.
-    try {
-      const { data: refreshed } = await withTimeout(
-        supabase.auth.refreshSession(),
-        10_000,
-        "Rafraîchissement de session",
-      );
-      user = refreshed.session?.user ?? refreshed.user ?? null;
-    } catch {
-      user = null;
-    }
-  }
-  if (!user) {
-    try {
-      const { data } = await withTimeout(
-        supabase.auth.getUser(),
-        10_000,
-        "Authentification",
-      );
-      user = data.user ?? null;
-    } catch {
-      user = null;
-    }
-  }
+  // `null` seulement si le serveur refuse explicitement le jeton ; sinon `SessionUnavailableError`.
+  const user = await resolveCurrentUser(supabase);
   if (!user) return null;
 
   const { data: profile, error: pErr } = await supabase
@@ -365,11 +424,20 @@ export function useAppContext() {
     queryKey: queryKeys.appContext,
     queryFn: fetchAppContextWithTimeout,
     staleTime: 2 * 60 * 1000,
-    retry: 2,
+    /**
+     * Une session simplement invérifiable (réseau faible, onglet réveillé) mérite plus
+     * d'insistance qu'une vraie erreur : on réessaie longtemps, en silence, pendant que
+     * React Query conserve le contexte précédent — l'utilisateur ne voit rien.
+     */
+    retry: (failureCount, error) =>
+      error instanceof SessionUnavailableError ? failureCount < 5 : failureCount < 2,
+    retryDelay: (attempt) => Math.min(1_000 * 2 ** attempt, 15_000),
   });
 
   useEffect(() => {
     if (!q.isError || !q.error) return;
+    // Coupure réseau : incident d'environnement, pas un défaut applicatif à remonter.
+    if (q.error instanceof SessionUnavailableError) return;
     void reportHandledClientError(q.error, {
       source: "app_context_fetch",
       extra: {
