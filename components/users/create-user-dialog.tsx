@@ -50,7 +50,7 @@ export function CreateUserDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-3 sm:items-center"
+      className="fixed inset-0 z-[70] flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-3"
       role="dialog"
       aria-modal="true"
       aria-label="Nouveau utilisateur"
@@ -58,130 +58,140 @@ export function CreateUserDialog({
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <FsCard className="w-full max-w-lg" padding="p-3 sm:p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-xs font-semibold text-neutral-600">Nouvel utilisateur</p>
-            <p className="mt-0.5 text-sm font-bold text-fs-text">Créer un compte entreprise</p>
+      <FsCard
+        className="w-full max-w-lg rounded-b-none rounded-t-2xl border-x-0 border-b-0 sm:rounded-2xl sm:border-x sm:border-b"
+        padding="p-0"
+      >
+        <div className="flex max-h-[min(94dvh,760px)] flex-col">
+          <div className="mx-auto mt-2 h-1.5 w-11 shrink-0 rounded-full bg-neutral-300/80 sm:hidden" aria-hidden />
+          <div className="flex shrink-0 items-start justify-between gap-3 border-b border-black/6 px-3 pb-3 pt-3 sm:px-4 sm:pt-4">
+            <div>
+              <p className="text-xs font-semibold text-neutral-600">Nouvel utilisateur</p>
+              <p className="mt-0.5 text-sm font-bold text-fs-text">Créer un compte entreprise</p>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-black/8 bg-fs-card text-neutral-700 active:bg-fs-surface-container sm:h-9 sm:w-9 sm:rounded-lg"
+              aria-label="Fermer"
+            >
+              <MdClose className="h-5 w-5" aria-hidden />
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-black/8 bg-fs-card text-neutral-700"
-            aria-label="Fermer"
-          >
-            <MdClose className="h-5 w-5" aria-hidden />
-          </button>
-        </div>
 
-        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div className="sm:col-span-2">
-            <FsSectionLabel>Nom complet</FsSectionLabel>
-            <input className={fsInputClass()} value={fullName} onChange={(e) => setFullName(e.target.value)} />
-          </div>
-          <div className="sm:col-span-2">
-            <FsSectionLabel>Email</FsSectionLabel>
-            <input className={fsInputClass()} value={email} onChange={(e) => setEmail(e.target.value)} />
-          </div>
-          <div>
-            <FsSectionLabel>Mot de passe</FsSectionLabel>
-            <input type="password" className={fsInputClass()} value={password} onChange={(e) => setPassword(e.target.value)} />
-          </div>
-          <div>
-            <FsSectionLabel>Rôle</FsSectionLabel>
-            <select className={fsInputClass()} value={roleSlug} onChange={(e) => setRoleSlug(e.target.value)}>
-              {roles.map((r) => (
-                <option key={r.id} value={r.slug}>
-                  {roleOverrides[r.slug] ?? r.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-3 sm:px-4 sm:py-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="sm:col-span-2">
+                <FsSectionLabel>Nom complet</FsSectionLabel>
+                <input className={fsInputClass()} value={fullName} onChange={(e) => setFullName(e.target.value)} />
+              </div>
+              <div className="sm:col-span-2">
+                <FsSectionLabel>Email</FsSectionLabel>
+                <input className={fsInputClass()} value={email} onChange={(e) => setEmail(e.target.value)} />
+              </div>
+              <div>
+                <FsSectionLabel>Mot de passe</FsSectionLabel>
+                <input type="password" className={fsInputClass()} value={password} onChange={(e) => setPassword(e.target.value)} />
+              </div>
+              <div>
+                <FsSectionLabel>Rôle</FsSectionLabel>
+                <select className={fsInputClass()} value={roleSlug} onChange={(e) => setRoleSlug(e.target.value)}>
+                  {roles.map((r) => (
+                    <option key={r.id} value={r.slug}>
+                      {roleOverrides[r.slug] ?? r.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
 
-        <p className="mt-3 text-xs text-neutral-600">
-          L&apos;utilisateur pourra se connecter avec cet email et ce mot de passe.
-          Communiquez-les de facon securisee.
-        </p>
+            <p className="mt-3 text-xs text-neutral-600">
+              L&apos;utilisateur pourra se connecter avec cet email et ce mot de passe.
+              Communiquez-les de facon securisee.
+            </p>
 
-        {stores.length > 0 ? (
-          <div className="mt-3">
-            <FsSectionLabel>Boutiques (au moins une)</FsSectionLabel>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {stores.map((s) => {
-                const selected = storeIds.includes(s.id);
-                return (
-                  <button
-                    key={s.id}
-                    type="button"
-                    onClick={() =>
-                      setStoreIds((prev) =>
-                        selected ? prev.filter((id) => id !== s.id) : [...prev, s.id],
-                      )
-                    }
-                    className={
-                      selected
-                        ? "min-h-[40px] rounded-full border border-fs-accent/30 bg-[color-mix(in_srgb,var(--fs-accent)_20%,transparent)] px-3 py-1.5 text-xs font-semibold text-fs-accent"
-                        : "min-h-[40px] rounded-full border border-black/8 bg-fs-card px-3 py-1.5 text-xs font-semibold text-neutral-700"
-                    }
-                  >
-                    {s.name}
-                  </button>
-                );
-              })}
+            {stores.length > 0 ? (
+              <div className="mt-3">
+                <FsSectionLabel>Boutiques (au moins une)</FsSectionLabel>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {stores.map((s) => {
+                    const selected = storeIds.includes(s.id);
+                    return (
+                      <button
+                        key={s.id}
+                        type="button"
+                        onClick={() =>
+                          setStoreIds((prev) =>
+                            selected ? prev.filter((id) => id !== s.id) : [...prev, s.id],
+                          )
+                        }
+                        className={
+                          selected
+                            ? "min-h-[40px] rounded-full border border-fs-accent/30 bg-[color-mix(in_srgb,var(--fs-accent)_20%,transparent)] px-3 py-1.5 text-xs font-semibold text-fs-accent"
+                            : "min-h-[40px] rounded-full border border-black/8 bg-fs-card px-3 py-1.5 text-xs font-semibold text-neutral-700"
+                        }
+                      >
+                        {s.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+
+            {error ? <p className="mt-2 text-xs font-semibold text-red-600">{error}</p> : null}
+          </div>
+
+          <div className="shrink-0 border-t border-black/6 bg-fs-card/95 px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-sm sm:px-4">
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="min-h-11 flex-1 rounded-[10px] border border-black/8 bg-fs-card px-3 py-2.5 text-xs font-semibold text-neutral-700 sm:min-h-0 sm:text-sm"
+                disabled={busy}
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  setError(null);
+                  if (!email.trim() || !password || !roleSlug) {
+                    setError("Email, mot de passe et rôle requis.");
+                    return;
+                  }
+                  if (stores.length > 0 && storeIds.length === 0) {
+                    setError("Choisissez au moins une boutique.");
+                    return;
+                  }
+                  if (password.length < 6) {
+                    setError("Mot de passe minimum 6 caractères.");
+                    return;
+                  }
+                  try {
+                    setBusy(true);
+                    await onCreate({
+                      email: email.trim(),
+                      password,
+                      fullName: fullName.trim(),
+                      roleSlug,
+                      storeIds,
+                    });
+                    onClose();
+                  } catch (e) {
+                    setError(e instanceof Error ? e.message : "Création impossible.");
+                  } finally {
+                    setBusy(false);
+                  }
+                }}
+                className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-[10px] bg-fs-accent px-3 py-2.5 text-xs font-semibold text-white shadow-sm disabled:opacity-60 sm:min-h-0 sm:text-sm"
+                disabled={busy}
+              >
+                <MdPersonAdd className="h-4 w-4" aria-hidden />
+                Creer et donner les identifiants
+              </button>
             </div>
           </div>
-        ) : null}
-
-        {error ? <p className="mt-2 text-xs font-semibold text-red-600">{error}</p> : null}
-
-        <div className="mt-4 flex gap-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex-1 rounded-[10px] border border-black/8 bg-fs-card px-3 py-2.5 text-xs font-semibold text-neutral-700 sm:text-sm"
-            disabled={busy}
-          >
-            Annuler
-          </button>
-          <button
-            type="button"
-            onClick={async () => {
-              setError(null);
-              if (!email.trim() || !password || !roleSlug) {
-                setError("Email, mot de passe et rôle requis.");
-                return;
-              }
-              if (stores.length > 0 && storeIds.length === 0) {
-                setError("Choisissez au moins une boutique.");
-                return;
-              }
-              if (password.length < 6) {
-                setError("Mot de passe minimum 6 caractères.");
-                return;
-              }
-              try {
-                setBusy(true);
-                await onCreate({
-                  email: email.trim(),
-                  password,
-                  fullName: fullName.trim(),
-                  roleSlug,
-                  storeIds,
-                });
-                onClose();
-              } catch (e) {
-                setError(e instanceof Error ? e.message : "Création impossible.");
-              } finally {
-                setBusy(false);
-              }
-            }}
-            className="flex-1 inline-flex items-center justify-center gap-2 rounded-[10px] bg-fs-accent px-3 py-2.5 text-xs font-semibold text-white shadow-sm sm:text-sm"
-            disabled={busy}
-          >
-            <MdPersonAdd className="h-4 w-4" aria-hidden />
-            Creer et donner les identifiants
-          </button>
         </div>
       </FsCard>
     </div>
