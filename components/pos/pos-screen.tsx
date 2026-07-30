@@ -2874,11 +2874,11 @@ function PosCartPanel({
       {/* Vente à crédit (caisse rapide) : client obligatoire, acompte et échéance.
        * Bloc compact — l'échéance (rarement saisie) reste repliée par défaut. */}
       {mode === "quick" && quickPayment === "credit" ? (
-        <div className="mt-3 rounded-xl border border-[#F97316]/40 bg-[#FFF7ED] p-2.5 min-[900px]:mx-3">
+        <div className="mt-3 rounded-lg border border-[#F97316]/40 bg-[#FFF7ED] p-2.5 min-[900px]:mx-3">
           <div className="flex gap-2">
             <select
               className={fsInputClass(
-                "min-w-0 flex-1 bg-white px-2 py-2 text-[13px] sm:px-2 sm:py-2 sm:text-[13px]",
+                "min-w-0 flex-1 rounded-md bg-white px-2 py-2 text-[13px] sm:px-2 sm:py-2 sm:text-[13px]",
               )}
               value={customerId}
               onChange={(e) => setCustomerId(e.target.value)}
@@ -2897,14 +2897,14 @@ function PosCartPanel({
                 title="Créer un client"
                 aria-label="Créer un client"
                 onClick={onCreateCustomer}
-                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#F97316] text-white"
+                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-[#F97316] text-white"
               >
                 <MdPersonAdd className="h-5 w-5" aria-hidden />
               </button>
             ) : null}
             <input
               className={fsInputClass(
-                "w-24 shrink-0 bg-white px-2 py-2 text-[13px] sm:px-2 sm:py-2 sm:text-[13px]",
+                "w-24 shrink-0 rounded-md bg-white px-2 py-2 text-[13px] sm:px-2 sm:py-2 sm:text-[13px]",
               )}
               value={amountReceived}
               onChange={(e) => {
@@ -2924,7 +2924,7 @@ function PosCartPanel({
               <input
                 type="date"
                 className={fsInputClass(
-                  "w-38 bg-white px-2 py-1.5 text-xs sm:px-2 sm:py-1.5 sm:text-xs",
+                  "w-38 rounded-md bg-white px-2 py-1.5 text-xs sm:px-2 sm:py-1.5 sm:text-xs",
                 )}
                 value={creditDueDate ?? ""}
                 onChange={(e) => setCreditDueDate?.(e.target.value)}
