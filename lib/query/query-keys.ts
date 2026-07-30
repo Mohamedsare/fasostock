@@ -161,6 +161,9 @@ export const queryKeys = {
   /** Réglage owner « vente à crédit en caisse rapide » (`company_settings`). */
   quickPosCreditEnabled: (companyId: string) =>
     ["quick-pos-credit", companyId] as const,
+  /** Réglage owner « saisie du prix en caisse rapide » (`company_settings`). */
+  quickPosPriceEditEnabled: (companyId: string) =>
+    ["quick-pos-price-edit", companyId] as const,
   /** Dépôt central (`WarehousePage` Flutter) — invalider le préfixe `['warehouse', companyId]`. */
   warehouseInventory: (companyId: string) => ["warehouse", companyId, "inventory"] as const,
   warehouseMovements: (companyId: string) => ["warehouse", companyId, "movements"] as const,

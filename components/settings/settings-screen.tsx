@@ -26,6 +26,11 @@ import {
   peekQuickPosCreditEnabled,
   setQuickPosCreditEnabled,
 } from "@/lib/features/settings/quick-pos-credit";
+import {
+  fetchQuickPosPriceEditEnabled,
+  peekQuickPosPriceEditEnabled,
+  setQuickPosPriceEditEnabled,
+} from "@/lib/features/settings/quick-pos-price-edit";
 import { queryKeys } from "@/lib/query/query-keys";
 import { messageFromUnknownError, toast, toastMutationError } from "@/lib/toast";
 import { createClient } from "@/lib/supabase/client";
@@ -70,6 +75,7 @@ import {
   MdSave,
   MdSecurity,
   MdCreditCard,
+  MdPriceChange,
   MdShoppingCart,
   MdStore,
   MdTableChart,
@@ -392,6 +398,32 @@ export function SettingsScreen() {
     onError: (e) => toastMutationError("settings", e),
   });
 
+  const peekQuickPriceEdit =
+    companyId.length > 0 && isOwner ? peekQuickPosPriceEditEnabled(companyId) : undefined;
+  const quickPosPriceEditQ = useQuery({
+    queryKey: queryKeys.quickPosPriceEditEnabled(companyId),
+    queryFn: () => fetchQuickPosPriceEditEnabled(companyId),
+    enabled: Boolean(companyId && isOwner),
+    staleTime: 30_000,
+    ...(peekQuickPriceEdit !== undefined ? { initialData: peekQuickPriceEdit } : {}),
+  });
+
+  const quickPosPriceEditMut = useMutation({
+    mutationFn: async (enabled: boolean) => {
+      if (!companyId) throw new Error("Entreprise introuvable.");
+      await setQuickPosPriceEditEnabled(companyId, enabled);
+    },
+    onSuccess: async (_, enabled) => {
+      toast.success(
+        enabled
+          ? "Saisie du prix activée en caisse rapide."
+          : "Saisie du prix désactivée : le prix du catalogue s'applique.",
+      );
+      await qc.invalidateQueries({ queryKey: queryKeys.quickPosPriceEditEnabled(companyId) });
+    },
+    onError: (e) => toastMutationError("settings", e),
+  });
+
   const profileMut = useMutation({
     mutationFn: async () => {
       const supabase = createClient();
@@ -647,6 +679,54 @@ export function SettingsScreen() {
                   disabled={quickPosCreditMut.isPending}
                   onChange={(e) => {
                     void quickPosCreditMut.mutateAsync(e.target.checked);
+                  }}
+                />
+              </label>
+            </div>
+          )}
+        </FsCard>
+      ) : null}
+
+      {/* Saisie du prix en caisse rapide — owner uniquement */}
+      {isOwner && companyId ? (
+        <FsCard className="mt-5" padding="p-5">
+          <SettingsCardTitle icon={MdPriceChange} title="Caisse POS rapide — saisie du prix" />
+          <p className="mt-2 text-xs leading-relaxed text-neutral-600 sm:text-sm">
+            Permet au caissier de modifier le prix unitaire d&apos;un article directement dans le
+            panier de la caisse rapide (négociation au comptoir, prix de gros, article au poids).
+            Le prix du catalogue reste proposé par défaut. Désactivé, le prix est figé et seules
+            vos promotions s&apos;appliquent.
+          </p>
+          {quickPosPriceEditQ.isPending ? (
+            <div className="mt-4 flex justify-center py-4" role="status" aria-label="Chargement">
+              <div className="h-8 w-8 animate-spin rounded-full border-2 border-fs-accent border-t-transparent" />
+            </div>
+          ) : (
+            <div className="mt-4 space-y-0 rounded-[10px] border border-black/[0.08]">
+              <label
+                className={cn(
+                  "flex cursor-pointer items-start justify-between gap-3 px-3 py-3 sm:px-4",
+                  quickPosPriceEditMut.isPending && "pointer-events-none opacity-60",
+                )}
+              >
+                <span className="min-w-0">
+                  <span className="block text-sm font-medium text-fs-text">
+                    Autoriser la saisie du prix en caisse rapide
+                  </span>
+                  <span className="mt-0.5 block text-xs text-neutral-600">
+                    {quickPosPriceEditQ.data
+                      ? "Le champ « Prix unitaire » est modifiable dans le panier."
+                      : "Désactivé : le prix du catalogue s'applique, sans modification possible."}
+                  </span>
+                </span>
+                <input
+                  type="checkbox"
+                  role="switch"
+                  className="mt-1 h-5 w-9 shrink-0 cursor-pointer accent-fs-accent"
+                  checked={Boolean(quickPosPriceEditQ.data)}
+                  disabled={quickPosPriceEditMut.isPending}
+                  onChange={(e) => {
+                    void quickPosPriceEditMut.mutateAsync(e.target.checked);
                   }}
                 />
               </label>

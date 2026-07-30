@@ -20,6 +20,7 @@ import { defaultInvoiceUnitForProduct, INVOICE_UNITS } from "@/lib/features/pos/
 import { factureTabStripHeightPx } from "@/lib/utils/facture-tab-layout";
 import { fetchInvoiceTablePosEnabled } from "@/lib/features/settings/invoice-table-pos";
 import { fetchQuickPosCreditEnabled } from "@/lib/features/settings/quick-pos-credit";
+import { fetchQuickPosPriceEditEnabled } from "@/lib/features/settings/quick-pos-price-edit";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { ROUTES, storeFactureTabPath } from "@/lib/config/routes";
 import { queryKeys } from "@/lib/query/query-keys";
@@ -244,6 +245,17 @@ export function PosScreen({
     staleTime: 60_000,
   });
   const quickCreditEnabled = mode === "quick" && quickCreditCompanyQ.data === true;
+
+  // Saisie du prix en caisse rapide : réglage entreprise activé par le propriétaire
+  // (Paramètres › « Caisse POS rapide — saisie du prix »). La facture A4 en mode
+  // tableau a déjà son champ prix, indépendamment de ce réglage.
+  const quickPriceEditCompanyQ = useQuery({
+    queryKey: queryKeys.quickPosPriceEditEnabled(companyId),
+    queryFn: () => fetchQuickPosPriceEditEnabled(companyId),
+    enabled: Boolean(companyId && mode === "quick" && canAccess),
+    staleTime: 60_000,
+  });
+  const quickPriceEditEnabled = mode === "quick" && quickPriceEditCompanyQ.data === true;
   const posQ = useQuery({
     queryKey: ["pos", mode, companyId, storeId] as const,
     queryFn: () =>
@@ -1451,6 +1463,7 @@ export function PosScreen({
       setCustomerId={setCustomerId}
       customers={customers}
       allowQuickCredit={quickCreditEnabled || quickPayment === "credit"}
+      allowQuickPriceEdit={quickPriceEditEnabled}
       creditDueDate={creditDueDate}
       setCreditDueDate={setCreditDueDate}
       creditRemaining={creditRemaining}
@@ -2698,6 +2711,7 @@ function PosCartPanel({
   setCustomerId,
   customers,
   allowQuickCredit,
+  allowQuickPriceEdit,
   creditDueDate,
   setCreditDueDate,
   creditRemaining,
@@ -2745,6 +2759,8 @@ function PosCartPanel({
   customers: Array<{ id: string; name: string }>;
   /** Caisse rapide : le propriétaire autorise la vente à crédit (réglage entreprise). */
   allowQuickCredit?: boolean;
+  /** Caisse rapide : le propriétaire autorise la saisie du prix unitaire au panier. */
+  allowQuickPriceEdit?: boolean;
   /** Échéance de la créance (`yyyy-mm-dd`), facultative. */
   creditDueDate?: string;
   setCreditDueDate?: (v: string) => void;
@@ -3344,6 +3360,23 @@ function PosCartPanel({
                         <span className="ml-1 text-xs text-red-600">Stock: {stock}</span>
                       ) : null}
                     </div>
+                    {allowQuickPriceEdit ? (
+                      <div className="mt-1.5 flex items-center gap-1.5">
+                        <span className="shrink-0 text-[11px] font-semibold text-[#6B7280]">
+                          P.U.
+                        </span>
+                        <PosCartUnitPriceInput
+                          productId={c.productId}
+                          unitPrice={c.unitPrice}
+                          onCommit={onLineUnitPriceCommit}
+                        />
+                        {c.linePriceUserSet ? (
+                          <span className="shrink-0 text-[11px] font-medium text-[#F97316]">
+                            modifié
+                          </span>
+                        ) : null}
+                      </div>
+                    ) : null}
                   </div>
                   <div className="flex shrink-0 flex-col items-end gap-0">
                     <p className="text-xs font-bold text-[#F97316]">
