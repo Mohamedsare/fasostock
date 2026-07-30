@@ -619,6 +619,51 @@ html.dark .fs-owner-dashboard {
       background: color-mix(in srgb, var(--fs-surface-container) 65%, transparent);
     }
   }
+
+  /* Pendant vertical de `fs-scroll-x` : listes internes de cartes (dashboard,
+   * panneaux). Scrollbar fine au pointeur fin, masquée au tactile (le geste
+   * suffit) ; gouttière stable pour éviter le saut de mise en page. */
+  .fs-scroll-y {
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-gutter: stable;
+  }
+
+  @media (pointer: coarse) {
+    .fs-scroll-y {
+      scrollbar-width: none;
+    }
+
+    .fs-scroll-y::-webkit-scrollbar {
+      width: 0;
+    }
+  }
+
+  @media (pointer: fine) {
+    .fs-scroll-y {
+      scrollbar-width: thin;
+      scrollbar-color: color-mix(in srgb, var(--fs-text) 26%, transparent)
+        transparent;
+    }
+
+    .fs-scroll-y::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .fs-scroll-y::-webkit-scrollbar-thumb {
+      border-radius: 9999px;
+      background: color-mix(in srgb, var(--fs-text) 22%, transparent);
+    }
+
+    .fs-scroll-y::-webkit-scrollbar-thumb:hover {
+      background: color-mix(in srgb, var(--fs-text) 38%, transparent);
+    }
+
+    .fs-scroll-y::-webkit-scrollbar-track {
+      background: transparent;
+    }
+  }
 }
 
 /* Page 404 — animations dédiées (respect prefers-reduced-motion) */

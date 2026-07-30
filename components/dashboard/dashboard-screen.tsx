@@ -585,7 +585,7 @@ export function DashboardScreen() {
               </ChartCard>
               <div>
                 <ChartCard title="Top 5 produits" smallTitle>
-                  <TopProductsList products={d.topProducts} />
+                  <TopProductsList products={d.topProducts.slice(0, 5)} />
                   <Link
                     href={ROUTES.reports}
                     className="mt-2 flex w-full items-center justify-center gap-2 border-t border-black/[0.06] py-3 text-sm font-medium text-[var(--fs-accent)]"
@@ -606,7 +606,7 @@ export function DashboardScreen() {
                 <DashboardBarChart data={d.salesByDay} />
               </ChartCard>
               <ChartCard title="Top 5 produits" smallTitle className="mt-6">
-                <TopProductsList products={d.topProducts} />
+                <TopProductsList products={d.topProducts.slice(0, 5)} />
                 <Link
                   href={ROUTES.reports}
                   className="mt-2 flex w-full items-center justify-center gap-2 border-t border-black/[0.06] py-3 text-sm font-medium text-[var(--fs-accent)]"

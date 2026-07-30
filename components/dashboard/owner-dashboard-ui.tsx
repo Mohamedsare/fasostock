@@ -14,7 +14,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   startTransition,
+  useCallback,
   useEffect,
+  useRef,
   useState,
   type ComponentType,
   type CSSProperties,
@@ -72,6 +74,13 @@ const OWNER_SOFT_CARD_LINK =
   "min-h-11 shrink-0 text-[11px] font-bold text-[var(--owner-accent)] hover:underline touch-manipulation";
 const OWNER_SOFT_CARD_ROW = "text-[11px] min-[900px]:text-xs";
 
+/** Listes défilantes des cartes : lignes séparées, hauteur confortable au doigt. */
+const OWNER_SCROLL_LIST = "divide-y divide-black/[0.05] dark:divide-white/[0.07]";
+const OWNER_SCROLL_ROW =
+  "flex min-w-0 items-center justify-between gap-2 py-2 first:pt-0.5 last:pb-0.5";
+const OWNER_SCROLL_EMPTY =
+  "py-2 text-[11px] text-neutral-500 min-[900px]:text-xs";
+
 function pctVsPrev(cur: number, prev: number): number | null {
   if (prev === 0) return cur === 0 ? 0 : null;
   return ((cur - prev) / prev) * 100;
@@ -103,6 +112,102 @@ function SoftCard({
     >
       {children}
     </div>
+  );
+}
+
+/**
+ * Carte-liste scrollable : l'en-tête reste fixe, seules les lignes défilent.
+ * UX — le nombre total est affiché dans l'en-tête (on sait qu'il y a plus à voir),
+ * des dégradés apparaissent en haut/bas UNIQUEMENT quand il reste du contenu dans
+ * cette direction (affordance de défilement), la zone est focusable au clavier et
+ * le sur-scroll est confiné (pas d'entraînement de la page).
+ */
+function SoftScrollListCard({
+  title,
+  count,
+  href,
+  linkLabel = "Voir tout",
+  ariaLabel,
+  children,
+}: {
+  title: string;
+  count: number;
+  href: string;
+  linkLabel?: string;
+  ariaLabel: string;
+  children: ReactNode;
+}) {
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const [edges, setEdges] = useState({ top: false, bottom: false });
+
+  const syncEdges = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const max = el.scrollHeight - el.clientHeight;
+    const scrollable = max > 4;
+    const next = {
+      top: scrollable && el.scrollTop > 4,
+      bottom: scrollable && el.scrollTop < max - 4,
+    };
+    setEdges((prev) =>
+      prev.top === next.top && prev.bottom === next.bottom ? prev : next,
+    );
+  }, []);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    if (typeof ResizeObserver === "undefined") return;
+    // Le 1er callback est émis dès `observe()` → mesure initiale incluse.
+    const ro = new ResizeObserver(syncEdges);
+    ro.observe(el);
+    const inner = el.firstElementChild;
+    if (inner) ro.observe(inner);
+    return () => ro.disconnect();
+  }, [syncEdges, count]);
+
+  return (
+    <SoftCard className="overflow-hidden p-3 min-[900px]:p-4">
+      <div className="mb-2 flex min-w-0 items-center justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-1.5">
+          <h3 className={OWNER_SOFT_CARD_TITLE}>{title}</h3>
+          {count > 0 ? (
+            <span className="shrink-0 rounded-full bg-neutral-100 px-1.5 py-0.5 text-[9px] font-bold tabular-nums leading-none text-neutral-600 min-[900px]:text-[10px] dark:bg-white/10 dark:text-neutral-300">
+              {count}
+            </span>
+          ) : null}
+        </div>
+        <Link href={href} scroll={false} className={OWNER_SOFT_CARD_LINK}>
+          {linkLabel}
+        </Link>
+      </div>
+      <div className="relative min-w-0">
+        <div
+          ref={scrollRef}
+          onScroll={syncEdges}
+          tabIndex={0}
+          role="group"
+          aria-label={ariaLabel}
+          className="fs-scroll-y max-h-[13.5rem] min-w-0 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--owner-accent)]/40 min-[900px]:max-h-[15.5rem]"
+        >
+          {children}
+        </div>
+        <div
+          aria-hidden
+          className={cn(
+            "pointer-events-none absolute inset-x-0 top-0 h-5 bg-gradient-to-b from-fs-card to-transparent transition-opacity duration-200",
+            edges.top ? "opacity-100" : "opacity-0",
+          )}
+        />
+        <div
+          aria-hidden
+          className={cn(
+            "pointer-events-none absolute inset-x-0 bottom-0 h-6 bg-gradient-to-t from-fs-card to-transparent transition-opacity duration-200",
+            edges.bottom ? "opacity-100" : "opacity-0",
+          )}
+        />
+      </div>
+    </SoftCard>
   );
 }
 
@@ -208,6 +313,7 @@ function OwnerDayStatCard({
   theme,
   watermark,
   sub,
+  loading = false,
 }: {
   label: string;
   value: string;
@@ -215,16 +321,30 @@ function OwnerDayStatCard({
   watermark: ComponentType<{ className?: string }>;
   /** Petite ligne de ventilation sous la valeur (ex. « Ventes X · Crédits Y »). */
   sub?: string;
+  /**
+   * Le libellé suit la date choisie immédiatement, la valeur vient de la requête.
+   * Tant que la nouvelle journée n'est pas chargée, on masque le chiffre : afficher
+   * l'ancien montant sous le nouveau libellé serait faux (et donne l'impression
+   * que le tableau de bord ne réagit pas).
+   */
+  loading?: boolean;
 }) {
   return (
     <OwnerKpiCardShell theme={theme} watermark={watermark} compact>
       <p className="text-[9px] font-semibold uppercase leading-tight tracking-wide text-white/85 min-[600px]:text-[10px]">
         {label}
       </p>
-      <p className="mt-0.5 min-w-0 max-w-full break-words text-xs font-extrabold leading-snug tracking-tight text-white tabular-nums min-[600px]:text-sm">
-        {value}
-      </p>
-      {sub ? (
+      {loading ? (
+        <div
+          className="mt-1 h-3.5 w-2/3 rounded bg-white/35 motion-safe:animate-pulse min-[600px]:h-4"
+          aria-label="Chargement"
+        />
+      ) : (
+        <p className="mt-0.5 min-w-0 max-w-full break-words text-xs font-extrabold leading-snug tracking-tight text-white tabular-nums min-[600px]:text-sm">
+          {value}
+        </p>
+      )}
+      {sub && !loading ? (
         <p className="mt-0.5 min-w-0 max-w-full truncate text-[8px] font-semibold leading-tight text-white/75 tabular-nums min-[600px]:text-[9px]">
           {sub}
         </p>
@@ -479,6 +599,14 @@ export function OwnerDashboardUi(props: OwnerDashboardUiProps) {
   })();
   const daySuffix = isSelectedToday ? "aujourd'hui" : `le ${dayShort}`;
 
+  /**
+   * `isPlaceholderData` = les chiffres affichés appartiennent encore à la sélection
+   * précédente (date, période ou boutique). Le libellé du bandeau « jour », lui, suit
+   * la date choisie instantanément : sans ce garde-fou on affiche « Encaissé le 15/07 »
+   * au-dessus du montant de la veille, et rien ne signale que le calcul est en cours.
+   */
+  const dayFiguresStale = isPlaceholderData;
+
   const totalCat =
     d.salesByCategory.reduce((s, e) => s + e.revenue, 0) ?? 0;
 
@@ -615,9 +743,24 @@ export function OwnerDashboardUi(props: OwnerDashboardUiProps) {
                 Aujourd&apos;hui
               </button>
             </div>
-            <p className="px-0.5 text-center text-xs font-semibold text-neutral-500 sm:text-left">
-              {headerDate}
-            </p>
+            {/*
+              La barre de progression de 2 px est ancrée en haut du tableau de bord :
+              invisible dès que la page est défilée. On double donc le signal ici, juste
+              sous le sélecteur — là où l'œil se trouve après avoir choisi une date.
+            */}
+            {isFetching ? (
+              <p className="inline-flex items-center justify-center gap-1.5 px-0.5 text-center text-xs font-bold text-[var(--owner-accent)] sm:justify-start sm:text-left">
+                <span
+                  className="h-3 w-3 shrink-0 rounded-full border-2 border-current border-t-transparent motion-safe:animate-spin"
+                  aria-hidden
+                />
+                Calcul en cours…
+              </p>
+            ) : (
+              <p className="px-0.5 text-center text-xs font-semibold text-neutral-500 sm:text-left">
+                {headerDate}
+              </p>
+            )}
           </div>
         </div>
 
@@ -632,40 +775,47 @@ export function OwnerDashboardUi(props: OwnerDashboardUiProps) {
               value={formatCurrency(d.daySalesSummary.totalAmount)}
               theme={OWNER_KPI_THEMES.revenue}
               watermark={MdTrendingUp}
+              loading={dayFiguresStale}
             />
             <OwnerDayStatCard
               label={`Marge encaissée ${daySuffix}`}
               value={formatCurrency(d.daySalesSummary.margin)}
               theme={OWNER_KPI_THEMES.margin}
               watermark={MdPercent}
+              loading={dayFiguresStale}
             />
             <OwnerDayStatCard
               label={`Dépenses ${daySuffix}`}
               value={formatCurrency(dayExpensesTotal)}
               theme={OWNER_KPI_THEMES.purchases}
               watermark={MdPayments}
+              loading={dayFiguresStale}
             />
             <OwnerDayStatCard
               label="Bénéfice net"
               value={formatCurrency(dayNet)}
               theme={OWNER_KPI_THEMES.net}
               watermark={MdSavings}
+              loading={dayFiguresStale}
             />
             <OwnerDayStatCard
               label="Ventes"
               value={`${d.daySalesSummary.count}`}
               theme={OWNER_KPI_THEMES.sales}
               watermark={MdShoppingCart}
+              loading={dayFiguresStale}
             />
             <OwnerDayStatCard
               label="Articles vendus"
               value={`${d.daySalesSummary.itemsSold}`}
               theme={OWNER_KPI_THEMES.items}
               watermark={MdInventory2}
+              loading={dayFiguresStale}
             />
           </div>
 
-          {d.dayCreditRepayments > 0
+          {/* Même règle que les tuiles : pas de ventilation d'une journée pas encore calculée. */}
+          {!dayFiguresStale && d.dayCreditRepayments > 0
             ? (() => {
                 const total = Math.max(0, d.daySalesSummary.totalAmount);
                 const credit = Math.min(total, Math.max(0, d.dayCreditRepayments));
@@ -926,6 +1076,17 @@ export function OwnerDashboardUi(props: OwnerDashboardUiProps) {
                   className="ml-1 min-h-9 rounded-lg border border-black/10 bg-fs-card px-2 py-1.5 text-base touch-manipulation min-[900px]:text-sm"
                 />
               </label>
+              {/*
+                Plage inversée : le tableau de bord ne calcule plus rien (`enabled` retombe
+                à faux) — y compris le bandeau du jour. Sans ce message, l'écran semblait
+                simplement figé, sans aucune explication.
+              */}
+              {customFrom && customTo && customFrom > customTo ? (
+                <p className="w-full text-xs font-bold text-amber-600">
+                  La date de début est après la date de fin — le tableau de bord reste sur
+                  la dernière période valide.
+                </p>
+              ) : null}
             </div>
           ) : null}
         </SoftCard>
@@ -1059,14 +1220,14 @@ export function OwnerDashboardUi(props: OwnerDashboardUiProps) {
           />
         </div>
 
-        {/* Graphiques + listes */}
+        {/* Graphiques (2 colonnes) */}
         <div
           className={cn(
             "mt-6 grid gap-4",
-            isWide ? "min-[900px]:grid-cols-[1.35fr_1fr_320px]" : "grid-cols-1",
+            isWide ? "min-[900px]:grid-cols-[1.5fr_1fr]" : "grid-cols-1",
           )}
         >
-          <SoftCard className="min-h-[280px] overflow-hidden p-3 min-[900px]:min-h-[300px] min-[900px]:p-4">
+          <SoftCard className="min-h-[280px] overflow-hidden p-3 min-[900px]:min-h-[340px] min-[900px]:p-4">
             <div className="mb-2 flex min-w-0 items-center gap-2 min-[900px]:mb-3">
               <MdShowChart className="h-4 w-4 shrink-0 text-[var(--owner-accent)] min-[900px]:h-5 min-[900px]:w-5" aria-hidden />
               <h3 className={OWNER_SOFT_CARD_TITLE}>
@@ -1088,25 +1249,40 @@ export function OwnerDashboardUi(props: OwnerDashboardUiProps) {
               centerHint={null}
             />
           </SoftCard>
+        </div>
+
+        {/* Listes (2 colonnes) */}
+        <div
+          className={cn(
+            "mt-4 grid items-start gap-4",
+            isWide ? "min-[900px]:grid-cols-2" : "grid-cols-1",
+          )}
+        >
           <div className="flex flex-col gap-4">
-            <SoftCard className="overflow-hidden p-3 min-[900px]:p-4">
-              <div className="mb-2 flex min-w-0 items-center justify-between gap-2">
-                <h3 className={OWNER_SOFT_CARD_TITLE}>Top produits</h3>
-                <Link href={reportsHref} scroll={false} className={OWNER_SOFT_CARD_LINK}>
-                  Voir tout
-                </Link>
-              </div>
-              <ul className="space-y-2">
-                {d.topProducts.slice(0, 3).map((p, i) => (
+            <SoftScrollListCard
+              title="Top produits"
+              count={d.topProducts.length}
+              href={reportsHref}
+              ariaLabel="Top produits par chiffre d'affaires — liste défilante"
+            >
+              <ul className={OWNER_SCROLL_LIST}>
+                {d.topProducts.map((p, i) => (
                   <li
                     key={p.productId}
-                    className={cn("flex min-w-0 items-center justify-between gap-2", OWNER_SOFT_CARD_ROW)}
+                    className={cn(OWNER_SCROLL_ROW, OWNER_SOFT_CARD_ROW)}
                   >
-                    <span className="min-w-0 truncate font-medium text-neutral-800">
-                      <span className="mr-1.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-md bg-neutral-100 text-[9px] font-bold text-neutral-600 min-[900px]:mr-2 min-[900px]:h-5 min-[900px]:w-5 min-[900px]:text-[10px]">
+                    <span className="flex min-w-0 flex-1 items-center gap-1.5 truncate font-medium text-neutral-800 min-[900px]:gap-2">
+                      <span
+                        className={cn(
+                          "inline-flex h-4 min-w-4 shrink-0 items-center justify-center rounded-md px-1 text-[9px] font-bold tabular-nums min-[900px]:h-5 min-[900px]:min-w-5 min-[900px]:text-[10px]",
+                          i < 3
+                            ? "bg-[var(--owner-accent)]/12 text-[var(--owner-accent)]"
+                            : "bg-neutral-100 text-neutral-600 dark:bg-white/10 dark:text-neutral-300",
+                        )}
+                      >
                         {i + 1}
                       </span>
-                      {p.productName}
+                      <span className="min-w-0 truncate">{p.productName}</span>
                     </span>
                     <span
                       className={cn(
@@ -1119,24 +1295,23 @@ export function OwnerDashboardUi(props: OwnerDashboardUiProps) {
                   </li>
                 ))}
                 {d.topProducts.length === 0 ? (
-                  <li className="text-[11px] text-neutral-500 min-[900px]:text-xs">Aucune vente sur la période</li>
+                  <li className={OWNER_SCROLL_EMPTY}>Aucune vente sur la période</li>
                 ) : null}
               </ul>
-            </SoftCard>
-            <SoftCard className="overflow-hidden p-3 min-[900px]:p-4">
-              <div className="mb-2 flex min-w-0 items-center justify-between gap-2">
-                <h3 className={OWNER_SOFT_CARD_TITLE}>Meilleure marge</h3>
-                <Link href={reportsHref} scroll={false} className={OWNER_SOFT_CARD_LINK}>
-                  Voir tout
-                </Link>
-              </div>
-              <ul className="space-y-2">
+            </SoftScrollListCard>
+            <SoftScrollListCard
+              title="Meilleure marge"
+              count={d.topByMargin.length}
+              href={reportsHref}
+              ariaLabel="Produits par marge — liste défilante"
+            >
+              <ul className={OWNER_SCROLL_LIST}>
                 {d.topByMargin.map((p) => (
                   <li
                     key={p.productId}
-                    className={cn("flex min-w-0 items-center justify-between gap-2", OWNER_SOFT_CARD_ROW)}
+                    className={cn(OWNER_SCROLL_ROW, OWNER_SOFT_CARD_ROW)}
                   >
-                    <span className="min-w-0 truncate font-medium text-neutral-800">
+                    <span className="min-w-0 flex-1 truncate font-medium text-neutral-800">
                       {p.productName}
                     </span>
                     <span className="min-w-0 max-w-[min(100%,11rem)] shrink-0 text-right text-[11px] font-bold leading-tight tabular-nums text-emerald-700 min-[900px]:text-xs dark:text-emerald-400">
@@ -1145,54 +1320,49 @@ export function OwnerDashboardUi(props: OwnerDashboardUiProps) {
                   </li>
                 ))}
                 {d.topByMargin.length === 0 ? (
-                  <li className="text-[11px] text-neutral-500 min-[900px]:text-xs">Pas assez de données</li>
+                  <li className={OWNER_SCROLL_EMPTY}>Pas assez de données</li>
                 ) : null}
               </ul>
-            </SoftCard>
-            <SoftCard className="overflow-hidden p-3 min-[900px]:p-4">
-              <div className="mb-2 flex min-w-0 items-center justify-between gap-2">
-                <h3 className={OWNER_SOFT_CARD_TITLE}>Produits à surveiller</h3>
-                <Link
-                  href={helpers.canInventory ? ROUTES.inventory : reportsHref}
-                  scroll={false}
-                  className={OWNER_SOFT_CARD_LINK}
-                >
-                  Voir tout
-                </Link>
-              </div>
-              <ul className="space-y-2">
-                {d.stockWatchSamples.slice(0, 3).map((s, idx) => (
-                  <li
-                    key={`${s.productName}-${idx}`}
-                    className={cn("flex min-w-0 items-center justify-between gap-2", OWNER_SOFT_CARD_ROW)}
-                  >
-                    <span className="min-w-0 truncate font-medium text-neutral-800">
-                      {s.productName}
-                    </span>
-                    <span className="max-w-[45%] shrink-0 rounded-md bg-red-50 px-1.5 py-0.5 text-center text-[8px] font-bold uppercase leading-tight text-red-700 ring-1 ring-red-100 min-[900px]:max-w-none min-[900px]:px-2 min-[900px]:text-[9px] dark:bg-red-950/50 dark:text-red-300 dark:ring-red-500/25">
-                      Stock {s.quantity}
-                    </span>
-                  </li>
-                ))}
-                {d.leastByRevenue.slice(0, 2).map((p) => (
-                  <li
-                    key={`least-${p.productId}`}
-                    className={cn("flex min-w-0 items-center justify-between gap-2", OWNER_SOFT_CARD_ROW)}
-                  >
-                    <span className="min-w-0 truncate font-medium text-neutral-800">
-                      {p.productName}
-                    </span>
-                    <span className="max-w-[45%] shrink-0 rounded-md bg-amber-50 px-1.5 py-0.5 text-center text-[8px] font-bold uppercase leading-tight text-amber-800 ring-1 ring-amber-100 min-[900px]:max-w-none min-[900px]:px-2 min-[900px]:text-[9px] dark:bg-amber-950/45 dark:text-amber-200 dark:ring-amber-500/25">
-                      Faible CA
-                    </span>
-                  </li>
-                ))}
-                {d.stockWatchSamples.length === 0 && d.leastByRevenue.length === 0 ? (
-                  <li className="text-[11px] text-neutral-500 min-[900px]:text-xs">Rien à signaler</li>
-                ) : null}
-              </ul>
-            </SoftCard>
+            </SoftScrollListCard>
           </div>
+          <SoftScrollListCard
+            title="Produits à surveiller"
+            count={d.stockWatchSamples.length + d.leastByRevenue.length}
+            href={helpers.canInventory ? ROUTES.inventory : reportsHref}
+            ariaLabel="Produits à surveiller — liste défilante"
+          >
+            <ul className={OWNER_SCROLL_LIST}>
+              {d.stockWatchSamples.map((s, idx) => (
+                <li
+                  key={`${s.productName}-${idx}`}
+                  className={cn(OWNER_SCROLL_ROW, OWNER_SOFT_CARD_ROW)}
+                >
+                  <span className="min-w-0 flex-1 truncate font-medium text-neutral-800">
+                    {s.productName}
+                  </span>
+                  <span className="max-w-[45%] shrink-0 rounded-md bg-red-50 px-1.5 py-0.5 text-center text-[8px] font-bold uppercase leading-tight text-red-700 ring-1 ring-red-100 min-[900px]:max-w-none min-[900px]:px-2 min-[900px]:text-[9px] dark:bg-red-950/50 dark:text-red-300 dark:ring-red-500/25">
+                    Stock {s.quantity}
+                  </span>
+                </li>
+              ))}
+              {d.leastByRevenue.map((p) => (
+                <li
+                  key={`least-${p.productId}`}
+                  className={cn(OWNER_SCROLL_ROW, OWNER_SOFT_CARD_ROW)}
+                >
+                  <span className="min-w-0 flex-1 truncate font-medium text-neutral-800">
+                    {p.productName}
+                  </span>
+                  <span className="max-w-[45%] shrink-0 rounded-md bg-amber-50 px-1.5 py-0.5 text-center text-[8px] font-bold uppercase leading-tight text-amber-800 ring-1 ring-amber-100 min-[900px]:max-w-none min-[900px]:px-2 min-[900px]:text-[9px] dark:bg-amber-950/45 dark:text-amber-200 dark:ring-amber-500/25">
+                    Faible CA
+                  </span>
+                </li>
+              ))}
+              {d.stockWatchSamples.length === 0 && d.leastByRevenue.length === 0 ? (
+                <li className={OWNER_SCROLL_EMPTY}>Rien à signaler</li>
+              ) : null}
+            </ul>
+          </SoftScrollListCard>
         </div>
 
         {/* Actions rapides */}

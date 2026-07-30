@@ -352,7 +352,7 @@ async function fetchDashboardLowStock(
   supabase: ReturnType<typeof createClient>,
   companyId: string,
   storeId: string | null,
-  sampleLimit = 12,
+  sampleLimit = 20,
 ): Promise<{ lowStockCount: number; stockWatchSamples: StockWatchSample[] }> {
   const { count, lines } = await countLowStockAlerts(supabase, companyId, storeId);
   return {
@@ -1598,15 +1598,19 @@ export async function fetchDashboardData(params: {
 
   const { lowStockCount, stockWatchSamples } = lowStock;
 
+  // Listes du tableau de bord : le propriétaire scrolle dans les cartes, on
+  // envoie donc plus que le podium (agrégat déjà en mémoire → aucune requête
+  // supplémentaire), tout en bornant la charge utile.
+  const OWNER_LIST_LIMIT = 20;
   const byRev = [...productAgg].sort((a, b) => b.revenue - a.revenue);
-  const topProducts = byRev.slice(0, 5);
+  const topProducts = byRev.slice(0, OWNER_LIST_LIMIT);
   const topByMargin = [...productAgg]
     .sort((a, b) => b.margin - a.margin)
-    .slice(0, 3);
+    .slice(0, OWNER_LIST_LIMIT);
   const leastByRevenue = [...productAgg]
     .filter((p) => p.revenue > 0)
     .sort((a, b) => a.revenue - b.revenue)
-    .slice(0, 3);
+    .slice(0, 10);
 
   const ticketAverage =
     salesSummary.count > 0

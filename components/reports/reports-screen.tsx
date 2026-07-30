@@ -39,7 +39,7 @@ import { queryKeys } from "@/lib/query/query-keys";
 import { messageFromUnknownError, toast } from "@/lib/toast";
 import { formatCurrency } from "@/lib/utils/currency";
 import { cn } from "@/lib/utils/cn";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import {
   useCallback,
@@ -434,6 +434,12 @@ export function ReportsScreen() {
     queryKey: queryKeys.reports(reportsParams),
     queryFn: () => fetchReportsPageData(reportsParams),
     enabled: Boolean(companyId) && Boolean(helpers?.canReports),
+    /**
+     * Changer de période / boutique / vendeur change la clé : sans ceci la page entière
+     * retombait en squelette à chaque clic. On garde les chiffres précédents affichés
+     * (légèrement atténués) pendant le chargement — même comportement que le Tableau de bord.
+     */
+    placeholderData: keepPreviousData,
     staleTime: 15_000,
   });
 
@@ -477,6 +483,7 @@ export function ReportsScreen() {
     queryKey: queryKeys.reportsTeam(teamParams),
     queryFn: () => fetchTeamPerformance(teamParams),
     enabled: Boolean(companyId) && canTeam && teamVisited,
+    placeholderData: keepPreviousData,
     staleTime: 15_000,
   });
 
@@ -690,8 +697,22 @@ export function ReportsScreen() {
             <button
               type="button"
               onClick={() => void q.refetch()}
-              aria-label="Rafraîchir"
-              className="inline-flex h-9 w-9 items-center justify-center rounded-[6px] border border-black/[0.12] bg-fs-card text-fs-text"
+              aria-label={
+                q.isError && d
+                  ? "Chiffres en cache — actualisation échouée, réessayer"
+                  : "Rafraîchir"
+              }
+              title={
+                q.isError && d
+                  ? "Chiffres en cache : la dernière actualisation a échoué."
+                  : undefined
+              }
+              className={cn(
+                "inline-flex h-9 w-9 items-center justify-center rounded-[6px] border bg-fs-card",
+                q.isError && d
+                  ? "border-amber-500/60 text-amber-600"
+                  : "border-black/[0.12] text-fs-text",
+              )}
             >
               <MdRefresh
                 className={cn("h-4 w-4", q.isFetching && "animate-spin")}
@@ -1005,7 +1026,12 @@ export function ReportsScreen() {
           </div>
         ) : null}
 
-        {q.isError ? (
+        {/*
+          Erreur bloquante uniquement s'il n'y a rien à montrer. Avec des chiffres en
+          cache (connexion coupée, requête échouée), on garde le rapport lisible : le
+          bouton d'actualisation en tête signale déjà l'échec.
+        */}
+        {q.isError && !d ? (
           <FsQueryErrorPanel
             className="rounded-[6px] sm:rounded-[6px]"
             error={q.error}
@@ -1014,7 +1040,12 @@ export function ReportsScreen() {
         ) : null}
 
         {d ? (
-          <>
+          <div
+            className={cn(
+              q.isPlaceholderData &&
+                "motion-safe:opacity-90 motion-safe:transition-opacity",
+            )}
+          >
             {tab === "overview" ? (
               <div className="space-y-4">
                 <div
@@ -1373,7 +1404,7 @@ export function ReportsScreen() {
                 )}
               </SectionCard>
             ) : null}
-          </>
+          </div>
         ) : null}
       </FsPullToRefresh>
     </FsPage>
