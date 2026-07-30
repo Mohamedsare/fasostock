@@ -22,6 +22,15 @@ type SaleDetailRow = SaleItem & {
   }>;
 };
 
+/** Échéance crédit « 31/08/2026 » — même format que le ticket thermique. */
+export function creditDueLabelFromIso(iso: string | null | undefined): string | null {
+  if (!iso?.trim()) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
+}
+
 export function buildInvoiceA4FromSaleDetail(
   sale: SaleDetailRow,
   store: Store,
@@ -52,6 +61,7 @@ export function buildInvoiceA4FromSaleDetail(
     customerAddress: null,
     depositAmount: depositFallback,
     paymentLines: payLines.length > 0 ? payLines : null,
+    creditDueLabel: creditDueLabelFromIso(sale.credit_due_at),
     logoBytes,
   });
 }

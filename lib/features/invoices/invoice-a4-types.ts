@@ -34,5 +34,12 @@ export type InvoiceA4Data = {
   /** Détail paiements : encaisse partiel, crédit, etc. */
   paymentLines?: InvoicePaymentLineData[] | null;
   amountInWords?: string | null;
+  /**
+   * Échéance du crédit déjà formatée (ex. « 31/08/2026 ») — imprimée sous le
+   * règlement quand il reste un solde. Le ticket thermique l'affiche déjà
+   * (`ReceiptTicketData.creditDueLabel`) : la facture A4 remise au client doit
+   * porter la même information, c'est la date qui fait foi en cas de litige.
+   */
+  creditDueLabel?: string | null;
   logoBytes?: Uint8Array | null;
 };

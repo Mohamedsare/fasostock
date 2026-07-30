@@ -222,9 +222,13 @@ function totalsBlock(data: InvoiceA4Data, currency: string, primaryCss: string):
 
   const resteDu = Math.max(0, data.total - encaisseEffectif);
   const totalPositive = data.total > 0.001;
-  const dep = data.depositAmount ?? 0;
+  /*
+   * Le bloc s'affiche dès qu'on CONNAÎT le règlement, même s'il vaut 0 : une
+   * facture entièrement à crédit sans ligne de paiement doit dire « Reste à
+   * payer », pas rester muette — sinon le client la lit comme acquittée.
+   */
   const showReglement =
-    totalPositive && (hasLines || (data.depositAmount != null && dep > 0.001));
+    totalPositive && (hasLines || data.depositAmount != null);
 
   let statutHtml = "";
   if (showReglement) {
@@ -234,6 +238,10 @@ function totalsBlock(data: InvoiceA4Data, currency: string, primaryCss: string):
       statutHtml = `<div class="pay-stat">${tx("Statut : paiement à crédit — solde à régler")}</div>`;
     } else {
       statutHtml = `<div class="pay-stat">${tx("Statut : règlement partiel — solde à régler")}</div>`;
+    }
+    const due = data.creditDueLabel?.trim();
+    if (due && resteDu >= 0.01) {
+      statutHtml += `<div class="pay-due">${tx(`Solde à régler avant le ${due}`)}</div>`;
     }
   }
 
@@ -267,7 +275,8 @@ function totalsBlock(data: InvoiceA4Data, currency: string, primaryCss: string):
           `<div class="tot-line"><span>${tx(pl.label)}</span><span>${escapeHtml(formatCurrencyInvoice(pl.amount, currency))}</span></div>`,
         );
       }
-    } else if (data.depositAmount != null) {
+    } else if (data.depositAmount != null && encaisseEffectif >= 0.01) {
+      // Rien d'encaissé : la ligne de détail répéterait « Total encaissé 0 ».
       rows.push(
         `<div class="tot-line"><span>Montant encaissé</span><span>${escapeHtml(formatCurrencyInvoice(encaisseEffectif, currency))}</span></div>`,
       );
@@ -479,6 +488,8 @@ export function renderInvoiceA4Html(data: InvoiceA4Data): string {
   .tot-pay-sep { height: 10px; }
   .pay-title { font-size: 11px; font-weight: 700; margin: 0; line-height: 1.2; }
   .pay-stat { font-size: 10px; font-style: italic; color: #424242; margin-top: 4px; line-height: 1.3; }
+  /* Échéance du solde : en noir et en gras, c'est un engagement, pas une note. */
+  .pay-due { font-size: 10px; font-weight: 700; color: #000; margin-top: 2px; line-height: 1.3; }
   .tot-block { display: flex; margin-bottom: 2px; align-items: stretch; }
   .tot-lbl {
     width: 120px;
@@ -628,6 +639,32 @@ function model3DoitBlock(data: InvoiceA4Data): string {
 }
 
 function model3Table(data: InvoiceA4Data, currency: string): string {
+  /*
+   * Sous-total / remise / TVA : sans ces lignes, le TOTAL ne correspond pas à la
+   * somme de la colonne « P. Total » et le client conteste la facture.
+   */
+  const adjustments: string[] = [];
+  if (data.discount > 0) {
+    adjustments.push(
+      `<tr class="m3-adj-row">
+        <td class="m3-adj-lbl" colspan="3">Sous-total</td>
+        <td class="m3-adj-val">${escapeHtml(formatCurrencyInvoice(data.subtotal, currency))}</td>
+      </tr>`,
+      `<tr class="m3-adj-row">
+        <td class="m3-adj-lbl" colspan="3">Remise</td>
+        <td class="m3-adj-val">${escapeHtml(formatCurrencyInvoice(-data.discount, currency))}</td>
+      </tr>`,
+    );
+  }
+  if (data.tax > 0) {
+    adjustments.push(
+      `<tr class="m3-adj-row">
+        <td class="m3-adj-lbl" colspan="3">TVA</td>
+        <td class="m3-adj-val">${escapeHtml(formatCurrencyInvoice(data.tax, currency))}</td>
+      </tr>`,
+    );
+  }
+  const totalLabel = data.tax > 0 ? "TOTAL TTC" : "TOTAL";
   const rows = data.items.map((line) => {
     const qty = formatQuantity(line.quantity);
     return `<tr>
@@ -649,8 +686,9 @@ function model3Table(data: InvoiceA4Data, currency: string): string {
     </tr></thead>
     <tbody>
       ${rows.join("")}
+      ${adjustments.join("")}
       <tr class="m3-total-row">
-        <td class="m3-total-lbl" colspan="3">TOTAL</td>
+        <td class="m3-total-lbl" colspan="3">${escapeHtml(totalLabel)}</td>
         <td class="m3-total-val">${escapeHtml(formatCurrencyInvoice(data.total, currency))}</td>
       </tr>
     </tbody>
@@ -672,12 +710,13 @@ function model3Reglement(data: InvoiceA4Data, currency: string): string {
 
   const resteDu = Math.max(0, data.total - encaisseEffectif);
   const totalPositive = data.total > 0.001;
-  const dep = data.depositAmount ?? 0;
-  const showReglement =
-    totalPositive && (hasLines || (data.depositAmount != null && dep > 0.001));
+  // Même règle que `totalsBlock` : un règlement connu s'affiche, fût-il nul.
+  const showReglement = totalPositive && (hasLines || data.depositAmount != null);
   if (!showReglement) return "";
 
-  const rows: string[] = [];
+  const rows: string[] = [
+    `<div class="m3-reg-title">RÈGLEMENT</div>`,
+  ];
   if (linesList != null && linesList.length > 0) {
     for (const pl of linesList) {
       rows.push(
@@ -696,6 +735,10 @@ function model3Reglement(data: InvoiceA4Data, currency: string): string {
   else if (encaisseEffectif < 0.01) statut = "Paiement à crédit — solde à régler";
   else statut = "Règlement partiel — solde à régler";
   rows.push(`<div class="m3-reg-stat">${tx("Statut : " + statut)}</div>`);
+  const due = data.creditDueLabel?.trim();
+  if (due && resteDu >= 0.01) {
+    rows.push(`<div class="m3-reg-due">${tx(`Solde à régler avant le ${due}`)}</div>`);
+  }
   return `<div class="m3-reg">${rows.join("")}</div>`;
 }
 
@@ -767,12 +810,17 @@ export function renderInvoiceA4Model3Html(data: InvoiceA4Data): string {
   .m3-total-row td { background: #d9d9d9; font-weight: 800; font-size: 13px; }
   .m3-total-lbl { text-align: center; letter-spacing: 2px; }
   .m3-total-val { text-align: right; }
+  .m3-adj-row td { font-size: 12px; }
+  .m3-adj-lbl { text-align: right; font-weight: 700; }
+  .m3-adj-val { text-align: right; }
   .m3-amount { font-size: 12px; font-weight: 700; margin-top: 12px; line-height: 1.4; }
   /* Règlement compact à droite */
   .m3-reg { width: 260px; margin-left: auto; margin-top: 12px; }
   .m3-reg-line { display: flex; justify-content: space-between; padding: 2px 0; font-size: 11px; }
   .m3-reg-strong { font-weight: 700; border-top: 1px solid #000; margin-top: 2px; padding-top: 4px; }
+  .m3-reg-title { font-size: 12px; font-weight: 800; text-decoration: underline; text-underline-offset: 2px; margin-bottom: 4px; }
   .m3-reg-stat { font-size: 10px; font-style: italic; color: #424242; margin-top: 4px; }
+  .m3-reg-due { font-size: 10px; font-weight: 700; color: #000; margin-top: 2px; }
   /* Signature */
   .m3-sign { text-align: right; margin-top: 40px; }
   .m3-sign-title { font-size: 13px; font-weight: 700; text-decoration: underline; }

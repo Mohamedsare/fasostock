@@ -125,5 +125,8 @@ export function buildDemoInvoiceA4Data(
     ],
     logoBytes,
     amountInWords: "Douze mille cinq cents francs",
+    // L'aperçu montre un cas acompte + crédit : le propriétaire voit comment son
+    // modèle rend le solde et l'échéance avant de le choisir.
+    creditDueLabel: "31/12/2026",
   });
 }

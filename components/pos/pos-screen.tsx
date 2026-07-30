@@ -838,13 +838,19 @@ export function PosScreen({
           toast.info("Facture PDF : disponible après synchronisation (vente en file d’attente).");
         } else
         try {
-          const [{ getSaleDetail }, { buildInvoiceA4Data }, { fetchLogoBytes }, { paymentLinesFromSalePayments }] =
-            await Promise.all([
-              import("@/lib/features/sales/api"),
-              import("@/lib/features/invoices/build-invoice-a4-data"),
-              import("@/lib/features/invoices/generate-invoice-pdf"),
-              import("@/lib/features/invoices/invoice-a4-payment-lines"),
-            ]);
+          const [
+            { getSaleDetail },
+            { buildInvoiceA4Data },
+            { fetchLogoBytes },
+            { paymentLinesFromSalePayments },
+            { creditDueLabelFromIso },
+          ] = await Promise.all([
+            import("@/lib/features/sales/api"),
+            import("@/lib/features/invoices/build-invoice-a4-data"),
+            import("@/lib/features/invoices/generate-invoice-pdf"),
+            import("@/lib/features/invoices/invoice-a4-payment-lines"),
+            import("@/lib/features/invoices/build-invoice-a4-from-sale-detail"),
+          ]);
           const detail = await getSaleDetail(res.saleId);
           const logoBytes = await fetchLogoBytes(store.logo_url);
           const salePayments = (detail as { sale_payments?: Array<{ method: string; amount: number; reference?: string | null }> } | null)?.sale_payments ?? [];
@@ -868,6 +874,7 @@ export function PosScreen({
             customerAddress: null,
             depositAmount: payLines.length > 0 ? null : res.invoiceSnap.depositAmount,
             paymentLines: payLines.length > 0 ? payLines : null,
+            creditDueLabel: creditDueLabelFromIso(detail?.credit_due_at),
             logoBytes,
           });
           setInvoiceDialog({ data: inv, saleId: res.saleId });

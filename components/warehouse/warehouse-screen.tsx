@@ -822,7 +822,17 @@ export function WarehouseScreen() {
       customerPhone: params.customerPhone,
       customerAddress: null,
       depositAmount: encaisseAmount,
-      paymentLines: [{ label: paymentLabel, amount: encaisseAmount, isImmediateEncaisse }],
+      /*
+       * La ligne « À crédit » porte le montant DÛ (pas 0) : elle documente la
+       * dette, elle n'est simplement pas comptée dans l'encaissé.
+       */
+      paymentLines: [
+        {
+          label: paymentLabel,
+          amount: isImmediateEncaisse ? encaisseAmount : total,
+          isImmediateEncaisse,
+        },
+      ],
       amountInWords: null,
       logoBytes,
     },

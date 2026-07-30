@@ -23,6 +23,8 @@ export function buildInvoiceA4Data(params: {
   paymentLines?: InvoicePaymentLineData[] | null;
   logoBytes?: Uint8Array | null;
   amountInWords?: string | null;
+  /** Échéance du solde à crédit, déjà formatée (ex. « 31/08/2026 »). */
+  creditDueLabel?: string | null;
 }): InvoiceA4Data {
   const items: InvoiceLineData[] = params.lines.map((c) => ({
     description: c.name,
@@ -47,5 +49,6 @@ export function buildInvoiceA4Data(params: {
     paymentLines: params.paymentLines ?? null,
     logoBytes: params.logoBytes ?? null,
     amountInWords: params.amountInWords ?? null,
+    creditDueLabel: params.creditDueLabel ?? null,
   };
 }
