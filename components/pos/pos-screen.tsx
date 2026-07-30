@@ -452,11 +452,14 @@ export function PosScreen({
 
   /** Caisse rapide à crédit : vente réglée en partie (acompte) ou pas du tout. */
   const isQuickCreditSale = mode === "quick" && quickPayment === "credit";
+  /** Facture A4 « À crédit » : même logique — l'acompte saisi est réellement encaissé. */
+  const isA4CreditSale = isA4Like && paymentMethod === "other";
+  const isCreditSale = isQuickCreditSale || isA4CreditSale;
   /** Acompte encaissé au comptoir sur une vente à crédit (0 = rien encaissé). */
-  const creditDownPayment = isQuickCreditSale
+  const creditDownPayment = isCreditSale
     ? Math.min(Math.max(0, amountReceivedValue), total)
     : 0;
-  const creditRemaining = isQuickCreditSale ? Math.max(0, total - creditDownPayment) : 0;
+  const creditRemaining = isCreditSale ? Math.max(0, total - creditDownPayment) : 0;
 
   // Le propriétaire a coupé la vente à crédit pendant la session : on repasse en espèces.
   useEffect(() => {
@@ -476,8 +479,11 @@ export function PosScreen({
     if (stockWarnings.length > 0) {
       return "Stock insuffisant pour certains articles.";
     }
-    if (isA4Like && paymentMethod === "other" && !customerId) {
+    if (isA4CreditSale && !customerId) {
       return "Associez un client pour une vente à crédit.";
+    }
+    if (isA4CreditSale && total > 0 && amountReceivedValue >= total) {
+      return "L'acompte couvre tout le total : choisissez un paiement comptant.";
     }
     if (isQuickCreditSale) {
       // Une vente à crédit déjà enregistrée reste modifiable même si le
@@ -595,8 +601,11 @@ export function PosScreen({
         const hadCredit = pays.some((p) => p.method === "other");
         if (pays.length > 0) {
           const pm = pays[0].method;
-          if (mode === "quick" && hadCredit) {
-            setQuickPayment("credit");
+          if (hadCredit) {
+            // Vente à crédit : la ligne `cash` d'acompte ne doit pas la faire
+            // passer pour comptant à la réouverture (facture A4 comprise).
+            if (mode === "quick") setQuickPayment("credit");
+            else setPaymentMethod("other");
           } else if (pm === "cash" || pm === "mobile_money" || pm === "card") {
             if (mode === "quick") setQuickPayment(pm as QuickPayment);
             else setPaymentMethod(pm as PaymentMethod);
@@ -605,7 +614,7 @@ export function PosScreen({
           }
           // À crédit : seul l'encaissement réel (hors `other`) est un acompte.
           const sum = pays.reduce(
-            (s, x) => (mode === "quick" && hadCredit && x.method === "other" ? s : s + x.amount),
+            (s, x) => (hadCredit && x.method === "other" ? s : s + x.amount),
             0,
           );
           setAmountReceivedTouched(true);
@@ -657,12 +666,31 @@ export function PosScreen({
     if (!isQuickCreditSale) {
       return [{ method: quickPayment as PaymentMethod, amount: total }];
     }
+    return buildCreditPayments();
+  }
+
+  /**
+   * Vente à crédit (caisse rapide OU facture A4) : ligne d'acompte réellement
+   * encaissé + ligne `other` pour le solde dû. Sans la ligne d'acompte, la facture
+   * A4 s'imprimait « Total encaissé 0 » alors que le client avait payé.
+   */
+  function buildCreditPayments(): PosPaymentLine[] {
     const lines: PosPaymentLine[] = [];
     if (creditDownPayment > 0) {
       lines.push({ method: "cash", amount: creditDownPayment });
     }
-    lines.push({ method: "other", amount: creditRemaining, reference: "À crédit" });
+    if (creditRemaining > 0 || lines.length === 0) {
+      lines.push({ method: "other", amount: creditRemaining, reference: "À crédit" });
+    }
     return lines;
+  }
+
+  /** Facture A4 : à crédit (acompte + solde) ou comptant (montant réellement reçu). */
+  function buildInvoicePayments(): PosPaymentLine[] {
+    if (isA4CreditSale) return buildCreditPayments();
+    const acompte = amountReceivedValue;
+    const normalized = acompte <= 0 ? total : Math.min(Math.max(acompte, 0.01), total);
+    return [{ method: paymentMethod, amount: normalized }];
   }
 
   const createMut = useMutation({
@@ -672,23 +700,7 @@ export function PosScreen({
       if (pre) throw new Error(pre);
       const editingId = activeEditSaleIdRef.current;
       if (editingId) {
-        const payments =
-          mode === "quick"
-            ? buildQuickPayments()
-            : paymentMethod === "other"
-              ? [
-                  {
-                    method: "other" as const,
-                    amount: total,
-                    reference: "À crédit",
-                  },
-                ]
-              : (() => {
-                  const acompte = amountReceivedValue;
-                  const normalized =
-                    acompte <= 0 ? total : Math.min(Math.max(acompte, 0.01), total);
-                  return [{ method: paymentMethod, amount: normalized }];
-                })();
+        const payments = mode === "quick" ? buildQuickPayments() : buildInvoicePayments();
         await updateCompletedPosSale({
           saleId: editingId,
           // Client facultatif sur toute vente (comptant ou crédit), quel que soit le mode.
@@ -715,17 +727,7 @@ export function PosScreen({
           saleNumber: String(updated?.sale_number ?? ""),
         };
       }
-      const payments =
-        mode === "quick"
-          ? buildQuickPayments()
-          : paymentMethod === "other"
-            ? [{ method: "other" as const, amount: total, reference: "À crédit" }]
-            : (() => {
-                const acompte = amountReceivedValue;
-                const normalized =
-                  acompte <= 0 ? total : Math.min(Math.max(acompte, 0.01), total);
-                return [{ method: paymentMethod, amount: normalized }];
-              })();
+      const payments = mode === "quick" ? buildQuickPayments() : buildInvoicePayments();
       const invoiceSnap =
         isA4Like && store
           ? {
@@ -784,7 +786,7 @@ export function PosScreen({
         saleMode: mode === "quick" ? "quick_pos" : "invoice_pos",
         documentType: mode === "quick" ? "thermal_receipt" : "a4_invoice",
         prescriptionNumber: isPharmacy ? prescriptionNumber.trim() || null : null,
-        creditDueAt: isQuickCreditSale ? creditDueIso(creditDueDate) : null,
+        creditDueAt: isCreditSale ? creditDueIso(creditDueDate) : null,
       });
       return {
         kind: "create" as const,
@@ -3080,10 +3082,46 @@ function PosCartPanel({
               "rounded-md bg-white px-2.5 py-1.5 sm:px-2.5 sm:py-1.5",
             )}
             value={amountReceived}
-            onChange={(e) => setAmountReceived(e.target.value)}
+            onChange={(e) => {
+              setAmountReceivedTouched(true);
+              setAmountReceived(e.target.value);
+            }}
             inputMode="decimal"
             placeholder={total > 0 ? formatCurrency(total) : "0"}
           />
+          {/* À crédit : l'acompte saisi est encaissé, le solde part en créance.
+           * Le caissier voit le reste dû avant de valider, et peut fixer l'échéance. */}
+          {paymentMethod === "other" ? (
+            <div className="mt-2 flex items-center justify-between gap-2 rounded-lg border border-[#F97316]/40 bg-[#FFF7ED] px-2.5 py-2">
+              {isSaleEdit ? (
+                <span />
+              ) : dueDateOpen || (creditDueDate ?? "").length > 0 ? (
+                <input
+                  type="date"
+                  className={fsInputClass(
+                    "w-38 rounded-md bg-white px-2 py-1.5 text-xs sm:px-2 sm:py-1.5 sm:text-xs",
+                  )}
+                  value={creditDueDate ?? ""}
+                  onChange={(e) => setCreditDueDate?.(e.target.value)}
+                  aria-label="Échéance du crédit"
+                />
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setDueDateOpen(true)}
+                  className="text-[11px] font-semibold text-[#9A3412] underline-offset-2 hover:underline"
+                >
+                  + Échéance (30 j)
+                </button>
+              )}
+              <span className="whitespace-nowrap text-xs text-[#9A3412]">
+                Reste à payer{" "}
+                <b className="text-sm font-extrabold">
+                  {formatCurrency(creditRemaining ?? total)}
+                </b>
+              </span>
+            </div>
+          ) : null}
         </div>
       ) : null}
 

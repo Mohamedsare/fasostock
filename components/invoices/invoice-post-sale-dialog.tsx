@@ -109,10 +109,11 @@ export function InvoicePostSaleDialog({
             Facture enregistrée
           </h2>
           <p className="mt-2 text-sm leading-relaxed text-neutral-600">
-            La vente a été enregistrée. Vous pouvez voir le PDF, l&apos;imprimer,
-            télécharger la facture ou l&apos;envoyer au client.
+            La vente a été enregistrée. Vous pouvez consulter la facture,
+            l&apos;imprimer, l&apos;enregistrer ou l&apos;envoyer au client.
           </p>
-          <div className="mt-5 flex flex-col gap-2.5 min-[400px]:flex-row min-[400px]:flex-wrap">
+          {/* 2×2 : 4 actions sur une seule rangée écrasent les libellés (« Télécharger » tronqué). */}
+          <div className="mt-5 grid grid-cols-1 gap-2.5 min-[340px]:grid-cols-2">
             <PostSaleAction
               icon={<MdPictureAsPdf className="h-5 w-5 shrink-0" aria-hidden />}
               label="Voir le PDF"
@@ -146,7 +147,7 @@ export function InvoicePostSaleDialog({
                 customerName: data.customerName,
                 amountLabel: formatCurrencyFlutter(data.total),
               })}
-              className="flex-1 border-transparent bg-[#F97316] text-white shadow-sm hover:bg-[#ea580c]"
+              className="w-full border-transparent bg-[#F97316] text-white shadow-sm hover:bg-[#ea580c]"
             />
           </div>
           <button
@@ -188,7 +189,7 @@ function PostSaleAction({
       disabled={disabled}
       onClick={onClick}
       className={cn(
-        "touch-manipulation inline-flex min-h-11 min-w-0 flex-1 items-center justify-center gap-2 rounded-xl bg-[#F97316] px-4 text-sm font-semibold text-white shadow-sm hover:bg-[#ea580c] disabled:opacity-50",
+        "touch-manipulation inline-flex min-h-11 w-full min-w-0 items-center justify-center gap-2 rounded-xl bg-[#F97316] px-3 text-sm font-semibold text-white shadow-sm hover:bg-[#ea580c] disabled:opacity-50",
       )}
     >
       {loading ? (
@@ -196,7 +197,8 @@ function PostSaleAction({
       ) : (
         icon
       )}
-      {label}
+      {/* Libellé sur une seule ligne : jamais de retour à la ligne dans un bouton. */}
+      <span className="truncate whitespace-nowrap">{label}</span>
     </button>
   );
 }

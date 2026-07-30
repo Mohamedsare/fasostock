@@ -110,7 +110,8 @@ export function CreditRepaymentReceiptDialog({
             <p className="mt-2 text-sm leading-relaxed text-neutral-600">
               Paiement crédit enregistré. Générez un reçu professionnel pour le client.
             </p>
-            <div className="mt-5 flex flex-col gap-2.5 min-[400px]:flex-row min-[400px]:flex-wrap">
+            {/* 2×2 : 4 actions sur une rangée écraseraient les libellés. */}
+            <div className="mt-5 grid grid-cols-1 gap-2.5 min-[340px]:grid-cols-2">
               <PostReceiptAction
                 icon={<MdPictureAsPdf className="h-5 w-5 shrink-0" aria-hidden />}
                 label="Aperçu PDF"
@@ -144,7 +145,7 @@ export function CreditRepaymentReceiptDialog({
                   customerName: data.customerName,
                   amountLabel: formatCurrencyFlutter(data.amountPaid),
                 })}
-                className="flex-1 border-transparent bg-fs-accent text-white shadow-sm hover:opacity-90"
+                className="w-full border-transparent bg-fs-accent text-white shadow-sm hover:opacity-90"
               />
             </div>
             <button
@@ -188,7 +189,7 @@ function PostReceiptAction({
       disabled={disabled}
       onClick={onClick}
       className={cn(
-        "touch-manipulation inline-flex min-h-11 min-w-0 flex-1 items-center justify-center gap-2 rounded-xl bg-fs-accent px-4 text-sm font-semibold text-white shadow-sm hover:opacity-90 active:opacity-95 disabled:opacity-50",
+        "touch-manipulation inline-flex min-h-11 w-full min-w-0 items-center justify-center gap-2 rounded-xl bg-fs-accent px-3 text-sm font-semibold text-white shadow-sm hover:opacity-90 active:opacity-95 disabled:opacity-50",
       )}
     >
       {loading ? (
@@ -196,7 +197,7 @@ function PostReceiptAction({
       ) : (
         icon
       )}
-      {label}
+      <span className="truncate whitespace-nowrap">{label}</span>
     </button>
   );
 }

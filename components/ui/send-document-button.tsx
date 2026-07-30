@@ -99,7 +99,7 @@ export function SendDocumentButton({
           : "Enregistrer le PDF et ouvrir WhatsApp pour l'envoyer au client"
       }
       className={cn(
-        "touch-manipulation inline-flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-xl border border-black/10 bg-fs-surface-container px-4 text-sm font-semibold text-fs-text disabled:opacity-50 dark:border-white/10",
+        "touch-manipulation inline-flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-xl border border-black/10 bg-fs-surface-container px-3 text-sm font-semibold text-fs-text disabled:opacity-50 dark:border-white/10",
         className,
       )}
     >
@@ -108,7 +108,8 @@ export function SendDocumentButton({
       ) : (
         <MdSend className="h-5 w-5 shrink-0" aria-hidden />
       )}
-      {label}
+      {/* Libellé sur une seule ligne : jamais de retour à la ligne dans un bouton. */}
+      <span className="truncate whitespace-nowrap">{label}</span>
     </button>
   );
 }
