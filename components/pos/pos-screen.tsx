@@ -2754,6 +2754,8 @@ function PosCartPanel({
   setPrescriptionNumber?: (v: string) => void;
 }) {
   const isA4Cart = mode !== "quick";
+  /** Échéance du crédit : repliée par défaut (rarement saisie), dépliée à la demande. */
+  const [dueDateOpen, setDueDateOpen] = useState(false);
   /** Aligné `PosCartPanel` Flutter : `scrollBodyWithFooter` + `cartListBody` (vue tableau). */
   const mergeScroll = cartLayout === "table";
 
@@ -2805,8 +2807,9 @@ function PosCartPanel({
       {mode === "quick" ? (
         <div
           className={cn(
-            "mt-3 grid gap-2 px-0 min-[900px]:px-3",
-            allowQuickCredit ? "grid-cols-2" : "grid-cols-3",
+            "mt-3 grid gap-1.5 px-0 min-[900px]:px-3",
+            // 4 modes : une seule rangée, libellés resserrés (pas de 2ᵉ rangée à scroller).
+            allowQuickCredit ? "grid-cols-4" : "grid-cols-3",
           )}
         >
           {(allowQuickCredit
@@ -2827,7 +2830,8 @@ function PosCartPanel({
               type="button"
               onClick={() => setQuickPayment(key)}
               className={cn(
-                "rounded-lg py-2 text-xs font-semibold transition-colors",
+                "truncate rounded-lg px-1 py-2 font-semibold transition-colors",
+                allowQuickCredit ? "text-[11px]" : "text-xs",
                 quickPayment === key
                   ? "bg-[#F97316] text-white"
                   : "bg-[#F8F9FA] text-[#1F2937]",
@@ -2867,21 +2871,20 @@ function PosCartPanel({
         </div>
       )}
 
-      {/* Vente à crédit (caisse rapide) : client obligatoire, acompte et échéance. */}
+      {/* Vente à crédit (caisse rapide) : client obligatoire, acompte et échéance.
+       * Bloc compact — l'échéance (rarement saisie) reste repliée par défaut. */}
       {mode === "quick" && quickPayment === "credit" ? (
-        <div className="mt-3 rounded-xl border border-[#F97316]/40 bg-[#FFF7ED] p-3 min-[900px]:mx-3">
-          <label className="mb-1 block text-[11px] font-semibold text-[#9A3412]">
-            Client débiteur (obligatoire)
-          </label>
+        <div className="mt-3 rounded-xl border border-[#F97316]/40 bg-[#FFF7ED] p-2.5 min-[900px]:mx-3">
           <div className="flex gap-2">
             <select
               className={fsInputClass(
-                "min-w-0 flex-1 bg-white px-2.5 py-1.5 sm:px-2.5 sm:py-1.5",
+                "min-w-0 flex-1 bg-white px-2 py-2 text-[13px] sm:px-2 sm:py-2 sm:text-[13px]",
               )}
               value={customerId}
               onChange={(e) => setCustomerId(e.target.value)}
+              aria-label="Client débiteur"
             >
-              <option value="">Choisir un client…</option>
+              <option value="">Client à crédit…</option>
               {customers.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
@@ -2894,45 +2897,53 @@ function PosCartPanel({
                 title="Créer un client"
                 aria-label="Créer un client"
                 onClick={onCreateCustomer}
-                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#F97316] text-white"
+                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#F97316] text-white"
               >
                 <MdPersonAdd className="h-5 w-5" aria-hidden />
               </button>
             ) : null}
+            <input
+              className={fsInputClass(
+                "w-24 shrink-0 bg-white px-2 py-2 text-[13px] sm:px-2 sm:py-2 sm:text-[13px]",
+              )}
+              value={amountReceived}
+              onChange={(e) => {
+                setAmountReceivedTouched(true);
+                setAmountReceived(e.target.value);
+              }}
+              inputMode="decimal"
+              placeholder="Acompte"
+              aria-label="Acompte reçu (espèces)"
+            />
           </div>
 
-          <label className="mb-1 mt-3 block text-[11px] font-semibold text-[#9A3412]">
-            Acompte reçu (espèces) — optionnel
-          </label>
-          <input
-            className={fsInputClass("bg-white px-2.5 py-1.5 sm:px-2.5 sm:py-1.5")}
-            value={amountReceived}
-            onChange={(e) => {
-              setAmountReceivedTouched(true);
-              setAmountReceived(e.target.value);
-            }}
-            inputMode="decimal"
-            placeholder="0"
-          />
-
-          {isSaleEdit ? null : (
-            <>
-              <label className="mb-1 mt-3 block text-[11px] font-semibold text-[#9A3412]">
-                Échéance — optionnel (sinon 30 jours)
-              </label>
+          <div className="mt-2 flex items-center justify-between gap-2">
+            {isSaleEdit ? (
+              <span />
+            ) : dueDateOpen || (creditDueDate ?? "").length > 0 ? (
               <input
                 type="date"
-                className={fsInputClass("bg-white px-2.5 py-1.5 sm:px-2.5 sm:py-1.5")}
+                className={fsInputClass(
+                  "w-38 bg-white px-2 py-1.5 text-xs sm:px-2 sm:py-1.5 sm:text-xs",
+                )}
                 value={creditDueDate ?? ""}
                 onChange={(e) => setCreditDueDate?.(e.target.value)}
+                aria-label="Échéance du crédit"
               />
-            </>
-          )}
-
-          <div className="mt-3 flex items-center justify-between border-t border-[#F97316]/30 pt-2">
-            <span className="text-xs font-semibold text-[#9A3412]">Reste à payer</span>
-            <span className="text-base font-extrabold text-[#9A3412]">
-              {formatCurrency(creditRemaining ?? total)}
+            ) : (
+              <button
+                type="button"
+                onClick={() => setDueDateOpen(true)}
+                className="text-[11px] font-semibold text-[#9A3412] underline-offset-2 hover:underline"
+              >
+                + Échéance (30 j)
+              </button>
+            )}
+            <span className="whitespace-nowrap text-xs text-[#9A3412]">
+              Reste{" "}
+              <b className="text-sm font-extrabold">
+                {formatCurrency(creditRemaining ?? total)}
+              </b>
             </span>
           </div>
         </div>
