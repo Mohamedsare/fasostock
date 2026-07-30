@@ -235,7 +235,7 @@ export function registerOutboxHandlers(): void {
       "@/lib/features/push/company-owners-push-client"
     );
 
-    const { error } = await supabase.rpc("create_sale_with_stock", {
+    const { data: newSaleId, error } = await supabase.rpc("create_sale_with_stock", {
       p_company_id: String(p.companyId ?? ""),
       p_store_id: String(p.storeId ?? ""),
       p_customer_id: (p.customerId as string | null) ?? null,
@@ -257,6 +257,19 @@ export function registerOutboxHandlers(): void {
       p_client_request_id: clientRequestId,
     });
     if (error) throw error;
+
+    // Vente à crédit prise hors ligne : on repose l'échéance saisie en caisse.
+    const creditDueAt =
+      typeof p.creditDueAt === "string" && p.creditDueAt.trim() ? p.creditDueAt.trim() : null;
+    const syncedSaleId = String(newSaleId ?? "");
+    if (creditDueAt && syncedSaleId) {
+      const { error: dErr } = await supabase
+        .from("sales")
+        .update({ credit_due_at: creditDueAt })
+        .eq("id", syncedSaleId);
+      // Non bloquant : la créance existe, seule l'échéance retombe sur J+30.
+      if (dErr) console.error("Échec écriture échéance crédit (sync):", dErr);
+    }
 
     await notifyCompanyOwnersPush({
       companyIds: [String(p.companyId ?? "")],

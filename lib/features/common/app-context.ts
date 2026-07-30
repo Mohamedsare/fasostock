@@ -234,6 +234,7 @@ async function fetchAppContext(): Promise<AppContextData | null> {
       warehouseKpiShowSaleValue: true,
       accountingModuleEnabled: false,
       hrModuleEnabled: false,
+      expiryModuleEnabled: false,
       promoAdGenerationEnabled,
     };
   }
@@ -242,7 +243,7 @@ async function fetchAppContext(): Promise<AppContextData | null> {
   const { data: companyRow, error: cErr } = await supabase
     .from("companies")
     .select(
-      "id, name, logo_url, business_type_slug, warehouse_feature_enabled, purchases_feature_enabled, transfers_feature_enabled, store_quota_increase_enabled, ai_predictions_enabled, warehouse_kpi_show_purchase_value, warehouse_kpi_show_sale_value, accounting_module_enabled, hr_module_enabled",
+      "id, name, logo_url, business_type_slug, warehouse_feature_enabled, purchases_feature_enabled, transfers_feature_enabled, store_quota_increase_enabled, ai_predictions_enabled, warehouse_kpi_show_purchase_value, warehouse_kpi_show_sale_value, accounting_module_enabled, hr_module_enabled, expiry_module_enabled",
     )
     .eq("id", primaryCompanyId)
     .maybeSingle();
@@ -276,6 +277,7 @@ async function fetchAppContext(): Promise<AppContextData | null> {
       warehouseKpiShowSaleValue: true,
       accountingModuleEnabled: false,
       hrModuleEnabled: false,
+      expiryModuleEnabled: false,
       promoAdGenerationEnabled,
     };
   }
@@ -300,6 +302,7 @@ async function fetchAppContext(): Promise<AppContextData | null> {
     warehouse_kpi_show_sale_value?: boolean | null;
     accounting_module_enabled?: boolean | null;
     hr_module_enabled?: boolean | null;
+    expiry_module_enabled?: boolean | null;
   };
   const warehouseFeatureEnabled = cr.warehouse_feature_enabled !== false;
   const purchasesFeatureEnabled = cr.purchases_feature_enabled !== false;
@@ -310,11 +313,12 @@ async function fetchAppContext(): Promise<AppContextData | null> {
   const warehouseKpiShowSaleValue = cr.warehouse_kpi_show_sale_value !== false;
   const accountingModuleEnabled = cr.accounting_module_enabled === true;
   const hrModuleEnabled = cr.hr_module_enabled === true;
+  const expiryModuleEnabled = cr.expiry_module_enabled === true;
 
   if (isSuperAdmin) {
     const { data: stores } = await supabase
       .from("stores")
-      .select("id, name, is_primary, engine_sales_enabled, engine_registration_enabled, progressive_purchases_enabled, rental_module_enabled")
+      .select("id, name, is_primary, engine_sales_enabled, engine_registration_enabled, progressive_purchases_enabled, rental_module_enabled, expiry_module_enabled")
       .eq("company_id", companyId)
       .order("is_primary", { ascending: false })
       .order("name", { ascending: true });
@@ -329,6 +333,8 @@ async function fetchAppContext(): Promise<AppContextData | null> {
         (s as { progressive_purchases_enabled?: boolean }).progressive_purchases_enabled === true,
       rentalModuleEnabled:
         (s as { rental_module_enabled?: boolean }).rental_module_enabled === true,
+      expiryModuleEnabled:
+        (s as { expiry_module_enabled?: boolean }).expiry_module_enabled === true,
     }));
     return {
       companyId,
@@ -349,13 +355,14 @@ async function fetchAppContext(): Promise<AppContextData | null> {
       warehouseKpiShowSaleValue,
       accountingModuleEnabled,
       hrModuleEnabled,
+      expiryModuleEnabled,
       promoAdGenerationEnabled,
     };
   }
 
   const { data: stores, error: sErr } = await supabase
     .from("stores")
-    .select("id, name, is_primary, engine_sales_enabled, engine_registration_enabled, progressive_purchases_enabled, rental_module_enabled")
+    .select("id, name, is_primary, engine_sales_enabled, engine_registration_enabled, progressive_purchases_enabled, rental_module_enabled, expiry_module_enabled")
     .eq("company_id", companyId)
     .order("is_primary", { ascending: false })
     .order("name", { ascending: true });
@@ -372,6 +379,8 @@ async function fetchAppContext(): Promise<AppContextData | null> {
       (s as { progressive_purchases_enabled?: boolean }).progressive_purchases_enabled === true,
     rentalModuleEnabled:
       (s as { rental_module_enabled?: boolean }).rental_module_enabled === true,
+    expiryModuleEnabled:
+      (s as { expiry_module_enabled?: boolean }).expiry_module_enabled === true,
   }));
 
   let permissionKeys: string[] = [];
@@ -411,6 +420,7 @@ async function fetchAppContext(): Promise<AppContextData | null> {
     warehouseKpiShowSaleValue,
     accountingModuleEnabled,
     hrModuleEnabled,
+    expiryModuleEnabled,
     promoAdGenerationEnabled,
   };
 }

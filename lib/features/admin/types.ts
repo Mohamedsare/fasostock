@@ -25,6 +25,8 @@ export type AdminCompany = {
   accountingModuleEnabled: boolean;
   /** Module R. Humaine + Paie — désactivé par défaut ; activable par la plateforme. */
   hrModuleEnabled: boolean;
+  /** Suivi de péremption (DLC/DLUO) ouvert à toute l'entreprise par la plateforme. */
+  expiryModuleEnabled: boolean;
   createdAt: string | null;
 };
 
@@ -44,6 +46,8 @@ export type AdminStore = {
   progressivePurchasesEnabled: boolean;
   /** Module Location (gestion locative) activé pour cette boutique (super admin). */
   rentalModuleEnabled: boolean;
+  /** Suivi de péremption (DLC/DLUO) activé pour cette boutique (super admin). */
+  expiryModuleEnabled: boolean;
   createdAt: string | null;
 };
 

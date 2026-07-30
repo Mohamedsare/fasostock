@@ -39,6 +39,7 @@ import {
 } from "@/lib/features/dashboard/date-range";
 import { useAppContext } from "@/lib/features/common/app-context";
 import type { AccessHelpers } from "@/lib/features/permissions/access";
+import { expiryModuleOverride } from "@/lib/features/permissions/access";
 import { usePermissions } from "@/lib/features/permissions/use-permissions";
 import { P } from "@/lib/constants/permissions";
 import { queryKeys } from "@/lib/query/query-keys";
@@ -345,6 +346,7 @@ export function DashboardScreen() {
       <PharmacyExpiryCard
         companyId={companyId}
         businessTypeSlug={ctx.data?.businessTypeSlug}
+        expiryModuleEnabled={expiryModuleOverride(ctx.data)}
       />
 
       <section

@@ -101,6 +101,8 @@ type Props = {
   loading: boolean;
   /** Type d'activité de l'entreprise → champs métier (ex. pharmacie). */
   businessTypeSlug?: string | null;
+  /** Suivi de péremption ouvert par la plateforme (entreprise ou boutique). */
+  expiryModuleEnabled?: boolean;
   /** SKU pré-rempli à la création (auto-généré, propre au tenant ; modifiable). */
   suggestedSku?: string;
   onClose: () => void;
@@ -130,6 +132,7 @@ export function ProductFormDialog({
   initial,
   loading,
   businessTypeSlug,
+  expiryModuleEnabled,
   suggestedSku,
   onClose,
   onSubmit,
@@ -138,7 +141,10 @@ export function ProductFormDialog({
 }: Props) {
   const isEdit = initial != null;
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const config = useMemo(() => activityConfig(businessTypeSlug), [businessTypeSlug]);
+  const config = useMemo(
+    () => activityConfig(businessTypeSlug, { expiryModule: expiryModuleEnabled }),
+    [businessTypeSlug, expiryModuleEnabled],
+  );
   const [activityFields, setActivityFields] = useState<ActivityProductFieldValues>(
     () => initialActivityFields(initial),
   );

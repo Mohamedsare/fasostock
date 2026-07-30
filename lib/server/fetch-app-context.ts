@@ -20,7 +20,7 @@ export async function fetchAppContextForCompany(
   const { data: companyRow, error: cErr } = await supabase
     .from("companies")
     .select(
-      "id, name, logo_url, business_type_slug, warehouse_feature_enabled, purchases_feature_enabled, transfers_feature_enabled, store_quota_increase_enabled, ai_predictions_enabled, warehouse_kpi_show_purchase_value, warehouse_kpi_show_sale_value, accounting_module_enabled, hr_module_enabled",
+      "id, name, logo_url, business_type_slug, warehouse_feature_enabled, purchases_feature_enabled, transfers_feature_enabled, store_quota_increase_enabled, ai_predictions_enabled, warehouse_kpi_show_purchase_value, warehouse_kpi_show_sale_value, accounting_module_enabled, hr_module_enabled, expiry_module_enabled",
     )
     .eq("id", cid)
     .maybeSingle();
@@ -45,11 +45,12 @@ export async function fetchAppContextForCompany(
     warehouse_kpi_show_sale_value?: boolean | null;
     accounting_module_enabled?: boolean | null;
     hr_module_enabled?: boolean | null;
+    expiry_module_enabled?: boolean | null;
   };
 
   const { data: stores, error: sErr } = await supabase
     .from("stores")
-    .select("id, name, is_primary")
+    .select("id, name, is_primary, expiry_module_enabled")
     .eq("company_id", cid)
     .order("is_primary", { ascending: false })
     .order("name", { ascending: true });
@@ -59,6 +60,8 @@ export async function fetchAppContextForCompany(
     id: s.id as string,
     name: s.name as string,
     isPrimary: (s as { is_primary?: boolean }).is_primary === true,
+    expiryModuleEnabled:
+      (s as { expiry_module_enabled?: boolean }).expiry_module_enabled === true,
   }));
 
   const primary = mapped.find((s) => s.isPrimary) ?? mapped[0] ?? null;
@@ -83,6 +86,7 @@ export async function fetchAppContextForCompany(
       warehouseKpiShowSaleValue: cr.warehouse_kpi_show_sale_value !== false,
       accountingModuleEnabled: cr.accounting_module_enabled === true,
       hrModuleEnabled: cr.hr_module_enabled === true,
+      expiryModuleEnabled: cr.expiry_module_enabled === true,
       // Flag évalué côté client (bouton uniquement) ; non requis pour les gardes de route serveur.
       promoAdGenerationEnabled: false,
     };
@@ -125,6 +129,7 @@ export async function fetchAppContextForCompany(
     warehouseKpiShowSaleValue: cr.warehouse_kpi_show_sale_value !== false,
     accountingModuleEnabled: cr.accounting_module_enabled === true,
     hrModuleEnabled: cr.hr_module_enabled === true,
+    expiryModuleEnabled: cr.expiry_module_enabled === true,
     // Flag évalué côté client (bouton uniquement) ; non requis pour les gardes de route serveur.
     promoAdGenerationEnabled: false,
   };

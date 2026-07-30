@@ -99,6 +99,11 @@ export async function createPosSale(params: {
   documentType: "thermal_receipt" | "a4_invoice";
   /** Pharmacie : n° d'ordonnance (optionnel) — écrit après création (non bloquant). */
   prescriptionNumber?: string | null;
+  /**
+   * Vente à crédit : échéance choisie en caisse (ISO). Écrite après création
+   * (`sales.credit_due_at`) ; sans elle la page Crédit applique J+30 par défaut.
+   */
+  creditDueAt?: string | null;
 }): Promise<{ saleId: string; saleNumber: string }> {
   const supabase = createClient();
   const {
@@ -121,6 +126,7 @@ export async function createPosSale(params: {
       saleMode: params.saleMode,
       documentType: params.documentType,
       prescriptionNumber: params.prescriptionNumber ?? null,
+      creditDueAt: params.creditDueAt ?? null,
       p_client_request_id: clientRequestId,
     });
     return {
@@ -166,6 +172,16 @@ export async function createPosSale(params: {
       // Non bloquant : la vente est déjà validée, on n'échoue pas la dispensation.
       console.error("Échec écriture n° ordonnance:", pErr);
     }
+  }
+
+  // Vente à crédit : échéance saisie en caisse — best-effort (la créance existe déjà).
+  const dueAt = params.creditDueAt?.trim();
+  if (dueAt) {
+    const { error: dErr } = await supabase
+      .from("sales")
+      .update({ credit_due_at: dueAt })
+      .eq("id", id);
+    if (dErr) console.error("Échec écriture échéance crédit:", dErr);
   }
 
   const { data: saleRow, error: sErr } = await supabase

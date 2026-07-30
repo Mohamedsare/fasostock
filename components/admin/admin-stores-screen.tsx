@@ -8,6 +8,7 @@ import {
   adminListStores,
   adminSetStoreEngineRegistration,
   adminSetStoreEngineSales,
+  adminSetStoreExpiryModule,
   adminSetStoreProgressive,
   adminUpdateStore,
 } from "@/lib/features/admin/api";
@@ -84,6 +85,17 @@ export function AdminStoresScreen() {
     onError: (e) => toast.error(messageFromUnknownError(e)),
   });
 
+  const expiryMut = useMutation({
+    mutationFn: async (p: { id: string; enabled: boolean }) =>
+      adminSetStoreExpiryModule(p.id, p.enabled),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["admin-stores"] });
+      void qc.invalidateQueries({ queryKey: ["app-context"] });
+      toast.success("Suivi des péremptions mis à jour");
+    },
+    onError: (e) => toast.error(messageFromUnknownError(e)),
+  });
+
   const del = useMutation({
     mutationFn: (id: string) => adminDeleteStore(id),
     onSuccess: () => {
@@ -128,7 +140,7 @@ export function AdminStoresScreen() {
 
       <AdminCard padding="p-0">
         <FsHorizontalScroll>
-          <table className="min-w-[980px] w-full text-left text-sm">
+          <table className="min-w-[1120px] w-full text-left text-sm">
           <thead className="border-b border-slate-200 bg-slate-50 text-xs font-bold uppercase text-slate-600">
             <tr>
               <th className="p-3">Entreprise</th>
@@ -139,6 +151,7 @@ export function AdminStoresScreen() {
               <th className="p-3">Vente Engins</th>
               <th className="p-3">Immatriculation</th>
               <th className="p-3">Achats Progressifs</th>
+              <th className="p-3">Péremptions</th>
               <th className="p-3">Actions</th>
             </tr>
           </thead>
@@ -199,6 +212,22 @@ export function AdminStoresScreen() {
                     />
                     <span className="text-xs text-slate-600">
                       {s.progressivePurchasesEnabled ? "Activé" : "Désactivé"}
+                    </span>
+                  </label>
+                </td>
+                <td className="p-3">
+                  <label className="inline-flex cursor-pointer items-center gap-2">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 accent-amber-600"
+                      checked={s.expiryModuleEnabled}
+                      disabled={expiryMut.isPending}
+                      onChange={() =>
+                        expiryMut.mutate({ id: s.id, enabled: !s.expiryModuleEnabled })
+                      }
+                    />
+                    <span className="text-xs text-slate-600">
+                      {s.expiryModuleEnabled ? "Activé" : "Selon métier"}
                     </span>
                   </label>
                 </td>

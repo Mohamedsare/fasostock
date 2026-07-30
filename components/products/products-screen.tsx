@@ -37,7 +37,10 @@ import type {
 } from "@/lib/features/products/types";
 import { ProductFormDialog } from "@/components/products/product-form-dialog";
 import { ProductBatchesDialog } from "@/components/products/product-batches-dialog";
-import { activityConfig } from "@/lib/features/activity/activity-config";
+import {
+  activityConfigForContext,
+  expiryModuleOverride,
+} from "@/lib/features/permissions/access";
 import { ROUTES } from "@/lib/config/routes";
 import { queryKeys } from "@/lib/query/query-keys";
 import { useStoreCatalog } from "@/lib/features/stores/use-store-catalog";
@@ -167,7 +170,7 @@ export function ProductsScreen() {
   const companyId = ctx.data?.companyId ?? "";
   const storeId = ctx.data?.storeId ?? null;
   const uiTerms = activityUiTerms(ctx.data?.businessTypeSlug);
-  const activityCfg = activityConfig(ctx.data?.businessTypeSlug);
+  const activityCfg = activityConfigForContext(ctx.data);
   const productEntityLabel = uiTerms.productsTitle === "Menu" ? "Élément du menu" : "Produit";
 
   const productsQ = useQuery({
@@ -1044,6 +1047,7 @@ export function ProductsScreen() {
           initial={editing}
           loading={mutateSaveProduct.isPending}
           businessTypeSlug={ctx.data?.businessTypeSlug}
+          expiryModuleEnabled={expiryModuleOverride(ctx.data)}
           suggestedSku={suggestedSku}
           onClose={() => {
             setShowForm(false);

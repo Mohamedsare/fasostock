@@ -32,6 +32,8 @@ export type AppContextData = {
     progressivePurchasesEnabled?: boolean;
     /** Module Location (gestion locative) activé pour cette boutique. */
     rentalModuleEnabled?: boolean;
+    /** Suivi de péremption (DLC/DLUO) ouvert pour cette boutique par la plateforme. */
+    expiryModuleEnabled?: boolean;
   }[];
   isSuperAdmin: boolean;
   permissionKeys: string[];
@@ -56,7 +58,38 @@ export type AppContextData = {
   hrModuleEnabled: boolean;
   /** Génération d'affiches publicitaires IA (promotions) — flag GLOBAL super admin, désactivé par défaut. */
   promoAdGenerationEnabled: boolean;
+  /**
+   * Suivi de péremption ouvert pour TOUTE l'entreprise par la plateforme
+   * (`companies.expiry_module_enabled`). S'ajoute au métier, ne retire rien.
+   */
+  expiryModuleEnabled: boolean;
 };
+
+/**
+ * Le super admin a-t-il ouvert le suivi de péremption pour ce contexte ?
+ * Entreprise entière, ou boutique courante (toutes boutiques : au moins une).
+ */
+export function expiryModuleOverride(
+  data: AppContextData | null | undefined,
+): boolean {
+  if (!data) return false;
+  if (data.expiryModuleEnabled === true) return true;
+  if (data.storeId) {
+    return (
+      data.stores.find((s) => s.id === data.storeId)?.expiryModuleEnabled === true
+    );
+  }
+  return data.stores.some((s) => s.expiryModuleEnabled === true);
+}
+
+/** Config métier du contexte, drapeaux plateforme (péremption…) déjà appliqués. */
+export function activityConfigForContext(
+  data: AppContextData | null | undefined,
+): ReturnType<typeof activityConfig> {
+  return activityConfig(data?.businessTypeSlug, {
+    expiryModule: expiryModuleOverride(data),
+  });
+}
 
 export type AccessHelpers = {
   hasPermission: (key: string) => boolean;
@@ -92,7 +125,12 @@ export type AccessHelpers = {
   canBarcodes: boolean;
   /** Propriétaire ou permission page Promotions. */
   canPromotions: boolean;
-  /** Propriétaire ou permission page Péremptions (DLC/DLUO). */
+  /**
+   * Suivi de péremption (DLC/DLUO) actif pour ce contexte : métier concerné
+   * (pharmacie, supermarché…) ou drapeau ouvert par le super admin.
+   */
+  expiryModuleOn: boolean;
+  /** Page Péremptions : module actif ET propriétaire / permission dédiée. */
   canExpiry: boolean;
   /** Propriétaire ou permission de consultation des dépenses. */
   canExpenses: boolean;
@@ -201,7 +239,10 @@ export function buildAccessHelpers(
   const canCredit = isOwner || hasPermission(P.creditView);
   const canBarcodes = isOwner || hasPermission(P.barcodesManage);
   const canPromotions = isOwner || hasPermission(P.promotionsManage);
-  const canExpiry = isOwner || hasPermission(P.expiryView);
+  // Péremptions : réservé aux métiers à suivi de lots (pharmacie, supermarché…) ou
+  // aux entreprises / boutiques pour lesquelles le super admin l'a ouvert.
+  const expiryModuleOn = activityConfigForContext(data).expiryDashboard;
+  const canExpiry = expiryModuleOn && (isOwner || hasPermission(P.expiryView));
   const canManageExpenses = isOwner || hasPermission(P.expensesManage);
   const canExpenses =
     isOwner || hasPermission(P.expensesView) || canManageExpenses;
@@ -243,6 +284,7 @@ export function buildAccessHelpers(
     canCredit,
     canBarcodes,
     canPromotions,
+    expiryModuleOn,
     canExpiry,
     canExpenses,
     canManageExpenses,
@@ -300,10 +342,9 @@ export function filterNavItemsForPermissions(
       // Droit dédié « Faire l'inventaire » (ou propriétaire). Masqué aux caissiers.
       return (h.isOwner || h.hasPermission(P.inventoryManage)) && !h.isCashier;
     }
-    if (href === ROUTES.expiry) {
-      // Page réservée aux métiers à suivi de péremption (pharmacie, supermarché…).
-      return h.canExpiry && activityConfig(businessTypeSlug).expiryDashboard;
-    }
+    // `canExpiry` porte déjà la condition « suivi de péremption actif » (métier ou
+    // drapeau plateforme) en plus du droit utilisateur.
+    if (href === ROUTES.expiry) return h.canExpiry;
     if (href === ROUTES.purchases) return h.canPurchases;
     if (href === ROUTES.expenses) return h.canExpenses;
     if (href === ROUTES.warehouse) return h.canWarehouse;
@@ -431,9 +472,8 @@ export function canAccessPathname(
 
   const route = normalizeAppRoute(pathname);
   if (!isRouteAllowedForActivity(route, businessTypeSlug)) return false;
-  // Page Péremptions : réservée aux métiers à suivi de lots (accès URL direct).
-  if (route === ROUTES.expiry && !activityConfig(businessTypeSlug).expiryDashboard) {
-    return false;
-  }
+  // Page Péremptions : suivi actif (métier ou drapeau plateforme) — accès URL direct.
+  // Le droit utilisateur, lui, reste géré par l'écran (carte « Accès réservé »).
+  if (route === ROUTES.expiry && !h.expiryModuleOn) return false;
   return isAppShellRoute(route);
 }

@@ -30,6 +30,8 @@ const mono =
 export function ReceiptTicketPreview({ data }: { data: ReceiptTicketData }) {
   const payU = paymentUppercase(data.paymentMethod);
   const isCashLike = payU === "ESPECES";
+  /** Vente à crédit : preuve de dette au client (acompte + reste dû). */
+  const creditRemaining = Math.max(0, data.creditRemaining ?? 0);
   const tel = telLine(data.storePhone);
   const qrPayload = buildReceiptQrPayload(data);
   const [logoErr, setLogoErr] = useState(false);
@@ -156,6 +158,35 @@ export function ReceiptTicketPreview({ data }: { data: ReceiptTicketData }) {
               value={receiptIntAmount(Math.round(data.change ?? 0))}
               size={9.5}
             />
+          </>
+        ) : null}
+        {creditRemaining > 0 ? (
+          <>
+            {data.customerName?.trim() ? (
+              <AmountRow
+                label="Client"
+                value={data.customerName.trim()}
+                size={9.5}
+              />
+            ) : null}
+            <AmountRow
+              label="Acompte"
+              value={receiptIntAmount(Math.round(data.creditPaid ?? 0))}
+              size={9.5}
+            />
+            <AmountRow
+              label="RESTE A PAYER"
+              value={receiptIntAmount(Math.round(creditRemaining))}
+              size={10.5}
+              bold
+            />
+            {data.creditDueLabel?.trim() ? (
+              <AmountRow
+                label="Echeance"
+                value={data.creditDueLabel.trim()}
+                size={9.5}
+              />
+            ) : null}
           </>
         ) : null}
         <div style={{ height: 12 }} />

@@ -158,6 +158,9 @@ export const queryKeys = {
     ["pos-cart-settings", mode === "quick" ? "quick" : "a4"] as const,
   invoiceTablePosEnabled: (companyId: string) =>
     ["invoice-table-pos", companyId] as const,
+  /** Réglage owner « vente à crédit en caisse rapide » (`company_settings`). */
+  quickPosCreditEnabled: (companyId: string) =>
+    ["quick-pos-credit", companyId] as const,
   /** Dépôt central (`WarehousePage` Flutter) — invalider le préfixe `['warehouse', companyId]`. */
   warehouseInventory: (companyId: string) => ["warehouse", companyId, "inventory"] as const,
   warehouseMovements: (companyId: string) => ["warehouse", companyId, "movements"] as const,

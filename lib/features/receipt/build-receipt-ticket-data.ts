@@ -4,7 +4,8 @@ import type {
 } from "./receipt-ticket-types";
 import type { Store } from "@/lib/features/stores/types";
 
-export type QuickPaymentMethod = "cash" | "mobile_money" | "card";
+/** `credit` = vente à crédit en caisse rapide (réglage entreprise, cf. `quick-pos-credit.ts`). */
+export type QuickPaymentMethod = "cash" | "mobile_money" | "card" | "credit";
 
 export type PosReceiptSnap = {
   cart: Array<{
@@ -20,11 +21,20 @@ export type PosReceiptSnap = {
   quickPayment: QuickPaymentMethod;
   amountReceivedValue: number;
   change: number;
+  /** Vente à crédit : nom du client débiteur (obligatoire côté caisse). */
+  customerName?: string | null;
+  /** Vente à crédit : acompte encaissé au comptoir. */
+  creditPaid?: number;
+  /** Vente à crédit : reste dû (total − acompte). */
+  creditRemaining?: number;
+  /** Vente à crédit : échéance formatée (ex. « 31/08/2026 »), si saisie. */
+  creditDueLabel?: string | null;
 };
 
 function quickPaymentLabel(m: QuickPaymentMethod): string {
   if (m === "cash") return "Espèces";
   if (m === "card") return "Carte";
+  if (m === "credit") return "À crédit";
   return "Mobile money";
 }
 
@@ -118,6 +128,7 @@ export function buildReceiptTicketData(
   const isCash = snap.quickPayment === "cash";
   const ar = isCash ? snap.amountReceivedValue : 0;
   const showMoney = isCash && ar > 0;
+  const isCredit = snap.quickPayment === "credit";
 
   return {
     storeName: store.name,
@@ -134,7 +145,10 @@ export function buildReceiptTicketData(
     amountReceived: showMoney ? ar : null,
     change: showMoney && snap.change >= 0 ? snap.change : null,
     date,
-    customerName: null,
+    customerName: isCredit ? (snap.customerName ?? null) : null,
     customerPhone: null,
+    creditPaid: isCredit ? (snap.creditPaid ?? 0) : null,
+    creditRemaining: isCredit ? (snap.creditRemaining ?? 0) : null,
+    creditDueLabel: isCredit ? (snap.creditDueLabel ?? null) : null,
   };
 }

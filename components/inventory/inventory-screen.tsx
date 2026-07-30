@@ -27,7 +27,7 @@ import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { queryKeys } from "@/lib/query/query-keys";
 import { useStoreCatalog } from "@/lib/features/stores/use-store-catalog";
 import { activityUiTerms } from "@/lib/features/activity/activity-profiles";
-import { activityConfig } from "@/lib/features/activity/activity-config";
+import { activityConfigForContext } from "@/lib/features/permissions/access";
 import { messageFromUnknownError, toast, toastMutationError } from "@/lib/toast";
 import { downloadProSpreadsheet } from "@/lib/utils/spreadsheet-export-pro";
 import { formatCurrency } from "@/lib/utils/currency";
@@ -287,7 +287,7 @@ export function InventoryScreen() {
   const storeId = ctx?.storeId ?? null;
   const storeName = ctx?.stores?.find((s) => s.id === storeId)?.name ?? null;
   const uiTerms = activityUiTerms(ctx?.businessTypeSlug);
-  const activityCfg = activityConfig(ctx?.businessTypeSlug);
+  const activityCfg = activityConfigForContext(ctx);
   const [batchesTarget, setBatchesTarget] = useState<{ id: string; name: string } | null>(
     null,
   );

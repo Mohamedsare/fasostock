@@ -25,4 +25,10 @@ export type ReceiptTicketData = {
   date: Date;
   customerName?: string | null;
   customerPhone?: string | null;
+  /** Vente à crédit — montant encaissé au comptoir (acompte). */
+  creditPaid?: number | null;
+  /** Vente à crédit — reste dû par le client (> 0 ⇒ bloc crédit imprimé). */
+  creditRemaining?: number | null;
+  /** Échéance déjà formatée (ex. « 31/08/2026 ») — évite de transporter une `Date`. */
+  creditDueLabel?: string | null;
 };

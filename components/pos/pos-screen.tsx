@@ -19,6 +19,7 @@ import { applyPromoPercent } from "@/lib/features/promotions/promo-math";
 import { defaultInvoiceUnitForProduct, INVOICE_UNITS } from "@/lib/features/pos/invoice-units";
 import { factureTabStripHeightPx } from "@/lib/utils/facture-tab-layout";
 import { fetchInvoiceTablePosEnabled } from "@/lib/features/settings/invoice-table-pos";
+import { fetchQuickPosCreditEnabled } from "@/lib/features/settings/quick-pos-credit";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { ROUTES, storeFactureTabPath } from "@/lib/config/routes";
 import { queryKeys } from "@/lib/query/query-keys";
@@ -96,12 +97,30 @@ function isA4InvoiceFromSaleItem(s: SaleItem): boolean {
   return false;
 }
 
+/** `yyyy-mm-dd` (input date) → ISO fin de journée locale, ou null si vide/invalide. */
+function creditDueIso(yyyyMmDd: string): string | null {
+  const raw = yyyyMmDd.trim();
+  if (!raw) return null;
+  const d = new Date(`${raw}T23:59:59`);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
+}
+
+/** Échéance affichée sur le ticket de crédit (« 31/08/2026 »). */
+function formatCreditDueLabel(yyyyMmDd: string): string | null {
+  const raw = yyyyMmDd.trim();
+  if (!raw) return null;
+  const d = new Date(`${raw}T12:00:00`);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleDateString("fr-FR");
+}
+
 function isBoutiqueScope(scope: string | null | undefined): boolean {
   const s = scope ?? "both";
   return s === "both" || s === "boutique_only";
 }
 type PaymentMethod = "cash" | "mobile_money" | "card" | "other";
-type QuickPayment = "cash" | "mobile_money" | "card";
+/** `credit` : vente à crédit en caisse rapide — soumise au réglage entreprise du propriétaire. */
+type QuickPayment = "cash" | "mobile_money" | "card" | "credit";
 
 export function PosScreen({
   storeId,
@@ -127,6 +146,8 @@ export function PosScreen({
   const [amountReceived, setAmountReceived] = useState("");
   const [amountReceivedTouched, setAmountReceivedTouched] = useState(false);
   const [customerId, setCustomerId] = useState<string>("");
+  /** Caisse rapide à crédit : échéance facultative (`yyyy-mm-dd`) → `sales.credit_due_at`. */
+  const [creditDueDate, setCreditDueDate] = useState("");
   const [cartOpen, setCartOpen] = useState(false);
   const [invoiceDialog, setInvoiceDialog] = useState<{
     data: InvoiceA4Data;
@@ -214,13 +235,28 @@ export function PosScreen({
     staleTime: 60_000,
   });
 
+  // Vente à crédit en caisse rapide : réglage entreprise activé par le propriétaire
+  // (Paramètres › « Caisse POS rapide — vente à crédit »).
+  const quickCreditCompanyQ = useQuery({
+    queryKey: queryKeys.quickPosCreditEnabled(companyId),
+    queryFn: () => fetchQuickPosCreditEnabled(companyId),
+    enabled: Boolean(companyId && mode === "quick" && canAccess),
+    staleTime: 60_000,
+  });
+  const quickCreditEnabled = mode === "quick" && quickCreditCompanyQ.data === true;
+  /**
+   * Client requis dès qu'on peut vendre à crédit : la liste doit être chargée.
+   * En modification, la vente reprise peut être à crédit même si le réglage a été coupé.
+   */
+  const withCustomers = isA4Like || quickCreditEnabled || (mode === "quick" && isSaleEditEntry);
+
   const posQ = useQuery({
-    queryKey: ["pos", mode, companyId, storeId] as const,
+    queryKey: ["pos", mode, companyId, storeId, withCustomers] as const,
     queryFn: () =>
       fetchPosData({
         companyId,
         storeId,
-        withCustomers: isA4Like,
+        withCustomers,
       }),
     enabled: Boolean(
       companyId &&
@@ -397,6 +433,21 @@ export function PosScreen({
       ? amountReceivedValue - total
       : Math.max(0, amountReceivedValue - total);
 
+  /** Caisse rapide à crédit : vente réglée en partie (acompte) ou pas du tout. */
+  const isQuickCreditSale = mode === "quick" && quickPayment === "credit";
+  /** Acompte encaissé au comptoir sur une vente à crédit (0 = rien encaissé). */
+  const creditDownPayment = isQuickCreditSale
+    ? Math.min(Math.max(0, amountReceivedValue), total)
+    : 0;
+  const creditRemaining = isQuickCreditSale ? Math.max(0, total - creditDownPayment) : 0;
+
+  // Le propriétaire a coupé la vente à crédit pendant la session : on repasse en espèces.
+  useEffect(() => {
+    if (!quickCreditEnabled && quickPayment === "credit" && !activeEditSaleId) {
+      setQuickPayment("cash");
+    }
+  }, [quickCreditEnabled, quickPayment, activeEditSaleId]);
+
   /** Aligné `PosQuickPage._handlePayment` / `PosPage._handlePayment` (Flutter) — validations + toasts. */
   function getPosPayValidationError(): string | null {
     if (cart.some((c) => c.quantity <= 0)) {
@@ -410,6 +461,19 @@ export function PosScreen({
     }
     if (isA4Like && paymentMethod === "other" && !customerId) {
       return "Associez un client pour une vente à crédit.";
+    }
+    if (isQuickCreditSale) {
+      // Une vente à crédit déjà enregistrée reste modifiable même si le
+      // propriétaire a coupé le réglage depuis : on ne bloque que les nouvelles.
+      if (!quickCreditEnabled && !activeEditSaleId) {
+        return "La vente à crédit n'est pas activée pour cette entreprise.";
+      }
+      if (!customerId) {
+        return "Choisissez le client à qui vous faites crédit.";
+      }
+      if (amountReceivedValue >= total) {
+        return "L'acompte couvre tout le total : choisissez un paiement comptant.";
+      }
     }
     if (
       mode === "quick" &&
@@ -510,21 +574,27 @@ export function PosScreen({
         setCart(rows);
         setDiscount(sale.discount > 0 ? String(sale.discount) : "0");
         const pays = sale.sale_payments ?? [];
+        // Ligne `other` = solde mis à crédit : la vente garde sa nature à la modification.
+        const hadCredit = pays.some((p) => p.method === "other");
         if (pays.length > 0) {
           const pm = pays[0].method;
-          if (pm === "cash" || pm === "mobile_money" || pm === "card") {
+          if (mode === "quick" && hadCredit) {
+            setQuickPayment("credit");
+          } else if (pm === "cash" || pm === "mobile_money" || pm === "card") {
             if (mode === "quick") setQuickPayment(pm as QuickPayment);
             else setPaymentMethod(pm as PaymentMethod);
           } else if (pm === "other" && mode !== "quick") {
             setPaymentMethod("other");
-          } else if (pm === "other" && mode === "quick") {
-            setQuickPayment("cash");
           }
-          const sum = pays.reduce((s, x) => s + x.amount, 0);
+          // À crédit : seul l'encaissement réel (hors `other`) est un acompte.
+          const sum = pays.reduce(
+            (s, x) => (mode === "quick" && hadCredit && x.method === "other" ? s : s + x.amount),
+            0,
+          );
           setAmountReceivedTouched(true);
           setAmountReceived(sum > 0 ? String(sum) : "");
         }
-        if (isA4Like) {
+        if (isA4Like || (mode === "quick" && hadCredit)) {
           setCustomerId(sale.customer_id ?? "");
         }
         setActiveEditSaleId(sale.id);
@@ -556,6 +626,29 @@ export function PosScreen({
     receiptSnap?: PosReceiptSnap;
   };
   type UpdatePayResult = { kind: "update"; saleNumber: string };
+  type PosPaymentLine = {
+    method: PaymentMethod;
+    amount: number;
+    reference?: string | null;
+  };
+
+  /**
+   * Lignes de paiement de la caisse rapide. À crédit : l'acompte RÉELLEMENT encaissé
+   * (espèces au comptoir) puis une ligne `other` « À crédit » pour le reste — c'est la
+   * convention lue par la page Crédit (`realizedPaidTotal` ignore `other`) et par les
+   * rapports (« crédit accordé » = Σ des lignes `other`).
+   */
+  function buildQuickPayments(): PosPaymentLine[] {
+    if (!isQuickCreditSale) {
+      return [{ method: quickPayment as PaymentMethod, amount: total }];
+    }
+    const lines: PosPaymentLine[] = [];
+    if (creditDownPayment > 0) {
+      lines.push({ method: "cash", amount: creditDownPayment });
+    }
+    lines.push({ method: "other", amount: creditRemaining, reference: "À crédit" });
+    return lines;
+  }
 
   const createMut = useMutation({
     mutationFn: async (): Promise<CreatePayResult | UpdatePayResult> => {
@@ -566,7 +659,7 @@ export function PosScreen({
       if (editingId) {
         const payments =
           mode === "quick"
-            ? [{ method: quickPayment, amount: total }]
+            ? buildQuickPayments()
             : paymentMethod === "other"
               ? [
                   {
@@ -583,7 +676,7 @@ export function PosScreen({
                 })();
         await updateCompletedPosSale({
           saleId: editingId,
-          customerId: isA4Like ? customerId || null : null,
+          customerId: isA4Like || isQuickCreditSale ? customerId || null : null,
           items: cart.map((c) => ({
             productId: c.productId,
             quantity: c.quantity,
@@ -608,7 +701,7 @@ export function PosScreen({
       }
       const payments =
         mode === "quick"
-          ? [{ method: quickPayment, amount: total }]
+          ? buildQuickPayments()
           : paymentMethod === "other"
             ? [{ method: "other" as const, amount: total, reference: "À crédit" }]
             : (() => {
@@ -642,12 +735,20 @@ export function PosScreen({
               quickPayment,
               amountReceivedValue,
               change,
+              customerName: isQuickCreditSale
+                ? (customers.find((c) => c.id === customerId)?.name ?? null)
+                : null,
+              creditPaid: creditDownPayment,
+              creditRemaining,
+              creditDueLabel: isQuickCreditSale
+                ? formatCreditDueLabel(creditDueDate)
+                : null,
             }
           : undefined;
       const res = await createPosSale({
         companyId,
         storeId,
-        customerId: isA4Like ? customerId || null : null,
+        customerId: isA4Like || isQuickCreditSale ? customerId || null : null,
         items: cart.map((c) => ({
           productId: c.productId,
           quantity: c.quantity,
@@ -665,6 +766,7 @@ export function PosScreen({
         saleMode: mode === "quick" ? "quick_pos" : "invoice_pos",
         documentType: mode === "quick" ? "thermal_receipt" : "a4_invoice",
         prescriptionNumber: isPharmacy ? prescriptionNumber.trim() || null : null,
+        creditDueAt: isQuickCreditSale ? creditDueIso(creditDueDate) : null,
       });
       return {
         kind: "create" as const,
@@ -682,6 +784,7 @@ export function PosScreen({
         setAmountReceived("");
         setAmountReceivedTouched(false);
         setCustomerId("");
+        setCreditDueDate("");
         setActiveEditSaleId(null);
         saleEditBootstrapKey.current = null;
         setEditStockRelease(new Map());
@@ -702,7 +805,10 @@ export function PosScreen({
       setAmountReceived("");
       setAmountReceivedTouched(false);
       setCustomerId("");
+      setCreditDueDate("");
       setPrescriptionNumber("");
+      // Vente à crédit soldée : la caisse revient au comptant pour le client suivant.
+      if (quickPayment === "credit") setQuickPayment("cash");
       if (res.saleId.startsWith("offline:")) {
         toast.success(
           "Vente enregistrée localement. Synchronisation à la reconnexion.",
@@ -1331,6 +1437,11 @@ export function PosScreen({
       customerId={customerId}
       setCustomerId={setCustomerId}
       customers={customers}
+      allowQuickCredit={quickCreditEnabled || quickPayment === "credit"}
+      creditDueDate={creditDueDate}
+      setCreditDueDate={setCreditDueDate}
+      creditRemaining={creditRemaining}
+      onCreateCustomer={() => setCustomerCreateOpen(true)}
       createMut={createMut}
       isSaleEdit={Boolean(activeEditSaleId)}
       onUpdateQty={updateQty}
@@ -1344,6 +1455,7 @@ export function PosScreen({
         setAmountReceived("");
         setAmountReceivedTouched(false);
         setPrescriptionNumber("");
+        setCreditDueDate("");
       }}
       onPay={() => {
         const pre = getPosPayValidationError();
@@ -2142,7 +2254,7 @@ export function PosScreen({
         />
       ) : null}
 
-      {isA4Like && companyId ? (
+      {(isA4Like || quickCreditEnabled || quickPayment === "credit") && companyId ? (
         <CustomerFormDialog
           open={customerCreateOpen}
           onClose={() => setCustomerCreateOpen(false)}
@@ -2571,6 +2683,11 @@ function PosCartPanel({
   customerId,
   setCustomerId,
   customers,
+  allowQuickCredit,
+  creditDueDate,
+  setCreditDueDate,
+  creditRemaining,
+  onCreateCustomer,
   createMut,
   isSaleEdit,
   onUpdateQty,
@@ -2612,6 +2729,14 @@ function PosCartPanel({
   customerId: string;
   setCustomerId: (v: string) => void;
   customers: Array<{ id: string; name: string }>;
+  /** Caisse rapide : le propriétaire autorise la vente à crédit (réglage entreprise). */
+  allowQuickCredit?: boolean;
+  /** Échéance de la créance (`yyyy-mm-dd`), facultative. */
+  creditDueDate?: string;
+  setCreditDueDate?: (v: string) => void;
+  /** Reste dû après acompte, affiché au caissier avant validation. */
+  creditRemaining?: number;
+  onCreateCustomer?: () => void;
   createMut: { isPending: boolean };
   isSaleEdit: boolean;
   onUpdateQty: (id: string, d: number) => void;
@@ -2678,13 +2803,24 @@ function PosCartPanel({
       ) : null}
 
       {mode === "quick" ? (
-        <div className="mt-3 grid grid-cols-3 gap-2 px-0 min-[900px]:px-3">
-          {(
-            [
-              ["cash", "CASH"],
-              ["card", "CARTE"],
-              ["mobile_money", "MOBILE"],
-            ] as const
+        <div
+          className={cn(
+            "mt-3 grid gap-2 px-0 min-[900px]:px-3",
+            allowQuickCredit ? "grid-cols-2" : "grid-cols-3",
+          )}
+        >
+          {(allowQuickCredit
+            ? ([
+                ["cash", "CASH"],
+                ["card", "CARTE"],
+                ["mobile_money", "MOBILE"],
+                ["credit", "CRÉDIT"],
+              ] as const)
+            : ([
+                ["cash", "CASH"],
+                ["card", "CARTE"],
+                ["mobile_money", "MOBILE"],
+              ] as const)
           ).map(([key, label]) => (
             <button
               key={key}
@@ -2730,6 +2866,77 @@ function PosCartPanel({
           })}
         </div>
       )}
+
+      {/* Vente à crédit (caisse rapide) : client obligatoire, acompte et échéance. */}
+      {mode === "quick" && quickPayment === "credit" ? (
+        <div className="mt-3 rounded-xl border border-[#F97316]/40 bg-[#FFF7ED] p-3 min-[900px]:mx-3">
+          <label className="mb-1 block text-[11px] font-semibold text-[#9A3412]">
+            Client débiteur (obligatoire)
+          </label>
+          <div className="flex gap-2">
+            <select
+              className={fsInputClass(
+                "min-w-0 flex-1 bg-white px-2.5 py-1.5 sm:px-2.5 sm:py-1.5",
+              )}
+              value={customerId}
+              onChange={(e) => setCustomerId(e.target.value)}
+            >
+              <option value="">Choisir un client…</option>
+              {customers.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+            {onCreateCustomer ? (
+              <button
+                type="button"
+                title="Créer un client"
+                aria-label="Créer un client"
+                onClick={onCreateCustomer}
+                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#F97316] text-white"
+              >
+                <MdPersonAdd className="h-5 w-5" aria-hidden />
+              </button>
+            ) : null}
+          </div>
+
+          <label className="mb-1 mt-3 block text-[11px] font-semibold text-[#9A3412]">
+            Acompte reçu (espèces) — optionnel
+          </label>
+          <input
+            className={fsInputClass("bg-white px-2.5 py-1.5 sm:px-2.5 sm:py-1.5")}
+            value={amountReceived}
+            onChange={(e) => {
+              setAmountReceivedTouched(true);
+              setAmountReceived(e.target.value);
+            }}
+            inputMode="decimal"
+            placeholder="0"
+          />
+
+          {isSaleEdit ? null : (
+            <>
+              <label className="mb-1 mt-3 block text-[11px] font-semibold text-[#9A3412]">
+                Échéance — optionnel (sinon 30 jours)
+              </label>
+              <input
+                type="date"
+                className={fsInputClass("bg-white px-2.5 py-1.5 sm:px-2.5 sm:py-1.5")}
+                value={creditDueDate ?? ""}
+                onChange={(e) => setCreditDueDate?.(e.target.value)}
+              />
+            </>
+          )}
+
+          <div className="mt-3 flex items-center justify-between border-t border-[#F97316]/30 pt-2">
+            <span className="text-xs font-semibold text-[#9A3412]">Reste à payer</span>
+            <span className="text-base font-extrabold text-[#9A3412]">
+              {formatCurrency(creditRemaining ?? total)}
+            </span>
+          </div>
+        </div>
+      ) : null}
 
       {isA4Cart ? (
         <div className="mt-3 px-0 min-[900px]:px-3">

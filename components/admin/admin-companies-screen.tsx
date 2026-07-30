@@ -168,7 +168,9 @@ export function AdminCompaniesScreen() {
     );
   }
 
-  const companies = q.data!.companies;
+  // Jamais de `q.data!` : la requête peut être en attente sans être « loading »
+  // (reprise hors ligne, cache réinitialisé) — on rend alors une liste vide.
+  const companies = q.data?.companies ?? [];
 
   return (
     <div className="space-y-6 p-5 md:p-8">

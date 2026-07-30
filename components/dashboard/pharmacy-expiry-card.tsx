@@ -15,16 +15,24 @@ import { cn } from "@/lib/utils/cn";
 type Props = {
   companyId: string;
   businessTypeSlug: string | null | undefined;
+  /** Suivi de péremption ouvert par la plateforme (entreprise ou boutique). */
+  expiryModuleEnabled?: boolean;
 };
 
 /**
- * Bloc d'alerte péremption du tableau de bord — affiché uniquement pour les
- * métiers à suivi de lots (pharmacie). Invisible (rend `null`) sinon, donc
- * aucun impact sur les autres types d'entreprise.
+ * Bloc d'alerte péremption du tableau de bord — affiché pour les métiers à suivi
+ * de lots (pharmacie, supermarché) ou quand le super admin a ouvert le module.
+ * Invisible (rend `null`) sinon, donc aucun impact sur les autres entreprises.
  */
-export function PharmacyExpiryCard({ companyId, businessTypeSlug }: Props) {
+export function PharmacyExpiryCard({
+  companyId,
+  businessTypeSlug,
+  expiryModuleEnabled,
+}: Props) {
   const enabled =
-    !!companyId && activityConfig(businessTypeSlug).expiryDashboard;
+    !!companyId &&
+    activityConfig(businessTypeSlug, { expiryModule: expiryModuleEnabled })
+      .expiryDashboard;
   const terms = activityUiTerms(businessTypeSlug);
 
   const q = useQuery({

@@ -27,6 +27,7 @@ import type {
 import { activityUiTerms } from "@/lib/features/activity/activity-profiles";
 import { PharmacyReportsCard } from "@/components/reports/pharmacy-reports-card";
 import { TeamPerformanceCard } from "@/components/reports/team-performance-card";
+import { expiryModuleOverride } from "@/lib/features/permissions/access";
 import { usePermissions } from "@/lib/features/permissions/use-permissions";
 import { listCategories, listProducts } from "@/lib/features/products/api";
 import {
@@ -1006,6 +1007,7 @@ export function ReportsScreen() {
       <PharmacyReportsCard
         companyId={companyId}
         businessTypeSlug={ctx?.businessTypeSlug}
+        expiryModuleEnabled={expiryModuleOverride(ctx)}
         storeId={effectiveStoreId}
         fromDate={fromDate}
         toDate={toDate}

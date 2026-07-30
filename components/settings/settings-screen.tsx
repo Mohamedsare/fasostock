@@ -21,6 +21,11 @@ import {
   peekInvoiceTablePosEnabled,
   setInvoiceTablePosEnabled,
 } from "@/lib/features/settings/invoice-table-pos";
+import {
+  fetchQuickPosCreditEnabled,
+  peekQuickPosCreditEnabled,
+  setQuickPosCreditEnabled,
+} from "@/lib/features/settings/quick-pos-credit";
 import { queryKeys } from "@/lib/query/query-keys";
 import { messageFromUnknownError, toast, toastMutationError } from "@/lib/toast";
 import { createClient } from "@/lib/supabase/client";
@@ -64,6 +69,7 @@ import {
   MdPerson,
   MdSave,
   MdSecurity,
+  MdCreditCard,
   MdShoppingCart,
   MdStore,
   MdTableChart,
@@ -360,6 +366,32 @@ export function SettingsScreen() {
     onError: (e) => toastMutationError("settings", e),
   });
 
+  const peekQuickCredit =
+    companyId.length > 0 && isOwner ? peekQuickPosCreditEnabled(companyId) : undefined;
+  const quickPosCreditQ = useQuery({
+    queryKey: queryKeys.quickPosCreditEnabled(companyId),
+    queryFn: () => fetchQuickPosCreditEnabled(companyId),
+    enabled: Boolean(companyId && isOwner),
+    staleTime: 30_000,
+    ...(peekQuickCredit !== undefined ? { initialData: peekQuickCredit } : {}),
+  });
+
+  const quickPosCreditMut = useMutation({
+    mutationFn: async (enabled: boolean) => {
+      if (!companyId) throw new Error("Entreprise introuvable.");
+      await setQuickPosCreditEnabled(companyId, enabled);
+    },
+    onSuccess: async (_, enabled) => {
+      toast.success(
+        enabled
+          ? "Vente à crédit activée en caisse rapide. Le caissier devra choisir un client."
+          : "Vente à crédit désactivée en caisse rapide.",
+      );
+      await qc.invalidateQueries({ queryKey: queryKeys.quickPosCreditEnabled(companyId) });
+    },
+    onError: (e) => toastMutationError("settings", e),
+  });
+
   const profileMut = useMutation({
     mutationFn: async () => {
       const supabase = createClient();
@@ -574,6 +606,54 @@ export function SettingsScreen() {
           </label>
         </div>
       </FsCard>
+
+      {/* Vente à crédit en caisse rapide — owner uniquement */}
+      {isOwner && companyId ? (
+        <FsCard className="mt-5" padding="p-5">
+          <SettingsCardTitle icon={MdCreditCard} title="Caisse POS rapide — vente à crédit" />
+          <p className="mt-2 text-xs leading-relaxed text-neutral-600 sm:text-sm">
+            Autorise le mode de paiement « À crédit » à la caisse rapide : le caissier choisit un
+            client, saisit l&apos;acompte reçu (facultatif) et le reste part en créance. La vente
+            apparaît alors dans la page Crédit pour le recouvrement. Désactivé, la caisse rapide
+            n&apos;encaisse que du comptant.
+          </p>
+          {quickPosCreditQ.isPending ? (
+            <div className="mt-4 flex justify-center py-4" role="status" aria-label="Chargement">
+              <div className="h-8 w-8 animate-spin rounded-full border-2 border-fs-accent border-t-transparent" />
+            </div>
+          ) : (
+            <div className="mt-4 space-y-0 rounded-[10px] border border-black/[0.08]">
+              <label
+                className={cn(
+                  "flex cursor-pointer items-start justify-between gap-3 px-3 py-3 sm:px-4",
+                  quickPosCreditMut.isPending && "pointer-events-none opacity-60",
+                )}
+              >
+                <span className="min-w-0">
+                  <span className="block text-sm font-medium text-fs-text">
+                    Autoriser les ventes à crédit en caisse rapide
+                  </span>
+                  <span className="mt-0.5 block text-xs text-neutral-600">
+                    {quickPosCreditQ.data
+                      ? "Le bouton « CRÉDIT » est disponible au moment du paiement."
+                      : "Désactivé : seuls espèces, carte et mobile money sont proposés."}
+                  </span>
+                </span>
+                <input
+                  type="checkbox"
+                  role="switch"
+                  className="mt-1 h-5 w-9 shrink-0 cursor-pointer accent-fs-accent"
+                  checked={Boolean(quickPosCreditQ.data)}
+                  disabled={quickPosCreditMut.isPending}
+                  onChange={(e) => {
+                    void quickPosCreditMut.mutateAsync(e.target.checked);
+                  }}
+                />
+              </label>
+            </div>
+          )}
+        </FsCard>
+      ) : null}
 
       {/* Caisse Facture A4 */}
       <FsCard className="mt-5" padding="p-5">

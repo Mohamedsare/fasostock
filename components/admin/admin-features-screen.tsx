@@ -8,7 +8,7 @@ import type { AdminCompany } from "@/lib/features/admin/types";
 import { messageFromUnknownError, toast } from "@/lib/toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { MdBadge, MdCalculate, MdHomeWork, MdPayments, MdRefresh, MdShoppingCart, MdStorefront, MdSwapHoriz, MdToggleOn, MdTrendingUp } from "react-icons/md";
+import { MdBadge, MdCalculate, MdEventBusy, MdHomeWork, MdPayments, MdRefresh, MdShoppingCart, MdStorefront, MdSwapHoriz, MdToggleOn, MdTrendingUp } from "react-icons/md";
 
 const QK = ["admin-company-features"] as const;
 
@@ -33,6 +33,7 @@ export function AdminFeaturesScreen() {
       warehouseKpiShowSaleValue?: boolean;
       accountingModuleEnabled?: boolean;
       hrModuleEnabled?: boolean;
+      expiryModuleEnabled?: boolean;
       storeQuota?: number;
     }) => {
       const { id, ...patch } = p;
@@ -102,7 +103,7 @@ export function AdminFeaturesScreen() {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <AdminPageHeader
           title="Fonctionnalités"
-          description="Activez ou masquez des modules pour chaque entreprise (Magasin, Achats, Transfert, prédictions IA, Comptabilité, R. Humaine, quota de boutiques, visibilité des KPIs valeur stock sur le dépôt Magasin)."
+          description="Activez ou masquez des modules pour chaque entreprise (Magasin, Achats, Transfert, prédictions IA, Comptabilité, R. Humaine, Péremptions, quota de boutiques, visibilité des KPIs valeur stock sur le dépôt Magasin)."
         />
         <button
           type="button"
@@ -116,7 +117,7 @@ export function AdminFeaturesScreen() {
 
       <AdminCard padding="p-0">
         <FsHorizontalScroll>
-          <table className="min-w-[1720px] w-full text-left text-sm">
+          <table className="min-w-[1880px] w-full text-left text-sm">
           <thead className="border-b border-slate-200 bg-slate-50 text-xs font-bold uppercase text-slate-600">
             <tr>
               <th className="p-3">Entreprise</th>
@@ -166,6 +167,12 @@ export function AdminFeaturesScreen() {
                 <span className="inline-flex items-center gap-1">
                   <MdBadge className="h-4 w-4 text-slate-500" aria-hidden />
                   R. Humaine
+                </span>
+              </th>
+              <th className="p-3">
+                <span className="inline-flex items-center gap-1">
+                  <MdEventBusy className="h-4 w-4 text-slate-500" aria-hidden />
+                  Péremptions
                 </span>
               </th>
               <th className="p-3">
@@ -297,6 +304,20 @@ export function AdminFeaturesScreen() {
                       }
                     />
                     <span className="text-slate-600">{c.hrModuleEnabled ? "Activé" : "Désactivé"}</span>
+                  </label>
+                </td>
+                <td className="p-3">
+                  <label className="inline-flex cursor-pointer items-center gap-2">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-slate-300"
+                      checked={c.expiryModuleEnabled}
+                      disabled={mut.isPending}
+                      onChange={() =>
+                        mut.mutate({ id: c.id, expiryModuleEnabled: !c.expiryModuleEnabled })
+                      }
+                    />
+                    <span className="text-slate-600">{c.expiryModuleEnabled ? "Activé" : "Selon métier"}</span>
                   </label>
                 </td>
                 <td className="p-3">

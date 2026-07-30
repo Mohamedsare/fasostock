@@ -16,6 +16,8 @@ import { FsCard } from "@/components/ui/fs-screen-primitives";
 type Props = {
   companyId: string;
   businessTypeSlug: string | null | undefined;
+  /** Suivi de péremption ouvert par la plateforme (entreprise ou boutique). */
+  expiryModuleEnabled?: boolean;
   storeId: string | null;
   fromDate: string;
   toDate: string;
@@ -53,11 +55,14 @@ async function fetchPrescriptionSales(
 export function PharmacyReportsCard({
   companyId,
   businessTypeSlug,
+  expiryModuleEnabled,
   storeId,
   fromDate,
   toDate,
 }: Props) {
-  const config = activityConfig(businessTypeSlug);
+  const config = activityConfig(businessTypeSlug, {
+    expiryModule: expiryModuleEnabled,
+  });
   const terms = activityUiTerms(businessTypeSlug);
   const enabled = !!companyId && config.expiryDashboard;
 

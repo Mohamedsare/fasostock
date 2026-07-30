@@ -21,7 +21,9 @@ export function AdminRentalModuleCard() {
   const [search, setSearch] = useState("");
 
   const companiesQ = useQuery({
-    queryKey: ["admin-companies"] as const,
+    // Clé dédiée : `["admin-companies"]` sert à l'écran Entreprises, qui y range
+    // un objet `{ companies, stores }` — deux formes sur une même clé se corrompent.
+    queryKey: ["admin-companies-rental"] as const,
     queryFn: () => adminListCompanies(),
     staleTime: 60_000,
   });

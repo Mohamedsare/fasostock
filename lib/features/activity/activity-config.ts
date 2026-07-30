@@ -125,12 +125,34 @@ const CONFIGS: Record<string, ActivityConfig> = {
   [SUPERMARKET_CONFIG.slug]: SUPERMARKET_CONFIG,
 };
 
+/**
+ * Surcharges décidées par la plateforme (super admin), en plus du métier.
+ * Toujours **additives** : elles ouvrent une fonctionnalité, jamais l'inverse
+ * (une pharmacie garde son suivi de lots même si tout est à `false`).
+ */
+export type ActivityOverrides = {
+  /**
+   * Suivi de péremption ouvert « à la main » pour l'entreprise ou la boutique
+   * (`companies.expiry_module_enabled` / `stores.expiry_module_enabled`).
+   */
+  expiryModule?: boolean;
+};
+
 /** Config métier effective pour un slug (jamais `null` — fallback défaut). */
 export function activityConfig(
   businessTypeSlug: string | null | undefined,
+  overrides?: ActivityOverrides,
 ): ActivityConfig {
-  if (!businessTypeSlug) return DEFAULT_ACTIVITY_CONFIG;
-  return CONFIGS[businessTypeSlug] ?? DEFAULT_ACTIVITY_CONFIG;
+  const base = businessTypeSlug
+    ? CONFIGS[businessTypeSlug] ?? DEFAULT_ACTIVITY_CONFIG
+    : DEFAULT_ACTIVITY_CONFIG;
+
+  // Péremption activée par la plateforme : il faut aussi les lots (`batchTracking`),
+  // sans quoi la page n'aurait aucune date à afficher.
+  if (overrides?.expiryModule === true && !base.expiryDashboard) {
+    return { ...base, batchTracking: true, expiryDashboard: true };
+  }
+  return base;
 }
 
 /** Raccourci : ce métier gère-t-il des champs produit spécifiques ? */
