@@ -138,17 +138,27 @@ export async function listBrands(companyId: string): Promise<ProductBrand[]> {
   return (data ?? []) as ProductBrand[];
 }
 
-export async function listStoreInventory(storeId: string | null) {
-  if (!storeId) return new Map<string, number>();
+/**
+ * Stock d'une boutique, indexé par `product_id`.
+ *
+ * On renvoie un **objet simple** (et non un `Map`) car cette valeur transite par le cache
+ * React Query, qui est persisté en IndexedDB via `JSON.stringify` : un `Map` y serait
+ * sérialisé en `{}` et le stock repartirait à 0 au rechargement de la page. Même raison
+ * que `fetchStoreCatalog`. Côté composant, passer par `ensureStringNumberMap()`.
+ */
+export async function listStoreInventory(
+  storeId: string | null,
+): Promise<Record<string, number>> {
+  if (!storeId) return {};
   const supabase = createClient();
   const { data, error } = await supabase
     .from("store_inventory")
     .select("product_id, quantity")
     .eq("store_id", storeId);
   if (error) throw error;
-  const m = new Map<string, number>();
+  const m: Record<string, number> = {};
   for (const row of data ?? []) {
-    m.set(String(row.product_id), Number(row.quantity ?? 0));
+    m[String(row.product_id)] = Number(row.quantity ?? 0);
   }
   return m;
 }

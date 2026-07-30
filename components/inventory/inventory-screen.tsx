@@ -236,7 +236,7 @@ export function InventoryScreen() {
   const [thresholdInput, setThresholdInput] = useState("5");
 
   const dataQ = useQuery({
-    queryKey: queryKeys.productInventory(storeId),
+    queryKey: queryKeys.inventoryScreen(companyId, storeId),
     queryFn: () => fetchInventoryScreenData({ companyId, storeId }),
     enabled: Boolean(companyId) && Boolean(storeId) && canAccessStock,
     staleTime: 20_000,

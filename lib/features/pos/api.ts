@@ -16,7 +16,8 @@ export type PosData = {
   products: ProductItem[];
   categories: ProductCategory[];
   customers: Customer[];
-  stockByProductId: Map<string, number>;
+  /** Objet simple (et non `Map`) : traverse la persistance IndexedDB du cache — voir `listStoreInventory`. */
+  stockByProductId: Record<string, number>;
 };
 
 export async function fetchPosData(params: {

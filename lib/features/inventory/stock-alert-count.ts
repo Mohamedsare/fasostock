@@ -79,7 +79,7 @@ export async function listLowStockAlertsForStore(
     if (p.is_active === false) continue;
     if (!isBoutiqueProductScope(p.product_scope ?? undefined)) continue;
 
-    const availableQuantity = stockMap.get(p.id) ?? 0;
+    const availableQuantity = stockMap[p.id] ?? 0;
     const stockMin = toNum(p.stock_min);
     const alertThreshold = effectiveStockAlertThreshold(
       stockMin,

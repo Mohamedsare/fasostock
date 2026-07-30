@@ -6,11 +6,26 @@ import type { DashboardPeriod } from "@/lib/features/dashboard/date-range";
 export const queryKeys = {
   appContext: ["app-context"] as const,
   company: (id: string) => ["company", id] as const,
+  /** Catalogue complet (`ProductItem[]`) — ne PAS réutiliser pour une projection allégée. */
   products: (companyId: string) => ["products", companyId] as const,
+  /**
+   * Projection allégée pour les sélecteurs de produits (`listProductsForPicker`).
+   * Clé distincte de `products` — la forme diffère — mais **préfixée** par elle pour rester
+   * couverte par les `invalidateQueries({ queryKey: products(companyId) })` existants.
+   */
+  productsPicker: (companyId: string) => ["products", companyId, "picker"] as const,
   /** Tous les SKU (y compris produits supprimés) — pour la génération auto sans collision. */
   productSkus: (companyId: string) => ["product-skus", companyId] as const,
+  /** Stock brut d'une boutique : `Record<product_id, quantité>` (`listStoreInventory`). */
   productInventory: (storeId: string | null) =>
     ["product-inventory", storeId] as const,
+  /**
+   * Données agrégées de l'écran Stock (`fetchInventoryScreenData` : lignes + seuil + catégories).
+   * Clé distincte de `productInventory` — la forme diffère — mais **préfixée** par elle pour
+   * rester couverte par les `invalidateQueries({ queryKey: productInventory(storeId) })` existants.
+   */
+  inventoryScreen: (companyId: string, storeId: string | null) =>
+    ["product-inventory", storeId, "screen", companyId] as const,
   /** Aligné `purchasesStreamProvider` Flutter — pas de plage de dates par défaut. */
   purchases: (params: {
     companyId: string;

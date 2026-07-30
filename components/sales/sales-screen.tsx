@@ -20,6 +20,18 @@ import { formatDateTime, toIsoDate } from "@/lib/utils/date";
 import { salesToSpreadsheetMatrix } from "@/lib/features/sales/csv";
 import { downloadProSpreadsheet } from "@/lib/utils/spreadsheet-export-pro";
 import { saleSellerLabel, saleStoreLabel } from "@/lib/features/sales/sale-display";
+import {
+  SALES_PERIOD_PRESETS,
+  groupSalesBySeller,
+  matchSalesPeriodPreset,
+  saleMatchesSearch,
+  salesPeriodRange,
+  salesRangeLabel,
+  summarizeSales,
+  type SalesPeriodPreset,
+  type SalesSummary,
+} from "@/lib/features/sales/analytics";
+import { SalesSellerBoard } from "./sales-seller-board";
 import { ROUTES, storeFactureTabPath } from "@/lib/config/routes";
 import { activityUiTerms } from "@/lib/features/activity/activity-profiles";
 import { messageFromUnknownError, toast } from "@/lib/toast";
@@ -27,22 +39,33 @@ import { cn } from "@/lib/utils/cn";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { SaleDetailModal } from "./sale-detail-modal";
 import { FsHorizontalScroll } from "@/components/ui/fs-horizontal-scroll";
-import { FsPage, FsCard, fsInputClass } from "@/components/ui/fs-screen-primitives";
+import {
+  FsPage,
+  FsCard,
+  FsSectionLabel,
+  fsInputClass,
+} from "@/components/ui/fs-screen-primitives";
 import {
   MdAdd,
   MdArrowBack,
   MdCalendarToday,
   MdCancel,
+  MdClose,
   MdDeleteOutline,
   MdChevronLeft,
   MdChevronRight,
   MdDescription,
   MdDownload,
+  MdFilterAltOff,
+  MdLocalOffer,
   MdLockPerson,
   MdEdit,
+  MdPayments,
   MdPointOfSale,
   MdReceiptLong,
   MdRefresh,
+  MdSearch,
+  MdShoppingBag,
   MdShoppingCart,
   MdTableChart,
   MdVisibility,
@@ -148,6 +171,11 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
     useState<RestaurantQuickStatus>("all");
   const [page, setPage] = useState(0);
   const [detailId, setDetailId] = useState<string | null>(null);
+  /** Filtre vendeur (client) : `created_by` de la vente ; vide = tous. */
+  const [sellerId, setSellerId] = useState("");
+  const [search, setSearch] = useState("");
+  /** Affiche les deux champs date (période personnalisée). */
+  const [customPeriodOpen, setCustomPeriodOpen] = useState(false);
 
   const companyId = ctx.data?.companyId ?? "";
   const stores = useMemo(() => ctx.data?.stores ?? [], [ctx.data?.stores]);
@@ -272,27 +300,77 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
       draft: scopedSales.filter((s) => s.status === "draft").length,
       completed: scopedSales.filter((s) => s.status === "completed").length,
       cancelled: scopedSales.filter((s) => s.status === "cancelled").length,
-      refunded: scopedSales.filter((s) => s.status === "refunded").length,
     }),
     [scopedSales],
   );
-  const restaurantQuickScopedSales = useMemo(() => {
+  /** Ventes de la période/boutique/statut — base du classement par vendeur. */
+  const sellerScopeSales = useMemo(() => {
     if (!isRestaurant || restaurantQuickStatus === "all") return scopedSales;
     return scopedSales.filter((s) => s.status === restaurantQuickStatus);
   }, [isRestaurant, restaurantQuickStatus, scopedSales]);
+  /** « Qui a vendu combien » sur la période — tous vendeurs, avant filtre vendeur. */
+  const sellerStats = useMemo(
+    () => groupSalesBySeller(sellerScopeSales, stores),
+    [sellerScopeSales, stores],
+  );
+  /**
+   * Un vendeur choisi puis absent de la nouvelle période ne doit pas vider
+   * l'écran sans explication : on retombe alors sur « tous les vendeurs ».
+   */
+  const effectiveSellerId = sellerStats.some((s) => s.userId === sellerId)
+    ? sellerId
+    : "";
+
+  const visibleSales = useMemo(() => {
+    const term = search.trim();
+    return sellerScopeSales.filter(
+      (s) =>
+        (!effectiveSellerId || s.created_by === effectiveSellerId) &&
+        saleMatchesSearch(s, term),
+    );
+  }, [sellerScopeSales, effectiveSellerId, search]);
+
+  const summary = useMemo(() => summarizeSales(visibleSales), [visibleSales]);
+  const periodPreset = matchSalesPeriodPreset({ from, to });
+  const periodLabel = salesRangeLabel({ from, to });
+  const selectedSeller = effectiveSellerId
+    ? sellerStats.find((s) => s.userId === effectiveSellerId) ?? null
+    : null;
+  const sellerTerm = isRestaurant ? "Serveur" : "Vendeur";
+  const filtersActive =
+    Boolean(from || to || status || effectiveSellerId || search.trim());
+
+  const applyPeriod = (preset: Exclude<SalesPeriodPreset, "custom">) => {
+    const r = salesPeriodRange(preset);
+    setFrom(r.from);
+    setTo(r.to);
+    setCustomPeriodOpen(false);
+    setPage(0);
+  };
+
+  const resetFilters = () => {
+    setFrom("");
+    setTo("");
+    setStatus("");
+    setSellerId("");
+    setSearch("");
+    setCustomPeriodOpen(false);
+    setPage(0);
+  };
+
   const pageCount =
-    restaurantQuickScopedSales.length === 0
+    visibleSales.length === 0
       ? 0
-      : Math.ceil(restaurantQuickScopedSales.length / PAGE_SIZE);
+      : Math.ceil(visibleSales.length / PAGE_SIZE);
   const safePage = Math.min(page, Math.max(0, pageCount - 1));
-  const paged = restaurantQuickScopedSales.slice(
+  const paged = visibleSales.slice(
     safePage * PAGE_SIZE,
     safePage * PAGE_SIZE + PAGE_SIZE,
   );
 
   const rangeStart =
-    restaurantQuickScopedSales.length === 0 ? 0 : safePage * PAGE_SIZE + 1;
-  const rangeEnd = Math.min((safePage + 1) * PAGE_SIZE, restaurantQuickScopedSales.length);
+    visibleSales.length === 0 ? 0 : safePage * PAGE_SIZE + 1;
+  const rangeEnd = Math.min((safePage + 1) * PAGE_SIZE, visibleSales.length);
 
   const headerDescription = useMemo(() => {
     if (isRestaurant) {
@@ -363,7 +441,7 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
     void (async () => {
       try {
         const { headers, rows } = salesToSpreadsheetMatrix(
-          restaurantQuickScopedSales,
+          visibleSales,
           stores,
         );
         await downloadProSpreadsheet(
@@ -373,7 +451,16 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
           rows,
           {
             title: `FasoStock — ${isRestaurant ? "Commandes" : "Ventes"}`,
-            subtitle: `${restaurantQuickScopedSales.length} ligne(s) · généré le ${d}`,
+            // Le fichier doit rappeler le filtrage exact, sinon un export
+            // « ventes de X hier » devient indistinguable d'un export global.
+            subtitle: [
+              selectedSeller ? `${sellerTerm} : ${selectedSeller.label}` : null,
+              periodLabel.charAt(0).toUpperCase() + periodLabel.slice(1),
+              `${visibleSales.length} ligne(s)`,
+              `généré le ${d}`,
+            ]
+              .filter(Boolean)
+              .join(" · "),
           },
         );
         toast.success("Excel enregistré");
@@ -423,7 +510,7 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
       ) : null}
       <ActionCard
         title={uiTerms.salesHistoryTitle}
-        subtitle={`${restaurantQuickScopedSales.length} vente(s)`}
+        subtitle={`${visibleSales.length} vente(s)`}
         icon={MdShoppingCart}
         accent={false}
         enabled
@@ -466,7 +553,7 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
             </button>
             <button
               type="button"
-              disabled={restaurantQuickScopedSales.length === 0 || salesQ.isFetching}
+              disabled={visibleSales.length === 0 || salesQ.isFetching}
               onClick={exportExcel}
               className={btnOutline}
             >
@@ -484,12 +571,13 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
 
       {isRestaurant ? (
         <>
-          <section className="grid grid-cols-2 gap-2 min-[560px]:grid-cols-5 min-[560px]:gap-3">
+          {/* Pas de « Remboursées » : une commande est servie ou annulée, et
+              l'annulation vaut remboursement. Aucun code ne crée ce statut. */}
+          <section className="grid grid-cols-2 gap-2 min-[560px]:grid-cols-4 min-[560px]:gap-3">
             <StatusMiniCard label="Toutes" value={restaurantStatusCounts.all} tone="neutral" />
             <StatusMiniCard label="Nouvelles" value={restaurantStatusCounts.draft} tone="accent" />
             <StatusMiniCard label="Servies" value={restaurantStatusCounts.completed} tone="success" />
             <StatusMiniCard label="Annulees" value={restaurantStatusCounts.cancelled} tone="danger" />
-            <StatusMiniCard label="Remboursees" value={restaurantStatusCounts.refunded} tone="muted" />
           </section>
           <div className="flex flex-wrap gap-2">
             {(
@@ -498,7 +586,6 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
                 { id: "draft", label: "Nouvelles" },
                 { id: "completed", label: "Servies" },
                 { id: "cancelled", label: "Annulees" },
-                { id: "refunded", label: "Remboursees" },
               ] as const
             ).map((chip) => (
               <button
@@ -509,7 +596,7 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
                   setPage(0);
                 }}
                 className={cn(
-                  "inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors",
+                  "inline-flex items-center gap-1 rounded-[6px] border px-3 py-1.5 text-xs font-semibold transition-colors",
                   restaurantQuickStatus === chip.id
                     ? "border-fs-accent/35 bg-fs-accent/12 text-fs-accent"
                     : "border-black/10 bg-fs-card text-neutral-700 hover:bg-black/[0.03]",
@@ -522,22 +609,175 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
         </>
       ) : null}
 
+      {/* 2 colonnes dès le mobile : à 1 colonne, ces raccourcis repoussaient la
+          synthèse et la liste hors du premier écran. */}
       <section
         className={cn(
-          "grid gap-3 min-[600px]:gap-5",
+          "grid grid-cols-2 gap-3 min-[600px]:gap-5",
           canInvoiceA4 && canFactureTab
-            ? "grid-cols-1 min-[600px]:grid-cols-2 min-[1100px]:grid-cols-4"
+            ? "min-[600px]:grid-cols-2 min-[1100px]:grid-cols-4"
             : canInvoiceA4 || canFactureTab
-              ? "grid-cols-1 min-[600px]:grid-cols-3"
-              : "grid-cols-1 min-[600px]:grid-cols-2",
+              ? "min-[600px]:grid-cols-3"
+              : "min-[600px]:grid-cols-2",
         )}
       >
         {actionCards}
       </section>
 
-      <FsCard padding="p-4 min-[500px]:p-5">
-        <p className="mb-4 text-sm font-medium text-neutral-600">Filtres</p>
-        <div className="flex flex-col gap-4 min-[500px]:flex-row min-[500px]:flex-wrap min-[500px]:items-end min-[500px]:gap-3">
+      <FsCard padding="p-3 min-[500px]:p-4">
+        <div className="flex items-center justify-between gap-2">
+          <FsSectionLabel>Période</FsSectionLabel>
+          {filtersActive ? (
+            <button
+              type="button"
+              onClick={resetFilters}
+              className="inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-[6px] border border-black/10 px-2.5 text-[11px] font-bold text-neutral-700 active:bg-neutral-50"
+            >
+              <MdFilterAltOff className="h-4 w-4 shrink-0" aria-hidden />
+              Réinitialiser
+            </button>
+          ) : null}
+        </div>
+
+        {/* Presets d'abord : dans 90 % des cas on veut « aujourd'hui » en un geste. */}
+        <FsHorizontalScroll className="-mx-1 mt-2 px-1">
+          <div className="flex gap-1.5">
+            {SALES_PERIOD_PRESETS.map((p) => {
+              const active = periodPreset === p.id;
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => applyPeriod(p.id)}
+                  className={cn(
+                    "shrink-0 rounded-[6px] border px-3 py-2 text-xs font-semibold transition-colors min-[500px]:py-1.5",
+                    active
+                      ? "border-fs-accent/35 bg-[color-mix(in_srgb,var(--fs-accent)_14%,transparent)] text-fs-accent"
+                      : "border-black/10 bg-fs-card text-neutral-700 hover:bg-black/[0.03]",
+                  )}
+                >
+                  {p.label}
+                </button>
+              );
+            })}
+            <button
+              type="button"
+              onClick={() => setCustomPeriodOpen((v) => !v)}
+              className={cn(
+                "inline-flex shrink-0 items-center gap-1.5 rounded-[6px] border px-3 py-2 text-xs font-semibold transition-colors min-[500px]:py-1.5",
+                periodPreset === "custom"
+                  ? "border-fs-accent/35 bg-[color-mix(in_srgb,var(--fs-accent)_14%,transparent)] text-fs-accent"
+                  : "border-black/10 bg-fs-card text-neutral-700 hover:bg-black/[0.03]",
+              )}
+              aria-expanded={customPeriodOpen || periodPreset === "custom"}
+            >
+              <MdCalendarToday className="h-4 w-4 shrink-0" aria-hidden />
+              Dates précises
+            </button>
+          </div>
+        </FsHorizontalScroll>
+
+        {customPeriodOpen || periodPreset === "custom" ? (
+          <div className="mt-3 flex flex-col gap-3 min-[500px]:flex-row min-[500px]:gap-3">
+            <div className="min-w-0 w-full min-[500px]:flex-1">
+              <label className="mb-1.5 block text-xs font-medium text-neutral-600">
+                Du
+              </label>
+              <div className="relative">
+                <MdCalendarToday
+                  className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400"
+                  aria-hidden
+                />
+                <input
+                  type="date"
+                  value={from}
+                  onChange={(e) => {
+                    setFrom(e.target.value);
+                    setPage(0);
+                  }}
+                  max={to || undefined}
+                  className={cn(fsInputClass("pl-10"), "min-h-12 rounded-[6px] sm:min-h-11")}
+                />
+              </div>
+            </div>
+            <div className="min-w-0 w-full min-[500px]:flex-1">
+              <label className="mb-1.5 block text-xs font-medium text-neutral-600">
+                Au
+              </label>
+              <div className="relative">
+                <MdCalendarToday
+                  className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400"
+                  aria-hidden
+                />
+                <input
+                  type="date"
+                  value={to}
+                  onChange={(e) => {
+                    setTo(e.target.value);
+                    setPage(0);
+                  }}
+                  min={from || undefined}
+                  max={toIsoDate(new Date())}
+                  className={cn(fsInputClass("pl-10"), "min-h-12 rounded-[6px] sm:min-h-11")}
+                />
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        <div className="mt-3 border-t border-black/[0.06] pt-3">
+          <div className="relative">
+            <MdSearch
+              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400"
+              aria-hidden
+            />
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(0);
+              }}
+              placeholder={`Rechercher un n° de vente, un client, un ${sellerTerm.toLowerCase()}…`}
+              className={cn(fsInputClass("pl-10"), "min-h-12 rounded-[6px] sm:min-h-11")}
+            />
+            {search ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearch("");
+                  setPage(0);
+                }}
+                aria-label="Effacer la recherche"
+                className="absolute right-1.5 top-1/2 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg text-neutral-500"
+              >
+                <MdClose className="h-4 w-4" aria-hidden />
+              </button>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="mt-3 flex flex-col gap-4 min-[500px]:flex-row min-[500px]:flex-wrap min-[500px]:items-end min-[500px]:gap-3">
+          <div className="w-full min-[500px]:w-[220px] min-[500px]:shrink-0">
+            <label className="mb-1.5 block text-xs font-medium text-neutral-600">
+              {sellerTerm}
+            </label>
+            <select
+              value={effectiveSellerId}
+              onChange={(e) => {
+                setSellerId(e.target.value);
+                setPage(0);
+              }}
+              className={cn(fsInputClass(), "min-h-12 rounded-[6px] sm:min-h-11")}
+            >
+              <option value="">Tous les {sellerTerm.toLowerCase()}s</option>
+              {sellerStats.map((s) => (
+                <option key={s.userId} value={s.userId}>
+                  {s.label} ({s.count})
+                </option>
+              ))}
+            </select>
+          </div>
           <div className="w-full min-[500px]:w-[200px] min-[500px]:shrink-0">
             <label className="mb-1.5 block text-xs font-medium text-neutral-600">
               {uiTerms.storeSingular}
@@ -550,7 +790,7 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
                 setStoreFilter(v);
                 setPage(0);
               }}
-              className={cn(fsInputClass(), "min-h-12 sm:min-h-11")}
+              className={cn(fsInputClass(), "min-h-12 rounded-[6px] sm:min-h-11")}
             >
               <option value="">Tous les {uiTerms.storesPlural.toLowerCase()}</option>
               {stores.map((s) => (
@@ -570,62 +810,46 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
                 setStatus(e.target.value as SaleStatus | "");
                 setPage(0);
               }}
-              className={cn(fsInputClass(), "min-h-12 sm:min-h-11")}
+              className={cn(fsInputClass(), "min-h-12 rounded-[6px] sm:min-h-11")}
             >
+              {/* Une vente est complétée ou annulée — une annulation vaut
+                  remboursement. « Brouillon » n'existe que côté restaurant
+                  (commande en cours de saisie) ; « Remboursée » n'est plus
+                  proposé, mais reste affiché sur d'anciennes ventes qui
+                  porteraient ce statut. */}
               <option value="">Tous</option>
-              <option value="draft">Brouillon</option>
               <option value="completed">Complétée</option>
               <option value="cancelled">Annulée</option>
-              <option value="refunded">Remboursée</option>
+              {isRestaurant ? <option value="draft">Brouillon</option> : null}
             </select>
-          </div>
-          <div className="flex min-w-0 w-full flex-1 flex-col gap-3 min-[500px]:flex-row min-[500px]:flex-wrap min-[500px]:gap-3">
-            <div className="min-w-0 w-full min-[500px]:min-w-[160px] min-[500px]:flex-1">
-              <label className="mb-1.5 block text-xs font-medium text-neutral-600">
-                Du
-              </label>
-              <div className="relative">
-                <MdCalendarToday
-                  className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400"
-                  aria-hidden
-                />
-                <input
-                  type="date"
-                  value={from}
-                  onChange={(e) => {
-                    setFrom(e.target.value);
-                    setPage(0);
-                  }}
-                  max={to || undefined}
-                  className={cn(fsInputClass("pl-10"), "min-h-12 sm:min-h-11")}
-                />
-              </div>
-            </div>
-            <div className="min-w-0 w-full min-[500px]:min-w-[160px] min-[500px]:flex-1">
-              <label className="mb-1.5 block text-xs font-medium text-neutral-600">
-                Au
-              </label>
-              <div className="relative">
-                <MdCalendarToday
-                  className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400"
-                  aria-hidden
-                />
-                <input
-                  type="date"
-                  value={to}
-                  onChange={(e) => {
-                    setTo(e.target.value);
-                    setPage(0);
-                  }}
-                  min={from || undefined}
-                  max={toIsoDate(new Date())}
-                  className={cn(fsInputClass("pl-10"), "min-h-12 sm:min-h-11")}
-                />
-              </div>
-            </div>
           </div>
         </div>
       </FsCard>
+
+      <SalesSummaryBand
+        summary={summary}
+        periodLabel={periodLabel}
+        sellerName={selectedSeller?.label ?? null}
+        storeLabel={
+          effectiveStoreId
+            ? stores.find((s) => s.id === effectiveStoreId)?.name ?? null
+            : null
+        }
+        loading={salesQ.isLoading}
+      />
+
+      {sellerStats.length > 0 ? (
+        <SalesSellerBoard
+          stats={sellerStats}
+          selectedUserId={effectiveSellerId}
+          onSelect={(id) => {
+            setSellerId(id);
+            setPage(0);
+          }}
+          periodLabel={periodLabel}
+          sellerTerm={sellerTerm}
+        />
+      ) : null}
 
       {salesQ.isError ? (
         <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
@@ -647,8 +871,18 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
         <div className="py-16">
           <LoadingState />
         </div>
-      ) : restaurantQuickScopedSales.length === 0 ? (
-        <EmptyStateCard currentStoreId={currentStoreId} storeLabel={uiTerms.storeSingular} />
+      ) : visibleSales.length === 0 ? (
+        // Filtres actifs : ne pas dire « aucune vente, ouvrez la caisse » — la
+        // vente existe peut-être hors de la période ou du vendeur sélectionné.
+        filtersActive ? (
+          <NoResultCard
+            periodLabel={periodLabel}
+            sellerName={selectedSeller?.label ?? null}
+            onReset={resetFilters}
+          />
+        ) : (
+          <EmptyStateCard currentStoreId={currentStoreId} storeLabel={uiTerms.storeSingular} />
+        )
       ) : (
         <>
           {isWide ? (
@@ -812,7 +1046,7 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
             <div className="mt-2 mb-[calc(5.5rem+var(--fs-safe-bottom))] rounded-xl border border-black/[0.06] bg-fs-card px-3 py-3 shadow-sm min-[900px]:mb-4 sm:px-4">
               <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
                 <span className="order-2 hidden text-sm text-neutral-500 min-[500px]:order-none min-[500px]:inline">
-                  {rangeStart} – {rangeEnd} sur {restaurantQuickScopedSales.length}
+                  {rangeStart} – {rangeEnd} sur {visibleSales.length}
                 </span>
                 <button
                   type="button"
@@ -846,7 +1080,7 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
                   <MdChevronRight className="h-[26px] w-[26px]" aria-hidden />
                 </button>
                 <span className="order-3 w-full text-center text-xs text-neutral-500 min-[500px]:hidden">
-                  {rangeStart} – {rangeEnd} / {restaurantQuickScopedSales.length}
+                  {rangeStart} – {rangeEnd} / {visibleSales.length}
                 </span>
               </div>
             </div>
@@ -888,6 +1122,138 @@ function StatusMiniCard({
       </p>
       <p className={cn("mt-1 text-lg font-bold", toneClass)}>{value}</p>
     </div>
+  );
+}
+
+function SummaryStat({
+  label,
+  value,
+  sub,
+  icon: Icon,
+  tone,
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+  icon: ComponentType<{ className?: string }>;
+  tone: string;
+}) {
+  return (
+    <div className="min-w-0 rounded-[6px] border border-black/[0.06] bg-fs-card p-2.5">
+      <div className="flex items-center gap-2">
+        <span
+          className={cn(
+            "flex h-7 w-7 shrink-0 items-center justify-center rounded-[6px]",
+            tone,
+          )}
+        >
+          <Icon className="h-4 w-4" aria-hidden />
+        </span>
+        <p className="min-w-0 truncate text-[10px] font-semibold uppercase tracking-wide text-neutral-500">
+          {label}
+        </p>
+      </div>
+      <p className="mt-1.5 truncate text-[15px] font-extrabold tabular-nums text-fs-text min-[900px]:text-base">
+        {value}
+      </p>
+      {sub ? (
+        <p className="mt-0.5 truncate text-[10px] text-neutral-500">{sub}</p>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * Synthèse des ventes **affichées** (donc de tous les filtres actifs, vendeur
+ * compris). Les montants sont des **totaux facturés** hors ventes annulées : le
+ * CA encaissé et la marge relèvent de la page Rapports (encaissements + coûts).
+ */
+function SalesSummaryBand({
+  summary,
+  periodLabel,
+  sellerName,
+  storeLabel,
+  loading,
+}: {
+  summary: SalesSummary;
+  periodLabel: string;
+  sellerName: string | null;
+  storeLabel: string | null;
+  loading: boolean;
+}) {
+  const scope = [sellerName ? `Ventes de ${sellerName}` : "Toutes les ventes", storeLabel]
+    .filter(Boolean)
+    .join(" · ");
+  return (
+    <FsCard padding="p-3">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+        <p className="min-w-0 text-[13px] font-bold text-fs-text">
+          {scope}{" "}
+          <span className="font-medium text-neutral-500">— {periodLabel}</span>
+        </p>
+        <div className="flex shrink-0 flex-wrap items-center gap-1.5">
+          {summary.cancelledCount > 0 ? (
+            <span className="rounded-md bg-red-500/12 px-1.5 py-0.5 text-[10px] font-bold text-red-700 dark:text-red-400">
+              {summary.cancelledCount} annulée{summary.cancelledCount > 1 ? "s" : ""}
+            </span>
+          ) : null}
+          {summary.draftCount > 0 ? (
+            <span className="rounded-md bg-neutral-500/12 px-1.5 py-0.5 text-[10px] font-bold text-neutral-600">
+              {summary.draftCount} brouillon{summary.draftCount > 1 ? "s" : ""}
+            </span>
+          ) : null}
+          {summary.refundedCount > 0 ? (
+            <span className="rounded-md bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-400">
+              {summary.refundedCount} remboursée{summary.refundedCount > 1 ? "s" : ""}
+            </span>
+          ) : null}
+        </div>
+      </div>
+      {loading ? (
+        <div className="mt-2 grid grid-cols-2 gap-2 min-[700px]:grid-cols-4">
+          {[0, 1, 2, 3].map((i) => (
+            <div
+              key={i}
+              className="h-[72px] animate-pulse rounded-[6px] bg-fs-surface-container"
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="mt-2 grid grid-cols-2 gap-2 min-[700px]:grid-cols-4">
+          <SummaryStat
+            label="Ventes"
+            value={String(summary.count)}
+            sub={
+              summary.sellerCount > 1
+                ? `${summary.sellerCount} vendeurs`
+                : "ventes complétées"
+            }
+            icon={MdReceiptLong}
+            tone="bg-blue-500/15 text-blue-700 dark:text-blue-400"
+          />
+          <SummaryStat
+            label="Total facturé"
+            value={formatCurrency(summary.billed)}
+            sub="hors ventes annulées"
+            icon={MdPayments}
+            tone="bg-fs-accent/15 text-fs-accent"
+          />
+          <SummaryStat
+            label="Panier moyen"
+            value={formatCurrency(summary.average)}
+            icon={MdShoppingBag}
+            tone="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
+          />
+          <SummaryStat
+            label="Remises"
+            value={formatCurrency(summary.discount)}
+            sub="accordées sur la période"
+            icon={MdLocalOffer}
+            tone="bg-violet-500/15 text-violet-700 dark:text-violet-400"
+          />
+        </div>
+      )}
+    </FsCard>
   );
 }
 
@@ -1122,6 +1488,42 @@ function EmptyStateCard({
           Ouvrir la caisse
         </Link>
       ) : null}
+    </FsCard>
+  );
+}
+
+/** Aucun résultat **à cause des filtres** — sortie explicite vers la remise à zéro. */
+function NoResultCard({
+  periodLabel,
+  sellerName,
+  onReset,
+}: {
+  periodLabel: string;
+  sellerName: string | null;
+  onReset: () => void;
+}) {
+  return (
+    <FsCard
+      className="mb-[calc(6.5rem+var(--fs-safe-bottom))] text-center min-[900px]:mb-6"
+      padding="px-5 py-12 sm:px-6 sm:py-14"
+    >
+      <MdSearch className="mx-auto h-12 w-12 text-neutral-300" aria-hidden />
+      <h3 className="mt-3 text-base font-semibold leading-snug text-neutral-900">
+        Aucune vente ne correspond
+      </h3>
+      <p className="mt-2 text-sm leading-relaxed text-neutral-600">
+        {sellerName
+          ? `${sellerName} n'a aucune vente ${periodLabel} avec ces filtres.`
+          : `Aucune vente ${periodLabel} avec ces filtres.`}
+      </p>
+      <button
+        type="button"
+        onClick={onReset}
+        className="touch-manipulation mt-5 inline-flex min-h-12 w-full max-w-sm items-center justify-center gap-2 rounded-xl border border-black/10 bg-fs-card px-5 py-3 text-sm font-semibold text-neutral-800 active:bg-neutral-50 sm:w-auto"
+      >
+        <MdFilterAltOff className="h-5 w-5" aria-hidden />
+        Réinitialiser les filtres
+      </button>
     </FsCard>
   );
 }

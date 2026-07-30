@@ -388,7 +388,7 @@ function StoreCard({
         listStoreInventory(store.id),
       ]);
       const items = products
-        .filter((p) => (stockMap.get(p.id) ?? 0) > 0)
+        .filter((p) => (stockMap[p.id] ?? 0) > 0)
         .map((p) => ({
           name: p.name,
           imageUrl:

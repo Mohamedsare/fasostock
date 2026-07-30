@@ -28,6 +28,7 @@ import {
   filterTaxonomyByStoreCatalog,
 } from "@/lib/features/stores/store-catalog";
 import { readPosCartQtyUiForMode } from "@/lib/utils/pos-cart-settings";
+import { playPosAddBeep } from "@/lib/utils/pos-sound";
 import { ensureStringNumberMap } from "@/lib/utils/string-number-map";
 import { messageFromUnknownError, toast } from "@/lib/toast";
 import { formatCurrency, toNumber } from "@/lib/utils/currency";
@@ -824,6 +825,12 @@ export function PosScreen({
     imageUrl?: string | null,
   ) {
     const stock = stockByProductId.get(productId) ?? 0;
+    // Bip hors de l'updater `setCart` (effet de bord) : décision prise de façon
+    // SYNCHRONE sur l'état `cart` courant, même caveat que `addUnitsToCart`.
+    // On ne sonne que si l'ajout va être accepté (sinon un toast stock suffit).
+    if ((cart.find((p) => p.productId === productId)?.quantity ?? 0) + 1 <= stock) {
+      playPosAddBeep();
+    }
     setCart((prev) => {
       const idx = prev.findIndex((p) => p.productId === productId);
       if (idx < 0) {
@@ -888,6 +895,7 @@ export function PosScreen({
       }
       return false;
     }
+    playPosAddBeep();
     setCart((prev) => {
       const idx = prev.findIndex((p) => p.productId === productId);
       if (idx < 0) {

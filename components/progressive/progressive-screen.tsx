@@ -153,8 +153,7 @@ export function ProgressiveScreen() {
     () => filterByStoreCatalog((productsQ.data ?? []).filter((p) => p.is_active), catalog),
     [productsQ.data, catalog],
   );
-  // `listStoreInventory` renvoie un `Map`, mais le cache React Query est persisté :
-  // au rechargement la valeur revient en objet simple → toujours re-normaliser.
+  // `listStoreInventory` renvoie un objet simple (cache persisté en JSON) → normaliser en `Map`.
   const stockByProductId = useMemo(
     () => ensureStringNumberMap(stockQ.data),
     [stockQ.data],

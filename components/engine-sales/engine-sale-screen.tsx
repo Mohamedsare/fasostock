@@ -17,6 +17,7 @@ import { usePermissions } from "@/lib/features/permissions/use-permissions";
 import { queryKeys } from "@/lib/query/query-keys";
 import { formatCurrency } from "@/lib/utils/currency";
 import { cn } from "@/lib/utils/cn";
+import { ensureStringNumberMap } from "@/lib/utils/string-number-map";
 import { toast } from "@/lib/toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
@@ -89,7 +90,11 @@ export function EngineSaleScreen({ storeId }: { storeId: string }) {
     queryFn: () => listStoreInventory(storeId),
     enabled: Boolean(storeId),
   });
-  const stockByProductId = stockQ.data ?? new Map<string, number>();
+  // Le cache React Query est persisté (JSON) : toujours reconstruire un vrai `Map`.
+  const stockByProductId = useMemo(
+    () => ensureStringNumberMap(stockQ.data),
+    [stockQ.data],
+  );
   const { catalog } = useStoreCatalog(storeId);
   const products = useMemo(() => {
     const list = (productsQ.data ?? []).filter((p) => p.is_active);

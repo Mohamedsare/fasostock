@@ -301,7 +301,7 @@ export async function fetchOwnerNotificationsData(params: {
 
   const items: OwnerNotificationItem[] = [];
 
-  const stockouts = boutiqueProducts.filter((p) => (stockMap.get(p.id) ?? 0) <= 0);
+  const stockouts = boutiqueProducts.filter((p) => (stockMap[p.id] ?? 0) <= 0);
   if (stockouts.length > 0) {
     items.push({
       id: "stockout",
@@ -313,7 +313,7 @@ export async function fetchOwnerNotificationsData(params: {
   }
 
   const underMin = boutiqueProducts.filter((p) => {
-    const qty = stockMap.get(p.id) ?? 0;
+    const qty = stockMap[p.id] ?? 0;
     if (qty <= 0) return false;
     const min = effectiveMin(
       typeof p.stock_min === "number" ? p.stock_min : Number(p.stock_min ?? 0),
@@ -325,7 +325,7 @@ export async function fetchOwnerNotificationsData(params: {
   if (underMin.length > 0) {
     const underMinLines = underMin
       .map((p) => {
-        const qty = stockMap.get(p.id) ?? 0;
+        const qty = stockMap[p.id] ?? 0;
         const min = effectiveMin(
           typeof p.stock_min === "number" ? p.stock_min : Number(p.stock_min ?? 0),
           overrideMap.get(p.id),

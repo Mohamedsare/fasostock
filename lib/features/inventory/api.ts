@@ -86,7 +86,7 @@ export async function fetchInventoryScreenData(params: {
   );
 
   const rows: InventoryRow[] = boutiqueProducts.map((p) => {
-    const quantity = params.storeId ? (stockMap.get(p.id) ?? 0) : 0;
+    const quantity = params.storeId ? (stockMap[p.id] ?? 0) : 0;
     const reservedQuantity = 0;
     const availableQuantity = quantity - reservedQuantity;
     const stockMin = typeof p.stock_min === "number" ? p.stock_min : toNum(p.stock_min);

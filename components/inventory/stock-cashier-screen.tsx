@@ -177,7 +177,7 @@ export function StockCashierScreen() {
   const [alertesPage, setAlertesPage] = useState(0);
 
   const dataQ = useQuery({
-    queryKey: queryKeys.productInventory(storeId),
+    queryKey: queryKeys.inventoryScreen(companyId, storeId),
     queryFn: () => fetchInventoryScreenData({ companyId, storeId }),
     enabled: Boolean(companyId) && Boolean(storeId) && canStockCashier,
     staleTime: 20_000,

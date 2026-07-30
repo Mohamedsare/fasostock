@@ -308,7 +308,7 @@ export function PurchasesScreen() {
   });
 
   const productsQ = useQuery({
-    queryKey: queryKeys.products(companyId),
+    queryKey: queryKeys.productsPicker(companyId),
     queryFn: () => listProductsForPicker(companyId),
     enabled: Boolean(companyId) && canCreate,
     staleTime: 60_000,

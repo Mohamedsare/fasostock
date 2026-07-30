@@ -5,7 +5,8 @@ export const RQ_MAX_AGE_MS = 1000 * 60 * 60 * 24 * 7;
  * Clé + buster : incrémenter le buster si le format persisté change (invalidation anciens caches).
  */
 export const RQ_PERSIST_KEY = "fasostock-tanstack-query";
-export const RQ_PERSIST_BUSTER = "v2-idb";
+/** v3 : `listStoreInventory` passe de `Map` à objet simple + clés Stock/Produits dédoublonnées. */
+export const RQ_PERSIST_BUSTER = "v3-idb";
 
 /** IndexedDB : base + store dédiés (séparés de la Dexie outbox). */
 export const IDB_RQ_DB = "fasostock_offline";

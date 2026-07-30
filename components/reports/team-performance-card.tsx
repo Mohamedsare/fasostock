@@ -2,6 +2,7 @@
 
 import { FsCard, FsSectionLabel, fsInputClass } from "@/components/ui/fs-screen-primitives";
 import { FsHorizontalScroll } from "@/components/ui/fs-horizontal-scroll";
+import { FsInitialsAvatar } from "@/components/ui/fs-initials-avatar";
 import { paymentMethodLabel } from "@/lib/features/dashboard/api";
 import type {
   CashierPerformance,
@@ -65,30 +66,7 @@ const RANK_STYLES = [
   },
 ] as const;
 
-const AVATAR_COLORS = [
-  "from-orange-500 to-red-500",
-  "from-emerald-500 to-teal-600",
-  "from-blue-500 to-indigo-600",
-  "from-violet-500 to-purple-600",
-  "from-amber-500 to-orange-600",
-  "from-sky-500 to-cyan-600",
-  "from-rose-500 to-pink-600",
-  "from-lime-500 to-green-600",
-] as const;
-
-function initials(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "?";
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-}
-
-function avatarGradient(userId: string): string {
-  let h = 0;
-  for (let i = 0; i < userId.length; i++) h = (h * 31 + userId.charCodeAt(i)) >>> 0;
-  return AVATAR_COLORS[h % AVATAR_COLORS.length];
-}
-
+/** Pastille d'initiales — primitive partagée avec la page Ventes. */
 function Avatar({
   name,
   userId,
@@ -98,18 +76,7 @@ function Avatar({
   userId: string;
   className?: string;
 }) {
-  return (
-    <span
-      className={cn(
-        "flex shrink-0 items-center justify-center rounded-[6px] bg-gradient-to-br font-extrabold text-white shadow-sm",
-        avatarGradient(userId),
-        className ?? "h-10 w-10 text-xs",
-      )}
-      aria-hidden
-    >
-      {initials(name)}
-    </span>
-  );
+  return <FsInitialsAvatar name={name} seed={userId} className={className} />;
 }
 
 function formatShortDateTime(iso: string | null): string {
