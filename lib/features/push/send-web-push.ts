@@ -6,16 +6,40 @@ export type WebPushPayload = { title: string; body: string; url?: string };
 
 let vapidConfigured = false;
 
+/** Contact technique exigé par VAPID — sans valeur métier, donc jamais bloquant. */
+const DEFAULT_VAPID_SUBJECT = "mailto:contact@fasostock.com";
+
+/** Push non configuré côté serveur : l'appelant doit rester silencieux, pas alerter le vendeur. */
+export class PushNotConfiguredError extends Error {
+  readonly code = "push_not_configured";
+  constructor(message: string) {
+    super(message);
+    this.name = "PushNotConfiguredError";
+  }
+}
+
+/** VAPID n'accepte qu'un `mailto:` ou une URL — on répare une saisie approximative. */
+function normalizeSubject(raw: string): string {
+  const s = raw.trim();
+  if (/^(mailto:|https?:\/\/)/i.test(s)) return s;
+  return s.includes("@") ? `mailto:${s}` : DEFAULT_VAPID_SUBJECT;
+}
+
 function ensureVapid(): void {
   if (vapidConfigured) return;
-  const subject = process.env.WEB_PUSH_VAPID_SUBJECT?.trim();
   const publicKey = process.env.NEXT_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY?.trim();
   const privateKey = process.env.WEB_PUSH_VAPID_PRIVATE_KEY?.trim();
-  if (!subject || !publicKey || !privateKey) {
-    throw new Error(
-      "WEB_PUSH_VAPID_SUBJECT, NEXT_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY et WEB_PUSH_VAPID_PRIVATE_KEY sont requis.",
+  if (!publicKey || !privateKey) {
+    throw new PushNotConfiguredError(
+      "NEXT_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY et WEB_PUSH_VAPID_PRIVATE_KEY sont requis.",
     );
   }
+  // Le sujet est facultatif : sans lui, on retombe sur l'URL de l'app puis un mailto par défaut.
+  const subject = normalizeSubject(
+    process.env.WEB_PUSH_VAPID_SUBJECT?.trim() ||
+      process.env.NEXT_PUBLIC_APP_URL?.trim() ||
+      DEFAULT_VAPID_SUBJECT,
+  );
   webpush.setVapidDetails(subject, publicKey, privateKey);
   vapidConfigured = true;
 }

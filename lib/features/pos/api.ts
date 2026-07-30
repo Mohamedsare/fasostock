@@ -1,9 +1,11 @@
 "use client";
 
 import { enqueueOutbox } from "@/lib/db/dexie-db";
-import { notifyCompanyOwnersPush } from "@/lib/features/push/company-owners-push-client";
+import {
+  notifyCompanyOwnersPush,
+  reportPushOutcome,
+} from "@/lib/features/push/company-owners-push-client";
 import { createClient } from "@/lib/supabase/client";
-import { toastInfo } from "@/lib/toast";
 import { listCategories, listProducts, listStoreInventory } from "@/lib/features/products/api";
 import { listCustomers } from "@/lib/features/customers/api";
 import { listStores } from "@/lib/features/stores/api";
@@ -200,18 +202,8 @@ export async function createPosSale(params: {
     body: `${saleNumber} · total ${total.toLocaleString("fr-FR")} FCFA`,
     url: "/sales",
   });
-  if (
-    pushSale.ok &&
-    (pushSale.pushDeviceCount ?? 0) === 0 &&
-    (pushSale.ownerUserCount ?? 0) > 0
-  ) {
-    toastInfo(
-      "Push : aucun appareil enregistré pour les propriétaires. Sur le téléphone du owner : Paramètres → Notifications sur cet appareil → Activer.",
-      10_000,
-    );
-  } else if (!pushSale.ok && pushSale.error) {
-    toastInfo(`Push non envoyé : ${pushSale.error}`, 8000);
-  }
+  // La vente est enregistrée : le push ne doit jamais inquiéter le vendeur.
+  void reportPushOutcome(pushSale);
 
   const stockoutNames: string[] = [];
   for (const it of params.items) {

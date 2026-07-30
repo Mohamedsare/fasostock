@@ -1,5 +1,9 @@
-import { listOwnerUserIdsForCompanies, sendWebPushToUsers } from "@/lib/features/push/send-web-push";
-import { requireAuthUser, userIsCompanyOwner } from "@/lib/server/api-auth";
+import {
+  listOwnerUserIdsForCompanies,
+  PushNotConfiguredError,
+  sendWebPushToUsers,
+} from "@/lib/features/push/send-web-push";
+import { requireAuthUser, userBelongsToCompany } from "@/lib/server/api-auth";
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
@@ -43,12 +47,17 @@ export async function POST(req: Request) {
   const auth = await requireAuthUser(supabase);
   if (!auth.ok) return auth.response;
 
+  /*
+   * Il suffit d'appartenir à l'entreprise : le cas nominal est justement une
+   * caissière dont la vente doit alerter le propriétaire. Exiger le rôle owner
+   * ici rendait la notification impossible depuis un poste de caisse.
+   */
   const uniqCompanies = [...new Set(companyIds)];
   for (const cid of uniqCompanies) {
-    const isOwner = await userIsCompanyOwner(supabase, auth.user.id, cid);
-    if (!isOwner) {
+    const isMember = await userBelongsToCompany(supabase, auth.user.id, cid);
+    if (!isMember) {
       return NextResponse.json(
-        { error: "Seul le propriétaire peut envoyer une notification aux owners." },
+        { error: "Entreprise non autorisée.", code: "push_forbidden" },
         { status: 403 },
       );
     }
@@ -84,15 +93,23 @@ export async function POST(req: Request) {
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
+    /*
+     * `code: "push_not_configured"` = problème d'installation serveur, pas
+     * d'erreur métier : le client doit le journaliser sans jamais l'afficher
+     * au vendeur, dont la vente est déjà enregistrée.
+     */
+    if (e instanceof PushNotConfiguredError || msg.includes("WEB_PUSH_VAPID")) {
+      return NextResponse.json({ error: msg, code: "push_not_configured" }, { status: 503 });
+    }
     if (msg.includes("SUPABASE_SERVICE_ROLE_KEY")) {
       return NextResponse.json(
-        { error: "Envoi push indisponible : définissez SUPABASE_SERVICE_ROLE_KEY sur le serveur." },
+        {
+          error: "Envoi push indisponible : définissez SUPABASE_SERVICE_ROLE_KEY sur le serveur.",
+          code: "push_not_configured",
+        },
         { status: 503 },
       );
     }
-    if (msg.includes("WEB_PUSH_VAPID")) {
-      return NextResponse.json({ error: msg }, { status: 503 });
-    }
-    return NextResponse.json({ error: msg }, { status: 500 });
+    return NextResponse.json({ error: msg, code: "push_failed" }, { status: 500 });
   }
 }
