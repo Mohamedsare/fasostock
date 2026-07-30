@@ -527,12 +527,12 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
   return (
     <FsPage className="flex min-h-0 flex-1 flex-col px-5 pt-4 sm:px-5 min-[900px]:px-7 min-[900px]:pt-7">
       {/*
-       * Dégagement de la barre d'onglets mobile (`shellBottomNavBarClass`, ~4,75rem
-       * + zone sûre) posé UNE fois sur le conteneur : sinon la fin de l'historique
-       * passe sous la barre. Même convention que `stores-screen` /
-       * `engine-registration-screen` — ne pas le remettre bloc par bloc.
+       * Dégagement de la barre d'onglets mobile, posé UNE fois sur le conteneur :
+       * sinon la fin de l'historique passe dessous. La barre mesure 8px (pt-2) +
+       * 56px (min-h) + max(8px, zone sûre) ⇒ 5,5rem couvre la barre + ~16px d'air
+       * sous la dernière carte. Ne pas le remettre bloc par bloc (cumul de marges).
        */}
-      <div className="flex flex-col gap-6 pb-[calc(4.75rem+var(--fs-safe-bottom))] min-[1024px]:pb-0">
+      <div className="flex flex-col gap-6 pb-[calc(5.5rem+var(--fs-safe-bottom))] min-[1024px]:pb-0">
         {/* En-tête type Flutter : headlineSmall + actions ; mobile-first = colonne puis wrap ≥560px */}
         <div className="flex flex-col gap-4 min-[560px]:flex-row min-[560px]:items-start min-[560px]:justify-between min-[560px]:gap-6">
           <div className="min-w-0">
