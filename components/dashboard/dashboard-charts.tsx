@@ -655,14 +655,11 @@ export function DashboardPieChart({
       <ul
         className={cn(
           "space-y-1 rounded-xl border border-black/6 bg-fs-surface-low/60 p-2 min-[900px]:space-y-1.5 dark:border-white/8 dark:bg-white/[0.04]",
+          // Zone AU FIL de la page : pas de `overscroll-contain`, sinon le geste
+          // vertical resterait piégé dans la légende une fois arrivé en bout.
           segments.length > legendMax &&
-            "max-h-[min(200px,42vh)] overflow-y-auto overscroll-contain pr-0.5",
+            "fs-scroll-y max-h-[min(200px,42vh)] pr-0.5",
         )}
-        style={
-          segments.length > legendMax
-            ? { scrollbarGutter: "stable" }
-            : undefined
-        }
       >
         {segments.map((seg, i) => {
           const active = hoverIdx === i;

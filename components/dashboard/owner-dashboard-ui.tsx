@@ -30,6 +30,8 @@ import {
   MdChevronRight,
   MdCreditCard,
   MdDescription,
+  MdExpandLess,
+  MdExpandMore,
   MdInventory2,
   MdLocalShipping,
   MdPayments,
@@ -116,11 +118,19 @@ function SoftCard({
 }
 
 /**
- * Carte-liste scrollable : l'en-tête reste fixe, seules les lignes défilent.
- * UX — le nombre total est affiché dans l'en-tête (on sait qu'il y a plus à voir),
- * des dégradés apparaissent en haut/bas UNIQUEMENT quand il reste du contenu dans
- * cette direction (affordance de défilement), la zone est focusable au clavier et
- * le sur-scroll est confiné (pas d'entraînement de la page).
+ * Carte-liste à contenu long. L'en-tête (titre, total, « Voir tout ») reste fixe.
+ *
+ * UX — deux modes, pour ne JAMAIS piéger le défilement de la page :
+ *  • Desktop (`isWide`) : défilement interne à la molette. Le sur-scroll n'est PAS
+ *    confiné (cf. `fs-scroll-y`) → arrivé en bas de la liste, la page reprend le
+ *    relais dans le même geste, et il reste de la place autour des cartes pour
+ *    scroller la page.
+ *  • Mobile / tablette : AUCUN scroller imbriqué (la carte occupe toute la largeur,
+ *    le doigt tomberait forcément dessus). La liste est repliée en hauteur et un
+ *    bouton la déplie sur place — le geste vertical scrolle toujours la page.
+ *
+ * Dans les deux cas, les dégradés haut/bas n'apparaissent que s'il reste du contenu
+ * dans cette direction (affordance), et le total dans l'en-tête annonce le volume.
  */
 function SoftScrollListCard({
   title,
@@ -128,6 +138,7 @@ function SoftScrollListCard({
   href,
   linkLabel = "Voir tout",
   ariaLabel,
+  isWide,
   children,
 }: {
   title: string;
@@ -135,10 +146,12 @@ function SoftScrollListCard({
   href: string;
   linkLabel?: string;
   ariaLabel: string;
+  isWide: boolean;
   children: ReactNode;
 }) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const [edges, setEdges] = useState({ top: false, bottom: false });
+  const [expanded, setExpanded] = useState(false);
 
   const syncEdges = useCallback(() => {
     const el = scrollRef.current;
@@ -164,7 +177,11 @@ function SoftScrollListCard({
     const inner = el.firstElementChild;
     if (inner) ro.observe(inner);
     return () => ro.disconnect();
-  }, [syncEdges, count]);
+  }, [syncEdges, count, isWide, expanded]);
+
+  // Mobile : `edges.bottom` (scrollTop toujours 0, overflow masqué) ⇒ « il reste
+  // des lignes cachées sous le pli ».
+  const showToggle = !isWide && (expanded || edges.bottom);
 
   return (
     <SoftCard className="overflow-hidden p-3 min-[900px]:p-4">
@@ -184,11 +201,19 @@ function SoftScrollListCard({
       <div className="relative min-w-0">
         <div
           ref={scrollRef}
-          onScroll={syncEdges}
-          tabIndex={0}
-          role="group"
-          aria-label={ariaLabel}
-          className="fs-scroll-y max-h-[13.5rem] min-w-0 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--owner-accent)]/40 min-[900px]:max-h-[15.5rem]"
+          onScroll={isWide ? syncEdges : undefined}
+          tabIndex={isWide ? 0 : undefined}
+          role={isWide ? "group" : undefined}
+          aria-label={isWide ? ariaLabel : undefined}
+          className={cn(
+            "min-w-0 rounded-lg",
+            isWide
+              ? "fs-scroll-y max-h-[15.5rem] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--owner-accent)]/40"
+              : cn(
+                  "overflow-hidden transition-[max-height] duration-300 ease-out motion-reduce:transition-none",
+                  expanded ? "max-h-[200rem]" : "max-h-[11.5rem]",
+                ),
+          )}
         >
           {children}
         </div>
@@ -203,10 +228,25 @@ function SoftScrollListCard({
           aria-hidden
           className={cn(
             "pointer-events-none absolute inset-x-0 bottom-0 h-6 bg-gradient-to-t from-fs-card to-transparent transition-opacity duration-200",
-            edges.bottom ? "opacity-100" : "opacity-0",
+            edges.bottom && !expanded ? "opacity-100" : "opacity-0",
           )}
         />
       </div>
+      {showToggle ? (
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          aria-expanded={expanded}
+          className="mt-1 flex min-h-11 w-full touch-manipulation items-center justify-center gap-1 rounded-lg text-[11px] font-bold text-[var(--owner-accent)] active:bg-[var(--owner-accent)]/8"
+        >
+          {expanded ? "Réduire" : `Tout afficher (${count})`}
+          {expanded ? (
+            <MdExpandLess className="h-4 w-4" aria-hidden />
+          ) : (
+            <MdExpandMore className="h-4 w-4" aria-hidden />
+          )}
+        </button>
+      ) : null}
     </SoftCard>
   );
 }
@@ -1264,6 +1304,7 @@ export function OwnerDashboardUi(props: OwnerDashboardUiProps) {
               count={d.topProducts.length}
               href={reportsHref}
               ariaLabel="Top produits par chiffre d'affaires — liste défilante"
+              isWide={isWide}
             >
               <ul className={OWNER_SCROLL_LIST}>
                 {d.topProducts.map((p, i) => (
@@ -1304,6 +1345,7 @@ export function OwnerDashboardUi(props: OwnerDashboardUiProps) {
               count={d.topByMargin.length}
               href={reportsHref}
               ariaLabel="Produits par marge — liste défilante"
+              isWide={isWide}
             >
               <ul className={OWNER_SCROLL_LIST}>
                 {d.topByMargin.map((p) => (
@@ -1330,6 +1372,7 @@ export function OwnerDashboardUi(props: OwnerDashboardUiProps) {
             count={d.stockWatchSamples.length + d.leastByRevenue.length}
             href={helpers.canInventory ? ROUTES.inventory : reportsHref}
             ariaLabel="Produits à surveiller — liste défilante"
+            isWide={isWide}
           >
             <ul className={OWNER_SCROLL_LIST}>
               {d.stockWatchSamples.map((s, idx) => (

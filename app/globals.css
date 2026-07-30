@@ -622,10 +622,13 @@ html.dark .fs-owner-dashboard {
 
   /* Pendant vertical de `fs-scroll-x` : listes internes de cartes (dashboard,
    * panneaux). Scrollbar fine au pointeur fin, masquée au tactile (le geste
-   * suffit) ; gouttière stable pour éviter le saut de mise en page. */
+   * suffit) ; gouttière stable pour éviter le saut de mise en page.
+   * `overscroll-behavior` reste sur `auto` (chaînage) : ces zones sont AU FIL de
+   * la page, arrivé en bout de liste le geste doit reprendre le défilement de la
+   * page. Pour un panneau/dialogue qui doit isoler son scroll, ajouter
+   * `overscroll-contain` au point d'appel. */
   .fs-scroll-y {
     overflow-y: auto;
-    overscroll-behavior-y: contain;
     -webkit-overflow-scrolling: touch;
     scrollbar-gutter: stable;
   }
