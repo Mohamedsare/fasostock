@@ -27,6 +27,10 @@ export type AdminCompany = {
   hrModuleEnabled: boolean;
   /** Suivi de péremption (DLC/DLUO) ouvert à toute l'entreprise par la plateforme. */
   expiryModuleEnabled: boolean;
+  /** Module Pièces (compatibilités, équivalences, variantes) — désactivé par défaut. */
+  partsModuleEnabled: boolean;
+  /** Module Réassort — **activé** par défaut ; la plateforme peut le couper. */
+  restockModuleEnabled: boolean;
   createdAt: string | null;
 };
 
@@ -48,6 +52,10 @@ export type AdminStore = {
   rentalModuleEnabled: boolean;
   /** Suivi de péremption (DLC/DLUO) activé pour cette boutique (super admin). */
   expiryModuleEnabled: boolean;
+  /** Module Pièces activé pour cette boutique (super admin). Désactivé par défaut. */
+  partsModuleEnabled: boolean;
+  /** Module Réassort actif pour cette boutique. **Activé** par défaut. */
+  restockModuleEnabled: boolean;
   createdAt: string | null;
 };
 

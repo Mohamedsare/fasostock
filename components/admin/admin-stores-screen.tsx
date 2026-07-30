@@ -9,7 +9,9 @@ import {
   adminSetStoreEngineRegistration,
   adminSetStoreEngineSales,
   adminSetStoreExpiryModule,
+  adminSetStorePartsModule,
   adminSetStoreProgressive,
+  adminSetStoreRestockModule,
   adminUpdateStore,
 } from "@/lib/features/admin/api";
 import type { AdminStore } from "@/lib/features/admin/types";
@@ -96,6 +98,28 @@ export function AdminStoresScreen() {
     onError: (e) => toast.error(messageFromUnknownError(e)),
   });
 
+  const partsMut = useMutation({
+    mutationFn: async (p: { id: string; enabled: boolean }) =>
+      adminSetStorePartsModule(p.id, p.enabled),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["admin-stores"] });
+      void qc.invalidateQueries({ queryKey: ["app-context"] });
+      toast.success("Module Pièces mis à jour");
+    },
+    onError: (e) => toast.error(messageFromUnknownError(e)),
+  });
+
+  const restockMut = useMutation({
+    mutationFn: async (p: { id: string; enabled: boolean }) =>
+      adminSetStoreRestockModule(p.id, p.enabled),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["admin-stores"] });
+      void qc.invalidateQueries({ queryKey: ["app-context"] });
+      toast.success("Module Réassort mis à jour");
+    },
+    onError: (e) => toast.error(messageFromUnknownError(e)),
+  });
+
   const del = useMutation({
     mutationFn: (id: string) => adminDeleteStore(id),
     onSuccess: () => {
@@ -140,7 +164,7 @@ export function AdminStoresScreen() {
 
       <AdminCard padding="p-0">
         <FsHorizontalScroll>
-          <table className="min-w-[1120px] w-full text-left text-sm">
+          <table className="min-w-[1360px] w-full text-left text-sm">
           <thead className="border-b border-slate-200 bg-slate-50 text-xs font-bold uppercase text-slate-600">
             <tr>
               <th className="p-3">Entreprise</th>
@@ -152,6 +176,8 @@ export function AdminStoresScreen() {
               <th className="p-3">Immatriculation</th>
               <th className="p-3">Achats Progressifs</th>
               <th className="p-3">Péremptions</th>
+              <th className="p-3">Pièces</th>
+              <th className="p-3">Réassort</th>
               <th className="p-3">Actions</th>
             </tr>
           </thead>
@@ -228,6 +254,38 @@ export function AdminStoresScreen() {
                     />
                     <span className="text-xs text-slate-600">
                       {s.expiryModuleEnabled ? "Activé" : "Selon métier"}
+                    </span>
+                  </label>
+                </td>
+                <td className="p-3">
+                  <label className="inline-flex cursor-pointer items-center gap-2">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 accent-teal-700"
+                      checked={s.partsModuleEnabled}
+                      disabled={partsMut.isPending}
+                      onChange={() =>
+                        partsMut.mutate({ id: s.id, enabled: !s.partsModuleEnabled })
+                      }
+                    />
+                    <span className="text-xs text-slate-600">
+                      {s.partsModuleEnabled ? "Activé" : "Désactivé"}
+                    </span>
+                  </label>
+                </td>
+                <td className="p-3">
+                  <label className="inline-flex cursor-pointer items-center gap-2">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 accent-purple-600"
+                      checked={s.restockModuleEnabled}
+                      disabled={restockMut.isPending}
+                      onChange={() =>
+                        restockMut.mutate({ id: s.id, enabled: !s.restockModuleEnabled })
+                      }
+                    />
+                    <span className="text-xs text-slate-600">
+                      {s.restockModuleEnabled ? "Activé" : "Coupé"}
                     </span>
                   </label>
                 </td>

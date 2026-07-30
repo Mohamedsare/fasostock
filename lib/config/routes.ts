@@ -23,6 +23,10 @@ export const ROUTES = {
   progressive: "/achats-progressifs",
   /** Module Location (gestion locative immobilière) — activé par boutique. */
   rental: "/location",
+  /** Module Pièces : compatibilités par modèle, équivalences, variantes — activé par la plateforme. */
+  parts: "/pieces",
+  /** Module Réassort : quoi recommander et en quelle quantité — actif par défaut. */
+  restock: "/reassort",
   stores: "/stores",
   inventory: "/inventory",
   /** Sessions d'inventaire physique (comptage, écarts, validation). */

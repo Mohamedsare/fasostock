@@ -3,6 +3,8 @@ import {
   LayoutDashboard,
   CirclePlus,
   Package,
+  Puzzle,
+  PackagePlus,
   ShoppingCart,
   UtensilsCrossed,
   HandPlatter,
@@ -55,6 +57,8 @@ export type NavItem = {
 export const NAV_ITEMS: NavItem[] = [
   { href: ROUTES.dashboard, label: "Tableau de bord", icon: LayoutDashboard, iconBg: "#F97316" },
   { href: ROUTES.products, label: "Produits", icon: Package, iconBg: "#7C2D12" },
+  { href: ROUTES.parts, label: "Pièces", icon: Puzzle, iconBg: "#0F766E" },
+  { href: ROUTES.restock, label: "Réassort", icon: PackagePlus, iconBg: "#7E22CE" },
   { href: ROUTES.barcodes, label: "Code Barre", icon: Barcode, iconBg: "#9A3412" },
   { href: ROUTES.sales, label: "Ventes", icon: ShoppingCart, iconBg: "#EA580C" },
   { href: ROUTES.promotions, label: "Promotions", icon: BadgePercent, iconBg: "#DB2777" },

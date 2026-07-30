@@ -54,6 +54,10 @@ export const P = {
   rentalManage: "rental.manage",
   /** Page Péremptions (DLC/DLUO) — owner par défaut ; accord explicite aux autres. */
   expiryView: "expiry.view",
+  /** Page Pièces (compatibilités, équivalences, variantes) — owner par défaut. */
+  partsManage: "parts.manage",
+  /** Page Réassort (produits à recommander + quantité conseillée) — owner par défaut. */
+  restockView: "restock.view",
   /** Page Dépenses — consultation ; owner par défaut, accordable aux autres. */
   expensesView: "expenses.view",
   /** Page Dépenses — création / modification / suppression. */
@@ -127,6 +131,8 @@ export const PERMISSION_LABELS_FR: Record<string, string> = {
   [P.progressiveManage]: "Gerer les achats progressifs (avances clients)",
   [P.rentalManage]: "Gerer la location (biens, baux, loyers)",
   [P.expiryView]: "Voir la page Peremptions (DLC/DLUO)",
+  [P.partsManage]: "Gerer les pieces (compatibilites, equivalences, variantes)",
+  [P.restockView]: "Voir la page Reassort (produits a recommander)",
   [P.expensesView]: "Voir la page Depenses (charges)",
   [P.expensesManage]: "Gerer les depenses (ajout / modif / suppression)",
   [P.suppliersView]: "Voir les fournisseurs",

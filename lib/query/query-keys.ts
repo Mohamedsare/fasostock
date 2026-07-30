@@ -14,6 +14,31 @@ export const queryKeys = {
    * couverte par les `invalidateQueries({ queryKey: products(companyId) })` existants.
    */
   productsPicker: (companyId: string) => ["products", companyId, "picker"] as const,
+  /** Module Pièces — modèles (moto / auto / appareil) de l'entreprise. */
+  partModels: (companyId: string) => ["parts", companyId, "models"] as const,
+  /** Module Pièces — pièces compatibles avec un modèle (ou une recherche texte). */
+  partsCompatible: (params: {
+    companyId: string;
+    storeId: string | null;
+    modelId: string | null;
+    query: string;
+  }) => ["parts", params.companyId, "compatible", params] as const,
+  /** Module Pièces — produits ayant au moins une équivalence. */
+  partsEquivalencesOverview: (companyId: string, storeId: string | null) =>
+    ["parts", companyId, "equivalences", storeId ?? "__all__"] as const,
+  /** Module Pièces — remplaçants d'un produit précis (avec stock). */
+  partsEquivalencesFor: (productId: string, storeId: string | null) =>
+    ["parts", "equivalences-for", productId, storeId ?? "__all__"] as const,
+  /** Module Pièces — familles de déclinaisons et leurs membres. */
+  partsVariantGroups: (companyId: string, storeId: string | null) =>
+    ["parts", companyId, "variant-groups", storeId ?? "__all__"] as const,
+  /** Module Réassort — produits à recommander + quantité conseillée. */
+  restockCandidates: (params: {
+    companyId: string;
+    storeId: string | null;
+    days: number;
+    coverDays: number;
+  }) => ["restock", params] as const,
   /** Tous les SKU (y compris produits supprimés) — pour la génération auto sans collision. */
   productSkus: (companyId: string) => ["product-skus", companyId] as const,
   /** Stock brut d'une boutique : `Record<product_id, quantité>` (`listStoreInventory`). */

@@ -46,7 +46,7 @@ export async function adminListCompanies(): Promise<AdminCompany[]> {
   const { data, error } = await supabase
     .from("companies")
     .select(
-      "id, name, slug, is_active, store_quota, ai_predictions_enabled, warehouse_feature_enabled, purchases_feature_enabled, transfers_feature_enabled, store_quota_increase_enabled, warehouse_kpi_show_purchase_value, warehouse_kpi_show_sale_value, warehouse_quota, accounting_module_enabled, hr_module_enabled, expiry_module_enabled, created_at",
+      "id, name, slug, is_active, store_quota, ai_predictions_enabled, warehouse_feature_enabled, purchases_feature_enabled, transfers_feature_enabled, store_quota_increase_enabled, warehouse_kpi_show_purchase_value, warehouse_kpi_show_sale_value, warehouse_quota, accounting_module_enabled, hr_module_enabled, expiry_module_enabled, parts_module_enabled, restock_module_enabled, created_at",
     )
     .order("created_at", { ascending: false });
   if (error) throw mapSupabaseError(error);
@@ -69,6 +69,9 @@ export async function adminListCompanies(): Promise<AdminCompany[]> {
       accountingModuleEnabled: r.accounting_module_enabled === true,
       hrModuleEnabled: r.hr_module_enabled === true,
       expiryModuleEnabled: r.expiry_module_enabled === true,
+      partsModuleEnabled: r.parts_module_enabled === true,
+      // Soustractif : actif tant que la plateforme ne l'a pas coupé.
+      restockModuleEnabled: r.restock_module_enabled !== false,
       createdAt: r.created_at != null ? String(r.created_at) : null,
     };
   });
@@ -119,7 +122,7 @@ export async function adminListStores(companyId?: string | null): Promise<AdminS
   const supabase = createClient();
   let q = supabase
     .from("stores")
-    .select("id, company_id, name, code, phone, is_active, is_primary, engine_sales_enabled, engine_registration_enabled, progressive_purchases_enabled, rental_module_enabled, expiry_module_enabled, created_at")
+    .select("id, company_id, name, code, phone, is_active, is_primary, engine_sales_enabled, engine_registration_enabled, progressive_purchases_enabled, rental_module_enabled, expiry_module_enabled, parts_module_enabled, restock_module_enabled, created_at")
     .order("created_at", { ascending: false });
   if (companyId) q = q.eq("company_id", companyId);
   const { data, error } = await q;
@@ -139,6 +142,8 @@ export async function adminListStores(companyId?: string | null): Promise<AdminS
       progressivePurchasesEnabled: r.progressive_purchases_enabled === true,
       rentalModuleEnabled: r.rental_module_enabled === true,
       expiryModuleEnabled: r.expiry_module_enabled === true,
+      partsModuleEnabled: r.parts_module_enabled === true,
+      restockModuleEnabled: r.restock_module_enabled !== false,
       createdAt: r.created_at != null ? String(r.created_at) : null,
     };
   });
@@ -158,6 +163,8 @@ export async function adminUpdateCompany(
     accountingModuleEnabled?: boolean;
     hrModuleEnabled?: boolean;
     expiryModuleEnabled?: boolean;
+    partsModuleEnabled?: boolean;
+    restockModuleEnabled?: boolean;
     storeQuota?: number;
     warehouseQuota?: number;
   },
@@ -192,6 +199,12 @@ export async function adminUpdateCompany(
   }
   if (patch.expiryModuleEnabled !== undefined) {
     row.expiry_module_enabled = patch.expiryModuleEnabled;
+  }
+  if (patch.partsModuleEnabled !== undefined) {
+    row.parts_module_enabled = patch.partsModuleEnabled;
+  }
+  if (patch.restockModuleEnabled !== undefined) {
+    row.restock_module_enabled = patch.restockModuleEnabled;
   }
   if (patch.storeQuota !== undefined) {
     const n = Math.floor(Number(patch.storeQuota));
@@ -263,6 +276,26 @@ export async function adminSetStoreExpiryModule(id: string, enabled: boolean): P
   const { error } = await supabase
     .from("stores")
     .update({ expiry_module_enabled: enabled })
+    .eq("id", id);
+  if (error) throw mapSupabaseError(error);
+}
+
+/** Module Pièces (compatibilités / équivalences / variantes) — activation par boutique. */
+export async function adminSetStorePartsModule(id: string, enabled: boolean): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("stores")
+    .update({ parts_module_enabled: enabled })
+    .eq("id", id);
+  if (error) throw mapSupabaseError(error);
+}
+
+/** Module Réassort — activé par défaut ; ce réglage sert surtout à le COUPER. */
+export async function adminSetStoreRestockModule(id: string, enabled: boolean): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("stores")
+    .update({ restock_module_enabled: enabled })
     .eq("id", id);
   if (error) throw mapSupabaseError(error);
 }

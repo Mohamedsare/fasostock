@@ -235,6 +235,8 @@ async function fetchAppContext(): Promise<AppContextData | null> {
       accountingModuleEnabled: false,
       hrModuleEnabled: false,
       expiryModuleEnabled: false,
+      partsModuleEnabled: false,
+      restockModuleEnabled: true,
       promoAdGenerationEnabled,
     };
   }
@@ -243,7 +245,7 @@ async function fetchAppContext(): Promise<AppContextData | null> {
   const { data: companyRow, error: cErr } = await supabase
     .from("companies")
     .select(
-      "id, name, logo_url, business_type_slug, warehouse_feature_enabled, purchases_feature_enabled, transfers_feature_enabled, store_quota_increase_enabled, ai_predictions_enabled, warehouse_kpi_show_purchase_value, warehouse_kpi_show_sale_value, accounting_module_enabled, hr_module_enabled, expiry_module_enabled",
+      "id, name, logo_url, business_type_slug, warehouse_feature_enabled, purchases_feature_enabled, transfers_feature_enabled, store_quota_increase_enabled, ai_predictions_enabled, warehouse_kpi_show_purchase_value, warehouse_kpi_show_sale_value, accounting_module_enabled, hr_module_enabled, expiry_module_enabled, parts_module_enabled, restock_module_enabled",
     )
     .eq("id", primaryCompanyId)
     .maybeSingle();
@@ -278,6 +280,8 @@ async function fetchAppContext(): Promise<AppContextData | null> {
       accountingModuleEnabled: false,
       hrModuleEnabled: false,
       expiryModuleEnabled: false,
+      partsModuleEnabled: false,
+      restockModuleEnabled: true,
       promoAdGenerationEnabled,
     };
   }
@@ -303,6 +307,8 @@ async function fetchAppContext(): Promise<AppContextData | null> {
     accounting_module_enabled?: boolean | null;
     hr_module_enabled?: boolean | null;
     expiry_module_enabled?: boolean | null;
+    parts_module_enabled?: boolean | null;
+    restock_module_enabled?: boolean | null;
   };
   const warehouseFeatureEnabled = cr.warehouse_feature_enabled !== false;
   const purchasesFeatureEnabled = cr.purchases_feature_enabled !== false;
@@ -314,11 +320,14 @@ async function fetchAppContext(): Promise<AppContextData | null> {
   const accountingModuleEnabled = cr.accounting_module_enabled === true;
   const hrModuleEnabled = cr.hr_module_enabled === true;
   const expiryModuleEnabled = cr.expiry_module_enabled === true;
+  const partsModuleEnabled = cr.parts_module_enabled === true;
+  // Réassort : actif tant que la plateforme ne l'a pas explicitement coupé.
+  const restockModuleEnabled = cr.restock_module_enabled !== false;
 
   if (isSuperAdmin) {
     const { data: stores } = await supabase
       .from("stores")
-      .select("id, name, is_primary, engine_sales_enabled, engine_registration_enabled, progressive_purchases_enabled, rental_module_enabled, expiry_module_enabled")
+      .select("id, name, is_primary, engine_sales_enabled, engine_registration_enabled, progressive_purchases_enabled, rental_module_enabled, expiry_module_enabled, parts_module_enabled, restock_module_enabled")
       .eq("company_id", companyId)
       .order("is_primary", { ascending: false })
       .order("name", { ascending: true });
@@ -335,6 +344,11 @@ async function fetchAppContext(): Promise<AppContextData | null> {
         (s as { rental_module_enabled?: boolean }).rental_module_enabled === true,
       expiryModuleEnabled:
         (s as { expiry_module_enabled?: boolean }).expiry_module_enabled === true,
+      partsModuleEnabled:
+        (s as { parts_module_enabled?: boolean }).parts_module_enabled === true,
+      // Soustractif : seul un `false` explicite coupe le module pour la boutique.
+      restockModuleEnabled:
+        (s as { restock_module_enabled?: boolean }).restock_module_enabled !== false,
     }));
     return {
       companyId,
@@ -356,13 +370,15 @@ async function fetchAppContext(): Promise<AppContextData | null> {
       accountingModuleEnabled,
       hrModuleEnabled,
       expiryModuleEnabled,
+      partsModuleEnabled,
+      restockModuleEnabled,
       promoAdGenerationEnabled,
     };
   }
 
   const { data: stores, error: sErr } = await supabase
     .from("stores")
-    .select("id, name, is_primary, engine_sales_enabled, engine_registration_enabled, progressive_purchases_enabled, rental_module_enabled, expiry_module_enabled")
+    .select("id, name, is_primary, engine_sales_enabled, engine_registration_enabled, progressive_purchases_enabled, rental_module_enabled, expiry_module_enabled, parts_module_enabled, restock_module_enabled")
     .eq("company_id", companyId)
     .order("is_primary", { ascending: false })
     .order("name", { ascending: true });
@@ -381,6 +397,11 @@ async function fetchAppContext(): Promise<AppContextData | null> {
       (s as { rental_module_enabled?: boolean }).rental_module_enabled === true,
     expiryModuleEnabled:
       (s as { expiry_module_enabled?: boolean }).expiry_module_enabled === true,
+    partsModuleEnabled:
+      (s as { parts_module_enabled?: boolean }).parts_module_enabled === true,
+    // Soustractif : seul un `false` explicite coupe le module pour la boutique.
+    restockModuleEnabled:
+      (s as { restock_module_enabled?: boolean }).restock_module_enabled !== false,
   }));
 
   let permissionKeys: string[] = [];
@@ -421,6 +442,8 @@ async function fetchAppContext(): Promise<AppContextData | null> {
     accountingModuleEnabled,
     hrModuleEnabled,
     expiryModuleEnabled,
+    partsModuleEnabled,
+    restockModuleEnabled,
     promoAdGenerationEnabled,
   };
 }

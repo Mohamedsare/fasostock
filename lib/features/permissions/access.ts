@@ -34,6 +34,13 @@ export type AppContextData = {
     rentalModuleEnabled?: boolean;
     /** Suivi de péremption (DLC/DLUO) ouvert pour cette boutique par la plateforme. */
     expiryModuleEnabled?: boolean;
+    /** Module Pièces (compatibilités / équivalences / variantes) ouvert pour cette boutique. */
+    partsModuleEnabled?: boolean;
+    /**
+     * Module Réassort actif pour cette boutique. **Soustractif** : `true` par défaut,
+     * le super admin peut le couper. `undefined` (contexte partiel) vaut donc actif.
+     */
+    restockModuleEnabled?: boolean;
   }[];
   isSuperAdmin: boolean;
   permissionKeys: string[];
@@ -63,7 +70,53 @@ export type AppContextData = {
    * (`companies.expiry_module_enabled`). S'ajoute au métier, ne retire rien.
    */
   expiryModuleEnabled: boolean;
+  /**
+   * Module Pièces ouvert pour TOUTE l'entreprise par la plateforme
+   * (`companies.parts_module_enabled`). S'ajoute aux drapeaux boutique.
+   */
+  partsModuleEnabled: boolean;
+  /**
+   * Module Réassort actif pour l'entreprise (`companies.restock_module_enabled`).
+   * **Soustractif** : vrai par défaut, coupé à la main par le super admin.
+   */
+  restockModuleEnabled: boolean;
 };
+
+/**
+ * Le super admin a-t-il ouvert le module Pièces pour ce contexte ?
+ * Entreprise entière, ou boutique courante (vue « toutes boutiques » : au moins une).
+ */
+export function partsModuleOverride(
+  data: AppContextData | null | undefined,
+): boolean {
+  if (!data) return false;
+  if (data.partsModuleEnabled === true) return true;
+  if (data.storeId) {
+    return (
+      data.stores.find((s) => s.id === data.storeId)?.partsModuleEnabled === true
+    );
+  }
+  return data.stores.some((s) => s.partsModuleEnabled === true);
+}
+
+/**
+ * Le module Réassort est-il actif ici ? Logique **inverse** des autres modules :
+ * actif par défaut, il faut que l'entreprise ET la boutique courante l'aient gardé.
+ * En vue « toutes boutiques », il suffit qu'une boutique l'ait encore.
+ */
+export function restockModuleActive(
+  data: AppContextData | null | undefined,
+): boolean {
+  if (!data) return false;
+  if (data.restockModuleEnabled === false) return false;
+  if (data.storeId) {
+    const store = data.stores.find((s) => s.id === data.storeId);
+    // Boutique inconnue du contexte : on ne bloque pas sur une donnée manquante.
+    return store == null || store.restockModuleEnabled !== false;
+  }
+  if (data.stores.length === 0) return true;
+  return data.stores.some((s) => s.restockModuleEnabled !== false);
+}
 
 /**
  * Le super admin a-t-il ouvert le suivi de péremption pour ce contexte ?
@@ -125,6 +178,14 @@ export type AccessHelpers = {
   canBarcodes: boolean;
   /** Propriétaire ou permission page Promotions. */
   canPromotions: boolean;
+  /** Module Pièces ouvert par la plateforme (entreprise ou boutique courante). */
+  partsModuleOn: boolean;
+  /** Page Pièces : module ouvert ET propriétaire / permission dédiée. */
+  canParts: boolean;
+  /** Module Réassort actif (non coupé par la plateforme) pour ce périmètre. */
+  restockModuleOn: boolean;
+  /** Page Réassort : module actif ET propriétaire / permission dédiée. */
+  canRestock: boolean;
   /**
    * Suivi de péremption (DLC/DLUO) actif pour ce contexte : métier concerné
    * (pharmacie, supermarché…) ou drapeau ouvert par le super admin.
@@ -239,6 +300,13 @@ export function buildAccessHelpers(
   const canCredit = isOwner || hasPermission(P.creditView);
   const canBarcodes = isOwner || hasPermission(P.barcodesManage);
   const canPromotions = isOwner || hasPermission(P.promotionsManage);
+  // Pièces : additif comme la péremption — rien n'apparaît tant que la plateforme
+  // n'a pas ouvert le module pour l'entreprise ou pour la boutique en cours.
+  const partsModuleOn = partsModuleOverride(data);
+  const canParts = partsModuleOn && (isOwner || hasPermission(P.partsManage));
+  // Réassort : soustractif — proposé à tous les métiers, coupé à la main si besoin.
+  const restockModuleOn = restockModuleActive(data);
+  const canRestock = restockModuleOn && (isOwner || hasPermission(P.restockView));
   // Péremptions : réservé aux métiers à suivi de lots (pharmacie, supermarché…) ou
   // aux entreprises / boutiques pour lesquelles le super admin l'a ouvert.
   const expiryModuleOn = activityConfigForContext(data).expiryDashboard;
@@ -284,6 +352,10 @@ export function buildAccessHelpers(
     canCredit,
     canBarcodes,
     canPromotions,
+    partsModuleOn,
+    canParts,
+    restockModuleOn,
+    canRestock,
     expiryModuleOn,
     canExpiry,
     canExpenses,
@@ -329,6 +401,8 @@ export function filterNavItemsForPermissions(
     }
     if (href === ROUTES.dashboard) return h.canDashboard;
     if (href === ROUTES.products) return h.canProducts;
+    if (href === ROUTES.parts) return h.canParts;
+    if (href === ROUTES.restock) return h.canRestock;
     if (href === ROUTES.barcodes) return h.canBarcodes;
     if (href === ROUTES.sales) return h.canSales;
     if (href === ROUTES.promotions) return h.canPromotions;
@@ -390,6 +464,8 @@ function normalizeAppRoute(pathname: string): string {
 const APP_SHELL_ROUTE_PREFIXES: readonly string[] = [
   ROUTES.dashboard,
   ROUTES.products,
+  ROUTES.parts,
+  ROUTES.restock,
   ROUTES.barcodes,
   ROUTES.sales,
   ROUTES.promotions,
@@ -475,5 +551,9 @@ export function canAccessPathname(
   // Page Péremptions : suivi actif (métier ou drapeau plateforme) — accès URL direct.
   // Le droit utilisateur, lui, reste géré par l'écran (carte « Accès réservé »).
   if (route === ROUTES.expiry && !h.expiryModuleOn) return false;
+  // Mêmes gardes pour les modules Pièces (ouvert par la plateforme) et Réassort
+  // (actif par défaut, coupé par la plateforme) : l'URL directe ne contourne rien.
+  if (route === ROUTES.parts && !h.partsModuleOn) return false;
+  if (route === ROUTES.restock && !h.restockModuleOn) return false;
   return isAppShellRoute(route);
 }
