@@ -174,27 +174,54 @@ export async function setDefaultStockAlertThreshold(params: {
   }
 }
 
+/**
+ * Une page de l'historique des mouvements, la plus récente d'abord.
+ *
+ * PERF — deux pièges évités, ils provoquaient un `statement timeout` (57014) sur
+ * les boutiques à fort volume :
+ *  1. pas de `count: "exact"` : PostgREST exécutait alors un COUNT sur TOUT
+ *     l'historique de la boutique, avec la policy RLS évaluée ligne à ligne, à
+ *     chaque page. On détecte « il y a une page suivante » en demandant une
+ *     ligne de plus (`limit + 1`) — coût nul.
+ *  2. le tri s'appuie sur l'index composite `(store_id, created_at DESC)`
+ *     (migration 00161).
+ *
+ * `search` filtre sur le nom du produit côté serveur (jointure interne) : sans
+ * cela, chercher un produit imposerait de tout télécharger pour filtrer dans le
+ * navigateur.
+ */
 export async function listStockMovements(params: {
   storeId: string | null;
   limit: number;
   offset: number;
-}): Promise<{ rows: StockMovementRow[]; total: number }> {
-  if (!params.storeId) return { rows: [], total: 0 };
+  search?: string;
+}): Promise<{ rows: StockMovementRow[]; hasMore: boolean }> {
+  if (!params.storeId) return { rows: [], hasMore: false };
   const supabase = createClient();
 
-  const q = supabase
+  const needle = (params.search ?? "").trim();
+  // `!inner` : la jointure devient filtrante (obligatoire pour filtrer sur
+  // `product.name`) — sinon PostgREST ignore le critère sur la table liée.
+  const productJoin = needle ? "product:products!inner(name)" : "product:products(name)";
+
+  let q = supabase
     .from("stock_movements")
-    .select("id, product_id, type, quantity, notes, created_at, product:products(name)", {
-      count: "exact",
-    })
+    .select(`id, product_id, type, quantity, notes, created_at, ${productJoin}`)
     .eq("store_id", params.storeId)
     .order("created_at", { ascending: false })
-    .range(params.offset, params.offset + params.limit - 1);
+    .range(params.offset, params.offset + params.limit); // limit + 1 ligne
 
-  const { data, error, count } = await q;
+  if (needle) {
+    // `%` et `,` casseraient la syntaxe de filtre PostgREST.
+    q = q.ilike("product.name", `%${needle.replace(/[%,]/g, " ")}%`);
+  }
+
+  const { data, error } = await q;
   if (error) throw error;
 
-  const rows: StockMovementRow[] = (data ?? []).map((r) => {
+  const raw = data ?? [];
+  const hasMore = raw.length > params.limit;
+  const rows: StockMovementRow[] = raw.slice(0, params.limit).map((r) => {
     const productRaw = (r as unknown as { product?: { name?: string } | { name?: string }[] })
       .product;
     const productName = Array.isArray(productRaw)
@@ -211,7 +238,7 @@ export async function listStockMovements(params: {
     };
   });
 
-  return { rows, total: typeof count === "number" ? count : rows.length };
+  return { rows, hasMore };
 }
 
 export async function adjustStockAtomic(params: {

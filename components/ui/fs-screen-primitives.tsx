@@ -1,7 +1,8 @@
 "use client";
 
-import { formatUnknownErrorMessage } from "@/lib/utils/format-unknown-error";
+import { toFriendlyError } from "@/lib/utils/friendly-error";
 import { cn } from "@/lib/utils/cn";
+import { MdErrorOutline, MdRefresh } from "react-icons/md";
 import type { ComponentType, ReactNode } from "react";
 
 /** Padding réduit au maximum pour maximiser la surface de contenu : 8px mobile → 12px sm → 16px large. Bas mobile : léger — le main du shell réserve déjà la bottom nav. */
@@ -164,17 +165,47 @@ export function FsQueryErrorPanel({
   /** Ex. `mt-3` pour espacer sous les filtres. */
   className?: string;
 }) {
-  const msg = formatUnknownErrorMessage(error, "Impossible de charger les données.");
+  // Jamais de jargon serveur à l'écran (« statement timeout », codes SQL…) : on
+  // affiche ce qui s'est passé + quoi faire, le message d'origine reste replié
+  // pour le support.
+  const f = toFriendlyError(error, "Impossible de charger les données");
+  const showTechnical = f.technical.trim() && f.technical.trim() !== f.title;
   return (
     <FsCard className={cn(className)} padding="p-4 sm:p-5">
-      <p className="text-sm font-semibold leading-snug text-red-600">{msg}</p>
-      <button
-        type="button"
-        onClick={onRetry}
-        className="fs-touch-target mt-4 w-full rounded-[10px] bg-fs-accent py-3 text-sm font-semibold text-white sm:w-auto sm:px-6"
-      >
-        Réessayer
-      </button>
+      <div className="flex min-w-0 items-start gap-3">
+        <span
+          className="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-500/12 text-amber-600 dark:bg-amber-400/12 dark:text-amber-400"
+          aria-hidden
+        >
+          <MdErrorOutline className="h-5 w-5" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-bold leading-snug text-fs-text">{f.title}</p>
+          {f.hint ? (
+            <p className="mt-1 text-sm leading-relaxed text-neutral-600">{f.hint}</p>
+          ) : null}
+          {showTechnical ? (
+            <details className="group mt-3">
+              <summary className="fs-touch-target inline-flex cursor-pointer list-none items-center text-xs font-semibold text-neutral-500 hover:text-neutral-700">
+                Détails techniques
+              </summary>
+              <p className="mt-1.5 wrap-break-word rounded-lg bg-fs-surface-container/70 px-2.5 py-2 font-mono text-[11px] leading-relaxed text-neutral-600 dark:bg-white/4">
+                {f.technical}
+              </p>
+            </details>
+          ) : null}
+        </div>
+      </div>
+      {f.retryable ? (
+        <button
+          type="button"
+          onClick={onRetry}
+          className="fs-touch-target mt-4 inline-flex w-full items-center justify-center gap-2 rounded-[10px] bg-fs-accent py-3 text-sm font-semibold text-white sm:w-auto sm:px-6"
+        >
+          <MdRefresh className="h-4 w-4" aria-hidden />
+          Réessayer
+        </button>
+      ) : null}
     </FsCard>
   );
 }

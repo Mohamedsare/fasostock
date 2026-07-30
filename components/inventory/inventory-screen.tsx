@@ -196,6 +196,83 @@ function InventoryPagination({
   );
 }
 
+/**
+ * Pager de l'historique des mouvements. Volontairement SANS nombre total de
+ * pages : compter tout l'historique coûtait un `COUNT` complet à chaque page
+ * (source du `statement timeout`). On sait seulement s'il existe une page
+ * suivante — l'UX reste claire en affichant la plage de lignes.
+ */
+function MovementsPager({
+  currentPage,
+  hasMore,
+  pageSize,
+  rowsOnPage,
+  busy,
+  onPageChange,
+  narrow,
+}: {
+  currentPage: number;
+  hasMore: boolean;
+  pageSize: number;
+  rowsOnPage: number;
+  busy: boolean;
+  onPageChange: (p: number) => void;
+  narrow: boolean;
+}) {
+  if (currentPage === 0 && !hasMore) return null;
+  const start = currentPage * pageSize + 1;
+  const end = currentPage * pageSize + rowsOnPage;
+  const range = `Mouvements ${start} – ${end}`;
+
+  return (
+    <FsCard padding="p-3 sm:p-4" className="mt-4 rounded-[10px] sm:rounded-[10px]">
+      <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
+        {!narrow ? (
+          <span className="mr-2 text-xs text-neutral-600 sm:mr-4">{range}</span>
+        ) : null}
+        <button
+          type="button"
+          disabled={currentPage <= 0 || busy}
+          onClick={() => onPageChange(currentPage - 1)}
+          className={cn(
+            "inline-flex h-11 w-11 items-center justify-center rounded-full text-white disabled:opacity-40",
+            currentPage > 0 ? "bg-fs-accent" : "bg-neutral-200 text-neutral-500",
+          )}
+          aria-label="Mouvements plus récents"
+        >
+          <MdChevronLeft className="h-7 w-7" aria-hidden />
+        </button>
+        <span className="text-sm font-semibold text-fs-text">Page {currentPage + 1}</span>
+        <button
+          type="button"
+          disabled={!hasMore || busy}
+          onClick={() => onPageChange(currentPage + 1)}
+          className={cn(
+            "inline-flex h-11 w-11 items-center justify-center rounded-full text-white disabled:opacity-40",
+            hasMore ? "bg-fs-accent" : "bg-neutral-200 text-neutral-500",
+          )}
+          aria-label="Mouvements plus anciens"
+        >
+          <MdChevronRight className="h-7 w-7" aria-hidden />
+        </button>
+        {narrow ? (
+          <span className="w-full text-center text-xs text-neutral-600">{range}</span>
+        ) : null}
+      </div>
+    </FsCard>
+  );
+}
+
+/** Retarde la propagation d'une valeur (frappe clavier → requête serveur). */
+function useDebounced<T>(value: T, delayMs: number): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(value), delayMs);
+    return () => clearTimeout(t);
+  }, [value, delayMs]);
+  return debounced;
+}
+
 export function InventoryScreen() {
   const qc = useQueryClient();
   const {
@@ -251,16 +328,41 @@ export function InventoryScreen() {
     }
   }, [showSettings, settingsJustOpened, dataQ.data]);
 
+  /*
+   * Historique = pagination SERVEUR (une page de 20), jamais l'historique entier :
+   * la version précédente demandait 10 000 lignes + un COUNT exact et finissait
+   * en `statement timeout` sur les boutiques chargées. La recherche est envoyée au
+   * serveur (jointure produit), débouncée pour ne pas requêter à chaque frappe.
+   */
+  const movSearch = useDebounced(tab === "moves" ? q.trim() : "", 350);
+
+  /*
+   * Retour à la 1ʳᵉ page quand la recherche / la boutique / l'onglet change —
+   * ajusté PENDANT le rendu (motif React « adjusting state on prop change »)
+   * plutôt que dans un effet : sinon une requête part d'abord avec l'ancien
+   * numéro de page combiné au nouveau critère, pour rien.
+   */
+  const movResetKey = `${tab}|${storeId ?? ""}|${movSearch}`;
+  const [lastMovResetKey, setLastMovResetKey] = useState(movResetKey);
+  if (movResetKey !== lastMovResetKey) {
+    setLastMovResetKey(movResetKey);
+    setMovPage(0);
+  }
+
   const movementsQ = useQuery({
-    queryKey: ["stock-movements", storeId] as const,
+    queryKey: ["stock-movements", storeId, movPage, movSearch] as const,
     queryFn: () =>
       listStockMovements({
         storeId,
-        limit: 10_000,
-        offset: 0,
+        limit: MOVEMENTS_PAGE_SIZE,
+        offset: movPage * MOVEMENTS_PAGE_SIZE,
+        search: movSearch,
       }),
     enabled: tab === "moves" && Boolean(storeId) && canAccessStock,
     staleTime: 10_000,
+    // Garde la page courante affichée pendant le chargement de la suivante :
+    // pas de clignotement vers un écran de chargement.
+    placeholderData: (prev) => prev,
   });
 
   const thresholdMut = useMutation({
@@ -349,28 +451,17 @@ export function InventoryScreen() {
     if (invPageCount > 0 && invPage >= invPageCount) setInvPage(invPageCount - 1);
   }, [invPage, invPageCount]);
 
-  const movementRowsAll = useMemo(() => movementsQ.data?.rows ?? [], [movementsQ.data?.rows]);
-  /** Même champ de recherche que le stock : filtre les mouvements par nom de produit. */
-  const filteredMovements = useMemo(() => {
-    const needle = q.trim().toLowerCase();
-    if (!needle) return movementRowsAll;
-    return movementRowsAll.filter((m) => (m.productName ?? "").toLowerCase().includes(needle));
-  }, [movementRowsAll, q]);
-  const movTotal = filteredMovements.length;
-  const movPageCount = movTotal === 0 ? 0 : Math.ceil(movTotal / MOVEMENTS_PAGE_SIZE);
-  const movSafePage = movPageCount === 0 ? 0 : Math.min(Math.max(0, movPage), movPageCount - 1);
-  const pagedMovements = filteredMovements.slice(
-    movSafePage * MOVEMENTS_PAGE_SIZE,
-    (movSafePage + 1) * MOVEMENTS_PAGE_SIZE,
-  );
+  /** Page courante telle que renvoyée par le serveur (déjà filtrée et triée). */
+  const pagedMovements = movementsQ.data?.rows ?? [];
+  const movHasMore = movementsQ.data?.hasMore ?? false;
 
+  // Page vide alors qu'on n'est pas au début (mouvements purgés entre-temps) :
+  // on recule d'une page au lieu d'afficher « aucun mouvement » à tort.
   useEffect(() => {
-    setMovPage(0);
-  }, [tab, storeId, q]);
-
-  useEffect(() => {
-    if (movPageCount > 0 && movPage >= movPageCount) setMovPage(movPageCount - 1);
-  }, [movPage, movPageCount]);
+    if (movPage > 0 && !movementsQ.isFetching && pagedMovements.length === 0) {
+      setMovPage((p) => Math.max(0, p - 1));
+    }
+  }, [movPage, movementsQ.isFetching, pagedMovements.length]);
 
   const [adjustOpen, setAdjustOpen] = useState(false);
   const [adjustTarget, setAdjustTarget] = useState<InventoryRow | null>(null);
@@ -912,36 +1003,47 @@ export function InventoryScreen() {
                 <div className="flex justify-center py-12">
                   <div className="h-9 w-9 animate-spin rounded-full border-2 border-fs-accent border-t-transparent" aria-hidden />
                 </div>
-              ) : filteredMovements.length === 0 ? (
+              ) : pagedMovements.length === 0 ? (
                 <p className="px-4 py-10 text-center text-sm text-neutral-600">
-                  {q.trim()
-                    ? `Aucun mouvement pour « ${q.trim()} »`
+                  {movSearch
+                    ? `Aucun mouvement pour « ${movSearch} »`
                     : "Aucun mouvement récent"}
                 </p>
               ) : (
                 <>
-                  <FsHorizontalScroll>
-                    <table className="w-full min-w-[720px] border-collapse text-left text-sm">
-                      <thead>
-                        <tr className="border-b border-black/[0.06] bg-fs-surface-container/80">
-                          <th className="px-4 py-3 font-semibold text-fs-text">Date</th>
-                          <th className="px-3 py-3 font-semibold text-fs-text">Produit</th>
-                          <th className="px-3 py-3 font-semibold text-fs-text">Type</th>
-                          <th className="px-3 py-3 text-right font-semibold text-fs-text">Quantité</th>
-                          <th className="px-4 py-3 font-semibold text-fs-text">Note</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {pagedMovements.map((m) => (
-                          <MovementTableRow key={m.id} row={m} />
-                        ))}
-                      </tbody>
-                    </table>
-                  </FsHorizontalScroll>
-                  <InventoryPagination
-                    totalCount={movTotal}
+                  <div
+                    className={cn(
+                      "transition-opacity duration-150",
+                      // Page suivante en cours de chargement : on garde la page
+                      // affichée, juste estompée (pas de saut vers un spinner).
+                      movementsQ.isFetching && "pointer-events-none opacity-60",
+                    )}
+                  >
+                    <FsHorizontalScroll>
+                      <table className="w-full min-w-[720px] border-collapse text-left text-sm">
+                        <thead>
+                          <tr className="border-b border-black/[0.06] bg-fs-surface-container/80">
+                            <th className="px-4 py-3 font-semibold text-fs-text">Date</th>
+                            <th className="px-3 py-3 font-semibold text-fs-text">Produit</th>
+                            <th className="px-3 py-3 font-semibold text-fs-text">Type</th>
+                            <th className="px-3 py-3 text-right font-semibold text-fs-text">Quantité</th>
+                            <th className="px-4 py-3 font-semibold text-fs-text">Note</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {pagedMovements.map((m) => (
+                            <MovementTableRow key={m.id} row={m} />
+                          ))}
+                        </tbody>
+                      </table>
+                    </FsHorizontalScroll>
+                  </div>
+                  <MovementsPager
+                    currentPage={movPage}
+                    hasMore={movHasMore}
                     pageSize={MOVEMENTS_PAGE_SIZE}
-                    currentPage={movSafePage}
+                    rowsOnPage={pagedMovements.length}
+                    busy={movementsQ.isFetching}
                     onPageChange={setMovPage}
                     narrow={narrowPagination}
                   />
