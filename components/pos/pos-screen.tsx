@@ -3,7 +3,7 @@
 import { CustomerFormDialog } from "@/components/customers/customer-form-dialog";
 import { FsHorizontalScroll } from "@/components/ui/fs-horizontal-scroll";
 import { fsInputClass } from "@/components/ui/fs-screen-primitives";
-import { createCustomer } from "@/lib/features/customers/api";
+import { createCustomer, listCustomers } from "@/lib/features/customers/api";
 import { P } from "@/lib/constants/permissions";
 import { usePermissions } from "@/lib/features/permissions/use-permissions";
 import type { SaleItem } from "@/lib/features/sales/types";
@@ -244,19 +244,16 @@ export function PosScreen({
     staleTime: 60_000,
   });
   const quickCreditEnabled = mode === "quick" && quickCreditCompanyQ.data === true;
-  /**
-   * Client requis dès qu'on peut vendre à crédit : la liste doit être chargée.
-   * En modification, la vente reprise peut être à crédit même si le réglage a été coupé.
-   */
-  const withCustomers = isA4Like || quickCreditEnabled || (mode === "quick" && isSaleEditEntry);
-
   const posQ = useQuery({
-    queryKey: ["pos", mode, companyId, storeId, withCustomers] as const,
+    queryKey: ["pos", mode, companyId, storeId] as const,
     queryFn: () =>
       fetchPosData({
         companyId,
         storeId,
-        withCustomers,
+        // Caisse rapide : les clients ont leur propre requête (`quickCustomersQ`) —
+        // `posQ` se rafraîchit toutes les 15 s pour le stock, inutile de recharger
+        // tout le fichier client à ce rythme.
+        withCustomers: isA4Like,
       }),
     enabled: Boolean(
       companyId &&
@@ -385,7 +382,15 @@ export function PosScreen({
       ),
     [posQ.data?.categories, products, storeCatalog],
   );
-  const customers = posQ.data?.customers ?? [];
+  // Caisse rapide : fichier client à part (cache long) — un client peut être associé
+  // à n'importe quelle vente, même comptant.
+  const quickCustomersQ = useQuery({
+    queryKey: queryKeys.customers(companyId),
+    queryFn: () => listCustomers(companyId),
+    enabled: Boolean(companyId && mode === "quick" && canAccess),
+    staleTime: 5 * 60_000,
+  });
+  const customers = isA4Like ? (posQ.data?.customers ?? []) : (quickCustomersQ.data ?? []);
   const showDiscountField = store?.pos_discount_enabled === true;
   const currencyLabel = store?.currency?.trim() || "XOF";
 
@@ -594,9 +599,7 @@ export function PosScreen({
           setAmountReceivedTouched(true);
           setAmountReceived(sum > 0 ? String(sum) : "");
         }
-        if (isA4Like || (mode === "quick" && hadCredit)) {
-          setCustomerId(sale.customer_id ?? "");
-        }
+        setCustomerId(sale.customer_id ?? "");
         setActiveEditSaleId(sale.id);
         saleEditBootstrapKey.current = raw;
         setSaleEditBootstrapping(false);
@@ -676,7 +679,8 @@ export function PosScreen({
                 })();
         await updateCompletedPosSale({
           saleId: editingId,
-          customerId: isA4Like || isQuickCreditSale ? customerId || null : null,
+          // Client facultatif sur toute vente (comptant ou crédit), quel que soit le mode.
+          customerId: customerId || null,
           items: cart.map((c) => ({
             productId: c.productId,
             quantity: c.quantity,
@@ -735,7 +739,8 @@ export function PosScreen({
               quickPayment,
               amountReceivedValue,
               change,
-              customerName: isQuickCreditSale
+              // Imprimé dès qu'un client est associé, même sur une vente comptant.
+              customerName: customerId
                 ? (customers.find((c) => c.id === customerId)?.name ?? null)
                 : null,
               creditPaid: creditDownPayment,
@@ -748,7 +753,8 @@ export function PosScreen({
       const res = await createPosSale({
         companyId,
         storeId,
-        customerId: isA4Like || isQuickCreditSale ? customerId || null : null,
+        // Client facultatif sur toute vente (comptant ou crédit), quel que soit le mode.
+        customerId: customerId || null,
         items: cart.map((c) => ({
           productId: c.productId,
           quantity: c.quantity,
@@ -2254,7 +2260,7 @@ export function PosScreen({
         />
       ) : null}
 
-      {(isA4Like || quickCreditEnabled || quickPayment === "credit") && companyId ? (
+      {companyId ? (
         <CustomerFormDialog
           open={customerCreateOpen}
           onClose={() => setCustomerCreateOpen(false)}
@@ -2269,9 +2275,10 @@ export function PosScreen({
               notes: v.notes,
             });
             setCustomerCreateOpen(false);
-            await qc.invalidateQueries({
-              queryKey: ["pos", mode, companyId, storeId],
-            });
+            await Promise.all([
+              qc.invalidateQueries({ queryKey: ["pos", mode, companyId, storeId] }),
+              qc.invalidateQueries({ queryKey: queryKeys.customers(companyId) }),
+            ]);
             if (id) setCustomerId(id);
             toast.success(
               id
@@ -2768,7 +2775,13 @@ function PosCartPanel({
       )}
     >
       {/* Récap encadré — Flutter right zone footer */}
-      <div className="mx-0 rounded-xl border border-[#E5E7EB] bg-white p-3 min-[900px]:mx-3 min-[900px]:p-4">
+      <div
+        className={cn(
+          "mx-0 border border-[#E5E7EB] bg-white p-3 min-[900px]:mx-3 min-[900px]:p-4",
+          // Facture A4 : rayons plus sobres que la caisse rapide (document, pas tactile).
+          isA4Cart ? "rounded-lg" : "rounded-xl",
+        )}
+      >
         <div className="flex justify-between text-xs text-[#1F2937] min-[900px]:text-sm">
           <span>Sous-total</span>
           <span>{formatCurrency(subtotal)}</span>
@@ -2858,7 +2871,7 @@ function PosCartPanel({
                 type="button"
                 onClick={() => setPaymentMethod(key)}
                 className={cn(
-                  "rounded-full border px-2 py-1.5 text-[10px] font-semibold",
+                  "rounded-md border px-2 py-1.5 text-[10px] font-semibold",
                   sel
                     ? "border-[#F97316] bg-[color-mix(in_srgb,#F97316_18%,transparent)] text-[#1F2937]"
                     : "border-[#E5E7EB] bg-[#F8F9FA] text-[#1F2937]",
@@ -2949,23 +2962,40 @@ function PosCartPanel({
         </div>
       ) : null}
 
-      {isA4Cart ? (
+      {/* Client FACULTATIF sur toute vente comptant (caisse rapide et facture A4).
+       * À crédit, le client est déjà saisi — et obligatoire — dans le bloc ci-dessus. */}
+      {isA4Cart || quickPayment !== "credit" ? (
         <div className="mt-3 px-0 min-[900px]:px-3">
-          <label className="mb-1 block text-[11px] font-medium text-[#6B7280]">Client</label>
-          <select
-            className={fsInputClass(
-              "bg-white px-2.5 py-1.5 sm:px-2.5 sm:py-1.5",
-            )}
-            value={customerId}
-            onChange={(e) => setCustomerId(e.target.value)}
-          >
-            <option value="">Aucun client</option>
-            {customers.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
+          <label className="mb-1 block text-[11px] font-medium text-[#6B7280]">
+            Client (facultatif)
+          </label>
+          <div className="flex gap-2">
+            <select
+              className={fsInputClass(
+                "min-w-0 flex-1 rounded-md bg-white px-2.5 py-1.5 sm:px-2.5 sm:py-1.5",
+              )}
+              value={customerId}
+              onChange={(e) => setCustomerId(e.target.value)}
+            >
+              <option value="">Aucun client</option>
+              {customers.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+            {onCreateCustomer ? (
+              <button
+                type="button"
+                title="Créer un client"
+                aria-label="Créer un client"
+                onClick={onCreateCustomer}
+                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-[#F97316] text-white"
+              >
+                <MdPersonAdd className="h-5 w-5" aria-hidden />
+              </button>
+            ) : null}
+          </div>
         </div>
       ) : null}
 
@@ -2976,7 +3006,7 @@ function PosCartPanel({
           </label>
           <input
             className={fsInputClass(
-              "bg-white px-2.5 py-1.5 sm:px-2.5 sm:py-1.5",
+              cn("bg-white px-2.5 py-1.5 sm:px-2.5 sm:py-1.5", isA4Cart && "rounded-md"),
             )}
             value={discount}
             onChange={(e) => setDiscount(e.target.value)}
@@ -3024,7 +3054,7 @@ function PosCartPanel({
           </label>
           <input
             className={fsInputClass(
-              "bg-white px-2.5 py-1.5 sm:px-2.5 sm:py-1.5",
+              "rounded-md bg-white px-2.5 py-1.5 sm:px-2.5 sm:py-1.5",
             )}
             value={amountReceived}
             onChange={(e) => setAmountReceived(e.target.value)}
@@ -3038,7 +3068,10 @@ function PosCartPanel({
         <button
           type="button"
           onClick={onClear}
-          className="flex-1 rounded-xl border border-[#E5E7EB] bg-[#F8F9FA] py-2.5 text-sm font-semibold text-[#1F2937]"
+          className={cn(
+            "flex-1 border border-[#E5E7EB] bg-[#F8F9FA] py-2.5 text-sm font-semibold text-[#1F2937]",
+            isA4Cart ? "rounded-lg" : "rounded-xl",
+          )}
         >
           {mode === "quick" ? "Annuler" : "Vider panier"}
         </button>
@@ -3046,7 +3079,10 @@ function PosCartPanel({
           type="button"
           disabled={createMut.isPending || cart.length === 0 || total <= 0}
           onClick={() => void onPay()}
-          className="flex-[2] inline-flex items-center justify-center gap-2 rounded-xl bg-[#F97316] py-2.5 text-sm font-bold text-white disabled:opacity-50"
+          className={cn(
+            "flex-[2] inline-flex items-center justify-center gap-2 bg-[#F97316] py-2.5 text-sm font-bold text-white disabled:opacity-50",
+            isA4Cart ? "rounded-lg" : "rounded-xl",
+          )}
         >
           {isSaleEdit ? (
             <>

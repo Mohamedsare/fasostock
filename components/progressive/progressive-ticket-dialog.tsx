@@ -11,6 +11,12 @@ import {
 import { printInvoicePdf } from "@/lib/features/invoices/generate-invoice-pdf";
 import { messageFromUnknownError, toast } from "@/lib/toast";
 import { cn } from "@/lib/utils/cn";
+import { SendDocumentButton } from "@/components/ui/send-document-button";
+import {
+  buildDocumentMessage,
+  documentFilename,
+} from "@/lib/features/share/share-document";
+import { formatCurrencyFlutter } from "@/lib/utils/currency";
 
 /**
  * Ticket d'un mouvement (versement / remboursement) : aperçu fidèle + impression
@@ -162,6 +168,26 @@ export function ProgressiveTicketDialog({
               )}
               PDF
             </button>
+            {q.data ? (
+              <SendDocumentButton
+                makeBlob={() =>
+                  generateProgressiveTicketPdfBlob(ledgerId, {
+                    paperWidthMm: effectiveWidth,
+                  })
+                }
+                filename={documentFilename("ticket", q.data.receiptNumber)}
+                title="Ticket client"
+                phone={q.data.clientPhone}
+                message={buildDocumentMessage({
+                  documentLabel: "ticket",
+                  documentNumber: q.data.receiptNumber,
+                  storeName: q.data.storeName,
+                  customerName: q.data.clientName,
+                  amountLabel: formatCurrencyFlutter(q.data.amount),
+                })}
+                disabled={busy !== null}
+              />
+            ) : null}
           </div>
         </div>
       </div>

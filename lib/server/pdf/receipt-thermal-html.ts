@@ -125,14 +125,15 @@ export async function renderReceiptThermalHtml(
       `<div class="mono">Rendu    : ${escapeHtml(receiptIntAmount(Math.round(data.change ?? 0)))}</div>`,
     );
   }
-  // Vente à crédit : le ticket sert de preuve de dette (client, acompte, reste, échéance).
+  // Client associé à la vente (facultatif au comptant, obligatoire à crédit).
+  if (data.customerName?.trim()) {
+    parts.push(
+      `<div class="mono">Client   : ${tx(data.customerName.trim())}</div>`,
+    );
+  }
+  // Vente à crédit : le ticket sert de preuve de dette (acompte, reste, échéance).
   const creditRemaining = Math.max(0, data.creditRemaining ?? 0);
   if (creditRemaining > 0) {
-    if (data.customerName?.trim()) {
-      parts.push(
-        `<div class="mono">Client   : ${tx(data.customerName.trim())}</div>`,
-      );
-    }
     parts.push(
       `<div class="mono">Acompte  : ${escapeHtml(receiptIntAmount(Math.round(data.creditPaid ?? 0)))}</div>`,
       `<div class="row total"><span>RESTE A PAYER</span><span>${escapeHtml(receiptIntAmount(Math.round(creditRemaining)))}</span></div>`,

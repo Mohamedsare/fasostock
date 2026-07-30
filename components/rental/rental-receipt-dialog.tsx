@@ -11,6 +11,12 @@ import {
 import { printInvoicePdf } from "@/lib/features/invoices/generate-invoice-pdf";
 import { messageFromUnknownError, toast } from "@/lib/toast";
 import { cn } from "@/lib/utils/cn";
+import { SendDocumentButton } from "@/components/ui/send-document-button";
+import {
+  buildDocumentMessage,
+  documentFilename,
+} from "@/lib/features/share/share-document";
+import { formatCurrencyFlutter } from "@/lib/utils/currency";
 
 /**
  * Quittance d'un encaissement : aperçu fidèle + impression thermique 58 ou 80 mm.
@@ -162,6 +168,26 @@ export function RentalReceiptDialog({
               )}
               PDF
             </button>
+            {q.data ? (
+              <SendDocumentButton
+                makeBlob={() =>
+                  generateRentalReceiptPdfBlob(paymentId, {
+                    paperWidthMm: effectiveWidth,
+                  })
+                }
+                filename={documentFilename("quittance", q.data.receiptNumber)}
+                title="Quittance de loyer"
+                phone={q.data.tenantPhone}
+                message={buildDocumentMessage({
+                  documentLabel: "quittance",
+                  documentNumber: q.data.receiptNumber,
+                  storeName: q.data.storeName,
+                  customerName: q.data.tenantName,
+                  amountLabel: formatCurrencyFlutter(q.data.amount),
+                })}
+                disabled={busy !== null}
+              />
+            ) : null}
           </div>
         </div>
       </div>

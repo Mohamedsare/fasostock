@@ -1,6 +1,7 @@
 "use client";
 
 import { FsCard, fsInputClass } from "@/components/ui/fs-screen-primitives";
+import { customerPhoneError } from "@/lib/features/customers/phone";
 import type { CustomerType } from "@/lib/features/customers/types";
 import { cn } from "@/lib/utils/cn";
 import { useEffect, useState } from "react";
@@ -150,13 +151,14 @@ export function CustomerFormDialog({
             </div>
 
             <div>
-                <label className="mb-1.5 block text-[13px] font-medium text-neutral-700">Téléphone</label>
+                <label className="mb-1.5 block text-[13px] font-medium text-neutral-700">Téléphone *</label>
               <input
                   className={fsInputClass(inputBase)}
                 value={v.phone}
                 onChange={(e) => setV((p) => ({ ...p, phone: e.target.value }))}
                 inputMode="tel"
                 autoComplete="tel"
+                  placeholder="Ex. 70 00 00 00"
               />
             </div>
 
@@ -216,6 +218,12 @@ export function CustomerFormDialog({
                   const name = v.name.trim();
                   if (name.length < 2) {
                     setError("Nom requis (2 caractères minimum)");
+                    return;
+                  }
+                  // Téléphone obligatoire : sans numéro, impossible de rappeler le client.
+                  const phoneErr = customerPhoneError(v.phone);
+                  if (phoneErr) {
+                    setError(phoneErr);
                     return;
                   }
                   try {

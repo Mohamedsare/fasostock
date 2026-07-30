@@ -160,15 +160,11 @@ export function ReceiptTicketPreview({ data }: { data: ReceiptTicketData }) {
             />
           </>
         ) : null}
+        {data.customerName?.trim() ? (
+          <AmountRow label="Client" value={data.customerName.trim()} size={9.5} />
+        ) : null}
         {creditRemaining > 0 ? (
           <>
-            {data.customerName?.trim() ? (
-              <AmountRow
-                label="Client"
-                value={data.customerName.trim()}
-                size={9.5}
-              />
-            ) : null}
             <AmountRow
               label="Acompte"
               value={receiptIntAmount(Math.round(data.creditPaid ?? 0))}

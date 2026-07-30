@@ -21,7 +21,7 @@ export type PosReceiptSnap = {
   quickPayment: QuickPaymentMethod;
   amountReceivedValue: number;
   change: number;
-  /** Vente à crédit : nom du client débiteur (obligatoire côté caisse). */
+  /** Client associé à la vente (facultatif au comptant, obligatoire à crédit). */
   customerName?: string | null;
   /** Vente à crédit : acompte encaissé au comptoir. */
   creditPaid?: number;
@@ -145,7 +145,7 @@ export function buildReceiptTicketData(
     amountReceived: showMoney ? ar : null,
     change: showMoney && snap.change >= 0 ? snap.change : null,
     date,
-    customerName: isCredit ? (snap.customerName ?? null) : null,
+    customerName: snap.customerName ?? null,
     customerPhone: null,
     creditPaid: isCredit ? (snap.creditPaid ?? 0) : null,
     creditRemaining: isCredit ? (snap.creditRemaining ?? 0) : null,

@@ -37,7 +37,14 @@ import {
   MdPictureAsPdf,
   MdPrint,
   MdReceiptLong,
+  MdSend,
 } from "react-icons/md";
+import {
+  buildDocumentMessage,
+  documentFilename,
+  shareDocument,
+} from "@/lib/features/share/share-document";
+import { formatCurrencyFlutter } from "@/lib/utils/currency";
 
 function isA4Invoice(s: SaleItem): boolean {
   if (s.document_type === "a4_invoice") return true;
@@ -75,7 +82,7 @@ export function SaleDetailModal({
   const { hasPermission } = usePermissions();
   const canRecordCreditPayment = hasPermission(P.salesUpdate);
   const [pdfBusy, setPdfBusy] = useState<
-    null | "view" | "print" | "download"
+    null | "view" | "print" | "download" | "send"
   >(null);
 
   const q = useQuery({
@@ -174,6 +181,52 @@ export function SaleDetailModal({
     } catch (e) {
       toast.error(
         messageFromUnknownError(e, "Impossible de télécharger la facture."),
+      );
+    } finally {
+      setPdfBusy(null);
+    }
+  }
+
+  /** Envoi de la facture au client (WhatsApp, e-mail, autre application). */
+  async function handleSendInvoice() {
+    if (!sale || !storeFull) {
+      toast.error("Données boutique ou vente manquantes.");
+      return;
+    }
+    if (pdfBusy) return;
+    setPdfBusy("send");
+    try {
+      const blob = await buildInvoiceBlob();
+      const filename = documentFilename("facture", sale.sale_number);
+      const outcome = await shareDocument({
+        blob,
+        filename,
+        title: "Facture",
+        phone: sale.customer?.phone ?? null,
+        message: buildDocumentMessage({
+          documentLabel: "facture",
+          documentNumber: sale.sale_number,
+          storeName: storeFull.name,
+          customerName: sale.customer?.name ?? null,
+          amountLabel: formatCurrencyFlutter(sale.total),
+        }),
+      });
+      if (outcome === "shared") {
+        toast.success("Facture transmise à l'application choisie.");
+      } else if (outcome === "whatsapp-manual") {
+        toast.info(
+          `PDF enregistré (${filename}) et WhatsApp ouvert : joignez le fichier à la conversation.`,
+          7000,
+        );
+      } else if (outcome === "downloaded") {
+        toast.info(
+          `PDF enregistré (${filename}). Joignez-le à votre message pour l'envoyer au client.`,
+          7000,
+        );
+      }
+    } catch (e) {
+      toast.error(
+        messageFromUnknownError(e, "Impossible de préparer la facture à envoyer."),
       );
     } finally {
       setPdfBusy(null);
@@ -387,7 +440,7 @@ export function SaleDetailModal({
                           <p className="mb-3 text-[11px] font-bold tracking-[0.06em] text-neutral-700 sm:text-xs">
                             FACTURE A4
                           </p>
-                          <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
                             <ActionButton
                               icon={<MdPictureAsPdf className="h-5 w-5 shrink-0" aria-hidden />}
                               label="Voir le PDF"
@@ -410,6 +463,14 @@ export function SaleDetailModal({
                               loading={pdfBusy === "download"}
                               disabled={actionsDisabled}
                               onClick={() => void handleDownloadInvoice()}
+                              primary
+                            />
+                            <ActionButton
+                              icon={<MdSend className="h-5 w-5 shrink-0" aria-hidden />}
+                              label="Envoyer"
+                              loading={pdfBusy === "send"}
+                              disabled={actionsDisabled}
+                              onClick={() => void handleSendInvoice()}
                               primary
                             />
                           </div>

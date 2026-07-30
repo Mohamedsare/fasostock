@@ -12,6 +12,12 @@ import {
 import { printInvoicePdf } from "@/lib/features/invoices/generate-invoice-pdf";
 import { messageFromUnknownError, toast } from "@/lib/toast";
 import { cn } from "@/lib/utils/cn";
+import { SendDocumentButton } from "@/components/ui/send-document-button";
+import {
+  buildDocumentMessage,
+  documentFilename,
+} from "@/lib/features/share/share-document";
+import { formatCurrencyFlutter } from "@/lib/utils/currency";
 
 export function CreditRepaymentReceiptDialog({
   data,
@@ -125,6 +131,20 @@ export function CreditRepaymentReceiptDialog({
                 loading={busy === "download"}
                 disabled={disabled}
                 onClick={() => void handleDownload()}
+              />
+              <SendDocumentButton
+                makeBlob={makeBlob}
+                filename={documentFilename("recu", data.receiptNumber)}
+                title="Reçu de remboursement"
+                phone={data.customerPhone}
+                message={buildDocumentMessage({
+                  documentLabel: "reçu de remboursement",
+                  documentNumber: data.receiptNumber,
+                  storeName: data.storeCommercialName?.trim() || data.storeName,
+                  customerName: data.customerName,
+                  amountLabel: formatCurrencyFlutter(data.amountPaid),
+                })}
+                className="flex-1 border-transparent bg-fs-accent text-white shadow-sm hover:opacity-90"
               />
             </div>
             <button

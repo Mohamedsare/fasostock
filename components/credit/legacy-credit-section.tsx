@@ -1119,7 +1119,6 @@ function LegacyCreateDialog({
   const [customerId, setCustomerId] = useState("");
   const [customerSearch, setCustomerSearch] = useState("");
   const [listboxOpen, setListboxOpen] = useState(false);
-  const [quickCreateBusy, setQuickCreateBusy] = useState(false);
   const [fullClientOpen, setFullClientOpen] = useState(false);
 
   const [title, setTitle] = useState("Crédit libre");
@@ -1133,7 +1132,6 @@ function LegacyCreateDialog({
     setCustomerId("");
     setCustomerSearch("");
     setListboxOpen(false);
-    setQuickCreateBusy(false);
     setFullClientOpen(false);
     setTitle("Crédit libre");
     setAmount("");
@@ -1188,28 +1186,6 @@ function LegacyCreateDialog({
   const exactNameExists = searchTrim.length >= 2 && customers.some((c) => c.name.trim().toLowerCase() === searchTrim.toLowerCase());
   const showQuickCreate =
     searchTrim.length >= 2 && !exactNameExists && !customerId;
-
-  async function quickCreateFromSearch() {
-    const name = searchTrim;
-    if (name.length < 2) return;
-    setQuickCreateBusy(true);
-    try {
-      const id = await createCustomer(companyId, { name, type: "individual" });
-      if (!id) {
-        toast.error("Connexion requise pour créer un client.");
-        return;
-      }
-      await qc.invalidateQueries({ queryKey: queryKeys.customers(companyId) });
-      setCustomerId(id);
-      setCustomerSearch(name);
-      setListboxOpen(false);
-      toast.success("Client créé et sélectionné.");
-    } catch (e) {
-      toast.error(messageFromUnknownError(e, "Impossible de créer le client."));
-    } finally {
-      setQuickCreateBusy(false);
-    }
-  }
 
   async function onFullClientSubmit(v: CustomerFormValue) {
     const id = await createCustomer(companyId, {
@@ -1332,24 +1308,21 @@ function LegacyCreateDialog({
                         {showQuickCreate ? (
                           <div className="space-y-2 border-t border-black/8 p-3 dark:border-white/10">
                             <p className="text-sm text-neutral-600 sm:text-[11px]">Aucune correspondance exacte.</p>
-                            <button
-                              type="button"
-                              disabled={quickCreateBusy}
-                              onClick={() => void quickCreateFromSearch()}
-                              className="touch-manipulation w-full rounded-xl bg-fs-accent py-3.5 text-base font-bold text-white disabled:opacity-50 sm:py-2.5 sm:text-sm"
-                            >
-                              {quickCreateBusy ? "…" : `Créer « ${searchTrim} » et sélectionner`}
-                            </button>
+                            {/* Le téléphone étant obligatoire, la création passe toujours par
+                             * la fiche (pré-remplie avec le nom cherché). */}
                             <button
                               type="button"
                               onClick={() => {
                                 setFullClientOpen(true);
                                 setListboxOpen(false);
                               }}
-                              className="touch-manipulation w-full rounded-xl border border-black/10 py-3.5 text-base font-semibold sm:py-2 sm:text-xs dark:border-white/15"
+                              className="touch-manipulation w-full rounded-xl bg-fs-accent py-3.5 text-base font-bold text-white sm:py-2.5 sm:text-sm"
                             >
-                              Fiche complète (email, adresse…)
+                              {`Créer « ${searchTrim} »`}
                             </button>
+                            <p className="text-sm text-neutral-500 sm:text-[11px]">
+                              Nom et téléphone requis.
+                            </p>
                           </div>
                         ) : searchTrim.length > 0 && searchTrim.length < 2 ? (
                           <p className="border-t border-black/8 px-4 py-3 text-sm text-neutral-500 sm:px-3 sm:py-2 sm:text-[11px] dark:border-white/10">
@@ -1507,7 +1480,6 @@ function LegacyEditDialog({
   const [customerId, setCustomerId] = useState("");
   const [customerSearch, setCustomerSearch] = useState("");
   const [listboxOpen, setListboxOpen] = useState(false);
-  const [quickCreateBusy, setQuickCreateBusy] = useState(false);
   const [fullClientOpen, setFullClientOpen] = useState(false);
 
   const [title, setTitle] = useState("Crédit libre");
@@ -1521,7 +1493,6 @@ function LegacyEditDialog({
     setCustomerId(credit.customer_id);
     setCustomerSearch(credit.customer?.name ?? "");
     setListboxOpen(false);
-    setQuickCreateBusy(false);
     setFullClientOpen(false);
     setTitle(credit.title || "Crédit libre");
     setAmount(String(credit.principal_amount ?? ""));
@@ -1590,28 +1561,6 @@ function LegacyEditDialog({
   const exactNameExists = searchTrim.length >= 2 && customers.some((c) => c.name.trim().toLowerCase() === searchTrim.toLowerCase());
   const showQuickCreate =
     searchTrim.length >= 2 && !exactNameExists && !customerId;
-
-  async function quickCreateFromSearch() {
-    const name = searchTrim;
-    if (name.length < 2) return;
-    setQuickCreateBusy(true);
-    try {
-      const id = await createCustomer(companyId, { name, type: "individual" });
-      if (!id) {
-        toast.error("Connexion requise pour créer un client.");
-        return;
-      }
-      await qc.invalidateQueries({ queryKey: queryKeys.customers(companyId) });
-      setCustomerId(id);
-      setCustomerSearch(name);
-      setListboxOpen(false);
-      toast.success("Client créé et sélectionné.");
-    } catch (e) {
-      toast.error(messageFromUnknownError(e, "Impossible de créer le client."));
-    } finally {
-      setQuickCreateBusy(false);
-    }
-  }
 
   async function onFullClientSubmit(v: CustomerFormValue) {
     const id = await createCustomer(companyId, {
@@ -1745,24 +1694,21 @@ function LegacyEditDialog({
                         {showQuickCreate ? (
                           <div className="space-y-2 border-t border-black/8 p-3 dark:border-white/10">
                             <p className="text-sm text-neutral-600 sm:text-[11px]">Aucune correspondance exacte.</p>
-                            <button
-                              type="button"
-                              disabled={quickCreateBusy}
-                              onClick={() => void quickCreateFromSearch()}
-                              className="touch-manipulation w-full rounded-xl bg-fs-accent py-3.5 text-base font-bold text-white disabled:opacity-50 sm:py-2.5 sm:text-sm"
-                            >
-                              {quickCreateBusy ? "…" : `Créer « ${searchTrim} » et sélectionner`}
-                            </button>
+                            {/* Le téléphone étant obligatoire, la création passe toujours par
+                             * la fiche (pré-remplie avec le nom cherché). */}
                             <button
                               type="button"
                               onClick={() => {
                                 setFullClientOpen(true);
                                 setListboxOpen(false);
                               }}
-                              className="touch-manipulation w-full rounded-xl border border-black/10 py-3.5 text-base font-semibold sm:py-2 sm:text-xs dark:border-white/15"
+                              className="touch-manipulation w-full rounded-xl bg-fs-accent py-3.5 text-base font-bold text-white sm:py-2.5 sm:text-sm"
                             >
-                              Fiche complète (email, adresse…)
+                              {`Créer « ${searchTrim} »`}
                             </button>
+                            <p className="text-sm text-neutral-500 sm:text-[11px]">
+                              Nom et téléphone requis.
+                            </p>
                           </div>
                         ) : searchTrim.length > 0 && searchTrim.length < 2 ? (
                           <p className="border-t border-black/8 px-4 py-3 text-sm text-neutral-500 sm:px-3 sm:py-2 sm:text-[11px] dark:border-white/10">

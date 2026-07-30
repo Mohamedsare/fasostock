@@ -3,6 +3,7 @@
 import { FsHorizontalScroll } from "@/components/ui/fs-horizontal-scroll";
 import { fsInputClass } from "@/components/ui/fs-screen-primitives";
 import { createCustomer, listCustomers } from "@/lib/features/customers/api";
+import { customerPhoneError } from "@/lib/features/customers/phone";
 import type { Customer } from "@/lib/features/customers/types";
 import { firstProductImageUrl } from "@/lib/features/products/product-images";
 import { listCategories, listProducts } from "@/lib/features/products/api";
@@ -301,6 +302,12 @@ export function WarehouseDispatchDialog({
     const name = createName.trim();
     if (name.length < 2) {
       toast.error("Au moins 2 lettres");
+      return;
+    }
+    // Téléphone obligatoire sur toute fiche client (même règle que le dialogue complet).
+    const phoneErr = customerPhoneError(createPhone);
+    if (phoneErr) {
+      toast.error(phoneErr);
       return;
     }
     setCreatingCustomer(true);
@@ -929,7 +936,8 @@ export function WarehouseDispatchDialog({
               Nouveau client
             </h2>
             <p className="mt-2 text-sm text-neutral-600">
-              Renseignez au minimum le nom. Le téléphone aide à le retrouver.
+              Le nom et le téléphone sont obligatoires : c&apos;est ce qui permet de
+              retrouver et de rappeler le client.
             </p>
             <div className="mt-4 space-y-3">
               <div>
@@ -943,10 +951,10 @@ export function WarehouseDispatchDialog({
                 />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-[#1F2937]">Téléphone</label>
+                <label className="mb-1 block text-xs font-medium text-[#1F2937]">Téléphone *</label>
                 <input
                   className={whPosFormFieldClass}
-                  placeholder="Facultatif"
+                  placeholder="Ex. 70 00 00 00"
                   value={createPhone}
                   onChange={(e) => setCreatePhone(e.target.value)}
                   inputMode="tel"

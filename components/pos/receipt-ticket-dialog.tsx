@@ -4,6 +4,12 @@ import { ReceiptTicketPreview } from "@/components/pos/receipt-ticket-preview";
 import { generateReceiptThermalPdfBlob } from "@/lib/features/receipt/generate-receipt-thermal-pdf";
 import type { ReceiptTicketData } from "@/lib/features/receipt/receipt-ticket-types";
 import { printInvoicePdf } from "@/lib/features/invoices/generate-invoice-pdf";
+import { SendDocumentButton } from "@/components/ui/send-document-button";
+import {
+  buildDocumentMessage,
+  documentFilename,
+} from "@/lib/features/share/share-document";
+import { formatCurrencyFlutter } from "@/lib/utils/currency";
 import { messageFromUnknownError, toast } from "@/lib/toast";
 import { useState } from "react";
 import { MdClose, MdPrint } from "react-icons/md";
@@ -78,6 +84,20 @@ export function ReceiptTicketDialog({
             )}
             Imprimer
           </button>
+          <SendDocumentButton
+            makeBlob={() => generateReceiptThermalPdfBlob(data, { paperWidthMm })}
+            filename={documentFilename("recu", data.saleNumber)}
+            title="Reçu de paiement"
+            phone={data.customerPhone}
+            message={buildDocumentMessage({
+              documentLabel: "reçu de paiement",
+              documentNumber: data.saleNumber,
+              storeName: data.storeName,
+              customerName: data.customerName,
+              amountLabel: formatCurrencyFlutter(data.total),
+            })}
+            className="min-w-35 border-[#E5E7EB] bg-[#F3F4F6] text-[#1F2937]"
+          />
           <button
             type="button"
             onClick={onClose}

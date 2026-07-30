@@ -12,6 +12,12 @@ import type { InvoicePdfRequestMeta } from "@/lib/features/pdf/pdf-api-client";
 import { messageFromUnknownError, toast } from "@/lib/toast";
 import { MdDownload, MdPictureAsPdf, MdPrint } from "react-icons/md";
 import { cn } from "@/lib/utils/cn";
+import { SendDocumentButton } from "@/components/ui/send-document-button";
+import {
+  buildDocumentMessage,
+  documentFilename,
+} from "@/lib/features/share/share-document";
+import { formatCurrencyFlutter } from "@/lib/utils/currency";
 
 export function InvoicePostSaleDialog({
   data,
@@ -103,8 +109,8 @@ export function InvoicePostSaleDialog({
             Facture enregistrée
           </h2>
           <p className="mt-2 text-sm leading-relaxed text-neutral-600">
-            La vente a été enregistrée. Vous pouvez voir le PDF, l&apos;imprimer ou
-            télécharger la facture.
+            La vente a été enregistrée. Vous pouvez voir le PDF, l&apos;imprimer,
+            télécharger la facture ou l&apos;envoyer au client.
           </p>
           <div className="mt-5 flex flex-col gap-2.5 min-[400px]:flex-row min-[400px]:flex-wrap">
             <PostSaleAction
@@ -127,6 +133,20 @@ export function InvoicePostSaleDialog({
               loading={busy === "download"}
               disabled={disabled}
               onClick={() => void handleDownload()}
+            />
+            <SendDocumentButton
+              makeBlob={makeBlob}
+              filename={documentFilename("facture", data.saleNumber)}
+              title="Facture"
+              phone={data.customerPhone}
+              message={buildDocumentMessage({
+                documentLabel: "facture",
+                documentNumber: data.saleNumber,
+                storeName: data.store.name,
+                customerName: data.customerName,
+                amountLabel: formatCurrencyFlutter(data.total),
+              })}
+              className="flex-1 border-transparent bg-[#F97316] text-white shadow-sm hover:bg-[#ea580c]"
             />
           </div>
           <button
