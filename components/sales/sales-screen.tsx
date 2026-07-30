@@ -526,7 +526,13 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
 
   return (
     <FsPage className="flex min-h-0 flex-1 flex-col px-5 pt-4 sm:px-5 min-[900px]:px-7 min-[900px]:pt-7">
-      <div className="flex flex-col gap-6">
+      {/*
+       * Dégagement de la barre d'onglets mobile (`shellBottomNavBarClass`, ~4,75rem
+       * + zone sûre) posé UNE fois sur le conteneur : sinon la fin de l'historique
+       * passe sous la barre. Même convention que `stores-screen` /
+       * `engine-registration-screen` — ne pas le remettre bloc par bloc.
+       */}
+      <div className="flex flex-col gap-6 pb-[calc(4.75rem+var(--fs-safe-bottom))] min-[1024px]:pb-0">
         {/* En-tête type Flutter : headlineSmall + actions ; mobile-first = colonne puis wrap ≥560px */}
         <div className="flex flex-col gap-4 min-[560px]:flex-row min-[560px]:items-start min-[560px]:justify-between min-[560px]:gap-6">
           <div className="min-w-0">
@@ -1043,7 +1049,7 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
           ) : null}
 
           {pageCount > 1 ? (
-            <div className="mt-2 mb-[calc(5.5rem+var(--fs-safe-bottom))] rounded-xl border border-black/[0.06] bg-fs-card px-3 py-3 shadow-sm min-[900px]:mb-4 sm:px-4">
+            <div className="mt-2 rounded-xl border border-black/[0.06] bg-fs-card px-3 py-3 shadow-sm sm:px-4">
               <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
                 <span className="order-2 hidden text-sm text-neutral-500 min-[500px]:order-none min-[500px]:inline">
                   {rangeStart} – {rangeEnd} sur {visibleSales.length}
@@ -1466,7 +1472,7 @@ function EmptyStateCard({
 }) {
   return (
     <FsCard
-      className="mb-[calc(6.5rem+var(--fs-safe-bottom))] py-14 text-center min-[900px]:mb-6 sm:py-16"
+      className="py-14 text-center sm:py-16"
       padding="px-5 py-14 sm:px-6 sm:py-16"
     >
       <MdShoppingCart
@@ -1504,7 +1510,7 @@ function NoResultCard({
 }) {
   return (
     <FsCard
-      className="mb-[calc(6.5rem+var(--fs-safe-bottom))] text-center min-[900px]:mb-6"
+      className="text-center"
       padding="px-5 py-12 sm:px-6 sm:py-14"
     >
       <MdSearch className="mx-auto h-12 w-12 text-neutral-300" aria-hidden />
