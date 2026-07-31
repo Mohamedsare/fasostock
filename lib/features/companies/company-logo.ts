@@ -1,11 +1,12 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
+import { safeImageExtension } from "@/lib/utils/image-file";
 
 /** Même bucket et convention de chemin que `CompanyRepository.uploadCompanyLogo` (Flutter). */
 export async function uploadCompanyLogo(companyId: string, file: File): Promise<string> {
   const supabase = createClient();
-  const ext = file.name.includes(".") ? file.name.split(".").pop() || "jpg" : "jpg";
+  const ext = safeImageExtension(file.name);
   const path = `company/${companyId}/${Date.now()}.${ext}`;
   const { error } = await supabase.storage.from("store-logos").upload(path, file, {
     contentType: file.type || "image/jpeg",

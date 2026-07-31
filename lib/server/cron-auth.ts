@@ -1,11 +1,4 @@
-import { timingSafeEqual } from "node:crypto";
-
-function safeEqualStrings(a: string, b: string): boolean {
-  const bufA = Buffer.from(a);
-  const bufB = Buffer.from(b);
-  if (bufA.length !== bufB.length) return false;
-  return timingSafeEqual(bufA, bufB);
-}
+import { safeEqualStrings } from "@/lib/server/safe-compare";
 
 /** Vérifie l’en-tête Authorization Bearer (Vercel Cron + CRON_SECRET). */
 export function verifyCronRequest(req: Request): boolean {

@@ -1,4 +1,5 @@
 import { listOwnerUserIds, sendWebPushToUsers } from "@/lib/features/push/send-web-push";
+import { safeEqualStrings } from "@/lib/server/safe-compare";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { NextResponse } from "next/server";
@@ -42,7 +43,10 @@ export async function POST(req: Request) {
 
   const webhookSecret = process.env.WEB_PUSH_WEBHOOK_SECRET?.trim();
   const headerSecret = req.headers.get("x-webhook-secret")?.trim();
-  const webhookOk = Boolean(webhookSecret && headerSecret && headerSecret === webhookSecret);
+  // Comparaison en temps constant : un `===` fuirait le secret par timing.
+  const webhookOk = Boolean(
+    webhookSecret && headerSecret && safeEqualStrings(headerSecret, webhookSecret),
+  );
 
   const supabase = await createClient();
   const {

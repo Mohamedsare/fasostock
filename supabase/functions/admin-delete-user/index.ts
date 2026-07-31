@@ -5,13 +5,29 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-const cors = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+// Origines web autorisées (au lieu de '*'). Les apps mobiles et les appels
+// serveur n'envoient pas d'en-tête `Origin` : le CORS ne les concerne pas, ils
+// restent donc inchangés. `WEB_APP_ORIGINS` (secret, liste séparée par des
+// virgules) permet d'ajouter des previews Vercel sans redéployer le code.
+const ALLOWED_ORIGINS = [
+  'https://fasostock.com',
+  'https://www.fasostock.com',
+  'http://localhost:3000',
+  ...(Deno.env.get('WEB_APP_ORIGINS') ?? '').split(',').map((o) => o.trim()).filter(Boolean),
+]
+
+const corsFor = (req: Request) => {
+  const origin = req.headers.get('Origin') ?? ''
+  return {
+    'Access-Control-Allow-Origin': ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0],
+    'Vary': 'Origin',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  }
 }
 
 Deno.serve(async (req) => {
+  const cors = corsFor(req)
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
   if (req.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {

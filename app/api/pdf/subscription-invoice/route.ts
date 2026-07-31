@@ -5,7 +5,7 @@ import QRCode from "qrcode";
 import { htmlToPdfBufferA4 } from "@/lib/server/pdf/html-to-pdf";
 import { renderSubscriptionInvoiceHtml } from "@/lib/server/pdf/subscription-invoice-html";
 import { createClient } from "@/lib/supabase/server";
-import { isAllowedPdfEmbedImageUrl, requireAuthUser } from "@/lib/server/api-auth";
+import { isAllowedPdfEmbedImageUrl, requireAuthUser, userBelongsToCompany } from "@/lib/server/api-auth";
 import { subscriptionPaymentLabel } from "@/lib/features/subscription/types";
 
 export const runtime = "nodejs";
@@ -82,6 +82,12 @@ export async function POST(req: Request) {
     }
 
     const companyId = String(r.company_id ?? "");
+    // Défense en profondeur : la RLS filtre déjà, mais on revérifie côté appli
+    // comme toutes les autres routes PDF (une policy trop large ne suffirait
+    // pas à ouvrir la facture d'abonnement d'une autre entreprise).
+    const allowed = await userBelongsToCompany(supabase, auth.user.id, companyId);
+    if (!allowed) return NextResponse.json({ error: "Non autorisé." }, { status: 403 });
+
     const { data: company } = await supabase
       .from("companies")
       .select("name, logo_url")

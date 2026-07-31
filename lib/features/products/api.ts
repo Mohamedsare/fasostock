@@ -2,6 +2,7 @@
 
 import { enqueueOutbox } from "@/lib/db/dexie-db";
 import { createClient } from "@/lib/supabase/client";
+import { safeImageExtension } from "@/lib/utils/image-file";
 import type {
   ProductBrand,
   ProductCategory,
@@ -310,7 +311,7 @@ export async function addProductImage(productId: string, file: File): Promise<vo
     throw new Error("Hors ligne : les images seront disponibles après reconnexion.");
   }
   const supabase = createClient();
-  const ext = file.name.includes(".") ? file.name.split(".").pop() || "jpg" : "jpg";
+  const ext = safeImageExtension(file.name);
   const path = `${productId}/${Date.now()}.${ext}`;
   const { error: upErr } = await supabase.storage.from(PRODUCT_IMAGES_BUCKET).upload(path, file, {
     contentType: file.type || "image/jpeg",
