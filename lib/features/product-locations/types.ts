@@ -57,4 +57,6 @@ export type LocationSearchHit = {
   code: string | null;
   detail: string | null;
   quantity: number;
+  /** Première image du produit (miniature de la liste). */
+  imageUrl: string | null;
 };

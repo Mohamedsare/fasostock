@@ -713,7 +713,8 @@ RETURNS TABLE (
   path_label text,
   code text,
   detail text,
-  quantity numeric
+  quantity numeric,
+  image_url text
 )
 LANGUAGE sql
 STABLE
@@ -729,12 +730,19 @@ AS $$
     l.path_label,
     l.code,
     pl.detail,
-    COALESCE(i.quantity, 0)::numeric
+    COALESCE(i.quantity, 0)::numeric,
+    img.url
   FROM public.products p
   JOIN public.stores s ON s.id = p_store_id AND s.company_id = p.company_id
   LEFT JOIN public.product_locations pl ON pl.product_id = p.id AND pl.store_id = p_store_id
   LEFT JOIN public.store_locations l ON l.id = pl.location_id
   LEFT JOIN public.store_inventory i ON i.product_id = p.id AND i.store_id = p_store_id
+  LEFT JOIN LATERAL (
+    SELECT pi.url FROM public.product_images pi
+    WHERE pi.product_id = p.id
+    ORDER BY pi.position ASC
+    LIMIT 1
+  ) img ON true
   WHERE s.company_id IN (SELECT * FROM public.current_user_company_ids())
     AND p.deleted_at IS NULL
     AND COALESCE(btrim(p_query), '') <> ''

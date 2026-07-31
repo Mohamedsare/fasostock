@@ -28,6 +28,8 @@ import { FsConfirmDialog } from "@/components/ui/fs-confirm-dialog";
 import { useAppContext } from "@/lib/features/common/app-context";
 import { usePermissions } from "@/lib/features/permissions/use-permissions";
 import { listProducts } from "@/lib/features/products/api";
+import { firstProductImageUrl } from "@/lib/features/products/product-images";
+import { ProductListThumbnail } from "@/components/products/product-list-thumbnail";
 import { filterByStoreCatalog } from "@/lib/features/stores/store-catalog";
 import { useStoreCatalog } from "@/lib/features/stores/use-store-catalog";
 import {
@@ -752,6 +754,11 @@ export function ProductLocationsScreen() {
                           onChange={() => toggleSelected(p.id)}
                           aria-label={`Sélectionner ${p.name}`}
                         />
+                        <ProductListThumbnail
+                          imageUrl={firstProductImageUrl(p)}
+                          previewOnTap
+                          className="h-11 w-11 rounded-md"
+                        />
                         <button
                           type="button"
                           onClick={() =>
@@ -903,8 +910,13 @@ export function ProductLocationsScreen() {
                   key={hit.productId}
                   className="rounded-[10px] border border-black/[0.06] bg-fs-card p-3 shadow-sm"
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
+                  <div className="flex items-start gap-3">
+                    <ProductListThumbnail
+                      imageUrl={hit.imageUrl}
+                      previewOnTap
+                      className="h-11 w-11 rounded-md"
+                    />
+                    <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-semibold text-fs-text">
                         {hit.productName}
                       </p>

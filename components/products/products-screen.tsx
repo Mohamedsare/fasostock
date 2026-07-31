@@ -23,7 +23,7 @@ import {
   updateProduct,
 } from "@/lib/features/products/api";
 import { adjustStockAtomic } from "@/lib/features/inventory/api";
-import { fetchProductLocationMap } from "@/lib/features/product-locations/api";
+import { useProductLocationMap } from "@/lib/features/product-locations/use-product-locations";
 import { createProductBatch } from "@/lib/features/products/batches-api";
 import { saveProductPackagings } from "@/lib/features/products/packagings-api";
 import { suggestNextSku } from "@/lib/features/products/sku";
@@ -201,12 +201,7 @@ export function ProductsScreen() {
    * pas activé — la page reste strictement identique pour les autres.
    */
   const productLocationsOn = helpers?.productLocationsOn ?? false;
-  const productLocationsQ = useQuery({
-    queryKey: queryKeys.productLocations(storeId),
-    queryFn: () => fetchProductLocationMap(storeId ?? ""),
-    enabled: productLocationsOn && !!storeId,
-    staleTime: 60_000,
-  });
+  const productLocationsQ = useProductLocationMap(storeId, productLocationsOn);
   const locationByProduct = productLocationsQ.data ?? null;
   // Catalogue de la boutique courante : `null` = partage tout le catalogue de l'entreprise.
   const { catalog: storeCatalog } = useStoreCatalog(storeId);

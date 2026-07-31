@@ -32,6 +32,11 @@ import {
   setQuickPosPriceEditEnabled,
 } from "@/lib/features/settings/quick-pos-price-edit";
 import { setProductLocationsEnabled } from "@/lib/features/product-locations/api";
+import {
+  fetchProductLocationsPosEnabled,
+  peekProductLocationsPosEnabled,
+  setProductLocationsPosEnabled,
+} from "@/lib/features/settings/product-locations-pos";
 import { queryKeys } from "@/lib/query/query-keys";
 import { messageFromUnknownError, toast, toastMutationError } from "@/lib/toast";
 import { createClient } from "@/lib/supabase/client";
@@ -439,6 +444,36 @@ export function SettingsScreen() {
           : "Module Emplacements désactivé. Vos plans et rangements sont conservés.",
       );
       await qc.invalidateQueries({ queryKey: queryKeys.appContext });
+    },
+    onError: (e) => toastMutationError("settings", e),
+  });
+
+  const peekLocationsPos =
+    companyId.length > 0 && isOwner && productLocationsEnabled
+      ? peekProductLocationsPosEnabled(companyId)
+      : undefined;
+  const productLocationsPosQ = useQuery({
+    queryKey: queryKeys.productLocationsPosEnabled(companyId),
+    queryFn: () => fetchProductLocationsPosEnabled(companyId),
+    enabled: Boolean(companyId && isOwner && productLocationsEnabled),
+    staleTime: 30_000,
+    ...(peekLocationsPos !== undefined ? { initialData: peekLocationsPos } : {}),
+  });
+
+  const productLocationsPosMut = useMutation({
+    mutationFn: async (enabled: boolean) => {
+      if (!companyId) throw new Error("Entreprise introuvable.");
+      await setProductLocationsPosEnabled(companyId, enabled);
+    },
+    onSuccess: async (_, enabled) => {
+      toast.success(
+        enabled
+          ? "L'emplacement s'affiche désormais à la caisse, sur les produits et dans le panier."
+          : "L'emplacement n'est plus affiché à la caisse.",
+      );
+      await qc.invalidateQueries({
+        queryKey: queryKeys.productLocationsPosEnabled(companyId),
+      });
     },
     onError: (e) => toastMutationError("settings", e),
   });
@@ -887,6 +922,38 @@ export function SettingsScreen() {
               />
             </label>
           </div>
+          {/* Option liée : rappel de l'emplacement à la caisse (comme les conditionnements) */}
+          {productLocationsEnabled ? (
+            <div className="mt-2.5 space-y-0 rounded-[10px] border border-black/[0.08]">
+              <label
+                className={cn(
+                  "flex cursor-pointer items-start justify-between gap-3 px-3 py-3 sm:px-4",
+                  productLocationsPosMut.isPending && "pointer-events-none opacity-60",
+                )}
+              >
+                <span className="min-w-0">
+                  <span className="block text-sm font-medium text-fs-text">
+                    Afficher l&apos;emplacement à la caisse
+                  </span>
+                  <span className="mt-0.5 block text-xs text-neutral-600">
+                    {productLocationsPosQ.data
+                      ? "Le caissier voit l'emplacement sur chaque produit et sur chaque ligne du panier : le panier devient une liste de préparation."
+                      : "Désactivé : la caisse reste inchangée. Activez pour guider le vendeur vers le rayon."}
+                  </span>
+                </span>
+                <input
+                  type="checkbox"
+                  role="switch"
+                  className="mt-1 h-5 w-9 shrink-0 cursor-pointer accent-fs-accent"
+                  checked={Boolean(productLocationsPosQ.data)}
+                  disabled={productLocationsPosMut.isPending}
+                  onChange={(e) => {
+                    void productLocationsPosMut.mutateAsync(e.target.checked);
+                  }}
+                />
+              </label>
+            </div>
+          ) : null}
           {productLocationsEnabled ? (
             <Link
               href={ROUTES.productLocations}

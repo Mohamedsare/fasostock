@@ -15,6 +15,7 @@ import {
   shellTopBarClass,
 } from "@/components/layout/shell-chrome";
 import { ROUTES } from "@/lib/config/routes";
+import { FullscreenToggleButton } from "@/components/layout/fullscreen-toggle-button";
 import { OwnerNotificationsBell } from "@/components/layout/owner-notifications-bell";
 import { NAV_ITEMS, RESTAURANT_NAV_ITEMS } from "@/lib/config/navigation";
 import { useAppContext } from "@/lib/features/common/app-context";
@@ -365,6 +366,7 @@ export function AppShell({ children, userEmail }: AppShellProps) {
                     )}
                   </div>
                 ) : null}
+                <FullscreenToggleButton />
                 {isOwner && data?.companyId ? (
                   <OwnerNotificationsBell
                     companyId={data.companyId}

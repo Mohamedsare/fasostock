@@ -6,6 +6,12 @@ import { fsInputClass } from "@/components/ui/fs-screen-primitives";
 import { createCustomer, listCustomers } from "@/lib/features/customers/api";
 import { P } from "@/lib/constants/permissions";
 import { usePermissions } from "@/lib/features/permissions/use-permissions";
+import { useProductLocationMap } from "@/lib/features/product-locations/use-product-locations";
+import type { ProductLocation } from "@/lib/features/product-locations/types";
+import {
+  fetchProductLocationsPosEnabled,
+  peekProductLocationsPosEnabled,
+} from "@/lib/features/settings/product-locations-pos";
 import type { SaleItem } from "@/lib/features/sales/types";
 import {
   createPosSale,
@@ -61,6 +67,7 @@ import {
   MdEditNote,
   MdHistory,
   MdInventory2,
+  MdPlace,
   MdLogout,
   MdLock,
   MdPayments,
@@ -76,6 +83,39 @@ import {
 } from "react-icons/md";
 
 export type PosMode = "quick" | "a4" | "a4-table";
+/**
+ * Emplacement en caisse : on affiche le segment le PLUS PRÉCIS (« Étagère B »),
+ * pas le chemin entier — c'est celui qui fait marcher le vendeur au bon endroit.
+ * Le chemin complet reste en infobulle.
+ */
+function shortLocationLabel(loc: ProductLocation): string {
+  const parts = loc.pathLabel.split("›").map((x) => x.trim()).filter(Boolean);
+  const last = parts[parts.length - 1] ?? loc.pathLabel;
+  return loc.code ? `${last} · ${loc.code}` : last;
+}
+
+/** Pastille d'emplacement de la caisse (vignette produit et ligne de panier). */
+function PosLocationTag({
+  loc,
+  size = "sm",
+}: {
+  loc: ProductLocation;
+  size?: "xs" | "sm";
+}) {
+  return (
+    <span
+      className={cn(
+        "inline-flex max-w-full items-center gap-0.5 rounded bg-sky-500/12 px-1 font-semibold text-sky-700",
+        size === "xs" ? "py-0 text-[9px]" : "py-0.5 text-[10px]",
+      )}
+      title={loc.detail ? `${loc.pathLabel} — ${loc.detail}` : loc.pathLabel}
+    >
+      <MdPlace className={cn("shrink-0", size === "xs" ? "h-2.5 w-2.5" : "h-3 w-3")} aria-hidden />
+      <span className="truncate">{shortLocationLabel(loc)}</span>
+    </span>
+  );
+}
+
 type CartRow = {
   productId: string;
   name: string;
@@ -337,6 +377,30 @@ export function PosScreen({
       window.removeEventListener("resize", update);
     };
   }, [mode, store, posQ.isLoading, posQ.isError]);
+
+  /**
+   * Module Emplacements — rappel « où aller chercher l'article » sur les vignettes
+   * produit et sur les lignes du panier (le panier devient une liste de préparation).
+   * Deux verrous : le module doit être activé pour l'entreprise ET le propriétaire
+   * doit avoir demandé l'affichage en caisse. Sans les deux, aucune requête n'est
+   * lancée et la caisse est exactement celle d'avant.
+   */
+  const locationsModuleOn = ctx?.productLocationsEnabled === true;
+  const peekLocationsPos =
+    companyId.length > 0 && locationsModuleOn
+      ? peekProductLocationsPosEnabled(companyId)
+      : undefined;
+  const locationsPosQ = useQuery({
+    queryKey: queryKeys.productLocationsPosEnabled(companyId),
+    queryFn: () => fetchProductLocationsPosEnabled(companyId),
+    enabled: Boolean(companyId) && locationsModuleOn,
+    staleTime: 5 * 60_000,
+    ...(peekLocationsPos !== undefined ? { initialData: peekLocationsPos } : {}),
+  });
+  const showLocations = locationsModuleOn && locationsPosQ.data === true;
+  const locationsQ = useProductLocationMap(storeId, showLocations);
+  const locationByProduct: Map<string, ProductLocation> | null =
+    showLocations ? (locationsQ.data ?? null) : null;
 
   const { catalog: storeCatalog } = useStoreCatalog(storeId);
   const products = useMemo(
@@ -1443,6 +1507,7 @@ export function PosScreen({
       cart={cart}
       cartCount={cartCount}
       stockByProductId={stockByProductId}
+      locationByProduct={locationByProduct}
       showQuantityInput={posCartUi.showQuantityInput}
       showQuantityButtons={posCartUi.showQuantityButtons}
       subtotal={subtotal}
@@ -1996,6 +2061,11 @@ export function PosScreen({
                           >
                             {priceLine}
                           </p>
+                          {locationByProduct?.get(p.id) ? (
+                            <span className="mt-0.5 w-full min-w-0 px-0.5 text-center">
+                              <PosLocationTag loc={locationByProduct.get(p.id)!} size="xs" />
+                            </span>
+                          ) : null}
                         </button>
                       );
                     })}
@@ -2074,6 +2144,11 @@ export function PosScreen({
                               {priceLine}
                             </p>
                           )}
+                          {locationByProduct?.get(p.id) ? (
+                            <span className="mt-0.5 w-full min-w-0 text-center">
+                              <PosLocationTag loc={locationByProduct.get(p.id)!} size="xs" />
+                            </span>
+                          ) : null}
                         </div>
                       </button>
                     );
@@ -2691,6 +2766,7 @@ function PosCartPanel({
   cart,
   cartCount,
   stockByProductId,
+  locationByProduct,
   showQuantityInput,
   showQuantityButtons,
   subtotal,
@@ -2738,6 +2814,8 @@ function PosCartPanel({
   cart: CartRow[];
   cartCount: number;
   stockByProductId: Map<string, number>;
+  /** Emplacements de la boutique — `null` si le module ou l'option caisse est coupé. */
+  locationByProduct: Map<string, ProductLocation> | null;
   showQuantityInput: boolean;
   showQuantityButtons: boolean;
   subtotal: number;
@@ -3255,6 +3333,11 @@ function PosCartPanel({
                         <p className="line-clamp-3 text-[15px] font-semibold leading-snug text-[#1F2937]">
                           {c.name}
                         </p>
+                        {locationByProduct?.get(c.productId) ? (
+                          <p className="mt-1">
+                            <PosLocationTag loc={locationByProduct.get(c.productId)!} />
+                          </p>
+                        ) : null}
                         {low ? (
                           <p className="mt-1 text-xs text-red-600">Stock: {stock}</p>
                         ) : null}
@@ -3361,6 +3444,11 @@ function PosCartPanel({
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-xs font-semibold text-[#1F2937]">{c.name}</p>
+                    {locationByProduct?.get(c.productId) ? (
+                      <p className="mt-0.5">
+                        <PosLocationTag loc={locationByProduct.get(c.productId)!} />
+                      </p>
+                    ) : null}
                     <div className="mt-1 flex flex-wrap items-center gap-1.5">
                       {showQuantityButtons ? (
                         <button

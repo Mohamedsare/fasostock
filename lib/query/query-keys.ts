@@ -48,6 +48,9 @@ export const queryKeys = {
   /** Module Emplacements — rangements `product_id → emplacement` d'une boutique. */
   productLocations: (storeId: string | null) =>
     ["product-locations", storeId ?? "__none__", "assignments"] as const,
+  /** Réglage owner « afficher l'emplacement en caisse » (`company_settings`). */
+  productLocationsPosEnabled: (companyId: string) =>
+    ["product-locations-pos", companyId] as const,
   /** Module Emplacements — recherche « c'est où ? ». */
   productLocationSearch: (storeId: string | null, query: string) =>
     ["product-locations", storeId ?? "__none__", "search", query] as const,

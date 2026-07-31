@@ -195,14 +195,6 @@ export async function fetchProductLocations(
   }));
 }
 
-/** Index `product_id → rangement` pour l'affichage en liste (produits, stock…). */
-export async function fetchProductLocationMap(
-  storeId: string,
-): Promise<Map<string, ProductLocation>> {
-  const rows = await fetchProductLocations(storeId);
-  return new Map(rows.map((r) => [r.productId, r]));
-}
-
 /** « C'est où ? » — nom, SKU, code-barres ou emplacement. */
 export async function findProductLocations(params: {
   storeId: string;
@@ -225,6 +217,7 @@ export async function findProductLocations(params: {
     code: toNullableStr(r.code),
     detail: toNullableStr(r.detail),
     quantity: toNum(r.quantity),
+    imageUrl: toNullableStr(r.image_url),
   }));
 }
 
