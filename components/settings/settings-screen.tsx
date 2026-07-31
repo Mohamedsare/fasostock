@@ -31,6 +31,7 @@ import {
   peekQuickPosPriceEditEnabled,
   setQuickPosPriceEditEnabled,
 } from "@/lib/features/settings/quick-pos-price-edit";
+import { setProductLocationsEnabled } from "@/lib/features/product-locations/api";
 import { queryKeys } from "@/lib/query/query-keys";
 import { messageFromUnknownError, toast, toastMutationError } from "@/lib/toast";
 import { createClient } from "@/lib/supabase/client";
@@ -72,6 +73,7 @@ import {
   MdMail,
   MdPalette,
   MdPerson,
+  MdPlace,
   MdSave,
   MdSecurity,
   MdCreditCard,
@@ -420,6 +422,23 @@ export function SettingsScreen() {
           : "Saisie du prix désactivée : le prix du catalogue s'applique.",
       );
       await qc.invalidateQueries({ queryKey: queryKeys.quickPosPriceEditEnabled(companyId) });
+    },
+    onError: (e) => toastMutationError("settings", e),
+  });
+
+  const productLocationsEnabled = ctxQ.data?.productLocationsEnabled === true;
+  const productLocationsMut = useMutation({
+    mutationFn: async (enabled: boolean) => {
+      if (!companyId) throw new Error("Entreprise introuvable.");
+      await setProductLocationsEnabled(companyId, enabled);
+    },
+    onSuccess: async (_, enabled) => {
+      toast.success(
+        enabled
+          ? "Module Emplacements activé. Ouvrez « Emplacements » pour construire le plan de votre boutique."
+          : "Module Emplacements désactivé. Vos plans et rangements sont conservés.",
+      );
+      await qc.invalidateQueries({ queryKey: queryKeys.appContext });
     },
     onError: (e) => toastMutationError("settings", e),
   });
@@ -826,6 +845,57 @@ export function SettingsScreen() {
               </label>
             </div>
           )}
+        </FsCard>
+      ) : null}
+
+      {/* Emplacements physiques des produits — owner uniquement */}
+      {isOwner && companyId ? (
+        <FsCard className="mt-5" padding="p-5">
+          <SettingsCardTitle icon={MdPlace} title="Emplacements des produits" />
+          <p className="mt-2 text-xs leading-relaxed text-neutral-600 sm:text-sm">
+            Savoir où se trouve physiquement chaque article dans la boutique (rayon, allée,
+            étagère, bac…). Chaque boutique construit d&apos;abord SON modèle de rangement —
+            à partir d&apos;un gabarit ou de zéro — puis range ses produits. Un nouveau vendeur
+            trouve alors un article sans déranger personne.
+          </p>
+          <div className="mt-4 space-y-0 rounded-[10px] border border-black/[0.08]">
+            <label
+              className={cn(
+                "flex cursor-pointer items-start justify-between gap-3 px-3 py-3 sm:px-4",
+                productLocationsMut.isPending && "pointer-events-none opacity-60",
+              )}
+            >
+              <span className="min-w-0">
+                <span className="block text-sm font-medium text-fs-text">
+                  Activer les emplacements
+                </span>
+                <span className="mt-0.5 block text-xs text-neutral-600">
+                  {productLocationsEnabled
+                    ? "Le menu « Emplacements » est disponible. Accordez le droit aux employés dans Employés."
+                    : "Désactivé : rien ne change dans l'application."}
+                </span>
+              </span>
+              <input
+                type="checkbox"
+                role="switch"
+                className="mt-1 h-5 w-9 shrink-0 cursor-pointer accent-fs-accent"
+                checked={productLocationsEnabled}
+                disabled={productLocationsMut.isPending}
+                onChange={(e) => {
+                  void productLocationsMut.mutateAsync(e.target.checked);
+                }}
+              />
+            </label>
+          </div>
+          {productLocationsEnabled ? (
+            <Link
+              href={ROUTES.productLocations}
+              className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-fs-accent hover:underline hover:underline-offset-2"
+            >
+              Ouvrir les emplacements
+              <ChevronRight className="h-4 w-4" aria-hidden />
+            </Link>
+          ) : null}
         </FsCard>
       ) : null}
 

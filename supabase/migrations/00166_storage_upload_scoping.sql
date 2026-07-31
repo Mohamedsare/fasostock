@@ -8,7 +8,7 @@
 --   le dossier {productId}/ ou {storeId}/ de n'importe quelle autre entreprise
 --   (buckets publics en lecture : hébergement de contenu illicite sous le nom de
 --   domaine, pollution des dossiers, consommation du quota de stockage).
---
+---
 -- Conventions de chemin — IDENTIQUES web ET Flutter, ne pas changer :
 --   product-images : {productId}/{timestamp}.{ext}
 --   store-logos    : {storeId}/{timestamp}.{ext}

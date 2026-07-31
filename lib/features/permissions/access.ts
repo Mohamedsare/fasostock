@@ -80,6 +80,11 @@ export type AppContextData = {
    * **Soustractif** : vrai par défaut, coupé à la main par le super admin.
    */
   restockModuleEnabled: boolean;
+  /**
+   * Module Emplacements (rangement physique des produits) — désactivé par défaut,
+   * ouvert par le PROPRIÉTAIRE dans Paramètres (`companies.product_locations_enabled`).
+   */
+  productLocationsEnabled: boolean;
 };
 
 /**
@@ -186,6 +191,10 @@ export type AccessHelpers = {
   restockModuleOn: boolean;
   /** Page Réassort : module actif ET propriétaire / permission dédiée. */
   canRestock: boolean;
+  /** Module Emplacements ouvert par le propriétaire pour l'entreprise. */
+  productLocationsOn: boolean;
+  /** Page Emplacements : module ouvert ET propriétaire / permission dédiée. */
+  canProductLocations: boolean;
   /**
    * Suivi de péremption (DLC/DLUO) actif pour ce contexte : métier concerné
    * (pharmacie, supermarché…) ou drapeau ouvert par le super admin.
@@ -307,6 +316,11 @@ export function buildAccessHelpers(
   // Réassort : soustractif — proposé à tous les métiers, coupé à la main si besoin.
   const restockModuleOn = restockModuleActive(data);
   const canRestock = restockModuleOn && (isOwner || hasPermission(P.restockView));
+  // Emplacements : additif, mais ouvert par le PROPRIÉTAIRE lui-même (Paramètres),
+  // pas par la plateforme. Rien n'apparaît tant qu'il ne l'a pas activé.
+  const productLocationsOn = data.productLocationsEnabled === true;
+  const canProductLocations =
+    productLocationsOn && (isOwner || hasPermission(P.productLocationsManage));
   // Péremptions : réservé aux métiers à suivi de lots (pharmacie, supermarché…) ou
   // aux entreprises / boutiques pour lesquelles le super admin l'a ouvert.
   const expiryModuleOn = activityConfigForContext(data).expiryDashboard;
@@ -356,6 +370,8 @@ export function buildAccessHelpers(
     canParts,
     restockModuleOn,
     canRestock,
+    productLocationsOn,
+    canProductLocations,
     expiryModuleOn,
     canExpiry,
     canExpenses,
@@ -403,6 +419,7 @@ export function filterNavItemsForPermissions(
     if (href === ROUTES.products) return h.canProducts;
     if (href === ROUTES.parts) return h.canParts;
     if (href === ROUTES.restock) return h.canRestock;
+    if (href === ROUTES.productLocations) return h.canProductLocations;
     if (href === ROUTES.barcodes) return h.canBarcodes;
     if (href === ROUTES.sales) return h.canSales;
     if (href === ROUTES.promotions) return h.canPromotions;
@@ -466,6 +483,7 @@ const APP_SHELL_ROUTE_PREFIXES: readonly string[] = [
   ROUTES.products,
   ROUTES.parts,
   ROUTES.restock,
+  ROUTES.productLocations,
   ROUTES.barcodes,
   ROUTES.sales,
   ROUTES.promotions,
@@ -555,5 +573,8 @@ export function canAccessPathname(
   // (actif par défaut, coupé par la plateforme) : l'URL directe ne contourne rien.
   if (route === ROUTES.parts && !h.partsModuleOn) return false;
   if (route === ROUTES.restock && !h.restockModuleOn) return false;
+  // Emplacements : tant que le propriétaire n'a pas activé le module, l'URL directe
+  // ne mène nulle part non plus.
+  if (route === ROUTES.productLocations && !h.productLocationsOn) return false;
   return isAppShellRoute(route);
 }

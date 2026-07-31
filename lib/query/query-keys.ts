@@ -39,6 +39,18 @@ export const queryKeys = {
     days: number;
     coverDays: number;
   }) => ["restock", params] as const,
+  /** Module Emplacements — modèle d'organisation d'une boutique (niveaux + statut). */
+  locationScheme: (storeId: string | null) =>
+    ["product-locations", storeId ?? "__none__", "scheme"] as const,
+  /** Module Emplacements — arbre des emplacements d'une boutique. */
+  locationTree: (storeId: string | null) =>
+    ["product-locations", storeId ?? "__none__", "tree"] as const,
+  /** Module Emplacements — rangements `product_id → emplacement` d'une boutique. */
+  productLocations: (storeId: string | null) =>
+    ["product-locations", storeId ?? "__none__", "assignments"] as const,
+  /** Module Emplacements — recherche « c'est où ? ». */
+  productLocationSearch: (storeId: string | null, query: string) =>
+    ["product-locations", storeId ?? "__none__", "search", query] as const,
   /** Tous les SKU (y compris produits supprimés) — pour la génération auto sans collision. */
   productSkus: (companyId: string) => ["product-skus", companyId] as const,
   /** Stock brut d'une boutique : `Record<product_id, quantité>` (`listStoreInventory`). */

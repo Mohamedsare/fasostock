@@ -27,6 +27,8 @@ export const ROUTES = {
   parts: "/pieces",
   /** Module Réassort : quoi recommander et en quelle quantité — actif par défaut. */
   restock: "/reassort",
+  /** Module Emplacements : où se trouve physiquement un produit — activé par le propriétaire. */
+  productLocations: "/emplacements",
   stores: "/stores",
   inventory: "/inventory",
   /** Sessions d'inventaire physique (comptage, écarts, validation). */

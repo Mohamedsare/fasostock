@@ -23,6 +23,7 @@ import {
   updateProduct,
 } from "@/lib/features/products/api";
 import { adjustStockAtomic } from "@/lib/features/inventory/api";
+import { fetchProductLocationMap } from "@/lib/features/product-locations/api";
 import { createProductBatch } from "@/lib/features/products/batches-api";
 import { saveProductPackagings } from "@/lib/features/products/packagings-api";
 import { suggestNextSku } from "@/lib/features/products/sku";
@@ -75,6 +76,7 @@ import {
   MdChevronRight,
   MdInventory2,
   MdLockPerson,
+  MdPlace,
   MdSearch,
   MdSell,
   MdUpload,
@@ -193,6 +195,19 @@ export function ProductsScreen() {
     queryFn: () => listStoreInventory(storeId),
     enabled: !!storeId,
   });
+  /**
+   * Module Emplacements (désactivé par défaut) : pastille « où est rangé cet
+   * article » sous chaque produit. Aucune requête tant que le propriétaire ne l'a
+   * pas activé — la page reste strictement identique pour les autres.
+   */
+  const productLocationsOn = helpers?.productLocationsOn ?? false;
+  const productLocationsQ = useQuery({
+    queryKey: queryKeys.productLocations(storeId),
+    queryFn: () => fetchProductLocationMap(storeId ?? ""),
+    enabled: productLocationsOn && !!storeId,
+    staleTime: 60_000,
+  });
+  const locationByProduct = productLocationsQ.data ?? null;
   // Catalogue de la boutique courante : `null` = partage tout le catalogue de l'entreprise.
   const { catalog: storeCatalog } = useStoreCatalog(storeId);
   // Tous les SKU (y compris produits supprimés) → suggestion auto sans collision.
@@ -715,6 +730,23 @@ export function ProductsScreen() {
                                 </span>
                               );
                             })}
+                        </div>
+                      ) : null}
+                      {locationByProduct?.get(p.id) ? (
+                        <div className="mt-1">
+                          <span
+                            className="inline-flex max-w-full items-center gap-1 rounded bg-sky-500/12 px-1.5 py-0.5 text-[10px] font-semibold text-sky-800 dark:text-sky-200"
+                            title={
+                              locationByProduct.get(p.id)?.detail
+                                ? `${locationByProduct.get(p.id)!.pathLabel} — ${locationByProduct.get(p.id)!.detail}`
+                                : locationByProduct.get(p.id)!.pathLabel
+                            }
+                          >
+                            <MdPlace className="h-3 w-3 shrink-0" aria-hidden />
+                            <span className="truncate">
+                              {locationByProduct.get(p.id)!.pathLabel}
+                            </span>
+                          </span>
                         </div>
                       ) : null}
                       {storeId ? (
