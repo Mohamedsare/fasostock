@@ -1,7 +1,26 @@
 "use client";
 
+import { UserFriendlyError } from "@/lib/errors/app-error-mapper";
 import { createClient } from "@/lib/supabase/client";
 import type { CompanyUser, RoleOption } from "./types";
+
+/**
+ * Sur réponse non-2xx, supabase-js lève une `FunctionsHttpError` au message
+ * générique (« Edge Function returned a non-2xx status code ») : le vrai motif
+ * est dans le corps JSON. On le récupère pour afficher une phrase utile.
+ */
+async function edgeErrorMessage(error: unknown): Promise<string> {
+  const res = (error as { context?: unknown } | null)?.context;
+  if (res instanceof Response) {
+    try {
+      const body = (await res.clone().json()) as { error?: string } | null;
+      if (body?.error) return body.error;
+    } catch {
+      /* corps non JSON : on retombe sur le message d'origine */
+    }
+  }
+  return error instanceof Error ? error.message : "Opération impossible.";
+}
 
 export async function listCompanyUsers(companyId: string): Promise<CompanyUser[]> {
   const supabase = createClient();
@@ -84,6 +103,30 @@ export async function createCompanyUser(input: {
     },
   });
   if (error) throw error;
+}
+
+/**
+ * Le propriétaire redéfinit le mot de passe d'un employé (oubli, départ,
+ * identifiants partagés). Passe par l'Edge Function `reset-user-password` :
+ * seule la clé service role peut changer le mot de passe d'un autre compte,
+ * et elle ne doit jamais atteindre le navigateur.
+ */
+export async function resetCompanyUserPassword(input: {
+  userId: string;
+  companyId: string;
+  newPassword: string;
+}): Promise<void> {
+  const supabase = createClient();
+  const { data, error } = await supabase.functions.invoke("reset-user-password", {
+    body: {
+      user_id: input.userId,
+      company_id: input.companyId,
+      new_password: input.newPassword,
+    },
+  });
+  if (error) throw new UserFriendlyError(await edgeErrorMessage(error));
+  const err = (data as { error?: string } | null)?.error;
+  if (err) throw new UserFriendlyError(err);
 }
 
 export async function updateCompanyUserRole(input: {

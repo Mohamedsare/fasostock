@@ -1,6 +1,7 @@
 "use client";
 
 import { CreateUserDialog } from "@/components/users/create-user-dialog";
+import { ResetPasswordDialog } from "@/components/users/reset-password-dialog";
 import {
   FsCard,
   FsFab,
@@ -17,6 +18,7 @@ import {
   listAssignableRoles,
   listCompanyUsers,
   removeCompanyMember,
+  resetCompanyUserPassword,
   setCompanyUserActive,
   setUserPermissionOverride,
   updateCompanyUserRole,
@@ -34,6 +36,7 @@ import {
   MdAdd,
   MdDeleteOutline,
   MdLockOutline,
+  MdLockReset,
   MdManageAccounts,
   MdPerson,
   MdRefresh,
@@ -94,6 +97,7 @@ export function UsersScreen() {
   const [q, setQ] = useState("");
   const [openCreate, setOpenCreate] = useState(false);
   const [rightsUserId, setRightsUserId] = useState<string | null>(null);
+  const [passwordUser, setPasswordUser] = useState<CompanyUser | null>(null);
 
   const meQ = useQuery({
     queryKey: ["me-user-id"] as const,
@@ -202,6 +206,22 @@ export function UsersScreen() {
       await invalidateUserRights();
       toast.success("Utilisateur retiré de l’entreprise");
     },
+    onError: (e) => toastMutationError("users", e),
+  });
+
+  /**
+   * Réservé au propriétaire : l'Edge Function `reset-user-password` n'accepte
+   * que `owner` / `super_admin` comme appelant. Inutile d'exposer le bouton à
+   * un gestionnaire qui recevrait un refus.
+   */
+  const passwordMut = useMutation({
+    mutationFn: (vars: { userId: string; newPassword: string }) =>
+      resetCompanyUserPassword({
+        userId: vars.userId,
+        companyId,
+        newPassword: vars.newPassword,
+      }),
+    onSuccess: () => toast.success("Mot de passe modifié"),
     onError: (e) => toastMutationError("users", e),
   });
 
@@ -406,6 +426,18 @@ export function UsersScreen() {
                   {isOwner ? (
                     <button
                       type="button"
+                      onClick={() => setPasswordUser(u)}
+                      className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-black/8 bg-fs-card text-fs-accent"
+                      aria-label="Changer le mot de passe"
+                      title="Changer le mot de passe"
+                      disabled={passwordMut.isPending}
+                    >
+                      <MdLockReset className="h-5 w-5" aria-hidden />
+                    </button>
+                  ) : null}
+                  {isOwner ? (
+                    <button
+                      type="button"
                       onClick={() => {
                         if (confirm("Retirer cet utilisateur de l'entreprise ?")) {
                           removeMut.mutate(u.roleRowId);
@@ -508,6 +540,21 @@ export function UsersScreen() {
         stores={stores}
         roleOverrides={roleOverrides}
         onCreate={(payload) => createMut.mutateAsync(payload)}
+      />
+
+      <ResetPasswordDialog
+        open={Boolean(passwordUser)}
+        userLabel={
+          passwordUser
+            ? (passwordUser.fullName?.trim() || "Sans nom") +
+              ` — ${roleLabelFr(passwordUser.roleSlug, passwordUser.roleName, roleOverrides)}`
+            : ""
+        }
+        onClose={() => setPasswordUser(null)}
+        onSubmit={async (newPassword) => {
+          if (!passwordUser) return;
+          await passwordMut.mutateAsync({ userId: passwordUser.userId, newPassword });
+        }}
       />
     </FsPage>
   );
