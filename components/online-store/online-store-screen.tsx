@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   MdAddPhotoAlternate,
@@ -687,7 +687,14 @@ export function OnlineStoreScreen() {
                 </div>
               </FsCard>
 
-              <div className="sticky bottom-2 z-10">
+              {/*
+                Barre d'action collée en bas : elle a son propre fond opaque et un
+                filet, sinon le contenu défile DERRIÈRE le bouton et donne
+                l'impression qu'il flotte au milieu de la page (cf. la photo de
+                couverture qui passait dessous). Même traitement que la barre de
+                validation des sessions d'inventaire.
+              */}
+              <div className="sticky bottom-0 z-10 -mx-2 border-t border-black/[0.06] bg-fs-surface/95 px-2 py-3 backdrop-blur sm:-mx-3 sm:px-3">
                 <button
                   type="button"
                   disabled={saveMut.isPending || draft.slug.trim().length < 3}
@@ -855,7 +862,13 @@ function CoverPicker({
   onPick: (file: File) => void;
   onRemove: () => void;
 }) {
-  const inputId = "online-store-cover-input";
+  /*
+    Le champ fichier est piloté par `ref.click()` et rendu avec `hidden`, plutôt
+    qu'un `<label htmlFor>` sur un input en `sr-only` : ce dernier est
+    positionné en absolu hors flux, et le navigateur le fait défiler dans la vue
+    à l'ouverture du sélecteur — la page sautait alors sur une zone vide.
+  */
+  const fileRef = useRef<HTMLInputElement | null>(null);
   return (
     <div className="space-y-2">
       <div className="relative aspect-[16/6] w-full overflow-hidden rounded-[4px] border border-black/[0.06] bg-fs-surface-container">
@@ -879,18 +892,19 @@ function CoverPicker({
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <label
-          htmlFor={inputId}
-          className="cursor-pointer rounded-[4px] border border-black/[0.08] bg-fs-card px-3 py-2 text-xs font-semibold text-neutral-700"
+        <button
+          type="button"
+          disabled={uploading}
+          onClick={() => fileRef.current?.click()}
+          className="rounded-[4px] border border-black/[0.08] bg-fs-card px-3 py-2 text-xs font-semibold text-neutral-700 disabled:opacity-50"
         >
           {url ? "Changer la photo" : "Choisir une photo"}
-        </label>
+        </button>
         <input
-          id={inputId}
+          ref={fileRef}
           type="file"
           accept="image/*"
-          className="sr-only"
-          disabled={uploading}
+          hidden
           onChange={(e) => {
             const file = e.target.files?.[0];
             // Réinitialisé pour pouvoir re-choisir le même fichier après un retrait.
