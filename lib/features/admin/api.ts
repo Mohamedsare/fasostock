@@ -33,6 +33,7 @@ import type {
   AdminAppErrorLite,
   AdminSubscriptionPlanLite,
   AdminCompanySubscriptionRow,
+  AdminOnlineStoreRow,
   AdminSubscriptionRequestRow,
 } from "./types";
 
@@ -46,7 +47,7 @@ export async function adminListCompanies(): Promise<AdminCompany[]> {
   const { data, error } = await supabase
     .from("companies")
     .select(
-      "id, name, slug, is_active, store_quota, ai_predictions_enabled, warehouse_feature_enabled, purchases_feature_enabled, transfers_feature_enabled, store_quota_increase_enabled, warehouse_kpi_show_purchase_value, warehouse_kpi_show_sale_value, warehouse_quota, accounting_module_enabled, hr_module_enabled, expiry_module_enabled, parts_module_enabled, restock_module_enabled, created_at",
+      "id, name, slug, is_active, store_quota, ai_predictions_enabled, warehouse_feature_enabled, purchases_feature_enabled, transfers_feature_enabled, store_quota_increase_enabled, warehouse_kpi_show_purchase_value, warehouse_kpi_show_sale_value, warehouse_quota, accounting_module_enabled, hr_module_enabled, expiry_module_enabled, parts_module_enabled, restock_module_enabled, online_store_enabled, created_at",
     )
     .order("created_at", { ascending: false });
   if (error) throw mapSupabaseError(error);
@@ -72,6 +73,7 @@ export async function adminListCompanies(): Promise<AdminCompany[]> {
       partsModuleEnabled: r.parts_module_enabled === true,
       // Soustractif : actif tant que la plateforme ne l'a pas coupé.
       restockModuleEnabled: r.restock_module_enabled !== false,
+      onlineStoreEnabled: r.online_store_enabled === true,
       createdAt: r.created_at != null ? String(r.created_at) : null,
     };
   });
@@ -122,7 +124,7 @@ export async function adminListStores(companyId?: string | null): Promise<AdminS
   const supabase = createClient();
   let q = supabase
     .from("stores")
-    .select("id, company_id, name, code, phone, is_active, is_primary, engine_sales_enabled, engine_registration_enabled, progressive_purchases_enabled, rental_module_enabled, expiry_module_enabled, parts_module_enabled, restock_module_enabled, created_at")
+    .select("id, company_id, name, code, phone, is_active, is_primary, engine_sales_enabled, engine_registration_enabled, progressive_purchases_enabled, rental_module_enabled, expiry_module_enabled, parts_module_enabled, restock_module_enabled, online_store_enabled, created_at")
     .order("created_at", { ascending: false });
   if (companyId) q = q.eq("company_id", companyId);
   const { data, error } = await q;
@@ -144,6 +146,7 @@ export async function adminListStores(companyId?: string | null): Promise<AdminS
       expiryModuleEnabled: r.expiry_module_enabled === true,
       partsModuleEnabled: r.parts_module_enabled === true,
       restockModuleEnabled: r.restock_module_enabled !== false,
+      onlineStoreEnabled: r.online_store_enabled === true,
       createdAt: r.created_at != null ? String(r.created_at) : null,
     };
   });
@@ -165,6 +168,7 @@ export async function adminUpdateCompany(
     expiryModuleEnabled?: boolean;
     partsModuleEnabled?: boolean;
     restockModuleEnabled?: boolean;
+    onlineStoreEnabled?: boolean;
     storeQuota?: number;
     warehouseQuota?: number;
   },
@@ -205,6 +209,9 @@ export async function adminUpdateCompany(
   }
   if (patch.restockModuleEnabled !== undefined) {
     row.restock_module_enabled = patch.restockModuleEnabled;
+  }
+  if (patch.onlineStoreEnabled !== undefined) {
+    row.online_store_enabled = patch.onlineStoreEnabled;
   }
   if (patch.storeQuota !== undefined) {
     const n = Math.floor(Number(patch.storeQuota));
@@ -298,6 +305,37 @@ export async function adminSetStoreRestockModule(id: string, enabled: boolean): 
     .update({ restock_module_enabled: enabled })
     .eq("id", id);
   if (error) throw mapSupabaseError(error);
+}
+
+/** Boutique en ligne (catalogue public + commandes) — activation par boutique. */
+export async function adminSetStoreOnlineStore(id: string, enabled: boolean): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("stores")
+    .update({ online_store_enabled: enabled })
+    .eq("id", id);
+  if (error) throw mapSupabaseError(error);
+}
+
+/** Vue d'ensemble des boutiques en ligne (activation, lien, commandes) — super admin. */
+export async function adminListOnlineStores(): Promise<AdminOnlineStoreRow[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("admin_online_store_overview");
+  if (error) throw mapSupabaseError(error);
+  return ((data ?? []) as Record<string, unknown>[]).map((r) => ({
+    storeId: String(r.store_id ?? ""),
+    storeName: String(r.store_name ?? ""),
+    companyId: String(r.company_id ?? ""),
+    companyName: String(r.company_name ?? ""),
+    companyEnabled: r.company_enabled === true,
+    storeEnabled: r.store_enabled === true,
+    slug: r.slug != null ? String(r.slug) : null,
+    isPublished: r.is_published === true,
+    ordersCount: toNum(r.orders_count),
+    ordersPending: toNum(r.orders_pending),
+    ordersTotal: toNum(r.orders_total),
+    lastOrderAt: r.last_order_at != null ? String(r.last_order_at) : null,
+  }));
 }
 
 /** Module Location (gestion locative immobilière) — activation par boutique. */

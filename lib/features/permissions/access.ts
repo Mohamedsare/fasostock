@@ -41,6 +41,8 @@ export type AppContextData = {
      * le super admin peut le couper. `undefined` (contexte partiel) vaut donc actif.
      */
     restockModuleEnabled?: boolean;
+    /** Boutique en ligne ouverte pour cette boutique par la plateforme. */
+    onlineStoreEnabled?: boolean;
   }[];
   isSuperAdmin: boolean;
   permissionKeys: string[];
@@ -85,6 +87,11 @@ export type AppContextData = {
    * ouvert par le PROPRIÉTAIRE dans Paramètres (`companies.product_locations_enabled`).
    */
   productLocationsEnabled: boolean;
+  /**
+   * Boutique en ligne ouverte pour TOUTE l'entreprise par la plateforme
+   * (`companies.online_store_enabled`). S'ajoute aux drapeaux boutique.
+   */
+  onlineStoreEnabled: boolean;
 };
 
 /**
@@ -121,6 +128,23 @@ export function restockModuleActive(
   }
   if (data.stores.length === 0) return true;
   return data.stores.some((s) => s.restockModuleEnabled !== false);
+}
+
+/**
+ * La plateforme a-t-elle ouvert la boutique en ligne ici ?
+ * Entreprise entière, ou boutique courante (vue « toutes boutiques » : au moins une).
+ */
+export function onlineStoreOverride(
+  data: AppContextData | null | undefined,
+): boolean {
+  if (!data) return false;
+  if (data.onlineStoreEnabled === true) return true;
+  if (data.storeId) {
+    return (
+      data.stores.find((s) => s.id === data.storeId)?.onlineStoreEnabled === true
+    );
+  }
+  return data.stores.some((s) => s.onlineStoreEnabled === true);
 }
 
 /**
@@ -195,6 +219,10 @@ export type AccessHelpers = {
   productLocationsOn: boolean;
   /** Page Emplacements : module ouvert ET propriétaire / permission dédiée. */
   canProductLocations: boolean;
+  /** Boutique en ligne ouverte par la plateforme (entreprise ou boutique courante). */
+  onlineStoreOn: boolean;
+  /** Page Boutique en ligne : module ouvert ET propriétaire / permission dédiée. */
+  canOnlineStore: boolean;
   /**
    * Suivi de péremption (DLC/DLUO) actif pour ce contexte : métier concerné
    * (pharmacie, supermarché…) ou drapeau ouvert par le super admin.
@@ -321,6 +349,10 @@ export function buildAccessHelpers(
   const productLocationsOn = data.productLocationsEnabled === true;
   const canProductLocations =
     productLocationsOn && (isOwner || hasPermission(P.productLocationsManage));
+  // Boutique en ligne : additif, ouvert par la PLATEFORME (entreprise ou boutique).
+  const onlineStoreOn = onlineStoreOverride(data);
+  const canOnlineStore =
+    onlineStoreOn && (isOwner || hasPermission(P.onlineStoreManage));
   // Péremptions : réservé aux métiers à suivi de lots (pharmacie, supermarché…) ou
   // aux entreprises / boutiques pour lesquelles le super admin l'a ouvert.
   const expiryModuleOn = activityConfigForContext(data).expiryDashboard;
@@ -372,6 +404,8 @@ export function buildAccessHelpers(
     canRestock,
     productLocationsOn,
     canProductLocations,
+    onlineStoreOn,
+    canOnlineStore,
     expiryModuleOn,
     canExpiry,
     canExpenses,
@@ -420,6 +454,7 @@ export function filterNavItemsForPermissions(
     if (href === ROUTES.parts) return h.canParts;
     if (href === ROUTES.restock) return h.canRestock;
     if (href === ROUTES.productLocations) return h.canProductLocations;
+    if (href === ROUTES.onlineStore) return h.canOnlineStore;
     if (href === ROUTES.barcodes) return h.canBarcodes;
     if (href === ROUTES.sales) return h.canSales;
     if (href === ROUTES.promotions) return h.canPromotions;
@@ -484,6 +519,7 @@ const APP_SHELL_ROUTE_PREFIXES: readonly string[] = [
   ROUTES.parts,
   ROUTES.restock,
   ROUTES.productLocations,
+  ROUTES.onlineStore,
   ROUTES.barcodes,
   ROUTES.sales,
   ROUTES.promotions,
@@ -576,5 +612,7 @@ export function canAccessPathname(
   // Emplacements : tant que le propriétaire n'a pas activé le module, l'URL directe
   // ne mène nulle part non plus.
   if (route === ROUTES.productLocations && !h.productLocationsOn) return false;
+  // Boutique en ligne : tant que la plateforme ne l'a pas ouverte, l'URL ne mène nulle part.
+  if (route === ROUTES.onlineStore && !h.onlineStoreOn) return false;
   return isAppShellRoute(route);
 }

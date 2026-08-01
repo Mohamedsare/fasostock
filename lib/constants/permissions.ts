@@ -60,6 +60,8 @@ export const P = {
   restockView: "restock.view",
   /** Page Emplacements (plan de rangement + rangement des produits) — owner par défaut. */
   productLocationsManage: "product_locations.manage",
+  /** Boutique en ligne : vitrine publique + commandes web — owner par défaut. */
+  onlineStoreManage: "online_store.manage",
   /** Page Dépenses — consultation ; owner par défaut, accordable aux autres. */
   expensesView: "expenses.view",
   /** Page Dépenses — création / modification / suppression. */
@@ -136,6 +138,7 @@ export const PERMISSION_LABELS_FR: Record<string, string> = {
   [P.partsManage]: "Gerer les pieces (compatibilites, equivalences, variantes)",
   [P.restockView]: "Voir la page Reassort (produits a recommander)",
   [P.productLocationsManage]: "Gerer les emplacements (plan de rangement des produits)",
+  [P.onlineStoreManage]: "Gerer la boutique en ligne (catalogue public, commandes web)",
   [P.expensesView]: "Voir la page Depenses (charges)",
   [P.expensesManage]: "Gerer les depenses (ajout / modif / suppression)",
   [P.suppliersView]: "Voir les fournisseurs",

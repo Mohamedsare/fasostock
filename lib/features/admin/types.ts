@@ -31,6 +31,8 @@ export type AdminCompany = {
   partsModuleEnabled: boolean;
   /** Module Réassort — **activé** par défaut ; la plateforme peut le couper. */
   restockModuleEnabled: boolean;
+  /** Boutique en ligne (catalogue public + commandes) ouverte pour toute l'entreprise. */
+  onlineStoreEnabled: boolean;
   createdAt: string | null;
 };
 
@@ -56,7 +58,25 @@ export type AdminStore = {
   partsModuleEnabled: boolean;
   /** Module Réassort actif pour cette boutique. **Activé** par défaut. */
   restockModuleEnabled: boolean;
+  /** Boutique en ligne activée pour cette boutique (super admin). */
+  onlineStoreEnabled: boolean;
   createdAt: string | null;
+};
+
+/** Ligne de la page Admin › Boutique en ligne (RPC `admin_online_store_overview`). */
+export type AdminOnlineStoreRow = {
+  storeId: string;
+  storeName: string;
+  companyId: string;
+  companyName: string;
+  companyEnabled: boolean;
+  storeEnabled: boolean;
+  slug: string | null;
+  isPublished: boolean;
+  ordersCount: number;
+  ordersPending: number;
+  ordersTotal: number;
+  lastOrderAt: string | null;
 };
 
 export type AdminUser = {

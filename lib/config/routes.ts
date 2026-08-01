@@ -29,6 +29,8 @@ export const ROUTES = {
   restock: "/reassort",
   /** Module Emplacements : où se trouve physiquement un produit — activé par le propriétaire. */
   productLocations: "/emplacements",
+  /** Boutique en ligne : vitrine publique + commandes web — activée par le super admin. */
+  onlineStore: "/boutique-en-ligne",
   stores: "/stores",
   inventory: "/inventory",
   /** Sessions d'inventaire physique (comptage, écarts, validation). */
@@ -72,6 +74,8 @@ export const ROUTES = {
   adminReports: "/admin/reports",
   adminGpublique: "/admin/gpublique",
   adminMaps: "/admin/maps",
+  /** Activation de la boutique en ligne par entreprise / par boutique (super admin). */
+  adminOnlineStore: "/admin/boutique-en-ligne",
   adminSettings: "/admin/settings",
 } as const;
 
@@ -83,6 +87,16 @@ export function storeFactureTabPath(storeId: string): string {
 /** Flux de saisie « Vente Engins » (POS engin) pour une boutique. */
 export function storeEngineSalePath(storeId: string): string {
   return `${ROUTES.stores}/${storeId}/vente-engin`;
+}
+
+/** Lien catalogue public d'une boutique — celui que le commerçant partage. */
+export function onlineStorePath(slug: string): string {
+  return `/boutique/${slug}`;
+}
+
+/** Suivi public d'une commande passée en ligne (lien remis au client). */
+export function onlineOrderTrackPath(slug: string, token: string): string {
+  return `/boutique/${slug}/commande/${token}`;
 }
 
 /** Page publique de vérification d'une facture engin (QR). */

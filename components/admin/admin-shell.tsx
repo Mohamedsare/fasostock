@@ -27,6 +27,7 @@ import {
   MdSettings,
   MdShield,
   MdStore,
+  MdStorefront,
   MdTune,
 } from "react-icons/md";
 
@@ -39,6 +40,7 @@ const NAV = [
   { href: "/admin/companies", label: "Entreprises", icon: MdBusiness },
   { href: "/admin/fonctionnalites", label: "Fonctionnalités", icon: MdTune },
   { href: "/admin/stores", label: "Boutiques", icon: MdStore },
+  { href: ROUTES.adminOnlineStore, label: "Boutique en ligne", icon: MdStorefront },
   { href: "/admin/users", label: "Utilisateurs", icon: MdPeople },
   { href: ROUTES.adminMaps, label: "Maps", icon: MdMap },
   { href: "/admin/audit", label: "Journal d'audit", icon: MdHistory },

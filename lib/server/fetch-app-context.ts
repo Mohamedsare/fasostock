@@ -20,7 +20,7 @@ export async function fetchAppContextForCompany(
   const { data: companyRow, error: cErr } = await supabase
     .from("companies")
     .select(
-      "id, name, logo_url, business_type_slug, warehouse_feature_enabled, purchases_feature_enabled, transfers_feature_enabled, store_quota_increase_enabled, ai_predictions_enabled, warehouse_kpi_show_purchase_value, warehouse_kpi_show_sale_value, accounting_module_enabled, hr_module_enabled, expiry_module_enabled, parts_module_enabled, restock_module_enabled, product_locations_enabled",
+      "id, name, logo_url, business_type_slug, warehouse_feature_enabled, purchases_feature_enabled, transfers_feature_enabled, store_quota_increase_enabled, ai_predictions_enabled, warehouse_kpi_show_purchase_value, warehouse_kpi_show_sale_value, accounting_module_enabled, hr_module_enabled, expiry_module_enabled, parts_module_enabled, restock_module_enabled, product_locations_enabled, online_store_enabled",
     )
     .eq("id", cid)
     .maybeSingle();
@@ -49,11 +49,12 @@ export async function fetchAppContextForCompany(
     parts_module_enabled?: boolean | null;
     restock_module_enabled?: boolean | null;
     product_locations_enabled?: boolean | null;
+    online_store_enabled?: boolean | null;
   };
 
   const { data: stores, error: sErr } = await supabase
     .from("stores")
-    .select("id, name, is_primary, expiry_module_enabled, parts_module_enabled, restock_module_enabled")
+    .select("id, name, is_primary, expiry_module_enabled, parts_module_enabled, restock_module_enabled, online_store_enabled")
     .eq("company_id", cid)
     .order("is_primary", { ascending: false })
     .order("name", { ascending: true });
@@ -70,6 +71,8 @@ export async function fetchAppContextForCompany(
     // Soustractif : seul un `false` explicite coupe le module pour la boutique.
     restockModuleEnabled:
       (s as { restock_module_enabled?: boolean }).restock_module_enabled !== false,
+    onlineStoreEnabled:
+      (s as { online_store_enabled?: boolean }).online_store_enabled === true,
   }));
 
   const primary = mapped.find((s) => s.isPrimary) ?? mapped[0] ?? null;
@@ -98,6 +101,7 @@ export async function fetchAppContextForCompany(
       partsModuleEnabled: cr.parts_module_enabled === true,
       restockModuleEnabled: cr.restock_module_enabled !== false,
       productLocationsEnabled: cr.product_locations_enabled === true,
+      onlineStoreEnabled: cr.online_store_enabled === true,
       // Flag évalué côté client (bouton uniquement) ; non requis pour les gardes de route serveur.
       promoAdGenerationEnabled: false,
     };
@@ -144,6 +148,7 @@ export async function fetchAppContextForCompany(
     partsModuleEnabled: cr.parts_module_enabled === true,
     restockModuleEnabled: cr.restock_module_enabled !== false,
     productLocationsEnabled: cr.product_locations_enabled === true,
+    onlineStoreEnabled: cr.online_store_enabled === true,
     // Flag évalué côté client (bouton uniquement) ; non requis pour les gardes de route serveur.
     promoAdGenerationEnabled: false,
   };
