@@ -16,6 +16,11 @@ export const queryKeys = {
   productsPicker: (companyId: string) => ["products", companyId, "picker"] as const,
   /** Module Pièces — modèles (moto / auto / appareil) de l'entreprise. */
   partModels: (companyId: string) => ["parts", companyId, "models"] as const,
+  /** Module Pièces — compatibilités `produit → modèles` de l'entreprise (caisse). */
+  partCompatibilities: (companyId: string) =>
+    ["parts", companyId, "compatibilities"] as const,
+  /** Réglage owner « afficher le modèle compatible en caisse » (`company_settings`). */
+  partsPosModelsEnabled: (companyId: string) => ["parts-pos-models", companyId] as const,
   /** Module Pièces — pièces compatibles avec un modèle (ou une recherche texte). */
   partsCompatible: (params: {
     companyId: string;

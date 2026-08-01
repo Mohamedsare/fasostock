@@ -11,6 +11,7 @@ import {
   MdEdit,
   MdInventory2,
   MdLock,
+  MdPointOfSale,
   MdSearch,
   MdSwapHoriz,
   MdTune,
@@ -42,6 +43,11 @@ import {
   type PartModel,
   type VariantGroup,
 } from "@/lib/features/parts/types";
+import {
+  fetchPartsPosModelsEnabled,
+  peekPartsPosModelsEnabled,
+  setPartsPosModelsEnabled,
+} from "@/lib/features/settings/parts-pos-models";
 import { formatCurrency } from "@/lib/utils/currency";
 import { messageFromUnknownError, toast } from "@/lib/toast";
 import { cn } from "@/lib/utils/cn";
@@ -167,6 +173,33 @@ export function PartsScreen() {
     onError: (e) => toast.error(messageFromUnknownError(e, "Suppression impossible.")),
   });
 
+  /**
+   * Réglage « Afficher le modèle compatible en caisse ». Il vit ici, au plus près
+   * des compatibilités qu'il expose : c'est sur cette page qu'on déclare « cette
+   * pièce va sur ce modèle », c'est ici qu'on décide si le caissier le voit.
+   */
+  const peekPosModels = companyId ? peekPartsPosModelsEnabled(companyId) : undefined;
+  const posModelsQ = useQuery({
+    queryKey: queryKeys.partsPosModelsEnabled(companyId),
+    queryFn: () => fetchPartsPosModelsEnabled(companyId),
+    enabled,
+    staleTime: 30_000,
+    ...(peekPosModels !== undefined ? { initialData: peekPosModels } : {}),
+  });
+
+  const posModelsMut = useMutation({
+    mutationFn: (on: boolean) => setPartsPosModelsEnabled(companyId, on),
+    onSuccess: (_d, on) => {
+      toast.success(
+        on
+          ? "Le modèle compatible s'affiche désormais en caisse, au choix du conditionnement."
+          : "Le modèle compatible n'est plus affiché en caisse.",
+      );
+      void qc.invalidateQueries({ queryKey: queryKeys.partsPosModelsEnabled(companyId) });
+    },
+    onError: (e) => toast.error(messageFromUnknownError(e, "Modification impossible.")),
+  });
+
   const deleteGroupMut = useMutation({
     mutationFn: (id: string) => deleteVariantGroup(id),
     onSuccess: () => {
@@ -221,6 +254,35 @@ export function PartsScreen() {
         subtitle="Trouvez ce qui va sur un modèle, ce qui remplace une pièce en rupture, et regroupez vos déclinaisons"
         titleClassName="min-[900px]:text-2xl min-[900px]:font-bold min-[900px]:tracking-tight"
       />
+
+      <FsCard className="mb-3 rounded-sm sm:rounded-sm" padding="p-0">
+        <label
+          className={cn(
+            "flex cursor-pointer items-start justify-between gap-3 px-3 py-3 sm:px-4",
+            posModelsMut.isPending && "pointer-events-none opacity-60",
+          )}
+        >
+          <span className="min-w-0">
+            <span className="flex items-center gap-1.5 text-sm font-bold text-fs-text">
+              <MdPointOfSale className="h-4 w-4 text-fs-accent" aria-hidden />
+              Afficher le modèle compatible en caisse
+            </span>
+            <span className="mt-0.5 block text-xs text-neutral-600">
+              {posModelsQ.data
+                ? "Le caissier voit « Va sur : Yamaha · Crypton 115 » au moment de choisir le conditionnement, en caisse rapide comme en facture A4."
+                : "Désactivé : la caisse reste inchangée. Activez pour que le vendeur sache à quel engin la pièce correspond."}
+            </span>
+          </span>
+          <input
+            type="checkbox"
+            role="switch"
+            className="mt-1 h-5 w-9 shrink-0 cursor-pointer accent-fs-accent"
+            checked={posModelsQ.data === true}
+            disabled={posModelsMut.isPending || posModelsQ.isLoading}
+            onChange={(e) => void posModelsMut.mutateAsync(e.target.checked)}
+          />
+        </label>
+      </FsCard>
 
       <div className="mb-3 flex flex-wrap gap-2">
         {TABS.map((t) => (

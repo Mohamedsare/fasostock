@@ -142,6 +142,41 @@ export async function listProductPartModels(
   }));
 }
 
+/**
+ * Toutes les compatibilités de l'entreprise, à plat : « ce produit va sur ce modèle ».
+ *
+ * Sert la caisse (chip « Va sur : Yamaha · Crypton 115 » dans le choix du
+ * conditionnement). Un seul aller-retour pour tout le catalogue, mis en cache :
+ * ouvrir le dialogue ne déclenche aucune requête, le caissier ne patiente pas.
+ * La lecture est couverte par la policy `product_part_models_select` (membres de
+ * l'entreprise) — aucun droit de gestion des pièces n'est requis pour VOIR.
+ */
+export async function listCompanyPartCompatibilities(
+  companyId: string,
+): Promise<{ productId: string; label: string }[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("product_part_models")
+    .select("product_id, model:part_models(name, maker)")
+    .eq("company_id", companyId);
+  if (error) throw mapSupabaseError(error);
+
+  return ((data ?? []) as Record<string, unknown>[])
+    .map((r) => {
+      const modelRaw = r.model;
+      const model = (
+        Array.isArray(modelRaw) ? modelRaw[0] : modelRaw
+      ) as { name?: unknown; maker?: unknown } | null;
+      const name = toStr(model?.name).trim();
+      const maker = toNullableStr(model?.maker);
+      return {
+        productId: toStr(r.product_id),
+        label: maker ? `${maker} · ${name}` : name,
+      };
+    })
+    .filter((r) => r.productId !== "" && r.label !== "");
+}
+
 /** Remplace la liste complète des modèles compatibles d'un produit. */
 export async function setProductPartModels(
   productId: string,

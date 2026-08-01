@@ -5,9 +5,15 @@ import { FsHorizontalScroll } from "@/components/ui/fs-horizontal-scroll";
 import { fsInputClass } from "@/components/ui/fs-screen-primitives";
 import { createCustomer, listCustomers } from "@/lib/features/customers/api";
 import { P } from "@/lib/constants/permissions";
+import { partsModuleOverride } from "@/lib/features/permissions/access";
 import { usePermissions } from "@/lib/features/permissions/use-permissions";
+import { usePartCompatibilityMap } from "@/lib/features/parts/use-part-compatibilities";
 import { useProductLocationMap } from "@/lib/features/product-locations/use-product-locations";
 import type { ProductLocation } from "@/lib/features/product-locations/types";
+import {
+  fetchPartsPosModelsEnabled,
+  peekPartsPosModelsEnabled,
+} from "@/lib/features/settings/parts-pos-models";
 import {
   fetchProductLocationsPosEnabled,
   peekProductLocationsPosEnabled,
@@ -80,6 +86,7 @@ import {
   MdSettings,
   MdStore,
   MdTableChart,
+  MdTwoWheeler,
 } from "react-icons/md";
 
 export type PosMode = "quick" | "a4" | "a4-table";
@@ -401,6 +408,28 @@ export function PosScreen({
   const locationsQ = useProductLocationMap(storeId, showLocations);
   const locationByProduct: Map<string, ProductLocation> | null =
     showLocations ? (locationsQ.data ?? null) : null;
+
+  /**
+   * Module Pièces — « à quel engin cette pièce correspond-elle ? ». Affiché au
+   * moment de choisir le conditionnement. Deux verrous, comme les emplacements :
+   * le module Pièces doit être ouvert ET le propriétaire doit avoir demandé
+   * l'affichage en caisse (page Pièces). Sans les deux, aucune requête.
+   */
+  const partsModuleOn = partsModuleOverride(ctx);
+  const peekPartsPos =
+    companyId.length > 0 && partsModuleOn ? peekPartsPosModelsEnabled(companyId) : undefined;
+  const partsPosQ = useQuery({
+    queryKey: queryKeys.partsPosModelsEnabled(companyId),
+    queryFn: () => fetchPartsPosModelsEnabled(companyId),
+    enabled: Boolean(companyId) && partsModuleOn,
+    staleTime: 5 * 60_000,
+    ...(peekPartsPos !== undefined ? { initialData: peekPartsPos } : {}),
+  });
+  const showPartModels = partsModuleOn && partsPosQ.data === true;
+  const partModelsQ = usePartCompatibilityMap(companyId, showPartModels);
+  const partModelsByProduct: Map<string, string[]> | null = showPartModels
+    ? (partModelsQ.data ?? null)
+    : null;
 
   const { catalog: storeCatalog } = useStoreCatalog(storeId);
   const products = useMemo(
@@ -2267,6 +2296,8 @@ export function PosScreen({
             const cp = products.find((x) => x.id === pkgChooser.productId);
             if (!cp) return null;
             const pkgs = validPackagings(cp);
+            // Module Pièces : sur quels engins cette pièce se monte-t-elle ?
+            const compatModels = partModelsByProduct?.get(cp.id) ?? [];
             const closeAndFocus = () => {
               setPkgChooser(null);
               setSearch("");
@@ -2287,6 +2318,22 @@ export function PosScreen({
                     <div className="min-w-0">
                       <h2 className="text-base font-bold text-fs-text">Conditionnement</h2>
                       <p className="mt-0.5 truncate text-sm text-neutral-600">{cp.name}</p>
+                      {compatModels.length > 0 ? (
+                        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                          <span className="text-[11px] font-semibold uppercase tracking-wide text-neutral-500">
+                            Va sur
+                          </span>
+                          {compatModels.map((label) => (
+                            <span
+                              key={label}
+                              className="inline-flex max-w-full items-center gap-1 truncate rounded-full bg-fs-accent/10 px-2 py-0.5 text-[11px] font-bold text-fs-accent"
+                            >
+                              <MdTwoWheeler className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                              {label}
+                            </span>
+                          ))}
+                        </div>
+                      ) : null}
                     </div>
                     <button
                       type="button"
