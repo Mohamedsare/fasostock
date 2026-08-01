@@ -1231,10 +1231,18 @@ export function PosScreen({
       }));
   }
 
-  /** Ajout au panier depuis une carte produit : si le produit a des conditionnements,
-   *  on propose de choisir (Pièce par défaut) ; sinon ajout direct d'une pièce. */
+  /**
+   * Ajout au panier depuis une carte produit : si le produit a des conditionnements,
+   * on propose de choisir (Pièce par défaut) ; sinon ajout direct d'une pièce.
+   *
+   * Exception — module Pièces : une pièce SANS conditionnement mais associée à un
+   * modèle ouvre quand même le dialogue, pour que le vendeur voie sur quel engin
+   * elle se monte avant de valider. C'est le seul cas où un clic de plus est
+   * demandé, et c'est justement celui où l'erreur coûte cher (mauvaise pièce).
+   */
   function onPickProduct(p: PosProduct, thumb: string | null) {
-    if (validPackagings(p).length === 0) {
+    const hasCompatModels = (partModelsByProduct?.get(p.id)?.length ?? 0) > 0;
+    if (validPackagings(p).length === 0 && !hasCompatModels) {
       addToCart(p.id, p.name, p.unit, thumb);
       setSearch("");
       searchInputRef.current?.focus();
@@ -2308,7 +2316,9 @@ export function PosScreen({
                 className="fixed inset-0 z-[2147483647] flex items-end justify-center bg-black/45 p-3 sm:items-center"
                 role="dialog"
                 aria-modal="true"
-                aria-label="Choisir le conditionnement"
+                aria-label={
+                  pkgs.length > 0 ? "Choisir le conditionnement" : "Confirmer la pièce"
+                }
                 onMouseDown={(e) => {
                   if (e.target === e.currentTarget) setPkgChooser(null);
                 }}
@@ -2316,7 +2326,11 @@ export function PosScreen({
                 <div className="w-full max-w-md rounded-2xl bg-fs-card p-4 shadow-xl sm:p-5">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <h2 className="text-base font-bold text-fs-text">Conditionnement</h2>
+                      <h2 className="text-base font-bold text-fs-text">
+                        {/* Sans conditionnement, le dialogue ne sert qu'à montrer
+                            la compatibilité : le titre doit le dire. */}
+                        {pkgs.length > 0 ? "Conditionnement" : "Ajouter au panier"}
+                      </h2>
                       <p className="mt-0.5 truncate text-sm text-neutral-600">{cp.name}</p>
                       {compatModels.length > 0 ? (
                         <div className="mt-2 flex flex-wrap items-center gap-1.5">
