@@ -4,6 +4,7 @@ import { enqueueOutbox } from "@/lib/db/dexie-db";
 import { notifyCompanyOwnersPush } from "@/lib/features/push/company-owners-push-client";
 import { listCategories, listProducts, listStoreInventory } from "@/lib/features/products/api";
 import { firstProductImageUrl } from "@/lib/features/products/product-images";
+import { fallbackCreatorLabel, fetchCreatorLabels } from "@/lib/features/users/creator-labels";
 import { createClient } from "@/lib/supabase/client";
 import type { InventoryRow, InventoryScreenData, InventoryStatus, StockMovementRow } from "./types";
 
@@ -189,6 +190,10 @@ export async function setDefaultStockAlertThreshold(params: {
  * `search` filtre sur le nom du produit côté serveur (jointure interne) : sans
  * cela, chercher un produit imposerait de tout télécharger pour filtrer dans le
  * navigateur.
+ *
+ * TRAÇABILITÉ — `created_by` répond à « qui a fait ce mouvement ». Les noms sont
+ * résolus après coup (20 lignes = 1 requête `profiles`) : il n'existe pas de FK
+ * `stock_movements.created_by → profiles.id`, l'embed PostgREST échouerait.
  */
 export async function listStockMovements(params: {
   storeId: string | null;
@@ -206,7 +211,9 @@ export async function listStockMovements(params: {
 
   let q = supabase
     .from("stock_movements")
-    .select(`id, product_id, type, quantity, notes, created_at, ${productJoin}`)
+    .select(
+      `id, product_id, type, quantity, notes, created_at, created_by, ${productJoin}`,
+    )
     .eq("store_id", params.storeId)
     .order("created_at", { ascending: false })
     .range(params.offset, params.offset + params.limit); // limit + 1 ligne
@@ -221,12 +228,20 @@ export async function listStockMovements(params: {
 
   const raw = data ?? [];
   const hasMore = raw.length > params.limit;
-  const rows: StockMovementRow[] = raw.slice(0, params.limit).map((r) => {
+  const page = raw.slice(0, params.limit);
+
+  const creatorIds = page
+    .map((r) => (r as { created_by?: string | null }).created_by)
+    .filter((id): id is string => Boolean(id));
+  const labelByUser = await fetchCreatorLabels(supabase, creatorIds);
+
+  const rows: StockMovementRow[] = page.map((r) => {
     const productRaw = (r as unknown as { product?: { name?: string } | { name?: string }[] })
       .product;
     const productName = Array.isArray(productRaw)
       ? String(productRaw[0]?.name ?? "")
       : String(productRaw?.name ?? "");
+    const createdBy = ((r as { created_by?: string | null }).created_by ?? null) as string | null;
     return {
       id: String((r as { id: string }).id),
       productId: String((r as { product_id: string }).product_id),
@@ -235,6 +250,10 @@ export async function listStockMovements(params: {
       quantity: toNum((r as { quantity: unknown }).quantity),
       notes: ((r as { notes?: string | null }).notes ?? null) as string | null,
       createdAt: String((r as { created_at: string }).created_at),
+      createdBy,
+      createdByLabel: createdBy
+        ? (labelByUser.get(createdBy) ?? fallbackCreatorLabel(createdBy))
+        : null,
     };
   });
 

@@ -2474,7 +2474,7 @@ function MouvementsTab({
     <div className="space-y-3 pb-6">
       {searchBar}
       <FsHorizontalScroll className="rounded-2xl border border-black/6 bg-fs-card">
-        <table className="w-full min-w-[980px] border-collapse text-left text-[13px] [&_thead_th]:whitespace-nowrap [&_tbody_td]:whitespace-nowrap">
+        <table className="w-full min-w-[1120px] border-collapse text-left text-[13px] [&_thead_th]:whitespace-nowrap [&_tbody_td]:whitespace-nowrap">
           <thead>
             <tr className="border-b border-black/10 bg-fs-surface-low/80 text-[11px] uppercase tracking-wide text-neutral-700">
               <th className="px-3 py-2.5 font-bold">Produit</th>
@@ -2484,6 +2484,7 @@ function MouvementsTab({
               <th className="px-3 py-2.5 font-bold">Conditionnement</th>
               <th className="px-3 py-2.5 text-right font-bold">PU</th>
               <th className="px-3 py-2.5 font-bold">Référence</th>
+              <th className="px-3 py-2.5 font-bold">Par qui</th>
               <th className="px-3 py-2.5 text-center font-bold">Action</th>
             </tr>
           </thead>
@@ -2519,6 +2520,12 @@ function MouvementsTab({
                   <td className="px-3 py-2.5 text-right tabular-nums text-neutral-700">{unitPriceLabel}</td>
                   <td className="max-w-[260px] truncate px-3 py-2.5 text-neutral-700" title={refLabel(m)}>
                     {refLabel(m)}
+                  </td>
+                  <td
+                    className="max-w-[160px] truncate px-3 py-2.5 text-neutral-700"
+                    title={m.createdByLabel ?? undefined}
+                  >
+                    {m.createdByLabel ?? <span className="text-neutral-400">—</span>}
                   </td>
                   <td className="px-3 py-2.5 text-center">
                     {canVoid ? (

@@ -3,41 +3,12 @@
 import { enqueueOutbox } from "@/lib/db/dexie-db";
 import { notifyCompanyOwnersPush } from "@/lib/features/push/company-owners-push-client";
 import { createClient } from "@/lib/supabase/client";
+import { fallbackCreatorLabel, fetchCreatorLabels } from "@/lib/features/users/creator-labels";
 import { localDayEndIso, localDayStartIso } from "@/lib/utils/local-day";
 import type { SaleItem, SaleStatus } from "./types";
 
 const saleSelect =
   "id, company_id, store_id, customer_id, sale_number, status, subtotal, discount, tax, total, created_by, created_at, updated_at, sale_mode, document_type, prescription_number, credit_due_at, store:stores(id, name), customer:customers(id, name, phone)";
-
-function fallbackCreatorLabel(userId: string): string {
-  if (userId.length >= 8) return `Utilisateur ${userId.slice(0, 8)}…`;
-  return "Utilisateur";
-}
-
-async function fetchCreatorLabels(
-  supabase: ReturnType<typeof createClient>,
-  userIds: string[],
-): Promise<Map<string, string>> {
-  const map = new Map<string, string>();
-  const uniq = [...new Set(userIds)].filter((id) => id && id.length > 0);
-  for (const id of uniq) {
-    map.set(id, fallbackCreatorLabel(id));
-  }
-  if (uniq.length === 0) return map;
-
-  const chunkSize = 120;
-  for (let i = 0; i < uniq.length; i += chunkSize) {
-    const chunk = uniq.slice(i, i + chunkSize);
-    const { data, error } = await supabase.from("profiles").select("id, full_name").in("id", chunk);
-    if (error) throw error;
-    for (const row of data ?? []) {
-      const r = row as { id: string; full_name: string | null };
-      const fn = r.full_name?.trim();
-      map.set(r.id, fn && fn.length > 0 ? fn : fallbackCreatorLabel(r.id));
-    }
-  }
-  return map;
-}
 
 export async function listSales(params: {
   companyId: string;

@@ -1,6 +1,7 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
+import { fallbackCreatorLabel, fetchCreatorLabels } from "@/lib/features/users/creator-labels";
 import { firstProductImageUrlFromNestedRows } from "@/lib/features/products/product-images";
 import { mapSupabaseError } from "@/lib/supabase/map-error";
 import type {
@@ -17,35 +18,7 @@ const invSelect =
   "company_id, product_id, quantity, avg_unit_cost, stock_min_warehouse, updated_at, product:products(id, name, sku, unit, purchase_price, sale_price, stock_min, product_images(id, url, position))";
 
 const movSelect =
-  "id, company_id, product_id, movement_kind, quantity, unit_cost, packaging_type, packs_quantity, reference_type, reference_id, notes, created_at, product:products(id, name, sku)";
-
-function fallbackCreatorLabel(userId: string): string {
-  if (userId.length >= 8) return `Utilisateur ${userId.slice(0, 8)}…`;
-  return "Utilisateur";
-}
-
-async function fetchCreatorLabels(
-  supabase: ReturnType<typeof createClient>,
-  userIds: string[],
-): Promise<Map<string, string>> {
-  const map = new Map<string, string>();
-  const uniq = [...new Set(userIds)].filter((id) => id && id.length > 0);
-  for (const id of uniq) map.set(id, fallbackCreatorLabel(id));
-  if (uniq.length === 0) return map;
-
-  const chunkSize = 120;
-  for (let i = 0; i < uniq.length; i += chunkSize) {
-    const chunk = uniq.slice(i, i + chunkSize);
-    const { data, error } = await supabase.from("profiles").select("id, full_name").in("id", chunk);
-    if (error) throw error;
-    for (const row of data ?? []) {
-      const r = row as { id: string; full_name: string | null };
-      const fn = r.full_name?.trim();
-      map.set(r.id, fn && fn.length > 0 ? fn : fallbackCreatorLabel(r.id));
-    }
-  }
-  return map;
-}
+  "id, company_id, product_id, movement_kind, quantity, unit_cost, packaging_type, packs_quantity, reference_type, reference_id, notes, created_at, created_by, product:products(id, name, sku)";
 
 function toInt(v: unknown): number {
   if (typeof v === "number" && Number.isFinite(v)) return Math.trunc(v);
@@ -81,12 +54,16 @@ function mapStockLine(row: Record<string, unknown>): WarehouseStockLine {
   };
 }
 
-function mapMovement(row: Record<string, unknown>): WarehouseMovement {
+function mapMovement(
+  row: Record<string, unknown>,
+  labelByUser: Map<string, string>,
+): WarehouseMovement {
   const prodRaw = row.product;
   const product = Array.isArray(prodRaw)
     ? (prodRaw[0] as Record<string, unknown> | undefined)
     : (prodRaw as Record<string, unknown> | null);
   const p = product ?? {};
+  const createdBy = row.created_by != null ? String(row.created_by) : null;
   return {
     id: String(row.id),
     productId: String(row.product_id),
@@ -101,6 +78,10 @@ function mapMovement(row: Record<string, unknown>): WarehouseMovement {
     createdAt: row.created_at != null ? String(row.created_at) : null,
     productName: p.name != null ? String(p.name) : null,
     productSku: p.sku != null ? String(p.sku) : null,
+    createdBy,
+    createdByLabel: createdBy
+      ? (labelByUser.get(createdBy) ?? fallbackCreatorLabel(createdBy))
+      : null,
   };
 }
 
@@ -156,7 +137,7 @@ export async function listWarehouseMovements(
   const term = (productSearch ?? "").trim();
   // Recherche par produit : jointure interne pour pouvoir filtrer sur name/sku.
   const select = term
-    ? "id, company_id, product_id, movement_kind, quantity, unit_cost, packaging_type, packs_quantity, reference_type, reference_id, notes, created_at, product:products!inner(id, name, sku)"
+    ? "id, company_id, product_id, movement_kind, quantity, unit_cost, packaging_type, packs_quantity, reference_type, reference_id, notes, created_at, created_by, product:products!inner(id, name, sku)"
     : movSelect;
   let q = supabase.from("warehouse_movements").select(select);
   if (warehouseId) {
@@ -172,7 +153,15 @@ export async function listWarehouseMovements(
     .order("created_at", { ascending: false })
     .limit(limit);
   if (error) throw mapSupabaseError(error);
-  return (data ?? []).map((r) => mapMovement(r as Record<string, unknown>));
+
+  // « Qui a fait quoi » : une seule requête `profiles` pour toute la page.
+  const rows = (data ?? []) as Record<string, unknown>[];
+  const creatorIds = rows
+    .map((r) => (r.created_by != null ? String(r.created_by) : null))
+    .filter((id): id is string => Boolean(id));
+  const labelByUser = await fetchCreatorLabels(supabase, creatorIds);
+
+  return rows.map((r) => mapMovement(r, labelByUser));
 }
 
 export async function warehouseRegisterManualEntry(params: {

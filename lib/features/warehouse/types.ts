@@ -41,6 +41,10 @@ export type WarehouseMovement = {
   createdAt: string | null;
   productName: string | null;
   productSku: string | null;
+  /** Auteur du mouvement — `null` pour les écritures antérieures au suivi. */
+  createdBy: string | null;
+  /** Nom affichable de l'auteur ; `null` si l'auteur n'a pas été enregistré. */
+  createdByLabel: string | null;
 };
 
 export type WarehouseDashboardSummary = {

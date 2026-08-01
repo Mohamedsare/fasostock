@@ -34,6 +34,10 @@ export type StockMovementRow = {
   quantity: number;
   notes: string | null;
   createdAt: string;
+  /** Auteur du mouvement — `null` pour les écritures antérieures au suivi. */
+  createdBy: string | null;
+  /** Nom affichable de l'auteur ; `null` si inconnu (mouvement système / import). */
+  createdByLabel: string | null;
 };
 
 export type InventoryStats = {

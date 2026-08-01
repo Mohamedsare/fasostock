@@ -1020,13 +1020,14 @@ export function InventoryScreen() {
                     )}
                   >
                     <FsHorizontalScroll>
-                      <table className="w-full min-w-[720px] border-collapse text-left text-sm">
+                      <table className="w-full min-w-[860px] border-collapse text-left text-sm">
                         <thead>
                           <tr className="border-b border-black/[0.06] bg-fs-surface-container/80">
                             <th className="px-4 py-3 font-semibold text-fs-text">Date</th>
                             <th className="px-3 py-3 font-semibold text-fs-text">Produit</th>
                             <th className="px-3 py-3 font-semibold text-fs-text">Type</th>
                             <th className="px-3 py-3 text-right font-semibold text-fs-text">Quantité</th>
+                            <th className="px-3 py-3 font-semibold text-fs-text">Par qui</th>
                             <th className="px-4 py-3 font-semibold text-fs-text">Note</th>
                           </tr>
                         </thead>
@@ -1110,6 +1111,16 @@ function MovementTableRow({ row }: { row: StockMovementRow }) {
       <td className="max-w-[200px] px-3 py-2 font-medium text-fs-text">{row.productName || "—"}</td>
       <td className="px-3 py-2 text-neutral-700">{MovementTypeLabel(row.type)}</td>
       <td className={cn("px-3 py-2 text-right font-semibold tabular-nums", qCls)}>{qTxt}</td>
+      <td className="max-w-[160px] px-3 py-2 text-xs text-neutral-700">
+        {row.createdByLabel ? (
+          <span className="block truncate" title={row.createdByLabel}>
+            {row.createdByLabel}
+          </span>
+        ) : (
+          // `created_by` vide : mouvement écrit avant le suivi de l'auteur.
+          <span className="text-neutral-400">—</span>
+        )}
+      </td>
       <td className="max-w-[220px] px-4 py-2 text-xs text-neutral-600">{row.notes ?? "—"}</td>
     </tr>
   );
