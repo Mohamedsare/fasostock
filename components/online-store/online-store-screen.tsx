@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  MdAddPhotoAlternate,
   MdCheckCircle,
   MdContentCopy,
   MdDeliveryDining,
@@ -35,6 +36,7 @@ import {
   saveOnlineStoreSettings,
   setOnlineOrderStatus,
   slugifyStoreName,
+  uploadOnlineStoreCover,
 } from "@/lib/features/online-store/api";
 import {
   ONLINE_DELIVERY_MODE_LABELS,
@@ -173,6 +175,20 @@ export function OnlineStoreScreen() {
     },
     onError: (e) => toast.error(messageFromUnknownError(e)),
   });
+
+  /**
+   * La photo part dès qu'elle est choisie (aperçu immédiat), mais la vitrine n'est
+   * modifiée qu'à l'enregistrement : le commerçant peut encore changer d'avis.
+   */
+  const coverMut = useMutation({
+    mutationFn: (file: File) => uploadOnlineStoreCover(storeId!, file),
+    onSuccess: (url) => {
+      setDraft((d) => ({ ...d, coverUrl: url }));
+      toast.success("Photo ajoutée. Enregistrez pour la publier.");
+    },
+    onError: (e) => toast.error(messageFromUnknownError(e)),
+  });
+  const coverUploading = coverMut.isPending;
 
   const statusMut = useMutation({
     mutationFn: (p: { orderId: string; status: Exclude<OnlineOrderStatus, "completed">; reason?: string }) =>
@@ -529,12 +545,12 @@ export function OnlineStoreScreen() {
                       placeholder="Livraison rapide dans toute la ville"
                     />
                   </Field>
-                  <Field label="Image de couverture (URL)" full>
-                    <input
-                      className={fsInputClass()}
-                      value={draft.coverUrl ?? ""}
-                      onChange={(e) => setDraft((d) => ({ ...d, coverUrl: e.target.value || null }))}
-                      placeholder="https://…"
+                  <Field label="Photo de couverture" full>
+                    <CoverPicker
+                      url={draft.coverUrl}
+                      uploading={coverUploading}
+                      onPick={(file) => coverMut.mutate(file)}
+                      onRemove={() => setDraft((d) => ({ ...d, coverUrl: null }))}
                     />
                   </Field>
                   <Field label="Description" full>
@@ -820,6 +836,82 @@ export function OnlineStoreScreen() {
         busy={statusMut.isPending}
       />
     </FsPage>
+  );
+}
+
+/**
+ * Photo de couverture : aperçu au format réel de la bannière (16/6, comme la
+ * vitrine publique) plutôt qu'un champ URL — le commerçant voit ce que verra son
+ * client. Prise de vue directe possible sur mobile (`capture`).
+ */
+function CoverPicker({
+  url,
+  uploading,
+  onPick,
+  onRemove,
+}: {
+  url: string | null;
+  uploading: boolean;
+  onPick: (file: File) => void;
+  onRemove: () => void;
+}) {
+  const inputId = "online-store-cover-input";
+  return (
+    <div className="space-y-2">
+      <div className="relative aspect-[16/6] w-full overflow-hidden rounded-[4px] border border-black/[0.06] bg-fs-surface-container">
+        {url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={url} alt="Couverture de la boutique" className="h-full w-full object-cover" />
+        ) : (
+          <div className="flex h-full flex-col items-center justify-center gap-1 text-center">
+            <MdAddPhotoAlternate className="h-7 w-7 text-neutral-400" aria-hidden />
+            <p className="text-xs font-semibold text-neutral-600">Aucune photo</p>
+            <p className="px-4 text-[11px] text-neutral-500">
+              Une belle photo de votre boutique ou de vos produits donne confiance.
+            </p>
+          </div>
+        )}
+        {uploading ? (
+          <div className="absolute inset-0 grid place-items-center bg-black/45 text-xs font-bold text-white">
+            Envoi de la photo…
+          </div>
+        ) : null}
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <label
+          htmlFor={inputId}
+          className="cursor-pointer rounded-[4px] border border-black/[0.08] bg-fs-card px-3 py-2 text-xs font-semibold text-neutral-700"
+        >
+          {url ? "Changer la photo" : "Choisir une photo"}
+        </label>
+        <input
+          id={inputId}
+          type="file"
+          accept="image/*"
+          className="sr-only"
+          disabled={uploading}
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            // Réinitialisé pour pouvoir re-choisir le même fichier après un retrait.
+            e.target.value = "";
+            if (file) onPick(file);
+          }}
+        />
+        {url ? (
+          <button
+            type="button"
+            onClick={onRemove}
+            className="rounded-[4px] border border-black/[0.08] px-3 py-2 text-xs font-semibold text-neutral-600"
+          >
+            Retirer
+          </button>
+        ) : null}
+      </div>
+      <p className="text-[11px] text-neutral-500">
+        Format paysage conseillé. La photo est automatiquement allégée avant l&apos;envoi.
+      </p>
+    </div>
   );
 }
 
