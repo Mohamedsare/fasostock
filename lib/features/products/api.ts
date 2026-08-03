@@ -2,7 +2,9 @@
 
 import { enqueueOutbox } from "@/lib/db/dexie-db";
 import { createClient } from "@/lib/supabase/client";
+import { compressImageForUpload } from "@/lib/utils/image-compress";
 import { safeImageExtension } from "@/lib/utils/image-file";
+import { FULL_SUFFIX, THUMB_SUFFIX } from "@/lib/utils/product-thumb-url";
 import type {
   ProductBrand,
   ProductCategory,
@@ -311,10 +313,38 @@ export async function addProductImage(productId: string, file: File): Promise<vo
     throw new Error("Hors ligne : les images seront disponibles après reconnexion.");
   }
   const supabase = createClient();
-  const ext = safeImageExtension(file.name);
-  const path = `${productId}/${Date.now()}.${ext}`;
-  const { error: upErr } = await supabase.storage.from(PRODUCT_IMAGES_BUCKET).upload(path, file, {
-    contentType: file.type || "image/jpeg",
+  // Une photo de téléphone (3–8 Mo) pour une miniature de 48 px : on la réduit
+  // avant l'envoi. Repli sur l'original si la compression n'aboutit pas.
+  const optimized = await compressImageForUpload(file, "product");
+  const ext = safeImageExtension(optimized.name);
+  const stamp = Date.now();
+
+  // Vignette 256 px envoyée EN PREMIER : le suffixe `-f` de l'image principale
+  // atteste de son existence (cf. `productThumbUrl`), il ne doit donc être écrit
+  // qu'une fois la vignette réellement en place. Si quoi que ce soit échoue ici,
+  // on retombe sur un nom sans marqueur et l'image principale est servie telle
+  // quelle — dégradé, jamais cassé.
+  let path = `${productId}/${stamp}.${ext}`;
+  try {
+    const thumb = await compressImageForUpload(file, "thumbnail");
+    const thumbExt = safeImageExtension(thumb.name);
+    // La dérivation d'URL ne change que le suffixe : les deux fichiers doivent
+    // partager la même extension.
+    if (thumbExt === ext) {
+      const { error: thumbErr } = await supabase.storage
+        .from(PRODUCT_IMAGES_BUCKET)
+        .upload(`${productId}/${stamp}${THUMB_SUFFIX}.${thumbExt}`, thumb, {
+          contentType: thumb.type || "image/webp",
+          upsert: false,
+        });
+      if (!thumbErr) path = `${productId}/${stamp}${FULL_SUFFIX}.${ext}`;
+    }
+  } catch {
+    /* vignette impossible : on continue sans, l'affichage reste correct */
+  }
+
+  const { error: upErr } = await supabase.storage.from(PRODUCT_IMAGES_BUCKET).upload(path, optimized, {
+    contentType: optimized.type || "image/jpeg",
     upsert: false,
   });
   if (upErr) throw upErr;

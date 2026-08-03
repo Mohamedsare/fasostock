@@ -30,6 +30,7 @@ import { createClient } from "@/lib/supabase/client";
 import { createPublicOnlineOrder } from "@/lib/features/online-store/public-api";
 import { onlineOrderTrackPath } from "@/lib/config/routes";
 import { formatUnknownErrorMessage } from "@/lib/utils/format-unknown-error";
+import { productThumbUrl } from "@/lib/utils/product-thumb-url";
 import type {
   OnlineDeliveryMode,
   OnlinePaymentMethod,
@@ -387,7 +388,7 @@ export function Storefront({
                   <div className="shop-card__media">
                     {p.imageUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={p.imageUrl} alt={p.name} loading="lazy" decoding="async" />
+                      <img src={productThumbUrl(p.imageUrl)!} alt={p.name} loading="lazy" decoding="async" />
                     ) : (
                       <span className="shop-card__noimage" aria-hidden>
                         {p.name.slice(0, 2).toUpperCase()}

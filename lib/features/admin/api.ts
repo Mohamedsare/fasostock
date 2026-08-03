@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/client";
 import { mapSupabaseError } from "@/lib/supabase/map-error";
+import { compressImageForUpload } from "@/lib/utils/image-compress";
 import {
   localDateFromIso,
   localDayEndIso,
@@ -623,10 +624,13 @@ const LANDING_IMAGES_BUCKET = "landing-images";
  */
 export async function adminUploadLandingImage(file: File, prefix = "general"): Promise<string> {
   const supabase = createClient();
-  const ext = file.name.includes(".") ? file.name.split(".").pop() || "jpg" : "jpg";
+  // Les vidéos (bannière hero) ne sont pas des images : `compressImageForUpload`
+  // les renvoie telles quelles, sans jamais les ré-encoder.
+  const optimized = await compressImageForUpload(file, "cover");
+  const ext = optimized.name.includes(".") ? optimized.name.split(".").pop() || "jpg" : "jpg";
   const path = `${prefix}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-  const { error: upErr } = await supabase.storage.from(LANDING_IMAGES_BUCKET).upload(path, file, {
-    contentType: file.type || "image/jpeg",
+  const { error: upErr } = await supabase.storage.from(LANDING_IMAGES_BUCKET).upload(path, optimized, {
+    contentType: optimized.type || "image/jpeg",
     upsert: false,
   });
   if (upErr) throw mapSupabaseError(upErr);

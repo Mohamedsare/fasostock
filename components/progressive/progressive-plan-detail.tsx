@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { productThumbUrl } from "@/lib/utils/product-thumb-url";
 import { useQuery } from "@tanstack/react-query";
 import {
   MdAddCard,
@@ -312,7 +313,7 @@ export function ProgressivePlanDetail({
                           {e.imageUrl ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img
-                              src={e.imageUrl}
+                              src={productThumbUrl(e.imageUrl)!}
                               alt=""
                               className="h-full w-full object-cover"
                             />

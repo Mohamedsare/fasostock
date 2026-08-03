@@ -1,6 +1,7 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
+import { compressImageForUpload } from "@/lib/utils/image-compress";
 import { safeImageExtension } from "@/lib/utils/image-file";
 import type { Store } from "@/lib/features/stores/types";
 
@@ -116,10 +117,11 @@ export async function uploadStoreLogo(
   file: File,
 ): Promise<string> {
   const supabase = createClient();
-  const ext = safeImageExtension(file.name);
+  const optimized = await compressImageForUpload(file, "logo");
+  const ext = safeImageExtension(optimized.name);
   const path = `${storeId}/${Date.now()}.${ext}`;
-  const { error } = await supabase.storage.from("store-logos").upload(path, file, {
-    contentType: file.type || "image/jpeg",
+  const { error } = await supabase.storage.from("store-logos").upload(path, optimized, {
+    contentType: optimized.type || "image/jpeg",
     upsert: false,
   });
   if (error) throw error;

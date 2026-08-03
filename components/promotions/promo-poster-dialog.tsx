@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { productThumbUrl } from "@/lib/utils/product-thumb-url";
 import { MdAutoAwesome, MdClose, MdDownload, MdImage } from "react-icons/md";
 import { applyPromoPercent } from "@/lib/features/promotions/promo-math";
 import {
@@ -213,7 +214,7 @@ export function PromoPosterDialog({
                       ) : (
                         <div className="flex h-full w-full flex-col items-center justify-center gap-2 p-3 text-center">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={it.imageUrl} alt="" className="h-16 w-16 rounded-sm object-cover opacity-70" />
+                          <img src={productThumbUrl(it.imageUrl)!} alt="" className="h-16 w-16 rounded-sm object-cover opacity-70" />
                           <span className="text-xs font-semibold text-neutral-600">{it.name}</span>
                           <span className="text-[11px] text-neutral-400">
                             {formatCurrency(it.oldPrice)} → {formatCurrency(it.newPrice)}

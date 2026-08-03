@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/client";
 import { mapSupabaseError } from "@/lib/supabase/map-error";
+import { compressImageForUpload } from "@/lib/utils/image-compress";
 import { safeImageExtension } from "@/lib/utils/image-file";
 import type {
   OnlineOrder,
@@ -35,41 +36,6 @@ export function slugifyStoreName(name: string): string {
 
 /** Taille maximale acceptée avant redimensionnement (garde-fou mémoire mobile). */
 const COVER_MAX_INPUT_BYTES = 12 * 1024 * 1024;
-/** Largeur cible de la bannière : au-delà, on n'y gagne rien à l'écran. */
-const COVER_MAX_WIDTH = 1600;
-
-/**
- * Réduit une photo de couverture avant envoi. Une photo prise au téléphone pèse
- * 3 à 8 Mo ; la renvoyer telle quelle coûterait cher au commerçant à l'upload et
- * à chaque client au chargement de la vitrine. On la ramène à 1600 px de large
- * en JPEG. En cas d'échec (format exotique, navigateur ancien), on renvoie le
- * fichier d'origine plutôt que de bloquer.
- */
-async function shrinkCoverImage(file: File): Promise<File> {
-  if (typeof createImageBitmap !== "function" || file.type === "image/svg+xml") return file;
-  try {
-    const bitmap = await createImageBitmap(file);
-    if (bitmap.width <= COVER_MAX_WIDTH && file.size <= 600 * 1024) {
-      bitmap.close?.();
-      return file;
-    }
-    const scale = Math.min(1, COVER_MAX_WIDTH / bitmap.width);
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.round(bitmap.width * scale);
-    canvas.height = Math.round(bitmap.height * scale);
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return file;
-    ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-    bitmap.close?.();
-    const blob = await new Promise<Blob | null>((resolve) =>
-      canvas.toBlob((b) => resolve(b), "image/jpeg", 0.82),
-    );
-    if (!blob || blob.size >= file.size) return file;
-    return new File([blob], "cover.jpg", { type: "image/jpeg" });
-  } catch {
-    return file;
-  }
-}
 
 /**
  * Envoie la photo de couverture de la vitrine et renvoie son URL publique.
@@ -86,7 +52,7 @@ export async function uploadOnlineStoreCover(storeId: string, file: File): Promi
   if (file.size > COVER_MAX_INPUT_BYTES) {
     throw new Error("Cette image est trop lourde (12 Mo maximum).");
   }
-  const optimized = await shrinkCoverImage(file);
+  const optimized = await compressImageForUpload(file, "cover");
   const supabase = createClient();
   const ext = safeImageExtension(optimized.name);
   const path = `${storeId}/cover-${Date.now()}.${ext}`;

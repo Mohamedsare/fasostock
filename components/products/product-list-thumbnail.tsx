@@ -5,6 +5,7 @@ import { MdInventory2 } from "react-icons/md";
 import { firstProductImageUrl as firstProductImageUrlFromLib } from "@/lib/features/products/product-images";
 import type { ProductItem } from "@/lib/features/products/types";
 import { cn } from "@/lib/utils/cn";
+import { productThumbUrl } from "@/lib/utils/product-thumb-url";
 
 export function firstProductImageUrl(p: ProductItem): string | null {
   return firstProductImageUrlFromLib(p);
@@ -34,6 +35,9 @@ export function ProductListThumbnail({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [previewOpen]);
   const showImg = Boolean(imageUrl) && !broken;
+  // Vignette 320 px : elle couvre le cadre 48 px comme l'aperçu 170 px. Les
+  // images envoyées avant les vignettes retombent sur l'URL d'origine.
+  const displayUrl = productThumbUrl(imageUrl);
 
   return (
     <>
@@ -53,7 +57,7 @@ export function ProductListThumbnail({
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={imageUrl!}
+                src={displayUrl!}
                 alt=""
                 className="h-full w-full object-cover"
                 loading="lazy"
@@ -64,7 +68,7 @@ export function ProductListThumbnail({
           ) : (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={imageUrl!}
+              src={displayUrl!}
               alt=""
               className="h-full w-full object-cover"
               loading="lazy"
@@ -94,7 +98,7 @@ export function ProductListThumbnail({
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={imageUrl!}
+              src={displayUrl!}
               alt=""
               className="h-full w-full object-cover"
               loading="lazy"

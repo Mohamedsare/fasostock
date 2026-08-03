@@ -1,6 +1,7 @@
 "use client";
 
 import { FsHorizontalScroll } from "@/components/ui/fs-horizontal-scroll";
+import { productThumbUrl } from "@/lib/utils/product-thumb-url";
 import { fsInputClass } from "@/components/ui/fs-screen-primitives";
 import { createCustomer, listCustomers } from "@/lib/features/customers/api";
 import { customerPhoneError } from "@/lib/features/customers/phone";
@@ -692,7 +693,7 @@ export function WarehouseDispatchDialog({
                                     <div className="flex h-9 w-9 shrink-0 overflow-hidden rounded-lg bg-[#F8F9FA]">
                                       {c.imageUrl ? (
                                         // eslint-disable-next-line @next/next/no-img-element
-                                        <img src={c.imageUrl} alt="" className="h-full w-full object-cover" />
+                                        <img src={productThumbUrl(c.imageUrl)!} alt="" className="h-full w-full object-cover" />
                                       ) : (
                                         <MdInventory2 className="m-auto h-5 w-5 text-[#F97316]/70" aria-hidden />
                                       )}

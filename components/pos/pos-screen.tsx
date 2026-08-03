@@ -1,6 +1,7 @@
 "use client";
 
 import { CustomerFormDialog } from "@/components/customers/customer-form-dialog";
+import { productThumbUrl } from "@/lib/utils/product-thumb-url";
 import { FsHorizontalScroll } from "@/components/ui/fs-horizontal-scroll";
 import { fsInputClass } from "@/components/ui/fs-screen-primitives";
 import { createCustomer, listCustomers } from "@/lib/features/customers/api";
@@ -3498,7 +3499,7 @@ function PosCartPanel({
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[#F8F9FA]">
                     {c.imageUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={c.imageUrl} alt="" className="h-full w-full object-cover" />
+                      <img src={productThumbUrl(c.imageUrl)!} alt="" className="h-full w-full object-cover" />
                     ) : (
                       <MdInventory2 className="h-5 w-5 text-[#F97316]/70" aria-hidden />
                     )}

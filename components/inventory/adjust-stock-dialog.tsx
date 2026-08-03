@@ -1,6 +1,7 @@
 "use client";
 
 import { FsCard, fsInputClass } from "@/components/ui/fs-screen-primitives";
+import { productThumbUrl } from "@/lib/utils/product-thumb-url";
 import { cn } from "@/lib/utils/cn";
 import { useEffect, useMemo, useState } from "react";
 import { MdAddCircleOutline, MdChecklist, MdClose, MdInventory2 } from "react-icons/md";
@@ -106,7 +107,7 @@ export function AdjustStockDialog({
                 {imageUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
-                    src={imageUrl}
+                    src={productThumbUrl(imageUrl)!}
                     alt={productName}
                     className="h-12 w-12 rounded-[10px] object-cover"
                   />
