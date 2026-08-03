@@ -1,5 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { formatUnknownErrorMessage } from "@/lib/utils/format-unknown-error";
+
 import type {
   OnlineDeliveryMode,
   OnlineOrderStatus,
@@ -27,12 +29,33 @@ function str(v: unknown): string | null {
   return s === "" ? null : s;
 }
 
+/**
+ * PostgREST renvoie un **objet** `{ message, code, details, hint }`, pas une `Error`.
+ * Sans cette conversion, un `e instanceof Error` côté écran est faux et le vrai motif
+ * (« Stock insuffisant pour X », « Commande minimum : 5 000 FCFA »…) est remplacé par
+ * un message générique — le client ne sait alors pas quoi corriger.
+ */
+function rpcError(error: unknown): Error {
+  if (error instanceof Error) return error;
+  const message = formatUnknownErrorMessage(error).trim();
+  const code = (error as { code?: string } | null)?.code ?? "";
+
+  // Fonction absente du schéma : la migration n'est pas déployée. Message utile au
+  // commerçant plutôt qu'un jargon PostgREST affiché au client final.
+  if (code === "PGRST202" || message.toLowerCase().includes("could not find the function")) {
+    return new Error(
+      "La commande en ligne n'est pas encore disponible sur cette boutique. Contactez-la directement.",
+    );
+  }
+  return new Error(message || "Erreur inattendue.");
+}
+
 export async function fetchPublicOnlineStore(
   supabase: SupabaseClient,
   slug: string,
 ): Promise<PublicOnlineStore | null> {
   const { data, error } = await supabase.rpc("public_online_store", { p_slug: slug });
-  if (error) throw error;
+  if (error) throw rpcError(error);
   const row = (Array.isArray(data) ? data[0] : data) as Record<string, unknown> | undefined;
   if (!row) return null;
   return {
@@ -74,7 +97,7 @@ export async function fetchPublicCatalog(
     p_limit: limit,
     p_offset: offset,
   });
-  if (error) throw error;
+  if (error) throw rpcError(error);
   return ((data ?? []) as Record<string, unknown>[]).map((r) => ({
     productId: String(r.product_id ?? ""),
     name: String(r.name ?? ""),
@@ -119,7 +142,7 @@ export async function createPublicOnlineOrder(
     })),
     p_source: params.source ?? "catalog",
   });
-  if (error) throw error;
+  if (error) throw rpcError(error);
   const row = (Array.isArray(data) ? data[0] : data) as Record<string, unknown> | undefined;
   if (!row) throw new Error("Commande non enregistrée. Réessayez.");
   return {
@@ -136,7 +159,7 @@ export async function fetchPublicOrderTracking(
   const { data, error } = await supabase.rpc("public_online_order_track", {
     p_token: token,
   });
-  if (error) throw error;
+  if (error) throw rpcError(error);
   const row = (Array.isArray(data) ? data[0] : data) as Record<string, unknown> | undefined;
   if (!row) return null;
   const rawItems = Array.isArray(row.items) ? (row.items as Record<string, unknown>[]) : [];

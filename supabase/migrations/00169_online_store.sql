@@ -559,7 +559,10 @@ BEGIN
   END IF;
 
   v_number := 'W-' || nextval('public.online_order_number_seq');
-  v_token := uuid_generate_v4();
+  -- `gen_random_uuid()` (pg_catalog) et non `uuid_generate_v4()` : cette fonction est
+  -- figée sur `search_path = public`, or uuid-ossp est installé dans le schéma
+  -- `extensions` chez Supabase — l'appel y serait introuvable à l'exécution.
+  v_token := gen_random_uuid();
 
   INSERT INTO public.online_orders (
     company_id, store_id, order_number, public_token, status,

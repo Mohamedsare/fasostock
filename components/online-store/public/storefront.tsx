@@ -29,6 +29,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { createPublicOnlineOrder } from "@/lib/features/online-store/public-api";
 import { onlineOrderTrackPath } from "@/lib/config/routes";
+import { formatUnknownErrorMessage } from "@/lib/utils/format-unknown-error";
 import type {
   OnlineDeliveryMode,
   OnlinePaymentMethod,
@@ -218,10 +219,19 @@ export function Storefront({
       setConfirmed({ orderNumber: res.orderNumber, token: res.publicToken, total: res.total });
       setStep("done");
     } catch (e) {
+      /*
+        Le serveur renvoie des motifs actionnables (« Stock insuffisant pour X »,
+        « Commande minimum : … », « Cette boutique ne fait pas de livraison ») : les
+        remplacer par un message générique laisse le client sans solution. On ne
+        retombe sur le message réseau que si le navigateur est réellement hors ligne
+        ou si l'erreur est vide.
+      */
+      const detail = formatUnknownErrorMessage(e).trim();
+      const offline = typeof navigator !== "undefined" && navigator.onLine === false;
       setOrderError(
-        e instanceof Error && e.message
-          ? e.message
-          : "La commande n'est pas partie. Vérifiez votre connexion et réessayez.",
+        offline
+          ? "Vous semblez hors connexion. Votre panier est gardé : réessayez dès que le réseau revient."
+          : detail || "La commande n'est pas partie. Réessayez dans un instant.",
       );
     } finally {
       setSending(false);
@@ -229,12 +239,15 @@ export function Storefront({
   }
 
   const phoneDigits = phone.replace(/[^0-9]/g, "");
+  /** La boutique n'accepte ni livraison ni retrait : aucune commande possible. */
+  const noReceptionMode = !shop.deliveryEnabled && !shop.pickupEnabled;
   const canOrder =
     name.trim().length >= 2 &&
     phoneDigits.length >= 8 &&
     (mode === "pickup" || address.trim().length >= 4) &&
     lines.length > 0 &&
-    !belowMinimum;
+    !belowMinimum &&
+    !noReceptionMode;
 
   const whatsappHref = shop.whatsappPhone
     ? `https://wa.me/${shop.whatsappPhone.replace(/[^0-9]/g, "")}`
@@ -588,9 +601,22 @@ export function Storefront({
                 <em>{shop.address ?? "En boutique"}</em>
               </button>
             </div>
-          ) : null}
+          ) : (
+            /*
+              Un seul mode possible : on le dit, au lieu de laisser deviner. Et si la
+              boutique n'a activé NI livraison NI retrait, on le signale ici plutôt
+              que d'échouer à l'envoi sur un motif incompréhensible.
+            */
+            <p className={noReceptionMode ? "shop-warn shop-warn--err" : "shop-sheet__lead"}>
+              {noReceptionMode
+                ? "Cette boutique n'a pas encore indiqué comment vous remettre la commande. Contactez-la directement."
+                : mode === "delivery"
+                  ? `Livraison à domicile${shop.deliveryFee > 0 ? ` · ${fcfa(shop.deliveryFee)}` : " · offerte"}.`
+                  : `À retirer sur place${shop.address ? ` · ${shop.address}` : ""}.`}
+            </p>
+          )}
 
-          {mode === "delivery" ? (
+          {mode === "delivery" && !noReceptionMode ? (
             <label className="shop-field">
               <span>Où livrer ?</span>
               <input
