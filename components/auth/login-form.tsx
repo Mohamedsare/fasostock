@@ -15,11 +15,33 @@ import { fireAndForgetCompanyOwnersPush } from "@/lib/features/push/company-owne
 import { reportHandledClientError } from "@/lib/monitoring/remote-error-logger";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils/cn";
-import { AlertCircle, ArrowLeft } from "lucide-react";
+import { AlertCircle, ArrowLeft, Check, ShieldCheck } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type ClipboardEvent, type DragEvent, type FormEvent } from "react";
+
+/** Email mémorisé si — et seulement si — l'utilisateur coche la case.
+ *  Le mot de passe n'est JAMAIS enregistré. */
+const REMEMBER_EMAIL_KEY = "fs.login.remembered_email";
+
+function readRememberedEmail(): string | null {
+  try {
+    const v = window.localStorage.getItem(REMEMBER_EMAIL_KEY)?.trim();
+    return v ? v : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeRememberedEmail(email: string | null) {
+  try {
+    if (email) window.localStorage.setItem(REMEMBER_EMAIL_KEY, email);
+    else window.localStorage.removeItem(REMEMBER_EMAIL_KEY);
+  } catch {
+    /* mode privé / stockage indisponible : on ignore */
+  }
+}
 
 function loginRuntimeErrorToMessage(err: unknown): string {
   if (typeof navigator !== "undefined" && navigator.onLine === false) {
@@ -62,6 +84,21 @@ export function LoginForm() {
   const [loadingLabel, setLoadingLabel] = useState("Connexion…");
   const [isLocked, setIsLocked] = useState(false);
   const [lockedEmail, setLockedEmail] = useState("");
+  // Décoché par défaut : rien n'est retenu tant que l'utilisateur ne le demande pas.
+  const [rememberEmail, setRememberEmail] = useState(false);
+
+  // Pré-remplissage uniquement si l'utilisateur l'a explicitement demandé
+  // lors d'une connexion précédente (email seul, jamais le mot de passe).
+  useEffect(() => {
+    const saved = readRememberedEmail();
+    if (!saved) return;
+    setRememberEmail(true);
+    setEmail((current) => (current ? current : saved));
+  }, []);
+
+  function blockPasswordCopy(e: ClipboardEvent<HTMLInputElement> | DragEvent<HTMLInputElement>) {
+    e.preventDefault();
+  }
 
   const hasEnv =
     typeof process.env.NEXT_PUBLIC_SUPABASE_URL === "string" &&
@@ -136,6 +173,7 @@ export function LoginForm() {
       }
 
       await resetLoginAttempts(supabase);
+      writeRememberedEmail(rememberEmail ? emailTrim : null);
 
       try {
         const pendingDone = await completePendingRegistration(supabase);
@@ -313,7 +351,7 @@ export function LoginForm() {
             </p>
           ) : null}
 
-          <form onSubmit={checkLockAndSubmit}>
+          <form onSubmit={checkLockAndSubmit} autoComplete="off">
             {error ? (
               <div
                 className="mb-4 flex gap-3 rounded-lg border border-red-200 bg-red-50 px-3 py-3 text-sm text-red-950"
@@ -331,11 +369,15 @@ export function LoginForm() {
               id="login-email"
               type="email"
               name="email"
-              autoComplete="email"
+              // Pas d'auto-remplissage navigateur : c'est la case « Se souvenir
+              // de mon email » qui décide, et elle est décochée par défaut.
+              autoComplete="off"
+              data-1p-ignore
+              data-lpignore="true"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className={authSimpleFieldClass}
+              className={cn(authSimpleFieldClass, "fs-auth-field")}
               placeholder="Email"
             />
 
@@ -346,13 +388,56 @@ export function LoginForm() {
               id="login-password"
               type="password"
               name="password"
-              autoComplete="current-password"
+              // « new-password » empêche le remplissage automatique du mot de
+              // passe : personne ne doit pouvoir se connecter à votre place.
+              autoComplete="new-password"
+              data-1p-ignore
+              data-lpignore="true"
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className={cn(authSimpleFieldClass, "mt-3")}
+              onCopy={blockPasswordCopy}
+              onCut={blockPasswordCopy}
+              onDragStart={blockPasswordCopy}
+              onDrop={blockPasswordCopy}
+              onContextMenu={(e) => e.preventDefault()}
+              spellCheck={false}
+              className={cn(authSimpleFieldClass, "fs-auth-field fs-no-copy mt-3")}
               placeholder="Mot de passe"
             />
+
+            <label
+              htmlFor="login-remember"
+              className="group mt-3 flex cursor-pointer select-none items-start gap-3 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2.5 transition-all duration-200 hover:border-fs-accent/40 hover:bg-fs-accent/4 has-checked:border-fs-accent/50 has-checked:bg-fs-accent/6 has-focus-visible:ring-2 has-focus-visible:ring-fs-accent/35"
+            >
+              <input
+                id="login-remember"
+                type="checkbox"
+                name="remember"
+                className="peer sr-only"
+                checked={rememberEmail}
+                onChange={(e) => {
+                  const next = e.target.checked;
+                  setRememberEmail(next);
+                  if (!next) writeRememberedEmail(null);
+                }}
+              />
+              <span
+                aria-hidden
+                className="mt-px flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-2 border-neutral-300 bg-white transition-all duration-200 peer-checked:border-fs-accent peer-checked:bg-fs-accent peer-checked:[&>svg]:scale-100 peer-checked:[&>svg]:opacity-100"
+              >
+                <Check className="h-3.5 w-3.5 scale-50 text-white opacity-0 transition-all duration-200" strokeWidth={3.5} />
+              </span>
+              <span className="min-w-0">
+                <span className="block text-sm font-semibold text-neutral-800">
+                  Se souvenir de mon email
+                </span>
+                <span className="mt-0.5 flex items-start gap-1.5 text-xs leading-snug text-neutral-500">
+                  <ShieldCheck className="mt-px h-3.5 w-3.5 shrink-0 text-emerald-600" aria-hidden />
+                  Le mot de passe n’est jamais enregistré : il faudra toujours le saisir.
+                </span>
+              </span>
+            </label>
 
             <button
               type="submit"

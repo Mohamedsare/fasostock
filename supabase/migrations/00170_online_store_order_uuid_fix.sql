@@ -212,4 +212,111 @@ GRANT EXECUTE ON FUNCTION public.public_online_order_create(
   text, text, text, text, text, text, text, jsonb, text
 ) TO anon, authenticated;
 
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Durcissement au passage : l'encaissement d'une commande appelle
+-- `create_sale_with_stock`, qui existe en plusieurs surcharges (7, 9 et 10
+-- paramètres selon les migrations 00023 → 00072). Le dernier argument est
+-- désormais typé `NULL::uuid` pour que la surcharge visée soit choisie sans
+-- ambiguïté, quel que soit le catalogue déployé.
+-- ─────────────────────────────────────────────────────────────────────────────
+CREATE OR REPLACE FUNCTION public.online_order_convert_to_sale(
+  p_order_id uuid,
+  p_payment_method text DEFAULT 'cash'
+)
+RETURNS uuid
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_order record;
+  v_customer_id uuid;
+  v_sale_id uuid;
+  v_items jsonb;
+  v_pay text := COALESCE(NULLIF(btrim(p_payment_method), ''), 'cash');
+BEGIN
+  SELECT * INTO v_order FROM public.online_orders WHERE id = p_order_id FOR UPDATE;
+  IF v_order.id IS NULL THEN RAISE EXCEPTION 'Commande introuvable.'; END IF;
+  IF NOT public.can_manage_online_store(v_order.company_id) THEN
+    RAISE EXCEPTION 'Droit insuffisant pour encaisser une commande en ligne.';
+  END IF;
+  IF v_order.sale_id IS NOT NULL THEN
+    RAISE EXCEPTION 'Commande déjà encaissée (vente existante).';
+  END IF;
+  IF v_order.status = 'canceled' THEN
+    RAISE EXCEPTION 'Commande annulée : impossible de l''encaisser.';
+  END IF;
+  IF v_pay NOT IN ('cash', 'mobile_money', 'card', 'other') THEN
+    RAISE EXCEPTION 'Moyen de paiement invalide.';
+  END IF;
+
+  -- Client : réutilise la fiche existante au même numéro, sinon la crée.
+  SELECT id INTO v_customer_id
+  FROM public.customers
+  WHERE company_id = v_order.company_id
+    AND regexp_replace(COALESCE(phone, ''), '[^0-9]', '', 'g')
+        = regexp_replace(v_order.customer_phone, '[^0-9]', '', 'g')
+    AND regexp_replace(COALESCE(phone, ''), '[^0-9]', '', 'g') <> ''
+  ORDER BY created_at ASC
+  LIMIT 1;
+
+  IF v_customer_id IS NULL THEN
+    INSERT INTO public.customers (company_id, name, phone, address, notes)
+    VALUES (
+      v_order.company_id, v_order.customer_name, v_order.customer_phone,
+      v_order.customer_address, 'Client boutique en ligne'
+    )
+    RETURNING id INTO v_customer_id;
+  END IF;
+
+  SELECT jsonb_agg(jsonb_build_object(
+    'product_id', i.product_id,
+    'quantity', i.quantity,
+    'unit_price', i.unit_price,
+    'discount', 0
+  ))
+  INTO v_items
+  FROM public.online_order_items i
+  WHERE i.order_id = p_order_id AND i.product_id IS NOT NULL;
+
+  IF v_items IS NULL OR jsonb_array_length(v_items) = 0 THEN
+    RAISE EXCEPTION 'Aucun article valide dans cette commande.';
+  END IF;
+
+  v_sale_id := public.create_sale_with_stock(
+    v_order.company_id,
+    v_order.store_id,
+    v_customer_id,
+    auth.uid(),
+    v_items,
+    jsonb_build_array(jsonb_build_object(
+      'method', v_pay,
+      'amount', v_order.total,
+      'reference', v_order.order_number
+    )),
+    -- Les frais de livraison ne sont pas un article de stock : la vente porte le
+    -- montant des produits, la livraison reste tracée sur la commande.
+    0,
+    'quick_pos'::public.sale_mode,
+    'thermal_receipt'::public.document_type,
+    -- Typé explicitement : `create_sale_with_stock` existe en plusieurs surcharges
+    -- (7, 9 et 10 paramètres selon les migrations 00023 → 00072). Un NULL non typé
+    -- laisserait la résolution de surcharge au hasard du catalogue déployé.
+    NULL::uuid
+  );
+
+  UPDATE public.online_orders
+  SET status = 'completed',
+      sale_id = v_sale_id,
+      customer_id = v_customer_id,
+      handled_by = auth.uid(),
+      handled_at = now(),
+      updated_at = now()
+  WHERE id = p_order_id;
+
+  RETURN v_sale_id;
+END;
+$$;
+GRANT EXECUTE ON FUNCTION public.online_order_convert_to_sale(uuid, text) TO authenticated;
+
 NOTIFY pgrst, 'reload schema';

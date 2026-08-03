@@ -971,3 +971,25 @@ html.dark .fs-owner-dashboard {
   }
 }
 
+
+/* ------------------------------------------------------------------ */
+/* Champs d'authentification : neutraliser la teinte bleue de l'auto-  */
+/* remplissage navigateur (Chrome/Safari) pour garder le style FasoStock. */
+/* ------------------------------------------------------------------ */
+.fs-auth-field:-webkit-autofill,
+.fs-auth-field:-webkit-autofill:hover,
+.fs-auth-field:-webkit-autofill:focus,
+.fs-auth-field:-webkit-autofill:active {
+  -webkit-text-fill-color: #171717;
+  -webkit-box-shadow: 0 0 0 1000px #f5f5f5 inset;
+  box-shadow: 0 0 0 1000px #f5f5f5 inset;
+  caret-color: #171717;
+  transition: background-color 9999s ease-in-out 0s;
+}
+
+/* Mot de passe : rendre la copie/glisser impossible (défense visuelle,
+   le blocage réel se fait en JS sur onCopy/onCut/onDragStart). */
+.fs-no-copy {
+  -webkit-user-select: none;
+  user-select: none;
+}

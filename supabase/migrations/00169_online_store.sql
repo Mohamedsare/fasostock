@@ -971,7 +971,10 @@ BEGIN
     0,
     'quick_pos'::public.sale_mode,
     'thermal_receipt'::public.document_type,
-    NULL
+    -- Typé explicitement : `create_sale_with_stock` existe en plusieurs surcharges
+    -- (7, 9 et 10 paramètres selon les migrations 00023 → 00072). Un NULL non typé
+    -- laisserait la résolution de surcharge au hasard du catalogue déployé.
+    NULL::uuid
   );
 
   UPDATE public.online_orders
