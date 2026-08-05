@@ -21,6 +21,12 @@ import { salesToSpreadsheetMatrix } from "@/lib/features/sales/csv";
 import { downloadProSpreadsheet } from "@/lib/utils/spreadsheet-export-pro";
 import { saleSellerLabel, saleStoreLabel } from "@/lib/features/sales/sale-display";
 import {
+  SETTLEMENT_EPS,
+  SETTLEMENT_LABELS,
+  saleSettlement,
+  settlementPillClass,
+} from "@/lib/features/sales/sale-settlement";
+import {
   SALES_PERIOD_PRESETS,
   groupSalesBySeller,
   matchSalesPeriodPreset,
@@ -143,6 +149,46 @@ function DocumentTypeChip({ sale }: { sale: SaleItem }) {
         <MdReceiptLong className="h-[14px] w-[14px] shrink-0" aria-hidden />
       )}
       {a4 ? "A4" : "Thermique"}
+    </span>
+  );
+}
+
+/**
+ * Acompte encaissé au moment de la vente. N'a de sens que sur une vente à crédit :
+ * une vente réglée intégralement en caisse affiche « — ».
+ */
+function SaleDownPaymentCell({ sale }: { sale: SaleItem }) {
+  const s = saleSettlement(sale);
+  if (!s.hasCredit || s.downPayment <= SETTLEMENT_EPS) {
+    return <span className="text-neutral-400">—</span>;
+  }
+  return (
+    <span
+      className="font-semibold text-amber-700 dark:text-amber-300"
+      title="Encaissé au moment de la vente — le reste est à crédit"
+    >
+      {formatCurrency(s.downPayment)}
+    </span>
+  );
+}
+
+/** Payé · Payé partiellement · À crédit (aucun encaissement). */
+function SaleSettlementChip({ sale }: { sale: SaleItem }) {
+  const s = saleSettlement(sale);
+  if (s.kind === "void") return <span className="text-neutral-400">—</span>;
+  return (
+    <span
+      className={cn(
+        "inline-block whitespace-nowrap rounded-lg px-2.5 py-1 text-xs font-semibold",
+        settlementPillClass(s.kind),
+      )}
+      title={
+        s.kind === "paid"
+          ? "Intégralement encaissée"
+          : `Reste dû ${formatCurrency(s.remaining)}`
+      }
+    >
+      {SETTLEMENT_LABELS[s.kind]}
     </span>
   );
 }
@@ -903,6 +949,15 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
                     <th className="px-3 py-2.5">{isRestaurant ? "Commande par" : "Vente par"}</th>
                     <th className="px-3 py-2.5">Client</th>
                     <th className="px-3 py-2.5 text-right">Total</th>
+                    <th
+                      className="px-3 py-2.5 text-right"
+                      title="Encaissé au moment de la vente sur une vente à crédit"
+                    >
+                      Acompte
+                    </th>
+                    <th className="px-3 py-2.5" title="Payé, payé partiellement, ou à crédit">
+                      Règlement
+                    </th>
                     <th className="px-3 py-2.5">Statut</th>
                     <th className="px-3 py-2.5 text-right">Actions</th>
                   </tr>
@@ -930,6 +985,12 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
                       <td className="px-3 py-2">{s.customer?.name ?? "—"}</td>
                       <td className="px-3 py-2 text-right font-semibold">
                         {formatCurrency(s.total)}
+                      </td>
+                      <td className="px-3 py-2 text-right tabular-nums">
+                        <SaleDownPaymentCell sale={s} />
+                      </td>
+                      <td className="px-3 py-2">
+                        <SaleSettlementChip sale={s} />
                       </td>
                       <td className="px-3 py-2">
                         <span
@@ -1384,6 +1445,7 @@ function SaleCard({
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <DocumentTypeChip sale={sale} />
+          <SaleSettlementChip sale={sale} />
           <span
             className={cn(
               "rounded-lg px-2.5 py-1 text-xs font-semibold leading-none",
@@ -1405,8 +1467,21 @@ function SaleCard({
         onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.stopPropagation()}
       >
-        <span className="text-base font-bold text-fs-text">
-          {formatCurrency(sale.total)}
+        <span className="min-w-0">
+          <span className="block text-base font-bold text-fs-text">
+            {formatCurrency(sale.total)}
+          </span>
+          {(() => {
+            const st = saleSettlement(sale);
+            if (!st.hasCredit || st.kind === "void") return null;
+            return (
+              <span className="mt-0.5 block text-[11px] text-neutral-600">
+                {st.downPayment > SETTLEMENT_EPS
+                  ? `Acompte ${formatCurrency(st.downPayment)} · reste ${formatCurrency(st.remaining)}`
+                  : `Aucun acompte · reste ${formatCurrency(st.remaining)}`}
+              </span>
+            );
+          })()}
         </span>
         <span className="ml-auto flex items-center">
           <button

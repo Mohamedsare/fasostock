@@ -20,7 +20,8 @@ export async function listSales(params: {
   const supabase = createClient();
   let q = supabase
     .from("sales")
-    .select(saleSelect)
+    // `sale_payments` : nécessaire à la colonne Acompte / au statut de règlement de la liste.
+    .select(`${saleSelect},sale_payments(id, method, amount, reference, created_at)`)
     .eq("company_id", params.companyId)
     // Les ventes d'engins ont leur propre page (module Vente Engins).
     .eq("sale_kind", "standard")

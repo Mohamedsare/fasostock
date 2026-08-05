@@ -25,4 +25,15 @@ export type SaleItem = {
   prescription_number?: string | null;
   store?: { id: string; name: string } | null;
   customer?: { id: string; name: string; phone: string | null; address?: string | null } | null;
+  /**
+   * Lignes de règlement — renseignées par [listSales] (colonne Acompte / statut de règlement).
+   * `method = 'other'` = solde laissé à crédit, pas d'argent encaissé.
+   */
+  sale_payments?: Array<{
+    id: string;
+    method: string;
+    amount: number;
+    reference: string | null;
+    created_at: string;
+  }>;
 };

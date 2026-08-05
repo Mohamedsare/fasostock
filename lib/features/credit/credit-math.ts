@@ -6,6 +6,7 @@ import {
   parseISO,
   startOfDay,
 } from "date-fns";
+import { saleSettlement } from "@/lib/features/sales/sale-settlement";
 import type {
   CreditPaymentRow,
   CreditLineStatus,
@@ -36,29 +37,16 @@ export function paidTotal(sale: CreditSaleRow): number {
 }
 
 /**
- * Fenêtre (ms) sous laquelle un paiement est considéré comme encaissé *pendant* la vente.
- * Les lignes `sale_payments` de la vente sont insérées dans la même transaction que la vente
- * (écart ≈ 0) : au-delà, c'est un passage en caisse ultérieur = remboursement de crédit.
- */
-const AT_SALE_WINDOW_MS = 10_000;
-
-/**
  * Acompte encaissé **au moment de la vente** (≠ remboursement de crédit).
  * Compte dans « Déjà encaissé » du dossier, mais jamais dans « Crédits remboursés ».
  */
 export function downPaymentTotal(sale: CreditSaleRow): number {
-  const saleAt = Date.parse(sale.created_at);
-  return (sale.sale_payments ?? []).reduce((s, p) => {
-    if (p.method === "other") return s;
-    const gap = Date.parse(p.created_at) - saleAt;
-    if (Number.isFinite(gap) && gap > AT_SALE_WINDOW_MS) return s;
-    return s + Number(p.amount);
-  }, 0);
+  return saleSettlement(sale).downPayment;
 }
 
 /** Remboursements encaissés **après** la vente (recouvrement réel du crédit). */
 export function repaidAfterSaleTotal(sale: CreditSaleRow): number {
-  return Math.max(0, paidTotal(sale) - downPaymentTotal(sale));
+  return saleSettlement(sale).repaidAfterSale;
 }
 
 /**

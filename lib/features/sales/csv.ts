@@ -2,6 +2,7 @@ import type { SaleItem } from "./types";
 import type { ProSheetCell } from "@/lib/utils/spreadsheet-export-pro";
 import { escapeCsv } from "@/lib/utils/csv";
 import { saleSellerLabel, saleStoreLabel } from "./sale-display";
+import { SETTLEMENT_LABELS, saleSettlement } from "./sale-settlement";
 
 const SALES_HEADERS = [
   "numero",
@@ -14,6 +15,9 @@ const SALES_HEADERS = [
   "remise",
   "tva",
   "total",
+  "acompte",
+  "reste_du",
+  "reglement",
 ] as const;
 
 export function salesToSpreadsheetMatrix(
@@ -22,6 +26,7 @@ export function salesToSpreadsheetMatrix(
 ): { headers: string[]; rows: ProSheetCell[][] } {
   const rows: ProSheetCell[][] = sales.map((s) => {
     const date = s.created_at?.slice(0, 19) ?? "";
+    const st = saleSettlement(s);
     return [
       s.sale_number ?? "",
       date,
@@ -33,6 +38,9 @@ export function salesToSpreadsheetMatrix(
       Number(s.discount ?? 0),
       Number(s.tax ?? 0),
       Number(s.total ?? 0),
+      st.hasCredit ? st.downPayment : 0,
+      st.remaining,
+      SETTLEMENT_LABELS[st.kind],
     ];
   });
   return { headers: [...SALES_HEADERS], rows };
