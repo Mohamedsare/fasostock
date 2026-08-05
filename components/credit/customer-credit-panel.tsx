@@ -7,6 +7,7 @@ import {
   CREDIT_STATUS_LABELS,
   creditLineStatus,
   daysOverdue,
+  downPaymentTotal,
   effectiveDueDate,
   paidTotal,
   remainingTotal,
@@ -255,6 +256,14 @@ export function CustomerCreditPanel({
                             <p className="font-bold tabular-nums text-fs-accent">{formatCurrency(rem)}</p>
                           </div>
                         </div>
+                        {downPaymentTotal(s) > CREDIT_AMOUNT_EPS ? (
+                          <p
+                            className="mt-1 text-[11px] text-amber-700 dark:text-amber-300"
+                            title="Encaissé au moment de la vente — ce n'est pas un remboursement de crédit"
+                          >
+                            dont acompte à la vente {formatCurrency(downPaymentTotal(s))}
+                          </p>
+                        ) : null}
                         {rem > CREDIT_AMOUNT_EPS ? (
                           <p className="mt-1.5 text-[11px] text-neutral-600">
                             Échéance : {formatOperationDateTime(effectiveDueDate(s).toISOString())}

@@ -89,36 +89,54 @@ export type CreditRepaymentRow = {
   /** Instant du remboursement (ISO). */
   paidAt: string;
   saleCreatedAt: string;
-  /** Vente créée un jour ANTÉRIEUR à la date consultée (ancien crédit) vs crédit du jour. */
+  /** Vente créée AVANT la période consultée (ancien crédit) vs crédit né dans la période. */
   isOldCredit: boolean;
 };
 
+/** Taille de page PostgREST : au-delà, la réponse est tronquée silencieusement. */
+const PAGE_SIZE = 1000;
+
 /**
- * Remboursements de crédit RÉELS encaissés un jour précis (par DATE DE PAIEMENT).
+ * Remboursements de crédit RÉELS encaissés sur une période (par DATE DE PAIEMENT).
  * = paiements `method ≠ 'other'` effectués APRÈS la création de la vente (> 10 s : exclut le
- * paiement encaissé au moment de la vente, inséré dans la même transaction → écart ≈ 0).
- * Inclut les remboursements d'anciens crédits ET ceux pris & remboursés le même jour.
+ * paiement encaissé au moment de la vente — acompte inséré dans la même transaction, écart ≈ 0 —
+ * qui n'est pas un remboursement de crédit mais apparaît dans le KPI « Déjà encaissé »).
+ * Inclut les remboursements d'anciens crédits ET ceux pris & remboursés dans la période.
  */
-export async function listCreditRepaymentsForDay(params: {
+export async function listCreditRepaymentsForRange(params: {
   companyId: string;
   storeId: string | null;
-  day: string;
+  from: string;
+  to: string;
 }): Promise<CreditRepaymentRow[]> {
   const supabase = createClient();
-  const { data, error } = await supabase
-    .from("sale_payments")
-    .select(
-      "id, amount, method, reference, created_at, sale:sales!inner(id, sale_number, company_id, store_id, status, created_at, customer:customers(id, name, phone))",
-    )
-    .neq("method", "other")
-    .gte("created_at", localDayStartIso(params.day))
-    .lte("created_at", localDayEndIso(params.day))
-    .order("created_at", { ascending: false });
-  if (error) throw error;
+  const startIso = localDayStartIso(params.from);
+  const endIso = localDayEndIso(params.to);
 
-  const dayStr = params.day.slice(0, 10);
+  const rows: Array<Record<string, unknown>> = [];
+  for (let page = 0; ; page += 1) {
+    let q = supabase
+      .from("sale_payments")
+      .select(
+        "id, amount, method, reference, created_at, sale:sales!inner(id, sale_number, company_id, store_id, status, created_at, customer:customers(id, name, phone))",
+      )
+      .neq("method", "other")
+      .eq("sale.company_id", params.companyId)
+      .eq("sale.status", "completed")
+      .gte("created_at", startIso)
+      .lte("created_at", endIso)
+      .order("created_at", { ascending: false })
+      .range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1);
+    if (params.storeId) q = q.eq("sale.store_id", params.storeId);
+    const { data, error } = await q;
+    if (error) throw error;
+    const batch = (data ?? []) as Array<Record<string, unknown>>;
+    rows.push(...batch);
+    if (batch.length < PAGE_SIZE) break;
+  }
+
   const out: CreditRepaymentRow[] = [];
-  for (const raw of (data ?? []) as Array<Record<string, unknown>>) {
+  for (const raw of rows) {
     const saleRaw = raw.sale;
     const sale = (Array.isArray(saleRaw) ? saleRaw[0] : saleRaw) as
       | {
@@ -159,7 +177,7 @@ export async function listCreditRepaymentsForDay(params: {
       reference: (raw.reference as string | null) ?? null,
       paidAt,
       saleCreatedAt,
-      isOldCredit: saleCreatedAt.slice(0, 10) < dayStr,
+      isOldCredit: saleCreatedAt < startIso,
     });
   }
   return out;
@@ -179,31 +197,39 @@ export type CreditGrantedRow = {
 };
 
 /**
- * Crédits ACCORDÉS un jour précis : ventes complétées créées ce jour dont une partie a été
- * mise à crédit (ligne `sale_payments.method = 'other'`). `creditGranted` = dette née ce jour.
+ * Crédits ACCORDÉS sur une période : ventes complétées créées dans la période dont une partie a
+ * été mise à crédit (ligne `sale_payments.method = 'other'`). `creditGranted` = dette née alors.
  */
-export async function listCreditsGrantedForDay(params: {
+export async function listCreditsGrantedForRange(params: {
   companyId: string;
   storeId: string | null;
-  day: string;
+  from: string;
+  to: string;
 }): Promise<CreditGrantedRow[]> {
   const supabase = createClient();
-  let q = supabase
-    .from("sales")
-    .select(
-      "id, sale_number, created_at, total, store_id, status, company_id, customer:customers(id, name, phone), sale_payments(method, amount)",
-    )
-    .eq("company_id", params.companyId)
-    .eq("status", "completed")
-    .gte("created_at", localDayStartIso(params.day))
-    .lte("created_at", localDayEndIso(params.day))
-    .order("created_at", { ascending: false });
-  if (params.storeId) q = q.eq("store_id", params.storeId);
-  const { data, error } = await q;
-  if (error) throw error;
+  const rows: Array<Record<string, unknown>> = [];
+  for (let page = 0; ; page += 1) {
+    let q = supabase
+      .from("sales")
+      .select(
+        "id, sale_number, created_at, total, store_id, status, company_id, customer:customers(id, name, phone), sale_payments(method, amount)",
+      )
+      .eq("company_id", params.companyId)
+      .eq("status", "completed")
+      .gte("created_at", localDayStartIso(params.from))
+      .lte("created_at", localDayEndIso(params.to))
+      .order("created_at", { ascending: false })
+      .range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1);
+    if (params.storeId) q = q.eq("store_id", params.storeId);
+    const { data, error } = await q;
+    if (error) throw error;
+    const batch = (data ?? []) as Array<Record<string, unknown>>;
+    rows.push(...batch);
+    if (batch.length < PAGE_SIZE) break;
+  }
 
   const out: CreditGrantedRow[] = [];
-  for (const raw of (data ?? []) as Array<Record<string, unknown>>) {
+  for (const raw of rows) {
     const pays = (raw.sale_payments as Array<{ method?: string; amount?: number }> | null) ?? [];
     const creditGranted = pays
       .filter((p) => p.method === "other")

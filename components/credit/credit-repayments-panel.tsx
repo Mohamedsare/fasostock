@@ -2,13 +2,21 @@
 
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { addDays, format, parseISO } from "date-fns";
+import {
+  addDays,
+  differenceInCalendarDays,
+  format,
+  parseISO,
+  startOfMonth,
+  subDays,
+} from "date-fns";
 import { fr } from "date-fns/locale";
 import {
   MdChevronLeft,
   MdChevronRight,
   MdCreditScore,
   MdDownload,
+  MdInfoOutline,
   MdPayments,
   MdRefresh,
   MdSearch,
@@ -16,18 +24,21 @@ import {
 import { FsCard, fsInputClass } from "@/components/ui/fs-screen-primitives";
 import { FsHorizontalScroll } from "@/components/ui/fs-horizontal-scroll";
 import {
-  listCreditRepaymentsForDay,
-  listCreditsGrantedForDay,
+  listCreditRepaymentsForRange,
+  listCreditsGrantedForRange,
 } from "@/lib/features/credit/api";
-import { exportCreditDayXlsx } from "@/lib/features/credit/credit-day-export";
+import { exportCreditRangeXlsx } from "@/lib/features/credit/credit-range-export";
 import { useAppContext } from "@/lib/features/common/app-context";
 import { paymentMethodLabel } from "@/lib/features/receipt/build-receipt-ticket-data";
 import { formatCurrency } from "@/lib/utils/currency";
 import { messageFromUnknownError, toast } from "@/lib/toast";
 import { cn } from "@/lib/utils/cn";
 
+function ymd(d: Date): string {
+  return format(d, "yyyy-MM-dd");
+}
 function todayYmd(): string {
-  return format(new Date(), "yyyy-MM-dd");
+  return ymd(new Date());
 }
 function hhmm(iso: string): string {
   try {
@@ -36,8 +47,39 @@ function hhmm(iso: string): string {
     return "—";
   }
 }
+/** Date courte « 05/08 » pour les listes multi-jours. */
+function ddmm(iso: string): string {
+  try {
+    return format(parseISO(iso), "dd/MM");
+  } catch {
+    return "—";
+  }
+}
 
 type SubView = "granted" | "repaid";
+type RangePreset = "today" | "7d" | "30d" | "month" | "custom";
+
+const PRESETS: Array<{ key: Exclude<RangePreset, "custom">; label: string }> = [
+  { key: "today", label: "Aujourd'hui" },
+  { key: "7d", label: "7 jours" },
+  { key: "30d", label: "30 jours" },
+  { key: "month", label: "Ce mois" },
+];
+
+function presetRange(preset: Exclude<RangePreset, "custom">): { from: string; to: string } {
+  const now = new Date();
+  const to = ymd(now);
+  switch (preset) {
+    case "today":
+      return { from: to, to };
+    case "7d":
+      return { from: ymd(subDays(now, 6)), to };
+    case "30d":
+      return { from: ymd(subDays(now, 29)), to };
+    case "month":
+      return { from: ymd(startOfMonth(now)), to };
+  }
+}
 
 export function CreditRepaymentsPanel({
   companyId,
@@ -55,41 +97,51 @@ export function CreditRepaymentsPanel({
     : "Toutes boutiques";
 
   const today = todayYmd();
-  const [day, setDay] = useState<string>(() => today);
+  const [from, setFrom] = useState<string>(() => today);
+  const [to, setTo] = useState<string>(() => today);
+  const [preset, setPreset] = useState<RangePreset>("today");
   const [search, setSearch] = useState("");
-  const [sub, setSub] = useState<SubView>("granted");
+  const [sub, setSub] = useState<SubView>("repaid");
   const [exporting, setExporting] = useState(false);
 
   const grantedQ = useQuery({
-    queryKey: ["credit-granted", companyId, storeId, day],
-    queryFn: () => listCreditsGrantedForDay({ companyId, storeId, day }),
-    enabled: !!companyId && !!day,
+    queryKey: ["credit-granted", companyId, storeId, from, to],
+    queryFn: () => listCreditsGrantedForRange({ companyId, storeId, from, to }),
+    enabled: !!companyId && !!from && !!to,
     staleTime: 15_000,
   });
   const repaidQ = useQuery({
-    queryKey: ["credit-repayments", companyId, storeId, day],
-    queryFn: () => listCreditRepaymentsForDay({ companyId, storeId, day }),
-    enabled: !!companyId && !!day,
+    queryKey: ["credit-repayments", companyId, storeId, from, to],
+    queryFn: () => listCreditRepaymentsForRange({ companyId, storeId, from, to }),
+    enabled: !!companyId && !!from && !!to,
     staleTime: 15_000,
   });
 
   const grantedRows = useMemo(() => grantedQ.data ?? [], [grantedQ.data]);
   const repaidRows = useMemo(() => repaidQ.data ?? [], [repaidQ.data]);
 
-  const grantedTotal = useMemo(
-    () => grantedRows.reduce((s, r) => s + r.creditGranted, 0),
-    [grantedRows],
-  );
+  const grantedTotals = useMemo(() => {
+    let credit = 0;
+    let downPayments = 0;
+    for (const r of grantedRows) {
+      credit += r.creditGranted;
+      downPayments += r.paidAtSale;
+    }
+    return { credit, downPayments };
+  }, [grantedRows]);
   const repaidTotals = useMemo(() => {
-    let total = 0, old = 0, sameDay = 0;
+    let total = 0,
+      old = 0,
+      sameRange = 0;
     for (const r of repaidRows) {
       total += r.amount;
       if (r.isOldCredit) old += r.amount;
-      else sameDay += r.amount;
+      else sameRange += r.amount;
     }
-    return { total, old, sameDay };
+    return { total, old, sameRange };
   }, [repaidRows]);
-  const netEncours = grantedTotal - repaidTotals.total;
+  const netEncours = grantedTotals.credit - repaidTotals.total;
+  const cashedIn = repaidTotals.total + grantedTotals.downPayments;
 
   const s = search.trim().toLowerCase();
   const num = s.replace(/\s/g, "");
@@ -112,21 +164,45 @@ export function CreditRepaymentsPanel({
     );
   }, [repaidRows, s, num]);
 
-  const dayLabel = (() => {
+  const isSingleDay = from === to;
+  const rangeLabel = (() => {
     try {
-      return format(parseISO(day), "EEEE d MMMM yyyy", { locale: fr });
+      if (isSingleDay) return format(parseISO(from), "EEEE d MMMM yyyy", { locale: fr });
+      return `Du ${format(parseISO(from), "d MMM yyyy", { locale: fr })} au ${format(
+        parseISO(to),
+        "d MMM yyyy",
+        { locale: fr },
+      )}`;
     } catch {
-      return day;
+      return `${from} → ${to}`;
     }
   })();
-  const shiftDay = (n: number) => {
+  const periodWord = isSingleDay ? "ce jour" : "sur la période";
+
+  const applyPreset = (key: Exclude<RangePreset, "custom">) => {
+    const r = presetRange(key);
+    setFrom(r.from);
+    setTo(r.to);
+    setPreset(key);
+  };
+  /** Décale la fenêtre entière d'une longueur de période (navigation jour par jour / semaine…). */
+  const shiftRange = (direction: -1 | 1) => {
     try {
-      setDay(format(addDays(parseISO(day), n), "yyyy-MM-dd"));
+      const f = parseISO(from);
+      const t = parseISO(to);
+      const span = differenceInCalendarDays(t, f) + 1;
+      const nf = addDays(f, direction * span);
+      const nt = addDays(t, direction * span);
+      if (direction > 0 && ymd(nf) > today) return;
+      setFrom(ymd(nf));
+      setTo(ymd(nt) > today ? today : ymd(nt));
+      setPreset("custom");
     } catch {
       /* ignore */
     }
   };
-  const isToday = day === today;
+  const canGoForward = to < today;
+
   const loading = sub === "granted" ? grantedQ.isLoading : repaidQ.isLoading;
   const fetching = grantedQ.isFetching || repaidQ.isFetching;
   const nothingToExport = grantedRows.length === 0 && repaidRows.length === 0;
@@ -134,8 +210,10 @@ export function CreditRepaymentsPanel({
   async function onExport() {
     setExporting(true);
     try {
-      await exportCreditDayXlsx({
-        day,
+      await exportCreditRangeXlsx({
+        from,
+        to,
+        rangeLabel,
         companyName,
         storeLabel,
         granted: grantedRows,
@@ -151,51 +229,75 @@ export function CreditRepaymentsPanel({
 
   return (
     <div className="mt-6">
-      {/* Sélecteur de date */}
+      {/* Sélecteur de période */}
       <FsCard padding="p-3 sm:p-3.5">
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-1.5">
+          {PRESETS.map((p) => (
+            <button
+              key={p.key}
+              type="button"
+              onClick={() => applyPreset(p.key)}
+              className={cn(
+                "inline-flex h-9 items-center rounded-full px-3 text-xs font-bold",
+                preset === p.key
+                  ? "bg-fs-accent text-white"
+                  : "border border-black/10 bg-fs-surface-container text-neutral-700 dark:border-white/10 dark:text-neutral-200",
+              )}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
           <button
             type="button"
-            onClick={() => shiftDay(-1)}
+            onClick={() => shiftRange(-1)}
             className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-black/10 bg-fs-surface-container dark:border-white/10"
-            aria-label="Jour précédent"
+            aria-label="Période précédente"
+            title="Période précédente"
           >
             <MdChevronLeft className="h-5 w-5" aria-hidden />
           </button>
           <input
             type="date"
-            value={day}
-            max={today}
-            onChange={(e) => setDay(e.target.value || today)}
+            value={from}
+            max={to || today}
+            onChange={(e) => {
+              setFrom(e.target.value || today);
+              setPreset("custom");
+            }}
             className={fsInputClass("h-10 w-auto")}
+            aria-label="Date de début"
+          />
+          <span className="text-xs text-neutral-500">au</span>
+          <input
+            type="date"
+            value={to}
+            min={from}
+            max={today}
+            onChange={(e) => {
+              setTo(e.target.value || today);
+              setPreset("custom");
+            }}
+            className={fsInputClass("h-10 w-auto")}
+            aria-label="Date de fin"
           />
           <button
             type="button"
-            onClick={() => shiftDay(1)}
-            disabled={isToday}
+            onClick={() => shiftRange(1)}
+            disabled={!canGoForward}
             className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-black/10 bg-fs-surface-container disabled:opacity-40 dark:border-white/10"
-            aria-label="Jour suivant"
+            aria-label="Période suivante"
+            title="Période suivante"
           >
             <MdChevronRight className="h-5 w-5" aria-hidden />
-          </button>
-          <button
-            type="button"
-            onClick={() => setDay(today)}
-            className={cn(
-              "inline-flex h-10 items-center rounded-lg px-3 text-xs font-bold",
-              isToday
-                ? "bg-fs-accent text-white"
-                : "border border-black/10 bg-fs-surface-container text-neutral-700 dark:border-white/10 dark:text-neutral-200",
-            )}
-          >
-            Aujourd&apos;hui
           </button>
           <div className="ml-auto flex items-center gap-2">
             <button
               type="button"
               onClick={() => void onExport()}
               disabled={exporting || nothingToExport}
-              title="Exporter la journée en Excel (accordés + remboursés)"
+              title="Exporter la période en Excel (accordés + remboursés)"
               className="inline-flex h-10 items-center gap-1.5 rounded-lg bg-emerald-600 px-3 text-xs font-bold text-white disabled:opacity-50"
             >
               <MdDownload className={cn("h-4 w-4", exporting && "animate-pulse")} aria-hidden />
@@ -214,10 +316,10 @@ export function CreditRepaymentsPanel({
             </button>
           </div>
         </div>
-        <p className="mt-2 text-xs capitalize text-neutral-500">{dayLabel}</p>
+        <p className="mt-2 text-xs capitalize text-neutral-500">{rangeLabel}</p>
       </FsCard>
 
-      {/* Deux totaux du jour */}
+      {/* Deux totaux de la période */}
       <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
         <FsCard className="border-2 border-sky-500/30" padding="p-4">
           <div className="flex items-center gap-3">
@@ -225,12 +327,15 @@ export function CreditRepaymentsPanel({
               <MdCreditScore className="h-6 w-6" aria-hidden />
             </div>
             <div className="min-w-0">
-              <p className="text-xs text-neutral-500">Crédits accordés ce jour</p>
+              <p className="text-xs text-neutral-500">Crédits accordés {periodWord}</p>
               <p className="text-2xl font-bold text-sky-700 dark:text-sky-400">
-                {formatCurrency(grantedTotal)}
+                {formatCurrency(grantedTotals.credit)}
               </p>
               <p className="mt-0.5 text-[11px] text-neutral-500">
                 {grantedRows.length} vente{grantedRows.length > 1 ? "s" : ""} à crédit
+                {grantedTotals.downPayments > 0
+                  ? ` · acomptes à la vente ${formatCurrency(grantedTotals.downPayments)}`
+                  : ""}
               </p>
             </div>
           </div>
@@ -241,14 +346,16 @@ export function CreditRepaymentsPanel({
               <MdPayments className="h-6 w-6" aria-hidden />
             </div>
             <div className="min-w-0">
-              <p className="text-xs text-neutral-500">Crédits remboursés ce jour</p>
+              <p className="text-xs text-neutral-500">Crédits remboursés {periodWord}</p>
               <p className="text-2xl font-bold text-emerald-700 dark:text-emerald-400">
                 {formatCurrency(repaidTotals.total)}
               </p>
               <p className="mt-0.5 text-[11px] text-neutral-500">
                 {repaidRows.length} remboursement{repaidRows.length > 1 ? "s" : ""}
                 {repaidTotals.total > 0
-                  ? ` · anciens ${formatCurrency(repaidTotals.old)} · du jour ${formatCurrency(repaidTotals.sameDay)}`
+                  ? ` · anciens ${formatCurrency(repaidTotals.old)} · ${
+                      isSingleDay ? "du jour" : "de la période"
+                    } ${formatCurrency(repaidTotals.sameRange)}`
                   : ""}
               </p>
             </div>
@@ -256,29 +363,47 @@ export function CreditRepaymentsPanel({
         </FsCard>
       </div>
 
-      {/* Variation de l'encours */}
+      {/* Réconciliation avec le KPI « Déjà encaissé » */}
       <FsCard className="mt-3" padding="p-3">
-        <p className="text-xs text-neutral-600">
-          Variation de l&apos;encours crédit ce jour :{" "}
-          <span
-            className={cn(
-              "font-bold",
-              netEncours > 0
-                ? "text-red-600"
+        <div className="flex items-start gap-2">
+          <MdInfoOutline className="mt-0.5 h-4 w-4 shrink-0 text-neutral-400" aria-hidden />
+          <div className="min-w-0 text-xs text-neutral-600">
+            <p>
+              Total encaissé {periodWord} sur les ventes à crédit :{" "}
+              <span className="font-bold text-emerald-700 dark:text-emerald-400">
+                {formatCurrency(cashedIn)}
+              </span>{" "}
+              = remboursements {formatCurrency(repaidTotals.total)} + acomptes encaissés à la vente{" "}
+              {formatCurrency(grantedTotals.downPayments)}.
+            </p>
+            <p className="mt-1 text-neutral-500">
+              {grantedTotals.downPayments <= 0 && repaidTotals.total > 0
+                ? "Les acomptes de ces crédits ont été encaissés le jour de leur vente, donc hors de cette période : ils restent comptés dans le KPI « Déjà encaissé » en haut de page (cliquez-le pour voir quelles ventes)."
+                : "Un acompte encaissé pendant la vente n'est pas un remboursement de crédit : il ne figure pas dans la liste ci-dessous, mais bien dans le KPI « Déjà encaissé » en haut de page."}
+            </p>
+            <p className="mt-1">
+              Variation de l&apos;encours crédit :{" "}
+              <span
+                className={cn(
+                  "font-bold",
+                  netEncours > 0
+                    ? "text-red-600"
+                    : netEncours < 0
+                      ? "text-emerald-700 dark:text-emerald-400"
+                      : "text-neutral-600",
+                )}
+              >
+                {netEncours > 0 ? "+" : ""}
+                {formatCurrency(netEncours)}
+              </span>{" "}
+              {netEncours > 0
+                ? "(plus de crédits accordés que remboursés)"
                 : netEncours < 0
-                  ? "text-emerald-700 dark:text-emerald-400"
-                  : "text-neutral-600",
-            )}
-          >
-            {netEncours > 0 ? "+" : ""}
-            {formatCurrency(netEncours)}
-          </span>{" "}
-          {netEncours > 0
-            ? "(plus de crédits accordés que remboursés)"
-            : netEncours < 0
-              ? "(plus remboursé qu'accordé — l'encours baisse)"
-              : "(équilibre)"}
-        </p>
+                  ? "(plus remboursé qu'accordé — l'encours baisse)"
+                  : "(équilibre)"}
+            </p>
+          </div>
+        </div>
       </FsCard>
 
       {/* Sous-onglet + recherche + liste */}
@@ -329,14 +454,16 @@ export function CreditRepaymentsPanel({
           grantedFiltered.length === 0 ? (
             <div className="flex flex-col items-center gap-2 py-16 text-center">
               <MdCreditScore className="h-10 w-10 text-neutral-300" aria-hidden />
-              <p className="text-sm text-neutral-600">Aucun crédit accordé ce jour.</p>
+              <p className="text-sm text-neutral-600">
+                Aucun crédit accordé {periodWord}.
+              </p>
             </div>
           ) : (
             <FsHorizontalScroll>
               <table className="w-full min-w-[720px] border-collapse text-left text-[13px] [&_thead_th]:whitespace-nowrap [&_tbody_td]:whitespace-nowrap">
                 <thead>
                   <tr className="border-b border-black/10 bg-fs-surface-low/80 dark:border-white/10">
-                    <th className="px-3 py-3 font-bold">Heure</th>
+                    <th className="px-3 py-3 font-bold">{isSingleDay ? "Heure" : "Date"}</th>
                     <th className="px-3 py-3 font-bold">Client</th>
                     <th className="px-3 py-3 font-bold">Réf. vente</th>
                     <th className="px-3 py-3 text-right font-bold">Total vente</th>
@@ -352,7 +479,9 @@ export function CreditRepaymentsPanel({
                       className="cursor-pointer border-b border-black/6 hover:bg-black/2 dark:border-white/6 dark:hover:bg-white/5"
                       onClick={() => onOpenSaleDetail(r.saleId)}
                     >
-                      <td className="px-3 py-2.5 font-semibold tabular-nums">{hhmm(r.createdAt)}</td>
+                      <td className="px-3 py-2.5 font-semibold tabular-nums">
+                        {isSingleDay ? hhmm(r.createdAt) : `${ddmm(r.createdAt)} ${hhmm(r.createdAt)}`}
+                      </td>
                       <td className="max-w-[180px] truncate px-3 py-2.5">
                         {r.customerName ?? "—"}
                         {r.customerPhone ? (
@@ -382,20 +511,36 @@ export function CreditRepaymentsPanel({
                     </tr>
                   ))}
                 </tbody>
+                <tfoot>
+                  <tr className="border-t-2 border-black/10 bg-fs-surface-low/80 font-bold dark:border-white/10">
+                    <td className="px-3 py-2.5" colSpan={4}>
+                      TOTAL ({grantedFiltered.length})
+                    </td>
+                    <td className="px-3 py-2.5 text-right tabular-nums text-emerald-700 dark:text-emerald-400">
+                      {formatCurrency(grantedFiltered.reduce((n, r) => n + r.paidAtSale, 0))}
+                    </td>
+                    <td className="px-3 py-2.5 text-right tabular-nums text-sky-700 dark:text-sky-400">
+                      {formatCurrency(grantedFiltered.reduce((n, r) => n + r.creditGranted, 0))}
+                    </td>
+                    <td className="px-3 py-2.5" />
+                  </tr>
+                </tfoot>
               </table>
             </FsHorizontalScroll>
           )
         ) : repaidFiltered.length === 0 ? (
           <div className="flex flex-col items-center gap-2 py-16 text-center">
             <MdPayments className="h-10 w-10 text-neutral-300" aria-hidden />
-            <p className="text-sm text-neutral-600">Aucun remboursement de crédit ce jour.</p>
+            <p className="text-sm text-neutral-600">
+              Aucun remboursement de crédit {periodWord}.
+            </p>
           </div>
         ) : (
           <FsHorizontalScroll>
             <table className="w-full min-w-[720px] border-collapse text-left text-[13px] [&_thead_th]:whitespace-nowrap [&_tbody_td]:whitespace-nowrap">
               <thead>
                 <tr className="border-b border-black/10 bg-fs-surface-low/80 dark:border-white/10">
-                  <th className="px-3 py-3 font-bold">Heure</th>
+                  <th className="px-3 py-3 font-bold">{isSingleDay ? "Heure" : "Date"}</th>
                   <th className="px-3 py-3 font-bold">Client</th>
                   <th className="px-3 py-3 font-bold">Réf. vente</th>
                   <th className="px-3 py-3 font-bold">Origine</th>
@@ -411,7 +556,9 @@ export function CreditRepaymentsPanel({
                     className="cursor-pointer border-b border-black/6 hover:bg-black/2 dark:border-white/6 dark:hover:bg-white/5"
                     onClick={() => onOpenSaleDetail(r.saleId)}
                   >
-                    <td className="px-3 py-2.5 font-semibold tabular-nums">{hhmm(r.paidAt)}</td>
+                    <td className="px-3 py-2.5 font-semibold tabular-nums">
+                      {isSingleDay ? hhmm(r.paidAt) : `${ddmm(r.paidAt)} ${hhmm(r.paidAt)}`}
+                    </td>
                     <td className="max-w-[180px] truncate px-3 py-2.5">
                       {r.customerName ?? "—"}
                       {r.customerPhone ? (
@@ -428,7 +575,11 @@ export function CreditRepaymentsPanel({
                             : "bg-amber-500/15 text-amber-800 dark:text-amber-200",
                         )}
                       >
-                        {r.isOldCredit ? "Ancien crédit" : "Crédit du jour"}
+                        {r.isOldCredit
+                          ? "Ancien crédit"
+                          : isSingleDay
+                            ? "Crédit du jour"
+                            : "Crédit de la période"}
                       </span>
                     </td>
                     <td className="px-3 py-2.5 text-xs">{paymentMethodLabel(r.method)}</td>
@@ -450,6 +601,18 @@ export function CreditRepaymentsPanel({
                   </tr>
                 ))}
               </tbody>
+              <tfoot>
+                <tr className="border-t-2 border-black/10 bg-fs-surface-low/80 font-bold dark:border-white/10">
+                  <td className="px-3 py-2.5" colSpan={5}>
+                    TOTAL ({repaidFiltered.length} remboursement
+                    {repaidFiltered.length > 1 ? "s" : ""})
+                  </td>
+                  <td className="px-3 py-2.5 text-right tabular-nums text-emerald-700 dark:text-emerald-400">
+                    {formatCurrency(repaidFiltered.reduce((n, r) => n + r.amount, 0))}
+                  </td>
+                  <td className="px-3 py-2.5" />
+                </tr>
+              </tfoot>
             </table>
           </FsHorizontalScroll>
         )}

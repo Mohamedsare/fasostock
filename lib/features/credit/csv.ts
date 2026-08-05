@@ -5,9 +5,11 @@ import {
   CREDIT_STATUS_LABELS,
   creditLineStatus,
   daysOverdue,
+  downPaymentTotal,
   effectiveDueDate,
   paidTotal,
   remainingTotal,
+  repaidAfterSaleTotal,
 } from "@/lib/features/credit/credit-math";
 import type { CreditSaleRow } from "@/lib/features/credit/types";
 
@@ -18,7 +20,9 @@ const CREDIT_SALE_HEADERS = [
   "Date",
   "Boutique",
   "Total",
-  "Encaissé",
+  "Acompte (à la vente)",
+  "Remboursé (après vente)",
+  "Encaissé (total)",
   "Reste",
   "Échéance",
   "Statut",
@@ -37,6 +41,8 @@ export function creditSalesToSpreadsheetMatrix(sales: CreditSaleRow[]): {
     format(new Date(s.created_at), "yyyy-MM-dd"),
     s.store?.name ?? "",
     Number(s.total),
+    Number(downPaymentTotal(s)),
+    Number(repaidAfterSaleTotal(s)),
     Number(paidTotal(s)),
     Number(remainingTotal(s)),
     format(effectiveDueDate(s), "yyyy-MM-dd"),

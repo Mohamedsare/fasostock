@@ -47,12 +47,14 @@ import {
   creditLineStatus,
   CREDIT_STATUS_LABELS,
   daysOverdue,
+  downPaymentTotal,
   dueBadgeVariant,
   effectiveDueDate,
   isDueThisWeek,
   isDueToday,
   maxRealizedPaymentDate,
   paidTotal,
+  repaidAfterSaleTotal,
   remainingTotal,
   saleHadCreditBooking,
 } from "@/lib/features/credit/credit-math";
@@ -84,6 +86,7 @@ import {
   formatOperationDateTime,
   formatOperationNowDateFull,
 } from "@/lib/utils/operation-datetime";
+import { CreditCashedInDialog } from "./credit-cashed-in-dialog";
 import { CreditDetailPanel } from "./credit-detail-panel";
 import { CreditRepaymentsPanel } from "./credit-repayments-panel";
 import { CustomerCreditPanel } from "./customer-credit-panel";
@@ -191,6 +194,8 @@ function KpiCard({
   icon: Icon,
   colorClass,
   accentBorder,
+  onClick,
+  actionLabel,
 }: {
   label: string;
   value: string;
@@ -198,15 +203,12 @@ function KpiCard({
   icon: ComponentType<{ className?: string }>;
   colorClass: string;
   accentBorder?: boolean;
+  /** Rend la carte cliquable (ouvre un détail). */
+  onClick?: () => void;
+  actionLabel?: string;
 }) {
-  return (
-    <FsCard
-      padding="p-4"
-      className={cn(
-        "flex min-h-[120px] min-w-0 flex-col justify-between overflow-hidden",
-        accentBorder && "border-2 border-fs-accent/40",
-      )}
-    >
+  const body = (
+    <>
       <div className="flex items-start justify-between gap-2">
         <p className="line-clamp-2 text-xs text-neutral-600 min-[900px]:text-sm">{label}</p>
         <div
@@ -223,9 +225,36 @@ function KpiCard({
           {value}
         </p>
         {subtitle ? (
-          <p className="mt-0.5 line-clamp-1 text-[11px] text-neutral-500">{subtitle}</p>
+          <p className="mt-0.5 line-clamp-2 text-[11px] text-neutral-500">{subtitle}</p>
+        ) : null}
+        {onClick ? (
+          <p className="mt-1 inline-flex items-center gap-0.5 text-[11px] font-bold text-fs-accent">
+            {actionLabel ?? "Voir le détail"}
+            <MdChevronRight className="h-3.5 w-3.5" aria-hidden />
+          </p>
         ) : null}
       </div>
+    </>
+  );
+
+  const className = cn(
+    "flex min-h-[120px] min-w-0 flex-col justify-between overflow-hidden",
+    accentBorder && "border-2 border-fs-accent/40",
+    onClick && "cursor-pointer text-left transition hover:border-fs-accent/40 hover:shadow-md",
+  );
+
+  if (!onClick) {
+    return (
+      <FsCard padding="p-4" className={className}>
+        {body}
+      </FsCard>
+    );
+  }
+  return (
+    <FsCard padding="p-0" className={cn(className, "p-0")}>
+      <button type="button" onClick={onClick} className="flex h-full w-full flex-col justify-between p-4 text-left">
+        {body}
+      </button>
     </FsCard>
   );
 }
@@ -283,6 +312,7 @@ export function CreditScreen() {
   const [detailId, setDetailId] = useState<string | null>(null);
   const [customerDetailId, setCustomerDetailId] = useState<string | null>(null);
   const [dispatchDetailId, setDispatchDetailId] = useState<string | null>(null);
+  const [cashedInOpen, setCashedInOpen] = useState(false);
   const [dispatchPayInvoice, setDispatchPayInvoice] = useState<{
     id: string;
     documentNumber: string;
@@ -366,6 +396,15 @@ export function CreditScreen() {
     staleTime: 15_000,
   });
   const legacyRows = useMemo(() => legacyQ.data ?? [], [legacyQ.data]);
+  /** Versements sur crédits hérités : du recouvrement pur (aucune vente, donc aucun acompte). */
+  const legacyPaidTotal = useMemo(
+    () =>
+      legacyRows.reduce(
+        (sum, l) => sum + (l.payments ?? []).reduce((s, p) => s + Number(p.amount ?? 0), 0),
+        0,
+      ),
+    [legacyRows],
+  );
   const dispatchQ = useQuery({
     queryKey: ["credit-warehouse-dispatch", companyId, from, to],
     queryFn: () => listWarehouseDispatchInvoices(companyId, 500),
@@ -448,9 +487,13 @@ export function CreditScreen() {
     let overdue = 0;
     let dueToday = 0;
     let dueWeek = 0;
+    let totalDownPayments = 0;
+    let totalRepaidAfterSale = 0;
     const debtors = new Set<string>();
     for (const s of rawRows) {
       totalPaidAll += paidTotal(s);
+      totalDownPayments += downPaymentTotal(s);
+      totalRepaidAfterSale += repaidAfterSaleTotal(s);
     }
     for (const s of openRows) {
       const rem = remainingTotal(s);
@@ -473,6 +516,8 @@ export function CreditScreen() {
     for (const l of legacyRows) {
       const paid = (l.payments ?? []).reduce((s, p) => s + Number(p.amount ?? 0), 0);
       totalPaidAll += paid;
+      // Un crédit hérité n'a pas de vente : tous ses versements sont du recouvrement.
+      totalRepaidAfterSale += paid;
       const rem = Math.max(0, Number(l.principal_amount) - paid);
       if (rem <= legacyEps) continue;
       totalRem += rem;
@@ -496,6 +541,8 @@ export function CreditScreen() {
       totalRem,
       totalPaidOpen,
       totalPaidAll,
+      totalDownPayments,
+      totalRepaidAfterSale,
       totalSaleTotal,
       countOpen: openRows.length,
       debtors: debtors.size,
@@ -994,9 +1041,15 @@ export function CreditScreen() {
         <KpiCard
           label="Déjà encaissé"
           value={formatCurrency(kpiBase.totalPaidAll)}
-          subtitle="Tous dossiers"
+          subtitle={
+            kpiBase.totalDownPayments > CREDIT_AMOUNT_EPS
+              ? `Remboursements ${formatCurrency(kpiBase.totalRepaidAfterSale)} · acomptes à la vente ${formatCurrency(kpiBase.totalDownPayments)}`
+              : "Tous dossiers · aucun acompte à la vente"
+          }
           icon={MdPayments}
           colorClass="bg-emerald-500/15 text-emerald-600"
+          onClick={() => setCashedInOpen(true)}
+          actionLabel="Voir quelles ventes"
         />
         <KpiCard
           label="Crédit total (ventes)"
@@ -1265,7 +1318,7 @@ export function CreditScreen() {
           <FsHorizontalScroll>
             <table
               className={cn(
-                "w-full min-w-[1120px] border-collapse text-left text-[13px]",
+                "w-full min-w-[1220px] border-collapse text-left text-[13px]",
                 "[&_thead_th]:whitespace-nowrap [&_tbody_td]:whitespace-nowrap",
               )}
             >
@@ -1277,7 +1330,18 @@ export function CreditScreen() {
                 <th className="px-3 py-3 font-bold">Date</th>
                 <th className="px-3 py-3 font-bold">{terms.storeSingular}</th>
                 <th className="px-3 py-3 text-right font-bold">Total</th>
-                <th className="px-3 py-3 text-right font-bold">Encaissé</th>
+                <th
+                  className="px-3 py-3 text-right font-bold"
+                  title="Encaissé au moment de la vente (n'est pas un remboursement de crédit)"
+                >
+                  Acompte
+                </th>
+                <th
+                  className="px-3 py-3 text-right font-bold"
+                  title="Encaissé après la vente, en recouvrement du crédit"
+                >
+                  Remboursé
+                </th>
                 <th className="px-3 py-3 text-right font-bold">Reste</th>
                 <th className="px-3 py-3 font-bold">Échéance</th>
                 <th className="px-3 py-3 font-bold">Statut</th>
@@ -1289,7 +1353,7 @@ export function CreditScreen() {
               {saleTotalCount === 0 ? (
                 <tr>
                   <td
-                    colSpan={12}
+                    colSpan={13}
                     className="whitespace-normal px-3 py-10 text-center text-neutral-500"
                   >
                     Aucune ligne pour ces filtres.
@@ -1319,8 +1383,20 @@ export function CreditScreen() {
                           <td className="max-w-[130px] truncate px-3 py-2.5">{s.store?.name ?? "—"}</td>
                           <td className="px-3 py-2.5 text-right tabular-nums">{formatCurrency(s.total)}</td>
                           <td className="px-3 py-2.5 text-right tabular-nums">
+                            {downPaymentTotal(s) > CREDIT_AMOUNT_EPS ? (
+                              <span
+                                className="font-semibold text-amber-700 dark:text-amber-300"
+                                title="Encaissé au moment de la vente"
+                              >
+                                {formatCurrency(downPaymentTotal(s))}
+                              </span>
+                            ) : (
+                              <span className="text-neutral-400">—</span>
+                            )}
+                          </td>
+                          <td className="px-3 py-2.5 text-right tabular-nums">
                             <span className="block text-emerald-700 dark:text-emerald-400">
-                              {formatCurrency(paidTotal(s))}
+                              {formatCurrency(repaidAfterSaleTotal(s))}
                             </span>
                             {(() => {
                               const lp = lastPaymentLabel(maxRealizedPaymentDate(s));
@@ -1407,6 +1483,8 @@ export function CreditScreen() {
                         </td>
                         <td className="max-w-[130px] truncate px-3 py-2.5">Dépôt</td>
                         <td className="px-3 py-2.5 text-right tabular-nums">{formatCurrency(d.totalAmount)}</td>
+                        {/* Un bon dépôt n'a pas d'acompte de caisse : tout encaissement est un règlement. */}
+                        <td className="px-3 py-2.5 text-right text-neutral-400">—</td>
                         <td className="px-3 py-2.5 text-right tabular-nums text-emerald-700 dark:text-emerald-400">
                           {formatCurrency(d.paidAmount)}
                         </td>
@@ -1715,6 +1793,15 @@ export function CreditScreen() {
         saleId={detailId}
         onClose={() => setDetailId(null)}
         creditQueryKey={queryKeys.creditSales(creditParams)}
+      />
+
+      <CreditCashedInDialog
+        open={cashedInOpen}
+        rows={rawRows}
+        legacyPaidTotal={legacyPaidTotal}
+        periodLabel={`Du ${from} au ${to} · ${storeFilter ? stores.find((s) => s.id === storeFilter)?.name ?? "Boutique" : "Toutes boutiques"}`}
+        onClose={() => setCashedInOpen(false)}
+        onOpenSaleDetail={(saleId) => setDetailId(saleId)}
       />
 
       <CreditQuickPayDialog

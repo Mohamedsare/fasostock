@@ -11,9 +11,11 @@ import {
   creditLineStatus,
   CREDIT_STATUS_LABELS,
   daysOverdue,
+  downPaymentTotal,
   effectiveDueDate,
   paidTotal,
   remainingTotal,
+  repaidAfterSaleTotal,
 } from "@/lib/features/credit/credit-math";
 import { paymentMethodLabel } from "@/lib/features/receipt/build-receipt-ticket-data";
 import { messageFromUnknownError, toast } from "@/lib/toast";
@@ -154,8 +156,16 @@ export function CreditDetailPanel({
                   <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
                     <span>Total TTC</span>
                     <span className="text-right font-semibold">{formatCurrency(sale.total)}</span>
-                    <span>Encaissé</span>
+                    <span title="Encaissé au moment de la vente">Acompte à la vente</span>
+                    <span className="text-right font-semibold text-amber-700 dark:text-amber-300">
+                      {formatCurrency(downPaymentTotal(sale))}
+                    </span>
+                    <span title="Encaissé après la vente, en recouvrement du crédit">Remboursé</span>
                     <span className="text-right font-semibold text-emerald-700 dark:text-emerald-400">
+                      {formatCurrency(repaidAfterSaleTotal(sale))}
+                    </span>
+                    <span className="text-neutral-500">Encaissé (total)</span>
+                    <span className="text-right font-semibold text-neutral-600">
                       {formatCurrency(paidTotal(sale))}
                     </span>
                     <span>Reste</span>

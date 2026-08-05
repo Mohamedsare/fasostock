@@ -23,8 +23,9 @@ import {
 import type { CreditSaleRow, LegacyCreditRow } from "@/lib/features/credit/types";
 import {
   CREDIT_AMOUNT_EPS,
-  paidTotal as creditSalePaidTotal,
+  downPaymentTotal as creditSaleDownPayment,
   remainingTotal as creditSaleRemainingTotal,
+  repaidAfterSaleTotal as creditSaleRepaidAfterSale,
   saleHadCreditBooking,
 } from "@/lib/features/credit/credit-math";
 import { saleSearchRelevance } from "@/lib/features/credit/credit-search-relevance";
@@ -841,7 +842,7 @@ export function LegacyCreditSection({
                       : "—"}
                   </p>
                 ) : (
-                <table className="w-full min-w-[1080px] text-left text-[13px] [&_thead_th]:whitespace-nowrap [&_tbody_td]:whitespace-nowrap">
+                <table className="w-full min-w-[1180px] text-left text-[13px] [&_thead_th]:whitespace-nowrap [&_tbody_td]:whitespace-nowrap">
                   <thead>
                     <tr className="border-b border-black/10">
                       <th className="px-2 py-2">Type</th>
@@ -849,7 +850,18 @@ export function LegacyCreditSection({
                       <th className="px-2 py-2">Libellé</th>
                       <th className="px-2 py-2">Vendeur</th>
                       <th className="px-2 py-2 text-right">Montant</th>
-                      <th className="px-2 py-2 text-right">Encaissé</th>
+                      <th
+                        className="px-2 py-2 text-right"
+                        title="Encaissé au moment de la vente (n'est pas un remboursement de crédit)"
+                      >
+                        Acompte
+                      </th>
+                      <th
+                        className="px-2 py-2 text-right"
+                        title="Encaissé après la vente, en recouvrement du crédit"
+                      >
+                        Remboursé
+                      </th>
                       <th className="px-2 py-2">Date de création</th>
                       <th className="px-2 py-2">Statut</th>
                       <th className="px-2 py-2">Actions</th>
@@ -875,6 +887,8 @@ export function LegacyCreditSection({
                           <td className="px-2 py-2 text-right tabular-nums">
                             {formatCurrency(entry.legacy.principal_amount)}
                           </td>
+                          {/* Un crédit libre n'a pas de vente : aucun acompte, tout est du recouvrement. */}
+                          <td className="px-2 py-2 text-right text-neutral-400">—</td>
                           <td className="px-2 py-2 text-right tabular-nums text-emerald-700">
                             {formatCurrency(sumPaid(entry.legacy))}
                           </td>
@@ -950,8 +964,20 @@ export function LegacyCreditSection({
                           <td className="px-2 py-2 text-right tabular-nums">
                             {formatCurrency(entry.sale.total)}
                           </td>
+                          <td className="px-2 py-2 text-right tabular-nums">
+                            {creditSaleDownPayment(entry.sale) > CREDIT_AMOUNT_EPS ? (
+                              <span
+                                className="font-semibold text-amber-700 dark:text-amber-300"
+                                title="Encaissé au moment de la vente"
+                              >
+                                {formatCurrency(creditSaleDownPayment(entry.sale))}
+                              </span>
+                            ) : (
+                              <span className="text-neutral-400">—</span>
+                            )}
+                          </td>
                           <td className="px-2 py-2 text-right tabular-nums text-emerald-700">
-                            {formatCurrency(creditSalePaidTotal(entry.sale))}
+                            {formatCurrency(creditSaleRepaidAfterSale(entry.sale))}
                           </td>
                           <td className="px-2 py-2">
                             {formatOperationDateTime(entry.sale.created_at)}

@@ -12,9 +12,10 @@ type Cell = string | number | null;
 const TITLE_COLOR = "FF111827";
 const SUBTITLE_COLOR = "FF6B7280";
 
-function hhmm(iso: string): string {
+/** « 14:32 » sur un jour unique, « 05/08 14:32 » sur une période multi-jours. */
+function stamp(iso: string, singleDay: boolean): string {
   try {
-    return format(parseISO(iso), "HH:mm");
+    return format(parseISO(iso), singleDay ? "HH:mm" : "dd/MM HH:mm");
   } catch {
     return "";
   }
@@ -61,25 +62,24 @@ function addTitledSheet(
   ws.views = [{ state: "frozen", ySplit: 4, topLeftCell: `${first}5`, activeCell: `${first}5` }];
 }
 
-export async function exportCreditDayXlsx(params: {
-  day: string;
+export async function exportCreditRangeXlsx(params: {
+  from: string;
+  to: string;
+  /** Libellé lisible de la période (« Mercredi 5 août 2026 » ou « Du 1 août au 5 août 2026 »). */
+  rangeLabel: string;
   companyName: string;
   storeLabel: string;
   granted: CreditGrantedRow[];
   repaid: CreditRepaymentRow[];
 }): Promise<void> {
-  const { day, companyName, storeLabel, granted, repaid } = params;
+  const { from, to, rangeLabel, companyName, storeLabel, granted, repaid } = params;
 
-  const dayLabel = (() => {
-    try {
-      return format(parseISO(day), "EEEE d MMMM yyyy", { locale: fr });
-    } catch {
-      return day;
-    }
-  })();
+  const dayLabel = rangeLabel;
   const generatedAt = format(new Date(), "dd/MM/yyyy HH:mm", { locale: fr });
+  const singleDay = from === to;
 
   const grantedTotal = granted.reduce((n, r) => n + r.creditGranted, 0);
+  const downPaymentsTotal = granted.reduce((n, r) => n + r.paidAtSale, 0);
   const repaidTotal = repaid.reduce((n, r) => n + r.amount, 0);
   const repaidOld = repaid.filter((r) => r.isOldCredit).reduce((n, r) => n + r.amount, 0);
   const repaidSameDay = repaidTotal - repaidOld;
@@ -88,7 +88,7 @@ export async function exportCreditDayXlsx(params: {
   const wb = new ExcelJS.Workbook();
   wb.creator = "FasoStock";
   wb.created = new Date();
-  wb.title = `Crédits du ${day}`;
+  wb.title = singleDay ? `Crédits du ${from}` : `Crédits du ${from} au ${to}`;
 
   const subtitleBase = `${[companyName, storeLabel].filter(Boolean).join(" · ")} · ${dayLabel} · généré le ${generatedAt}`;
 
@@ -96,21 +96,23 @@ export async function exportCreditDayXlsx(params: {
   addTitledSheet(
     wb,
     "Synthèse",
-    `FasoStock — Crédits du jour`,
+    singleDay ? "FasoStock — Crédits du jour" : "FasoStock — Crédits de la période",
     subtitleBase,
     ["Indicateur", "Montant (F CFA)", "Nombre"],
     [
-      ["Crédits accordés ce jour", grantedTotal, granted.length],
-      ["Crédits remboursés ce jour", repaidTotal, repaid.length],
+      ["Crédits accordés", grantedTotal, granted.length],
+      ["Crédits remboursés (encaissés après la vente)", repaidTotal, repaid.length],
       ["  dont anciens crédits", repaidOld, null],
-      ["  dont crédits du jour", repaidSameDay, null],
+      [singleDay ? "  dont crédits du jour" : "  dont crédits de la période", repaidSameDay, null],
+      ["Acomptes encaissés au moment de la vente", downPaymentsTotal, null],
+      ["TOTAL encaissé sur les ventes à crédit", repaidTotal + downPaymentsTotal, null],
       ["Variation de l'encours (accordés − remboursés)", net, null],
     ],
   );
 
   // 2) Crédits accordés
   const grantedRows: Cell[][] = granted.map((r) => [
-    hhmm(r.createdAt),
+    stamp(r.createdAt, singleDay),
     r.customerName ?? "—",
     r.customerPhone ?? "",
     r.saleNumber,
@@ -118,23 +120,31 @@ export async function exportCreditDayXlsx(params: {
     r.paidAtSale,
     r.creditGranted,
   ]);
-  grantedRows.push(["", "", "", "TOTAL", null, null, grantedTotal]);
+  grantedRows.push(["", "", "", "TOTAL", null, downPaymentsTotal, grantedTotal]);
   addTitledSheet(
     wb,
     "Crédits accordés",
     `Crédits accordés — ${dayLabel}`,
     `${granted.length} vente(s) à crédit · total accordé ${grantedTotal.toLocaleString("fr-FR")} F CFA`,
-    ["Heure", "Client", "Téléphone", "Réf. vente", "Total vente", "Payé à la vente", "Crédit accordé"],
+    [
+      singleDay ? "Heure" : "Date",
+      "Client",
+      "Téléphone",
+      "Réf. vente",
+      "Total vente",
+      "Payé à la vente",
+      "Crédit accordé",
+    ],
     grantedRows,
   );
 
   // 3) Crédits remboursés
   const repaidRows: Cell[][] = repaid.map((r) => [
-    hhmm(r.paidAt),
+    stamp(r.paidAt, singleDay),
     r.customerName ?? "—",
     r.customerPhone ?? "",
     r.saleNumber,
-    r.isOldCredit ? "Ancien crédit" : "Crédit du jour",
+    r.isOldCredit ? "Ancien crédit" : singleDay ? "Crédit du jour" : "Crédit de la période",
     paymentMethodLabel(r.method),
     r.amount,
   ]);
@@ -144,7 +154,15 @@ export async function exportCreditDayXlsx(params: {
     "Crédits remboursés",
     `Crédits remboursés — ${dayLabel}`,
     `${repaid.length} remboursement(s) · total ${repaidTotal.toLocaleString("fr-FR")} F CFA`,
-    ["Heure", "Client", "Téléphone", "Réf. vente", "Origine", "Mode", "Montant"],
+    [
+      singleDay ? "Heure" : "Date",
+      "Client",
+      "Téléphone",
+      "Réf. vente",
+      "Origine",
+      "Mode",
+      "Montant",
+    ],
     repaidRows,
   );
 
@@ -155,7 +173,7 @@ export async function exportCreditDayXlsx(params: {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `credits_${day}.xlsx`;
+  a.download = singleDay ? `credits_${from}.xlsx` : `credits_${from}_${to}.xlsx`;
   a.click();
   URL.revokeObjectURL(url);
 }
