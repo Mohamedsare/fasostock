@@ -5,29 +5,13 @@ import QRCode from "qrcode";
 import { htmlToPdfBufferA4 } from "@/lib/server/pdf/html-to-pdf";
 import { renderSubscriptionInvoiceHtml } from "@/lib/server/pdf/subscription-invoice-html";
 import { createClient } from "@/lib/supabase/server";
-import { isAllowedPdfEmbedImageUrl, requireAuthUser, userBelongsToCompany } from "@/lib/server/api-auth";
+import { requireAuthUser, userBelongsToCompany } from "@/lib/server/api-auth";
+import { remoteImageToDataUrl } from "@/lib/server/pdf/remote-image-data-url";
 import { subscriptionPaymentLabel } from "@/lib/features/subscription/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
-
-async function toDataUrlFromHttp(
-  url: string,
-  supabaseUrl: string | undefined,
-): Promise<string | null> {
-  if (!isAllowedPdfEmbedImageUrl(url, supabaseUrl)) return null;
-  try {
-    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
-    if (!res.ok) return null;
-    const ct = res.headers.get("content-type") || "image/png";
-    const ab = await res.arrayBuffer();
-    if (ab.byteLength > 2_000_000) return null;
-    return `data:${ct};base64,${Buffer.from(ab).toString("base64")}`;
-  } catch {
-    return null;
-  }
-}
 
 /** Logo de marque FasoStock (public/fs.png) embarqué en data URL — lu une seule fois. */
 let brandLogoCache: string | null | undefined;
@@ -109,9 +93,7 @@ export async function POST(req: Request) {
     const invoiceNumber = `FS-ABO-${ymd(issuedAtIso)}-${requestId.slice(0, 6).toUpperCase()}`;
 
     const supabasePublicUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
-    const companyLogoSrc = companyLogoUrl
-      ? await toDataUrlFromHttp(companyLogoUrl, supabasePublicUrl).catch(() => null)
-      : null;
+    const companyLogoSrc = await remoteImageToDataUrl(companyLogoUrl, supabasePublicUrl);
 
     const qrPayload = `FASOSTOCK|ABONNEMENT|${invoiceNumber}|${companyName}|${Math.round(amountCents)} ${currency}|REF:${requestId}`;
     const qrDataUrl = await QRCode.toDataURL(qrPayload, {

@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
-import { htmlToPdfBufferA4 } from "@/lib/server/pdf/html-to-pdf";
+import { htmlToPdfBufferA4Resilient } from "@/lib/server/pdf/html-to-pdf";
 import { renderEngineInvoiceHtml } from "@/lib/server/pdf/engine-invoice-html";
 import type { EngineInvoiceData } from "@/lib/server/pdf/engine-invoice-html";
+import { remoteImageToDataUrl } from "@/lib/server/pdf/remote-image-data-url";
 import { createClient } from "@/lib/supabase/server";
 import { requireAuthUser, userBelongsToCompany } from "@/lib/server/api-auth";
 import { getAppBaseUrl } from "@/lib/email/app-url";
@@ -111,6 +112,13 @@ export async function GET(req: Request) {
       .filter(Boolean);
     const phones = [storePhone, ...extraPhones].filter(Boolean);
 
+    // Logo embarqué en data URL : le rendu Chromium ne dépend plus d'un
+    // téléchargement réseau (un logo lent faisait échouer toute la facture).
+    const logoDataUrl = await remoteImageToDataUrl(
+      store.logo_url as string | null,
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+    );
+
     const token = String(d.verification_token ?? "");
     const verifyUrl = token ? `${getAppBaseUrl()}${engineSaleVerifyPath(token)}` : getAppBaseUrl();
 
@@ -124,7 +132,7 @@ export async function GET(req: Request) {
       slogan: (store.slogan as string | null)?.trim() || null,
       address: (store.address as string | null)?.trim() || null,
       phones,
-      logoUrl: (store.logo_url as string | null)?.trim() || null,
+      logoUrl: logoDataUrl,
       primaryColor: (store.primary_color as string | null)?.trim() || "#C1272D",
       footerText: (store.footer_text as string | null)?.trim() || null,
       signatory:
@@ -183,7 +191,7 @@ export async function GET(req: Request) {
     };
 
     const html = await renderEngineInvoiceHtml(data);
-    const buf = await htmlToPdfBufferA4(html);
+    const buf = await htmlToPdfBufferA4Resilient(html);
     return new NextResponse(new Uint8Array(buf), {
       status: 200,
       headers: {

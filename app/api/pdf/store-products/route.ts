@@ -3,6 +3,7 @@ import { htmlToPdfBufferA4ResilientWithPageNumbers } from "@/lib/server/pdf/html
 import { renderStoreProductsHtml } from "@/lib/server/pdf/store-products-html";
 import { createClient } from "@/lib/supabase/server";
 import { isAllowedPdfEmbedImageUrl, requireAuthUser, userBelongsToCompany } from "@/lib/server/api-auth";
+import { remoteImageToDataUrl } from "@/lib/server/pdf/remote-image-data-url";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -42,21 +43,6 @@ function parseBody(json: unknown): Body {
   };
 }
 
-async function toDataUrlFromHttp(url: string, supabaseUrl: string | undefined): Promise<string | null> {
-  if (!isAllowedPdfEmbedImageUrl(url, supabaseUrl)) return null;
-  try {
-    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
-    if (!res.ok) return null;
-    const ct = res.headers.get("content-type") || "image/jpeg";
-    const ab = await res.arrayBuffer();
-    if (ab.byteLength > 2_000_000) return null;
-    const b64 = Buffer.from(ab).toString("base64");
-    return `data:${ct};base64,${b64}`;
-  } catch {
-    return null;
-  }
-}
-
 export async function POST(req: Request) {
   try {
     const supabase = await createClient();
@@ -94,22 +80,12 @@ export async function POST(req: Request) {
     }
 
     const itemsWithEmbedded = await Promise.all(
-      data.items.map(async (it) => {
-        if (!it.imageUrl) return { ...it, imageSrc: null };
-        if (it.imageUrl.startsWith("data:")) {
-          if (!isAllowedPdfEmbedImageUrl(it.imageUrl, supabasePublicUrl)) {
-            return { ...it, imageSrc: null };
-          }
-          return { ...it, imageSrc: it.imageUrl };
-        }
-        const embedded = await toDataUrlFromHttp(it.imageUrl, supabasePublicUrl);
-        return { ...it, imageSrc: embedded ?? null };
-      }),
+      data.items.map(async (it) => ({
+        ...it,
+        imageSrc: await remoteImageToDataUrl(it.imageUrl, supabasePublicUrl, "image/jpeg"),
+      })),
     );
-    const companyLogoSrc =
-      data.companyLogoUrl && data.companyLogoUrl.trim().length > 0
-        ? await toDataUrlFromHttp(data.companyLogoUrl, supabasePublicUrl).catch(() => null)
-        : null;
+    const companyLogoSrc = await remoteImageToDataUrl(data.companyLogoUrl, supabasePublicUrl);
     const html = renderStoreProductsHtml({
       ...data,
       companyLogoSrc,
