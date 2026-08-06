@@ -1,6 +1,6 @@
 "use client";
 
-import { UserFriendlyError } from "@/lib/errors/app-error-mapper";
+import { businessRpcError } from "@/lib/errors/business-rpc-error";
 import { createClient } from "@/lib/supabase/client";
 import type {
   RentalCharge,
@@ -27,12 +27,11 @@ import type {
 
 /**
  * Les RPC du module lèvent des messages métier explicites (« Ce lot est déjà
- * occupé… »). Le mapper générique les remplacerait par un texte passe-partout :
- * on les repackage pour que l'utilisateur lise la vraie raison.
+ * occupé… ») : on les affiche tels quels. Les erreurs internes Postgres, elles,
+ * sont remplacées par le message de repli — cf. `businessRpcError`.
  */
-function rpcError(error: { message?: string } | null, fallback: string): Error {
-  const msg = String(error?.message ?? "").trim();
-  return new UserFriendlyError(msg.length > 0 ? msg : fallback);
+function rpcError(error: { message?: string; code?: string } | null, fallback: string): Error {
+  return businessRpcError(error, fallback);
 }
 
 function num(v: unknown): number {

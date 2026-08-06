@@ -1,6 +1,6 @@
 "use client";
 
-import { UserFriendlyError } from "@/lib/errors/app-error-mapper";
+import { businessRpcError } from "@/lib/errors/business-rpc-error";
 import { createClient } from "@/lib/supabase/client";
 import type {
   ProgressiveCancellationResult,
@@ -16,12 +16,11 @@ import type {
 
 /**
  * Les RPC de ce module lèvent des messages métier explicites (« remboursez d'abord
- * le solde… »). Le mapper d'erreurs générique les remplacerait par un texte passe-partout :
- * on les repackage en `UserFriendlyError` pour que l'utilisateur lise la vraie raison.
+ * le solde… ») : on les affiche tels quels. Les erreurs internes Postgres, elles,
+ * sont remplacées par le message de repli — cf. `businessRpcError`.
  */
-function rpcError(error: { message?: string } | null, fallback: string): Error {
-  const msg = String(error?.message ?? "").trim();
-  return new UserFriendlyError(msg.length > 0 ? msg : fallback);
+function rpcError(error: { message?: string; code?: string } | null, fallback: string): Error {
+  return businessRpcError(error, fallback);
 }
 
 function num(v: unknown): number {
@@ -235,7 +234,12 @@ export async function convertProgressivePlan(params: {
     p_unit_price: params.unitPrice ?? null,
     p_client_request_id: crypto.randomUUID(),
   });
-  if (error) throw rpcError(error, "Conversion impossible.");
+  if (error) {
+    throw rpcError(
+      error,
+      "La remise de l'article n'a pas pu être enregistrée. Réessayez ; si le problème persiste, contactez le support.",
+    );
+  }
   const row = (Array.isArray(data) ? data[0] : data) as Record<string, unknown> | null;
   return {
     saleId: String(row?.sale_id ?? ""),

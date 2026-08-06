@@ -73,7 +73,13 @@ export function ProgressiveConvertDialog({
       toast.success(`Vente ${res.saleNumber} enregistrée — ${terms.singular} remis au client.`);
       onConverted(res.saleId, res.residual);
     },
-    onError: (e) => toast.error(messageFromUnknownError(e, "Conversion impossible.")),
+    onError: (e) =>
+      toast.error(
+        messageFromUnknownError(
+          e,
+          "La remise de l'article n'a pas pu être enregistrée. Réessayez ; si le problème persiste, contactez le support.",
+        ),
+      ),
   });
 
   return (
