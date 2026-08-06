@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { SITE_URL } from "@/lib/seo/site-url";
 import {
   MdStorefront,
   MdWifiOff,
@@ -9,11 +10,12 @@ import {
 } from "react-icons/md";
 import { SeoLandingPage, type SeoFeature, type SeoFaqItem } from "@/components/seo/seo-landing-page";
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://fasostock.com";
-const canonicalUrl = `${siteUrl}/gestion-stock-afrique-ouest`;
+const siteUrl = SITE_URL;
+const path = "/gestion-stock-afrique-ouest";
+const canonicalUrl = `${siteUrl}${path}`;
 
 export const metadata: Metadata = {
-  title: "Gestion de Stock pour l'Afrique de l'Ouest | FasoStock",
+  title: { absolute: "Gestion de Stock pour l'Afrique de l'Ouest | FasoStock" },
   description:
     "Logiciel de gestion de stock pour commerces en Afrique de l'Ouest : Burkina, Côte d'Ivoire, Mali, Niger, Togo, Bénin. Adapté au Franc CFA.",
   alternates: { canonical: canonicalUrl },
@@ -160,6 +162,8 @@ const jsonLd = {
 export default function GestionStockAfriqueOuest() {
   return (
     <SeoLandingPage
+      path={path}
+      breadcrumbLabel="Gestion de stock en Afrique de l'Ouest"
       badge="Burkina Faso · Côte d'Ivoire · Mali · Niger · Togo · Bénin"
       h1="La solution de gestion de stock pour l'Afrique de l'Ouest"
       heroSubtitle="FasoStock est conçu pour les commerçants d'Afrique de l'Ouest. Disponible au Burkina Faso, en Côte d'Ivoire, au Mali, au Niger, au Togo et au Bénin. Franc CFA natif, faible connexion gérée, Mobile Money — une solution adaptée à votre réalité."

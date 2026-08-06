@@ -17,6 +17,9 @@ import { VideoModalButton } from "@/components/marketing/video-modal-button";
 import { ScrollProgress } from "@/components/marketing/scroll-progress";
 import { LottiePlayer } from "@/components/marketing/lottie-player";
 import { InstallAppButton } from "@/components/pwa/install-app-button";
+import { SEO_LANDING_LINKS } from "@/lib/seo/landing-links";
+import { HOME_FAQS } from "@/lib/seo/home-faq";
+import { SITE_URL } from "@/lib/seo/site-url";
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
@@ -63,11 +66,74 @@ export const dynamic = "force-dynamic";
 const ADSENSE_CLIENT =
   process.env.NEXT_PUBLIC_ADSENSE_CLIENT ?? "ca-pub-2965888370366530";
 
+const siteUrl = SITE_URL;
+
+const homeJsonLd = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebSite",
+      name: "FasoStock",
+      alternateName: "FasoStock — logiciel de gestion commerciale",
+      url: siteUrl,
+      inLanguage: "fr-BF",
+      publisher: { "@type": "Organization", name: "FasoStock", url: siteUrl },
+    },
+    {
+      "@type": "WebPage",
+      name: "Logiciel de gestion commerciale au Burkina Faso",
+      description:
+        "FasoStock, le logiciel de gestion commerciale des commerçants et PME du Burkina Faso : ventes, stock, caisse, factures, crédits clients et rapports.",
+      url: siteUrl,
+      inLanguage: "fr-BF",
+      about: { "@type": "Thing", name: "Logiciel de gestion commerciale" },
+      isPartOf: { "@type": "WebSite", url: siteUrl, name: "FasoStock" },
+    },
+    {
+      "@type": "FAQPage",
+      mainEntity: HOME_FAQS.map((f) => ({
+        "@type": "Question",
+        name: f.q,
+        acceptedAnswer: { "@type": "Answer", text: f.a },
+      })),
+    },
+    {
+      "@type": "ItemList",
+      name: "Solutions FasoStock",
+      itemListElement: SEO_LANDING_LINKS.map((l, i) => ({
+        "@type": "ListItem",
+        position: i + 1,
+        name: l.label,
+        url: `${siteUrl}${l.href}`,
+      })),
+    },
+  ],
+};
+
 export const metadata: Metadata = {
-  title: "Logiciel de caisse et gestion de stock au Burkina Faso",
+  title: { absolute: "Logiciel de gestion commerciale au Burkina Faso | FasoStock" },
   description:
-    "FasoStock aide les commerçants et PME du Burkina Faso à gérer leur stock, leurs ventes, leurs crédits clients et leur caisse, depuis mobile ou PC.",
+    "FasoStock est le logiciel de gestion commerciale des commerçants et PME du Burkina Faso : ventes, stock, caisse, factures, crédits clients et rapports, sur mobile et PC. Essai gratuit.",
+  keywords: [
+    "logiciel de gestion commerciale Burkina Faso",
+    "logiciel gestion commerciale Ouagadougou",
+    "logiciel de gestion commerciale",
+    "logiciel de caisse Burkina Faso",
+    "logiciel de gestion de stock Burkina Faso",
+    "logiciel de facturation Burkina Faso",
+    "application gestion boutique Burkina Faso",
+    "FasoStock",
+  ],
   alternates: { canonical: "/" },
+  openGraph: {
+    title: "Logiciel de gestion commerciale au Burkina Faso | FasoStock",
+    description:
+      "Ventes, stock, caisse, facturation, crédits clients et rapports dans un seul logiciel de gestion commerciale conçu au Burkina Faso.",
+    url: "/",
+    siteName: "FasoStock",
+    locale: "fr_BF",
+    type: "website",
+  },
   robots: {
     index: true,
     follow: true,
@@ -347,6 +413,15 @@ export default async function Home({
       className="min-h-dvh bg-[radial-gradient(circle_at_top,rgba(232,93,44,0.14),transparent_42%),linear-gradient(to_bottom,#fff,#fff7f3)] text-neutral-900 dark:bg-[radial-gradient(circle_at_top,rgba(232,93,44,0.22),transparent_42%),linear-gradient(to_bottom,#0b1220,#111827)] dark:text-neutral-100"
     >
       <ScrollProgress />
+      {/*
+        Données structurées de la page d'accueil : WebSite (nom du site dans les
+        résultats), FAQPage (rich results « questions fréquentes ») et
+        ItemList des pages solutions.
+      */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(homeJsonLd) }}
+      />
       {/* Google AdSense — chargé uniquement sur la landing (page publique, visiteurs anonymes). */}
       <Script
         id="google-adsense"
@@ -429,6 +504,15 @@ export default async function Home({
                 total de votre
                 <br />
                 <span className="text-fs-accent">commerce.</span>
+                {/* Mot-clé principal, visible et lisible, à l'intérieur du H1. */}
+                <span
+                  className={cn(
+                    "mt-3 block text-[15px] font-bold leading-snug tracking-normal sm:text-lg",
+                    heroBannerImageUrl ? "text-white/90" : "text-neutral-700",
+                  )}
+                >
+                  Le logiciel de gestion commerciale N°1 au Burkina Faso
+                </span>
               </h1>
               <p
                 className={cn(
@@ -436,8 +520,9 @@ export default async function Home({
                   heroBannerImageUrl ? "text-white/90" : "text-neutral-600",
                 )}
               >
-                FasoStock est une solution simple et intelligente pour gérer votre stock, vos ventes, vos crédits, vos
-                employés et vos rapports en toute simplicité.
+                FasoStock est un logiciel de gestion commerciale simple et complet pour les commerçants et PME du
+                Burkina Faso : gérez votre stock, vos ventes, votre caisse, vos factures, vos crédits clients, vos
+                employés et vos rapports au même endroit.
               </p>
 
               <div className="mt-6 flex flex-col gap-2.5 min-[430px]:flex-row">
@@ -1186,6 +1271,27 @@ export default async function Home({
               </div>
             ))}
           </div>
+
+          {/*
+            Maillage interne : les pages SEO ne doivent pas être orphelines.
+            Un lien depuis l'accueil (page la plus forte du site) leur transmet
+            de l'autorité et accélère leur indexation.
+          */}
+          <nav
+            aria-label="Solutions FasoStock"
+            className="mt-6 rounded-md border border-white/10 bg-[#0b1b33] p-4"
+          >
+            <p className="text-[1.22rem] font-black text-fs-accent">Nos solutions</p>
+            <ul className="mt-3 flex flex-wrap gap-x-5 gap-y-2">
+              {SEO_LANDING_LINKS.map((l) => (
+                <li key={l.href} className="text-sm text-white/85">
+                  <Link href={l.href} className="hover:text-fs-accent">
+                    {l.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
 
           <div className="mt-6 rounded-md border border-white/10 bg-[#0b1b33] p-4">
             <div className="flex items-center gap-3">

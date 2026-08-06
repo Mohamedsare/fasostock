@@ -1,6 +1,7 @@
 import { AppProviders } from "@/components/providers/app-providers";
 import { PresenceTracker } from "@/components/presence/presence-tracker";
 import { RegisterServiceWorker } from "@/components/pwa/register-sw";
+import { SITE_URL } from "@/lib/seo/site-url";
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
@@ -11,9 +12,7 @@ const inter = Inter({
   display: "swap",
 });
 
-const siteUrl =
-  process.env.NEXT_PUBLIC_SITE_URL ??
-  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
+const siteUrl = SITE_URL;
 const defaultOgImage = "/fs.png";
 
 export const metadata: Metadata = {
@@ -23,11 +22,14 @@ export const metadata: Metadata = {
     template: "%s · FasoStock",
   },
   description:
-    "Logiciel de gestion de stock, ventes et caisse pour commerces au Burkina Faso (Ouagadougou, Bobo-Dioulasso) — FasoStock Web.",
+    "FasoStock, logiciel de gestion commerciale au Burkina Faso : ventes, stock, caisse, facturation et crédits clients pour les commerces de Ouagadougou, Bobo-Dioulasso et de tout le pays.",
   applicationName: "FasoStock",
   keywords: [
+    "logiciel de gestion commerciale Burkina Faso",
+    "logiciel gestion commerciale Ouagadougou",
     "gestion de stock Burkina Faso",
     "logiciel caisse Burkina Faso",
+    "logiciel de facturation Burkina Faso",
     "POS Ouagadougou",
     "application ventes boutique",
     "FasoStock",
@@ -44,9 +46,9 @@ export const metadata: Metadata = {
     locale: "fr_BF",
     url: "/",
     siteName: "FasoStock",
-    title: "FasoStock — Gestion de stock et ventes au Burkina Faso",
+    title: "FasoStock — Logiciel de gestion commerciale au Burkina Faso",
     description:
-      "Pilotez stock, caisse et crédit client pour votre commerce au Burkina Faso avec FasoStock.",
+      "Pilotez ventes, stock, caisse, factures et crédits clients pour votre commerce au Burkina Faso avec FasoStock.",
     images: [
       {
         url: defaultOgImage,
@@ -58,9 +60,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "FasoStock — Gestion de stock et ventes au Burkina Faso",
+    title: "FasoStock — Logiciel de gestion commerciale au Burkina Faso",
     description:
-      "Stock, ventes, caisse et crédit client pour commerces au Burkina Faso.",
+      "Ventes, stock, caisse, facturation et crédit client pour les commerces du Burkina Faso.",
     images: [defaultOgImage],
   },
   robots: {
@@ -110,6 +112,24 @@ export default function RootLayout({
     name: "FasoStock",
     url: siteUrl,
     logo: `${siteUrl}/fs.png`,
+    description:
+      "Éditeur de FasoStock, logiciel de gestion commerciale pour les commerçants et PME du Burkina Faso.",
+    email: "contact@fasostock.com",
+    telephone: "+22664712044",
+    address: {
+      "@type": "PostalAddress",
+      addressLocality: "Ouagadougou",
+      addressCountry: "BF",
+    },
+    contactPoint: [
+      {
+        "@type": "ContactPoint",
+        telephone: "+22664712044",
+        contactType: "customer support",
+        areaServed: "BF",
+        availableLanguage: ["fr"],
+      },
+    ],
     areaServed: {
       "@type": "Country",
       name: "Burkina Faso",
@@ -120,9 +140,12 @@ export default function RootLayout({
     "@type": "SoftwareApplication",
     name: "FasoStock",
     applicationCategory: "BusinessApplication",
-    operatingSystem: "Web",
+    applicationSubCategory: "Logiciel de gestion commerciale",
+    operatingSystem: "Web, Android, iOS, Windows, macOS",
     url: siteUrl,
     inLanguage: "fr-BF",
+    description:
+      "Logiciel de gestion commerciale au Burkina Faso : ventes, stock, caisse, facturation, crédits clients et rapports, sur mobile et PC.",
     areaServed: {
       "@type": "Country",
       name: "Burkina Faso",
@@ -131,6 +154,7 @@ export default function RootLayout({
       "@type": "Offer",
       price: "0",
       priceCurrency: "XOF",
+      description: "Essai gratuit sans carte bancaire",
     },
   };
 

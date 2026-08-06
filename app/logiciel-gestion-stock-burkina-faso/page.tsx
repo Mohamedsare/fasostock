@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { SITE_URL } from "@/lib/seo/site-url";
 import {
   MdInventory2,
   MdPointOfSale,
@@ -9,11 +10,11 @@ import {
 } from "react-icons/md";
 import { SeoLandingPage, type SeoFeature, type SeoFaqItem } from "@/components/seo/seo-landing-page";
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://fasostock.com";
+const siteUrl = SITE_URL;
 const canonicalUrl = `${siteUrl}/logiciel-gestion-stock-burkina-faso`;
 
 export const metadata: Metadata = {
-  title: "Logiciel de Gestion de Stock au Burkina Faso | FasoStock",
+  title: { absolute: "Logiciel de Gestion de Stock au Burkina Faso | FasoStock" },
   description:
     "Gérez stock, ventes et caisse avec FasoStock, le logiciel de gestion de stock N°1 au Burkina Faso. Simple, rapide et adapté aux commerçants.",
   alternates: { canonical: canonicalUrl },

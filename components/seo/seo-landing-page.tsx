@@ -9,6 +9,8 @@ import {
 import { SiteHeader } from "@/components/marketing/site-header";
 import { WhatsappFloat } from "@/components/marketing/whatsapp-float";
 import { VideoModalButton } from "@/components/marketing/video-modal-button";
+import { SEO_LANDING_LINKS } from "@/lib/seo/landing-links";
+import { SITE_URL } from "@/lib/seo/site-url";
 import { SeoFaq } from "./seo-faq";
 
 export type SeoFeature = {
@@ -22,6 +24,17 @@ export type SeoFaqItem = {
   a: string;
 };
 
+/**
+ * Bloc de contenu rédactionnel long (H2 + paragraphes). Indispensable pour se
+ * positionner sur une requête concurrentielle : Google a besoin de texte réel,
+ * pas seulement de listes de fonctionnalités.
+ */
+export type SeoSection = {
+  h2: string;
+  paragraphs: string[];
+  bullets?: string[];
+};
+
 type Props = {
   badge: string;
   h1: string;
@@ -32,7 +45,15 @@ type Props = {
   ctaTitle: string;
   ctaSubtitle: string;
   jsonLd: Record<string, unknown>;
+  /** Chemin de la page (ex. `/logiciel-gestion-commerciale-burkina-faso`) — sert au fil d'Ariane. */
+  path?: string;
+  /** Libellé du fil d'Ariane (défaut : le H1). */
+  breadcrumbLabel?: string;
+  /** Sections rédactionnelles affichées entre les avantages et la FAQ. */
+  sections?: SeoSection[];
 };
+
+const siteUrl = SITE_URL;
 
 const STATS = [
   { value: "500+", label: "Commerces actifs" },
@@ -58,18 +79,88 @@ export function SeoLandingPage({
   ctaTitle,
   ctaSubtitle,
   jsonLd,
+  path,
+  breadcrumbLabel,
+  sections,
 }: Props) {
+  /**
+   * Balisage FAQ : génère les rich results « questions fréquentes » dans Google.
+   * Construit à partir des mêmes données que l'accordéon pour rester cohérent.
+   */
+  const faqJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: faqs.map((f) => ({
+      "@type": "Question",
+      name: f.q,
+      acceptedAnswer: { "@type": "Answer", text: f.a },
+    })),
+  };
+
+  const breadcrumbJsonLd = path
+    ? {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          {
+            "@type": "ListItem",
+            position: 1,
+            name: "Accueil",
+            item: siteUrl,
+          },
+          {
+            "@type": "ListItem",
+            position: 2,
+            name: breadcrumbLabel ?? h1,
+            item: `${siteUrl}${path}`,
+          },
+        ],
+      }
+    : null;
+
+  const relatedLinks = SEO_LANDING_LINKS.filter((l) => l.href !== path);
+
   return (
     <>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+      />
+      {breadcrumbJsonLd ? (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+        />
+      ) : null}
       <div className="min-h-screen bg-[#f8f7f5] dark:bg-[#121212]">
         <SiteHeader sectionHrefPrefix="/" />
 
+        {/* Fil d'Ariane */}
+        {path ? (
+          <nav
+            aria-label="Fil d'Ariane"
+            className="mx-auto w-full max-w-7xl px-4 pt-5 sm:px-6"
+          >
+            <ol className="flex flex-wrap items-center gap-1.5 text-xs text-neutral-500">
+              <li>
+                <Link href="/" className="hover:text-fs-accent">
+                  Accueil
+                </Link>
+              </li>
+              <li aria-hidden>›</li>
+              <li className="font-semibold text-neutral-700 dark:text-neutral-300">
+                {breadcrumbLabel ?? h1}
+              </li>
+            </ol>
+          </nav>
+        ) : null}
+
         {/* Hero */}
-        <section className="mx-auto w-full max-w-7xl px-4 pt-10 pb-8 sm:px-6 sm:pt-16 sm:pb-12">
+        <section className="mx-auto w-full max-w-7xl px-4 pt-6 pb-8 sm:px-6 sm:pt-10 sm:pb-12">
           <div className="rounded-md border border-black/8 bg-white px-6 py-10 shadow-[0_22px_56px_-36px_rgba(17,24,39,0.28)] dark:border-white/8 dark:bg-[#1c1b1f] sm:px-10 sm:py-14">
             <div className="text-center">
               <p className="inline-flex items-center gap-1.5 rounded-full bg-[#fff5ef] px-3 py-1 text-xs font-black uppercase tracking-wide text-fs-accent dark:bg-fs-accent/20">
@@ -179,8 +270,65 @@ export function SeoLandingPage({
           </div>
         </section>
 
+        {/* Contenu rédactionnel (profondeur sémantique) */}
+        {sections?.length ? (
+          <section className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6">
+            <div className="grid gap-3 lg:grid-cols-2">
+              {sections.map((s) => (
+                <article
+                  key={s.h2}
+                  className="rounded-md border border-black/8 bg-white px-6 py-7 shadow-sm dark:border-white/8 dark:bg-[#1c1b1f] sm:px-8"
+                >
+                  <h2 className="text-[1.35rem] font-black leading-tight text-[#17253a] dark:text-[#e6e1e5] sm:text-[1.7rem]">
+                    {s.h2}
+                  </h2>
+                  {s.paragraphs.map((p) => (
+                    <p key={p} className="mt-3 text-sm leading-relaxed text-neutral-600">
+                      {p}
+                    </p>
+                  ))}
+                  {s.bullets?.length ? (
+                    <ul className="mt-4 space-y-2">
+                      {s.bullets.map((b) => (
+                        <li key={b} className="flex items-start gap-2.5">
+                          <MdCheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-fs-accent" aria-hidden />
+                          <span className="text-sm leading-relaxed text-neutral-700 dark:text-neutral-300">{b}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </article>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
         {/* FAQ */}
         <SeoFaq faqs={faqs} />
+
+        {/* Maillage interne entre pages SEO */}
+        {relatedLinks.length ? (
+          <section className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6">
+            <div className="rounded-md border border-black/8 bg-white px-6 py-7 shadow-sm dark:border-white/8 dark:bg-[#1c1b1f] sm:px-8">
+              <h2 className="text-[1.35rem] font-black leading-tight text-[#17253a] dark:text-[#e6e1e5] sm:text-[1.7rem]">
+                Découvrir aussi
+              </h2>
+              <ul className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {relatedLinks.map((l) => (
+                  <li key={l.href}>
+                    <Link
+                      href={l.href}
+                      className="flex items-center gap-2 rounded-md border border-black/8 bg-[#fbfbfb] px-4 py-3 text-sm font-semibold text-neutral-700 hover:border-fs-accent/40 hover:text-fs-accent dark:border-white/8 dark:bg-[#232323] dark:text-neutral-300"
+                    >
+                      <MdArrowForward className="h-4 w-4 shrink-0 text-fs-accent" aria-hidden />
+                      {l.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </section>
+        ) : null}
 
         {/* CTA */}
         <section className="mx-auto w-full max-w-7xl px-4 pb-12 sm:px-6">
@@ -227,7 +375,7 @@ export function SeoLandingPage({
               Faso<span className="text-[#f97316]">Stock</span>
             </p>
             <p className="mt-1 text-xs text-neutral-500">
-              La solution de gestion de stock N°1 au Burkina Faso
+              Le logiciel de gestion commerciale N°1 au Burkina Faso
             </p>
             <nav className="mt-3 flex flex-wrap justify-center gap-x-5 gap-y-1 text-xs text-neutral-500">
               <Link href="/" className="hover:text-fs-accent">Accueil</Link>

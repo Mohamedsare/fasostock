@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { SITE_URL } from "@/lib/seo/site-url";
 import {
   MdOutlinePhoneAndroid,
   MdSpeed,
@@ -9,11 +10,12 @@ import {
 } from "react-icons/md";
 import { SeoLandingPage, type SeoFeature, type SeoFaqItem } from "@/components/seo/seo-landing-page";
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://fasostock.com";
-const canonicalUrl = `${siteUrl}/application-gestion-boutique-burkina`;
+const siteUrl = SITE_URL;
+const path = "/application-gestion-boutique-burkina";
+const canonicalUrl = `${siteUrl}${path}`;
 
 export const metadata: Metadata = {
-  title: "Application de Gestion de Boutique au Burkina | FasoStock",
+  title: { absolute: "Application de Gestion de Boutique au Burkina | FasoStock" },
   description:
     "Application mobile et web pour gérer votre boutique au Burkina Faso : ventes, stock, crédits clients et caisse, même en faible connexion internet.",
   alternates: { canonical: canonicalUrl },
@@ -164,6 +166,8 @@ const jsonLd = {
 export default function ApplicationGestionBoutiqueBurkina() {
   return (
     <SeoLandingPage
+      path={path}
+      breadcrumbLabel="Application de gestion de boutique"
       badge="Application Mobile & Web · Burkina Faso"
       h1="L'application de gestion de boutique des commerçants burkinabè"
       heroSubtitle="Gérez votre boutique au Burkina Faso depuis votre téléphone. Ventes ultra-rapides, stock automatisé, crédits clients maîtrisés et caisse journalière — tout dans une seule application mobile et web, qui fonctionne même avec une faible connexion internet."

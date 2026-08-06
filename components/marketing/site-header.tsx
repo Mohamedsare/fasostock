@@ -102,6 +102,13 @@ export function SiteHeader({ sectionHrefPrefix = "" }: SiteHeaderProps) {
           <Link href="/offre-complete" className="rounded-md px-3 py-2.5 text-sm font-extrabold text-fs-accent hover:bg-fs-accent/8">
             Offre complète
           </Link>
+          {/* Lien sitewide vers la page pilier SEO (« logiciel de gestion commerciale »). */}
+          <Link
+            href="/logiciel-gestion-commerciale-burkina-faso"
+            className="rounded-md px-3 py-2.5 text-sm font-semibold text-neutral-800 hover:bg-black/5"
+          >
+            Gestion commerciale
+          </Link>
           <Link href={section("faq")} className="rounded-md px-3 py-2.5 text-sm font-semibold text-neutral-800 hover:bg-black/5">
             FAQ
           </Link>
@@ -173,6 +180,12 @@ export function SiteHeader({ sectionHrefPrefix = "" }: SiteHeaderProps) {
             </Link>
             <Link href="/offre-complete" className="text-[13px] font-extrabold text-fs-accent hover:opacity-80">
               Offre complète
+            </Link>
+            <Link
+              href="/logiciel-gestion-commerciale-burkina-faso"
+              className="text-[13px] font-semibold text-neutral-800 hover:text-fs-accent"
+            >
+              Gestion commerciale
             </Link>
           </nav>
 

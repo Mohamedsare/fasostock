@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { SITE_URL } from "@/lib/seo/site-url";
 import {
   MdPointOfSale,
   MdDescription,
@@ -9,11 +10,12 @@ import {
 } from "react-icons/md";
 import { SeoLandingPage, type SeoFeature, type SeoFaqItem } from "@/components/seo/seo-landing-page";
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://fasostock.com";
-const canonicalUrl = `${siteUrl}/logiciel-caisse-ouagadougou`;
+const siteUrl = SITE_URL;
+const path = "/logiciel-caisse-ouagadougou";
+const canonicalUrl = `${siteUrl}${path}`;
 
 export const metadata: Metadata = {
-  title: "Logiciel de Caisse pour Commerces à Ouagadougou | FasoStock",
+  title: { absolute: "Logiciel de Caisse pour Commerces à Ouagadougou | FasoStock" },
   description:
     "Logiciel de caisse pour boutiques, pharmacies et épiceries à Ouagadougou. Encaissez, gérez votre stock et suivez vos ventes depuis mobile ou PC.",
   alternates: { canonical: canonicalUrl },
@@ -164,6 +166,8 @@ const jsonLd = {
 export default function LogicielCaisseOuagadougou() {
   return (
     <SeoLandingPage
+      path={path}
+      breadcrumbLabel="Logiciel de caisse à Ouagadougou"
       badge="Logiciel de Caisse · Ouagadougou"
       h1="Le logiciel de caisse préféré des commerçants à Ouagadougou"
       heroSubtitle="Encaissez vos ventes, gérez votre stock et suivez vos crédits clients depuis votre mobile ou PC. FasoStock est la solution idéale pour tous les types de commerces à Ouagadougou — boutiques, pharmacies, épiceries, restaurants et bien plus."

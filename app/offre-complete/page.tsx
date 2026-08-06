@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { SITE_URL } from "@/lib/seo/site-url";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -33,7 +34,7 @@ import { SeoFaq } from "@/components/seo/seo-faq";
 import { getCachedLandingSettings } from "@/lib/features/landing/server";
 import { cn } from "@/lib/utils/cn";
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://fasostock.com";
+const siteUrl = SITE_URL;
 const canonicalUrl = `${siteUrl}/offre-complete`;
 
 const OFFER_PRICE = "380 000";
@@ -46,7 +47,7 @@ const WHATSAPP_ORDER = `https://wa.me/22664712044?text=${encodeURIComponent(
 export const revalidate = 60;
 
 export const metadata: Metadata = {
-  title: "Offre Complète : pack matériel POS + logiciel FasoStock",
+  title: { absolute: "Offre Complète : pack matériel POS + logiciel FasoStock" },
   description:
     "Terminal POS, imprimante ticket 80mm, clavier, souris et abonnement logiciel FasoStock à 380 000 CFA. Installation, formation et garantie 12 mois incluses.",
   alternates: { canonical: canonicalUrl },

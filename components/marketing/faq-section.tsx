@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils/cn";
+import { HOME_FAQS, type HomeFaqItem } from "@/lib/seo/home-faq";
 import {
   MdAutorenew,
   MdChevronRight,
@@ -15,33 +16,15 @@ import {
   MdWhatsapp,
 } from "react-icons/md";
 
-type FaqItem = {
-  id: number;
-  q: string;
-  a: string;
-};
+type FaqItem = HomeFaqItem;
 
-const FAQS: FaqItem[] = [
-  {
-    id: 1,
-    q: "FasoStock fonctionne-t-il avec une connexion internet faible ?",
-    a: "Oui. FasoStock est optimisé pour les faibles débits : vous continuez à travailler même avec une connexion internet faible ou instable, puis les données se synchronisent dès que le débit s'améliore.",
-  },
-  { id: 2, q: "Est-ce que je peux gérer plusieurs boutiques ?", a: "Oui, vous pouvez gérer plusieurs boutiques depuis un seul compte." },
-  { id: 3, q: "Est-ce que mes employés peuvent avoir leurs propres accès ?", a: "Oui, avec des rôles et permissions par utilisateur." },
-  { id: 4, q: "Est-ce que je peux imprimer des tickets ou factures ?", a: "Oui, impression ticket et facture selon votre configuration." },
-  { id: 5, q: "Est-ce que mes données sont sécurisées ?", a: "Oui, les données sont protégées avec des contrôles d'accès et des sauvegardes." },
-  { id: 6, q: "Combien coûte FasoStock ?", a: "Vous pouvez commencer avec l'essai gratuit puis choisir le plan adapté." },
-  { id: 7, q: "Puis-je le tester avant de payer ?", a: "Oui, une période d'essai est disponible." },
-  { id: 8, q: "Est-ce adapté aux petits commerces ?", a: "Oui, FasoStock est conçu pour les petites, moyennes et grandes structures." },
-  { id: 9, q: "Sur quels appareils puis-je utiliser FasoStock ?", a: "Sur mobile, tablette et ordinateur via navigateur." },
-  { id: 10, q: "Que se passe-t-il si mon appareil est endommagé ou que je le change ?", a: "Vos données restent liées à votre compte et sont récupérables après reconnexion." },
-];
+const FAQS: FaqItem[] = HOME_FAQS;
 
 export function FaqSection() {
   const [openId, setOpenId] = useState<number>(1);
-  const left = useMemo(() => FAQS.slice(0, 4), []);
-  const right = useMemo(() => FAQS.slice(4), []);
+  const half = Math.ceil(FAQS.length / 2);
+  const left = useMemo(() => FAQS.slice(0, half), [half]);
+  const right = useMemo(() => FAQS.slice(half), [half]);
 
   const renderItem = (item: FaqItem) => {
     const open = item.id === openId;
@@ -61,19 +44,21 @@ export function FaqSection() {
           {open ? <MdChevronLeft className="h-5 w-5 rotate-90 text-fs-accent" /> : <MdChevronRight className="h-5 w-5 rotate-90 text-neutral-500" />}
         </button>
 
-        {open ? (
-          <div className="border-t border-black/8 px-4 pb-4 pt-3">
-            <p className="text-sm leading-relaxed text-neutral-700">{item.a}</p>
-            {item.id === 1 ? (
-              <div className="mt-3 rounded-md border border-[#f7d8c7] bg-[#fff7f1] px-3 py-2">
-                <p className="text-sm font-bold text-[#b45309]">
-                  Vous vendez, encaissez et gérez votre stock même avec une faible connexion internet.
-                </p>
-                <p className="text-sm text-neutral-700">Aucune vente ne sera perdue.</p>
-              </div>
-            ) : null}
-          </div>
-        ) : null}
+        {/*
+          La réponse reste dans le DOM même repliée (masquage CSS) : un contenu
+          absent du DOM n'est pas indexé par Google.
+        */}
+        <div className={cn("border-t border-black/8 px-4 pb-4 pt-3", !open && "hidden")}>
+          <p className="text-sm leading-relaxed text-neutral-700">{item.a}</p>
+          {item.id === 1 ? (
+            <div className="mt-3 rounded-md border border-[#f7d8c7] bg-[#fff7f1] px-3 py-2">
+              <p className="text-sm font-bold text-[#b45309]">
+                Vous vendez, encaissez et gérez votre stock même avec une faible connexion internet.
+              </p>
+              <p className="text-sm text-neutral-700">Aucune vente ne sera perdue.</p>
+            </div>
+          ) : null}
+        </div>
       </article>
     );
   };
@@ -86,11 +71,11 @@ export function FaqSection() {
             <MdChat className="h-4 w-4" />
             FAQ
           </p>
-          <h3 className="mx-auto mt-3 max-w-4xl text-[2rem] font-black leading-[1.05] tracking-tight text-[#17253a] sm:text-[3.1rem]">
+          <h2 className="mx-auto mt-3 max-w-4xl text-[2rem] font-black leading-[1.05] tracking-tight text-[#17253a] sm:text-[3.1rem]">
             Questions <span className="text-fs-accent">fréquentes</span>
-          </h3>
+          </h2>
           <p className="mx-auto mt-2 max-w-3xl text-sm text-neutral-600 sm:text-[1.05rem]">
-            Tout ce que vous devez savoir sur FasoStock. Si vous ne trouvez pas votre réponse, contactez-nous sur WhatsApp.
+            Tout ce que vous devez savoir sur FasoStock, le logiciel de gestion commerciale des commerçants du Burkina Faso. Si vous ne trouvez pas votre réponse, contactez-nous sur WhatsApp.
           </p>
         </div>
 

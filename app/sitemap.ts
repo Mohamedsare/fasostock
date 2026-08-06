@@ -1,17 +1,8 @@
+import { SEO_LANDING_LINKS } from "@/lib/seo/landing-links";
+import { SITE_URL } from "@/lib/seo/site-url";
 import type { MetadataRoute } from "next";
 
-const siteUrl =
-  process.env.NEXT_PUBLIC_SITE_URL ??
-  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
-
-const seoRoutes = [
-  "/offre-complete",
-  "/logiciel-gestion-stock-burkina-faso",
-  "/logiciel-caisse-ouagadougou",
-  "/gestion-stock-afrique-ouest",
-  "/logiciel-inventaire-pme-burkina",
-  "/application-gestion-boutique-burkina",
-] as const;
+const siteUrl = SITE_URL;
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date();
@@ -22,11 +13,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "weekly",
       priority: 1,
     },
-    ...seoRoutes.map((path) => ({
-      url: `${siteUrl}${path}`,
+    // Pages SEO indexables — source unique partagée avec le maillage interne.
+    ...SEO_LANDING_LINKS.map((l) => ({
+      url: `${siteUrl}${l.href}`,
       lastModified: now,
       changeFrequency: "monthly" as const,
-      priority: 0.85,
+      priority: l.priority,
     })),
   ];
 }

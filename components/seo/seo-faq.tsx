@@ -52,11 +52,15 @@ export function SeoFaq({ faqs }: { faqs: FaqItem[] }) {
                     aria-hidden
                   />
                 </button>
-                {open && (
-                  <div className="border-t border-black/8 px-4 pb-4 pt-3 dark:border-white/8">
-                    <p className="text-sm leading-relaxed text-neutral-600">{item.a}</p>
-                  </div>
-                )}
+                {/*
+                  La réponse reste toujours dans le DOM (masquée en CSS) : un
+                  contenu retiré du DOM n'est pas indexé par Google.
+                */}
+                <div
+                  className={`border-t border-black/8 px-4 pb-4 pt-3 dark:border-white/8 ${open ? "" : "hidden"}`}
+                >
+                  <p className="text-sm leading-relaxed text-neutral-600">{item.a}</p>
+                </div>
               </article>
             );
           })}

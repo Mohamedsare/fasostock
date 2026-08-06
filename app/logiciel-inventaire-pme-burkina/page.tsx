@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { SITE_URL } from "@/lib/seo/site-url";
 import {
   MdInventory2,
   MdNotifications,
@@ -9,11 +10,12 @@ import {
 } from "react-icons/md";
 import { SeoLandingPage, type SeoFeature, type SeoFaqItem } from "@/components/seo/seo-landing-page";
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://fasostock.com";
-const canonicalUrl = `${siteUrl}/logiciel-inventaire-pme-burkina`;
+const siteUrl = SITE_URL;
+const path = "/logiciel-inventaire-pme-burkina";
+const canonicalUrl = `${siteUrl}${path}`;
 
 export const metadata: Metadata = {
-  title: "Logiciel d'Inventaire pour PME au Burkina Faso | FasoStock",
+  title: { absolute: "Logiciel d'Inventaire pour PME au Burkina Faso | FasoStock" },
   description:
     "Gérez l'inventaire de votre PME au Burkina Faso : alertes de rupture, valorisation de stock et rapports. Pensé pour artisans et commerçants burkinabè.",
   alternates: { canonical: canonicalUrl },
@@ -152,6 +154,8 @@ const jsonLd = {
 export default function LogicielInventairePmeBurkina() {
   return (
     <SeoLandingPage
+      path={path}
+      breadcrumbLabel="Logiciel d'inventaire pour PME"
       badge="PME & Artisans · Burkina Faso"
       h1="Le logiciel d'inventaire idéal pour les PME du Burkina Faso"
       heroSubtitle="Gérez l'inventaire de votre PME au Burkina Faso avec FasoStock. Remplacez vos carnets et fichiers Excel par une solution digitale simple : alertes de rupture, valorisation de stock, suivi des fournisseurs et rapports automatisés."
