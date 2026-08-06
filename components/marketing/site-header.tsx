@@ -86,7 +86,7 @@ export function SiteHeader({ sectionHrefPrefix = "" }: SiteHeaderProps) {
         <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto p-3" onClick={close}>
           <button
             type="button"
-            className="mb-1 inline-flex h-11 w-11 items-center justify-center rounded-md border border-black/10 bg-white text-neutral-800 hover:bg-black/5"
+            className="mb-1 inline-flex h-11 w-11 items-center justify-center rounded-full text-neutral-800 hover:bg-black/5 hover:ring-1 hover:ring-black/10"
             onClick={toggleTheme}
             aria-label={isDark ? "Activer le mode clair" : "Activer le mode sombre"}
             title={isDark ? "Mode clair" : "Mode sombre"}
@@ -101,9 +101,6 @@ export function SiteHeader({ sectionHrefPrefix = "" }: SiteHeaderProps) {
           </Link>
           <Link href="/offre-complete" className="rounded-md px-3 py-2.5 text-sm font-extrabold text-fs-accent hover:bg-fs-accent/8">
             Offre complète
-          </Link>
-          <Link href="/facture-devis" className="rounded-md px-3 py-2.5 text-sm font-semibold text-neutral-800 hover:bg-black/5">
-            Facture &amp; Devis
           </Link>
           <Link href={section("faq")} className="rounded-md px-3 py-2.5 text-sm font-semibold text-neutral-800 hover:bg-black/5">
             FAQ
@@ -177,16 +174,13 @@ export function SiteHeader({ sectionHrefPrefix = "" }: SiteHeaderProps) {
             <Link href="/offre-complete" className="text-[13px] font-extrabold text-fs-accent hover:opacity-80">
               Offre complète
             </Link>
-            <Link href="/facture-devis" className="text-[13px] font-semibold text-neutral-800 hover:text-fs-accent">
-              Facture &amp; Devis
-            </Link>
           </nav>
 
           <div className="hidden items-center gap-1.5 sm:flex">
             <button
               type="button"
               onClick={toggleTheme}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-black/10 bg-white text-neutral-800 hover:bg-black/5"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full text-neutral-800 hover:bg-black/5 hover:ring-1 hover:ring-black/10"
               aria-label={isDark ? "Activer le mode clair" : "Activer le mode sombre"}
               title={isDark ? "Mode clair" : "Mode sombre"}
             >

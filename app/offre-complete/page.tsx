@@ -590,7 +590,6 @@ export default async function OffreCompletePage() {
               <Link href="/" className="hover:text-fs-accent">Accueil</Link>
               <Link href="/#tarifs" className="hover:text-fs-accent">Tarifs</Link>
               <Link href="/register/select-activity" className="hover:text-fs-accent">Essai gratuit</Link>
-              <Link href="/facture-devis" className="hover:text-fs-accent">Facture &amp; Devis</Link>
               <Link href="/politique-confidentialite" className="hover:text-fs-accent">Confidentialité</Link>
             </nav>
             <p className="mt-4 text-center text-[10px] text-neutral-400">
