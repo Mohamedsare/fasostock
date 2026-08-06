@@ -16,7 +16,10 @@ import type { AdminCompany, AdminStore } from "@/lib/features/admin/types";
 import { messageFromUnknownError, toast } from "@/lib/toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Fragment, useMemo, useState } from "react";
-import { MdDelete, MdExpandMore, MdChevronRight, MdAutoAwesome, MdPowerSettingsNew, MdWarehouse, MdAdd, MdRemove, MdStorefront } from "react-icons/md";
+import { MdDelete, MdExpandMore, MdChevronRight, MdAutoAwesome, MdPowerSettingsNew, MdWarehouse, MdAdd, MdRemove, MdStorefront, MdSupportAgent } from "react-icons/md";
+import { useRouter } from "next/navigation";
+import { startSupportSession } from "@/lib/features/support/api";
+import { queryKeys } from "@/lib/query/query-keys";
 
 type CreateForm = {
   companyName: string;
@@ -38,11 +41,17 @@ const EMPTY_CREATE_FORM: CreateForm = {
   businessTypeSlug: "",
 };
 
+const SUPPORT_DURATIONS = [30, 60, 120, 240] as const;
+
 export function AdminCompaniesScreen() {
   const qc = useQueryClient();
+  const router = useRouter();
   const [expanded, setExpanded] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [createForm, setCreateForm] = useState<CreateForm>(EMPTY_CREATE_FORM);
+  const [supportFor, setSupportFor] = useState<AdminCompany | null>(null);
+  const [supportReason, setSupportReason] = useState("");
+  const [supportMinutes, setSupportMinutes] = useState<number>(60);
 
   const q = useQuery({
     queryKey: ["admin-companies"] as const,
@@ -128,6 +137,42 @@ export function AdminCompaniesScreen() {
     },
     onError: (e) => toast.error(messageFromUnknownError(e)),
   });
+
+  /**
+   * Mode dépannage : on entre dans l'espace du client comme s'il s'agissait du nôtre.
+   * Le motif est exigé ici ET en base — c'est lui qui rend l'intervention défendable
+   * si le commerçant conteste plus tard une modification.
+   */
+  const mutSupport = useMutation({
+    mutationFn: async (p: { companyId: string; reason: string; minutes: number }) =>
+      startSupportSession(p),
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: queryKeys.appContext });
+      setSupportFor(null);
+      setSupportReason("");
+      router.push("/dashboard");
+    },
+    onError: (e) => toast.error(messageFromUnknownError(e)),
+  });
+
+  function openSupport(c: AdminCompany) {
+    setSupportFor(c);
+    setSupportReason("");
+    setSupportMinutes(60);
+  }
+
+  function submitSupport() {
+    if (!supportFor) return;
+    if (supportReason.trim().length < 5) {
+      toast.error("Indiquez le motif de l'intervention (5 caractères minimum).");
+      return;
+    }
+    mutSupport.mutate({
+      companyId: supportFor.id,
+      reason: supportReason.trim(),
+      minutes: supportMinutes,
+    });
+  }
 
   function submitCreate() {
     const f = createForm;
@@ -300,6 +345,14 @@ export function AdminCompaniesScreen() {
                         </button>
                         <button
                           type="button"
+                          className="rounded-lg p-2 hover:bg-amber-50"
+                          title="Dépanner (entrer dans cette entreprise)"
+                          onClick={() => openSupport(c)}
+                        >
+                          <MdSupportAgent className="h-5 w-5 text-amber-600" />
+                        </button>
+                        <button
+                          type="button"
                           className="rounded-lg p-2 hover:bg-red-50"
                           title="Supprimer"
                           onClick={() => confirmDeleteCompany(c)}
@@ -469,6 +522,74 @@ export function AdminCompaniesScreen() {
                 onClick={submitCreate}
               >
                 {mutCreate.isPending ? "Création…" : "Créer l'entreprise"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {supportFor ? (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+            <h3 className="text-lg font-bold text-slate-900">
+              Dépanner « {supportFor.name} »
+            </h3>
+            <p className="mt-1 text-sm text-slate-500">
+              Vous allez travailler dans les données réelles de ce client, avec les droits
+              du propriétaire. L&apos;intervention et chacune de vos actions sont inscrites
+              dans son journal d&apos;audit.
+            </p>
+
+            <label className="mt-4 block text-sm font-medium text-slate-700">
+              Motif de l&apos;intervention *
+              <input
+                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                value={supportReason}
+                onChange={(e) => setSupportReason(e.target.value)}
+                placeholder="Ex. Stock négatif signalé au téléphone"
+                autoFocus
+              />
+            </label>
+
+            <div className="mt-3 text-sm font-medium text-slate-700">
+              Durée
+              <div className="mt-1 flex flex-wrap gap-2">
+                {SUPPORT_DURATIONS.map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => setSupportMinutes(m)}
+                    className={
+                      supportMinutes === m
+                        ? "rounded-xl bg-amber-500 px-3 py-1.5 text-sm font-semibold text-white"
+                        : "rounded-xl border border-slate-200 px-3 py-1.5 text-sm font-semibold text-slate-700"
+                    }
+                  >
+                    {m < 60 ? `${m} min` : `${m / 60} h`}
+                  </button>
+                ))}
+              </div>
+              <p className="mt-1 text-xs font-normal text-slate-500">
+                Passé ce délai, l&apos;accès se referme tout seul.
+              </p>
+            </div>
+
+            <div className="mt-6 flex justify-end gap-2">
+              <button
+                type="button"
+                className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold"
+                disabled={mutSupport.isPending}
+                onClick={() => setSupportFor(null)}
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                className="rounded-xl bg-amber-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                disabled={mutSupport.isPending}
+                onClick={submitSupport}
+              >
+                {mutSupport.isPending ? "Ouverture…" : "Entrer dans l'entreprise"}
               </button>
             </div>
           </div>

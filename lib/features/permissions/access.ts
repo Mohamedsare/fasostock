@@ -92,6 +92,18 @@ export type AppContextData = {
    * (`companies.online_store_enabled`). S'ajoute aux drapeaux boutique.
    */
   onlineStoreEnabled: boolean;
+  /**
+   * Mode dépannage : le super admin travaille dans l'entreprise d'un client.
+   * Non nul ⇒ `companyId` ci-dessus est celle du client, pas la sienne.
+   * L'intervention est bornée dans le temps et tracée dans le journal d'audit du client.
+   */
+  supportSession?: {
+    id: string;
+    companyId: string;
+    companyName: string;
+    reason: string;
+    expiresAt: string;
+  } | null;
 };
 
 /**

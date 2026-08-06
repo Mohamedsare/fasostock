@@ -1,6 +1,7 @@
 "use client";
 
 import { ROUTES } from "@/lib/config/routes";
+import { SupportSessionBannerStandalone } from "@/components/layout/support-session-banner";
 import { signOutAndRedirect } from "@/lib/auth/sign-out-client";
 import { cn } from "@/lib/utils/cn";
 import { useQueryClient } from "@tanstack/react-query";
@@ -163,7 +164,10 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         </div>
       ) : null}
 
-      <main className="min-w-0 flex-1 overflow-x-hidden">{children}</main>
+      <main className="min-w-0 flex-1 overflow-x-hidden">
+        <SupportSessionBannerStandalone />
+        {children}
+      </main>
     </div>
   );
 }

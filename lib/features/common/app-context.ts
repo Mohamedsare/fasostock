@@ -6,6 +6,7 @@ import { PERMISSIONS_ALL } from "@/lib/constants/permissions";
 import type { AppContextData } from "@/lib/features/permissions/access";
 import { reportHandledClientError } from "@/lib/monitoring/remote-error-logger";
 import { createClient } from "@/lib/supabase/client";
+import { getCurrentSupportSession } from "@/lib/features/support/api";
 import { mapSupabaseError } from "@/lib/supabase/map-error";
 import { queryKeys } from "@/lib/query/query-keys";
 import { formatUnknownErrorMessage } from "@/lib/utils/format-unknown-error";
@@ -185,6 +186,14 @@ async function fetchAppContext(): Promise<AppContextData | null> {
   if (pErr) throw mapSupabaseError(pErr);
   const isSuperAdmin = profile?.is_super_admin === true;
 
+  /**
+   * Mode dépannage : une intervention ouverte impose l'entreprise du client comme
+   * entreprise active, même si le super admin n'y a aucun rôle. La base l'autorisait
+   * déjà (policies `is_super_admin() OR …`) ; ici on ne fait que l'exposer, borné
+   * dans le temps et tracé côté client.
+   */
+  const supportSession = isSuperAdmin ? await getCurrentSupportSession() : null;
+
   // Flag GLOBAL plateforme (super admin) : génération d'affiches publicitaires IA. Défaut off.
   let promoAdGenerationEnabled = false;
   try {
@@ -214,7 +223,7 @@ async function fetchAppContext(): Promise<AppContextData | null> {
       orderedCompanyIds.push(cid);
     }
   }
-  if (orderedCompanyIds.length === 0) {
+  if (orderedCompanyIds.length === 0 && !supportSession) {
     return {
       companyId: "",
       companyName: "",
@@ -243,7 +252,10 @@ async function fetchAppContext(): Promise<AppContextData | null> {
     };
   }
 
-  const primaryCompanyId = pickActiveCompanyId(orderedCompanyIds);
+  // En dépannage, l'entreprise du client prime sur la préférence locale du super admin.
+  const primaryCompanyId = supportSession
+    ? supportSession.companyId
+    : pickActiveCompanyId(orderedCompanyIds);
   const { data: companyRow, error: cErr } = await supabase
     .from("companies")
     .select(
@@ -387,6 +399,15 @@ async function fetchAppContext(): Promise<AppContextData | null> {
       productLocationsEnabled,
       onlineStoreEnabled,
       promoAdGenerationEnabled,
+      supportSession: supportSession
+        ? {
+            id: supportSession.id,
+            companyId: supportSession.companyId,
+            companyName: supportSession.companyName || companyName,
+            reason: supportSession.reason,
+            expiresAt: supportSession.expiresAt,
+          }
+        : null,
     };
   }
 

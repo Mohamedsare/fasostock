@@ -20,6 +20,7 @@ import { OwnerNotificationsBell } from "@/components/layout/owner-notifications-
 import { NAV_ITEMS, RESTAURANT_NAV_ITEMS } from "@/lib/config/navigation";
 import { useAppContext } from "@/lib/features/common/app-context";
 import { StoreSwitcherSheet } from "@/components/layout/store-switcher-sheet";
+import { SupportSessionBanner } from "@/components/layout/support-session-banner";
 import { usePermissions } from "@/lib/features/permissions/use-permissions";
 import { useDesktopNav } from "@/lib/hooks/use-media-query";
 import { signOutAndRedirect } from "@/lib/auth/sign-out-client";
@@ -102,9 +103,13 @@ export function AppShell({ children, userEmail }: AppShellProps) {
     setStoreSwitcherOpen(false);
   };
 
+  /**
+   * Le super admin vit dans /admin — sauf en mode dépannage, où il travaille
+   * volontairement dans l'espace d'une entreprise cliente.
+   */
   useEffect(() => {
-    if (data?.isSuperAdmin) router.replace("/admin");
-  }, [data?.isSuperAdmin, router]);
+    if (data?.isSuperAdmin && !data?.supportSession) router.replace("/admin");
+  }, [data?.isSuperAdmin, data?.supportSession, router]);
 
   useEffect(() => {
     setShowImmersiveSplash(!hasSeenInitialAppLoad());
@@ -254,7 +259,7 @@ export function AppShell({ children, userEmail }: AppShellProps) {
     );
   }
 
-  if (data?.isSuperAdmin) {
+  if (data?.isSuperAdmin && !data.supportSession) {
     return (
       <div className="flex min-h-dvh flex-col items-center justify-center gap-3 bg-fs-surface text-fs-text">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-fs-accent border-t-transparent" />
@@ -276,6 +281,13 @@ export function AppShell({ children, userEmail }: AppShellProps) {
         isPosRoute && "overscroll-none",
       )}
     >
+      {data?.supportSession ? (
+        <SupportSessionBanner
+          companyName={data.supportSession.companyName}
+          reason={data.supportSession.reason}
+          expiresAt={data.supportSession.expiresAt}
+        />
+      ) : null}
       <OfflineStrip />
       <div className="flex min-h-0 flex-1 overflow-hidden">
         {isDesktop ? (
