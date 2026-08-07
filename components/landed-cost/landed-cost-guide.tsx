@@ -8,7 +8,7 @@ import {
   MdLightbulbOutline,
   MdWarningAmber,
 } from "react-icons/md";
-import { FsCard } from "@/components/ui/fs-screen-primitives";
+import { LcCard } from "./ui";
 import { cn } from "@/lib/utils/cn";
 
 /**
@@ -50,7 +50,7 @@ function Section({
 /** Encadré « exemple chiffré » — le format que le commerçant recopie sur son cahier. */
 function Example({ title, rows, footer }: { title: string; rows: [string, string][]; footer?: ReactNode }) {
   return (
-    <div className="rounded-[10px] border border-black/[0.06] bg-fs-surface-container/70 p-3 dark:bg-white/4">
+    <div className="rounded-md border border-black/[0.06] bg-fs-surface-container/70 p-3 dark:bg-white/4">
       <p className="text-[11px] font-semibold uppercase tracking-wide text-neutral-500">
         {title}
       </p>
@@ -82,7 +82,7 @@ function Callout({
   return (
     <div
       className={cn(
-        "flex gap-2 rounded-[10px] p-3 text-xs leading-relaxed",
+        "flex gap-2 rounded-md p-3 text-xs leading-relaxed",
         tone === "warning"
           ? "bg-amber-500/[0.1] text-amber-900 dark:text-amber-200"
           : "bg-sky-500/[0.08] text-sky-900 dark:text-sky-200",
@@ -105,8 +105,8 @@ export function LandedCostGuide({ onClose }: { onClose: () => void }) {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <FsCard
-        className="flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-b-none p-0 shadow-xl sm:rounded-xl"
+      <LcCard
+        className="flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-b-none p-0 shadow-xl sm:rounded-md"
         padding="p-0"
       >
         <div className="flex shrink-0 items-start justify-between gap-3 border-b border-black/[0.06] px-4 py-3 sm:px-5">
@@ -120,7 +120,7 @@ export function LandedCostGuide({ onClose }: { onClose: () => void }) {
             type="button"
             onClick={onClose}
             aria-label="Fermer le guide"
-            className="fs-touch-target -mr-1 shrink-0 rounded-lg p-1 text-neutral-500 hover:bg-black/5"
+            className="fs-touch-target -mr-1 shrink-0 rounded-md p-1 text-neutral-500 hover:bg-black/5"
           >
             <MdClose className="h-5 w-5" />
           </button>
@@ -446,7 +446,7 @@ export function LandedCostGuide({ onClose }: { onClose: () => void }) {
             </dl>
           </Section>
 
-          <p className="mt-6 flex gap-2 rounded-[10px] bg-fs-surface-container/70 p-3 text-xs leading-relaxed text-neutral-600 dark:bg-white/4">
+          <p className="mt-6 flex gap-2 rounded-md bg-fs-surface-container/70 p-3 text-xs leading-relaxed text-neutral-600 dark:bg-white/4">
             <MdInventory2 className="mt-0.5 h-4 w-4 shrink-0 text-neutral-400" aria-hidden />
             <span>
               Une question qui n&apos;est pas ici ? Écrivez-nous depuis la page{" "}
@@ -459,12 +459,12 @@ export function LandedCostGuide({ onClose }: { onClose: () => void }) {
           <button
             type="button"
             onClick={onClose}
-            className="fs-touch-target w-full rounded-xl bg-fs-accent py-3 text-sm font-semibold text-white sm:w-auto sm:px-6"
+            className="fs-touch-target w-full rounded-md bg-fs-accent py-3 text-sm font-semibold text-white sm:w-auto sm:px-6"
           >
             J&apos;ai compris
           </button>
         </div>
-      </FsCard>
+      </LcCard>
     </div>
   );
 }
@@ -484,7 +484,7 @@ export function LandedCostGuideButton({
       type="button"
       onClick={onClick}
       className={cn(
-        "fs-touch-target inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-black/[0.08] bg-fs-card px-2.5 py-1.5 text-xs font-semibold text-neutral-700",
+        "fs-touch-target inline-flex shrink-0 items-center gap-1.5 rounded-md border border-black/[0.08] bg-fs-card px-2.5 py-1.5 text-xs font-semibold text-neutral-700",
         className,
       )}
     >

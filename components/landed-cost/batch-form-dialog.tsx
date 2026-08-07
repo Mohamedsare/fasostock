@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { MdClose } from "react-icons/md";
-import { FsCard, fsInputClass } from "@/components/ui/fs-screen-primitives";
+import { LcCard, lcInputClass } from "./ui";
 import {
   ALLOCATION_OPTIONS,
   COSTING_OPTIONS,
@@ -42,7 +42,7 @@ function ChoiceCards<T extends string>({
           disabled={disabled}
           onClick={() => onChange(o.key)}
           className={cn(
-            "rounded-[10px] border p-3 text-left transition-colors disabled:opacity-60",
+            "rounded-md border p-3 text-left transition-colors disabled:opacity-60",
             value === o.key
               ? "border-fs-accent/40 bg-[color-mix(in_srgb,var(--fs-accent)_10%,transparent)]"
               : "border-black/[0.08] bg-fs-card hover:border-black/20",
@@ -180,8 +180,8 @@ export function BatchFormDialog({
         if (e.target === e.currentTarget && !busy) onClose();
       }}
     >
-      <FsCard
-        className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-b-none shadow-xl sm:rounded-xl"
+      <LcCard
+        className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-b-none shadow-xl sm:rounded-md"
         padding="p-4 sm:p-5"
       >
         <div className="flex items-start justify-between gap-3">
@@ -193,7 +193,7 @@ export function BatchFormDialog({
             onClick={onClose}
             disabled={busy}
             aria-label="Fermer"
-            className="fs-touch-target -mr-1 -mt-1 rounded-lg p-1 text-neutral-500 hover:bg-black/5"
+            className="fs-touch-target -mr-1 -mt-1 rounded-md p-1 text-neutral-500 hover:bg-black/5"
           >
             <MdClose className="h-5 w-5" />
           </button>
@@ -209,7 +209,7 @@ export function BatchFormDialog({
               value={label}
               onChange={(e) => setLabel(e.target.value)}
               placeholder="Conteneur Lomé février"
-              className={fsInputClass("mt-1.5")}
+              className={lcInputClass("mt-1.5")}
             />
           </div>
           <div>
@@ -221,7 +221,7 @@ export function BatchFormDialog({
               value={reference}
               onChange={(e) => setReference(e.target.value)}
               placeholder="FA-2026-118"
-              className={fsInputClass("mt-1.5")}
+              className={lcInputClass("mt-1.5")}
             />
           </div>
           <div>
@@ -233,7 +233,7 @@ export function BatchFormDialog({
               value={storeId}
               onChange={(e) => setStoreId(e.target.value)}
               disabled={Boolean(editing)}
-              className={fsInputClass("mt-1.5 disabled:opacity-60")}
+              className={lcInputClass("mt-1.5 disabled:opacity-60")}
             >
               {stores.map((s) => (
                 <option key={s.id} value={s.id}>
@@ -250,7 +250,7 @@ export function BatchFormDialog({
               id="b-supplier"
               value={supplierId}
               onChange={(e) => setSupplierId(e.target.value)}
-              className={fsInputClass("mt-1.5")}
+              className={lcInputClass("mt-1.5")}
             >
               <option value="">— Non précisé —</option>
               {suppliers.map((s) => (
@@ -285,7 +285,7 @@ export function BatchFormDialog({
             value={marginMode}
             onChange={(e) => setMarginMode(e.target.value as MarginMode)}
             aria-label="Mode de marge par défaut"
-            className={fsInputClass()}
+            className={lcInputClass()}
           >
             {MARGIN_OPTIONS.map((m) => (
               <option key={m.key} value={m.key}>
@@ -299,7 +299,7 @@ export function BatchFormDialog({
               onChange={(e) => setMarginValue(e.target.value)}
               inputMode="decimal"
               aria-label="Valeur de la marge par défaut"
-              className={fsInputClass("w-28 pr-8 text-right font-semibold")}
+              className={lcInputClass("w-28 pr-8 text-right font-semibold")}
             />
             <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-neutral-500">
               {marginSuffix(marginMode)}
@@ -319,7 +319,7 @@ export function BatchFormDialog({
         </button>
 
         {advanced ? (
-          <div className="mt-3 space-y-4 rounded-[10px] border border-black/[0.08] p-3">
+          <div className="mt-3 space-y-4 rounded-md border border-black/[0.08] p-3">
             <div>
               <label htmlFor="b-alloc" className="block text-xs font-semibold text-neutral-700">
                 Répartition des frais par défaut
@@ -328,7 +328,7 @@ export function BatchFormDialog({
                 id="b-alloc"
                 value={allocation}
                 onChange={(e) => setAllocation(e.target.value as AllocationMethod)}
-                className={fsInputClass("mt-1.5")}
+                className={lcInputClass("mt-1.5")}
               >
                 {ALLOCATION_OPTIONS.map((o) => (
                   <option key={o.key} value={o.key}>
@@ -352,7 +352,7 @@ export function BatchFormDialog({
                   value={currency}
                   onChange={(e) => setCurrency(e.target.value)}
                   placeholder="XOF"
-                  className={fsInputClass("mt-1.5 uppercase")}
+                  className={lcInputClass("mt-1.5 uppercase")}
                 />
               </div>
               <div>
@@ -365,7 +365,7 @@ export function BatchFormDialog({
                   onChange={(e) => setRate(e.target.value)}
                   inputMode="decimal"
                   disabled={!foreign}
-                  className={fsInputClass("mt-1.5 disabled:opacity-60")}
+                  className={lcInputClass("mt-1.5 disabled:opacity-60")}
                 />
               </div>
             </div>
@@ -384,7 +384,7 @@ export function BatchFormDialog({
                 id="b-round"
                 value={rounding}
                 onChange={(e) => setRounding(Number(e.target.value))}
-                className={fsInputClass("mt-1.5")}
+                className={lcInputClass("mt-1.5")}
               >
                 {ROUNDING_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>
@@ -407,7 +407,7 @@ export function BatchFormDialog({
                   type="date"
                   value={orderedAt}
                   onChange={(e) => setOrderedAt(e.target.value)}
-                  className={fsInputClass("mt-1.5")}
+                  className={lcInputClass("mt-1.5")}
                 />
               </div>
               <div>
@@ -419,7 +419,7 @@ export function BatchFormDialog({
                   type="date"
                   value={receivedAt}
                   onChange={(e) => setReceivedAt(e.target.value)}
-                  className={fsInputClass("mt-1.5")}
+                  className={lcInputClass("mt-1.5")}
                 />
               </div>
             </div>
@@ -434,14 +434,14 @@ export function BatchFormDialog({
                 onChange={(e) => setNotes(e.target.value)}
                 rows={2}
                 placeholder="Transporteur, incidents, remises obtenues…"
-                className={fsInputClass("mt-1.5 resize-y")}
+                className={lcInputClass("mt-1.5 resize-y")}
               />
             </div>
           </div>
         ) : null}
 
         {error ? (
-          <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-700 dark:bg-red-500/10 dark:text-red-300">
+          <p className="mt-3 rounded-md bg-red-50 px-3 py-2 text-xs font-medium text-red-700 dark:bg-red-500/10 dark:text-red-300">
             {error}
           </p>
         ) : null}
@@ -451,7 +451,7 @@ export function BatchFormDialog({
             type="button"
             onClick={onClose}
             disabled={busy}
-            className="rounded-xl border border-black/[0.08] bg-fs-card px-4 py-2.5 text-sm font-semibold text-neutral-800 disabled:opacity-60"
+            className="rounded-md border border-black/[0.08] bg-fs-card px-4 py-2.5 text-sm font-semibold text-neutral-800 disabled:opacity-60"
           >
             Annuler
           </button>
@@ -459,12 +459,12 @@ export function BatchFormDialog({
             type="button"
             onClick={submit}
             disabled={busy}
-            className="rounded-xl bg-fs-accent px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+            className="rounded-md bg-fs-accent px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
           >
             {busy ? "Enregistrement…" : editing ? "Enregistrer" : "Créer l'arrivage"}
           </button>
         </div>
-      </FsCard>
+      </LcCard>
     </div>
   );
 }

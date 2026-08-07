@@ -9,7 +9,7 @@ import {
   MdTrendingUp,
   MdWarningAmber,
 } from "react-icons/md";
-import { FsCard } from "@/components/ui/fs-screen-primitives";
+import { LcCard } from "./ui";
 import {
   formatCost,
   formatPercent,
@@ -94,7 +94,7 @@ function FlagBadge({ flag }: { flag: LineFlag }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-semibold",
+        "inline-flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-[11px] font-semibold",
         FLAG_STYLES[flag.tone],
       )}
       title={flag.detail}
@@ -176,7 +176,7 @@ export function ResultTable({
         {lines.map((l) => {
           const flag = lineFlag(l);
           return (
-            <FsCard key={l.itemId} padding="p-3">
+            <LcCard key={l.itemId} padding="p-3">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold text-fs-text">{l.productName}</p>
@@ -189,7 +189,7 @@ export function ResultTable({
                     type="button"
                     onClick={() => onShowHistory(l)}
                     aria-label={`Historique des prix de ${l.productName}`}
-                    className="fs-touch-target rounded-lg p-1.5 text-neutral-500 hover:bg-black/5"
+                    className="fs-touch-target rounded-md p-1.5 text-neutral-500 hover:bg-black/5"
                   >
                     <MdHistory className="h-4 w-4" />
                   </button>
@@ -198,7 +198,7 @@ export function ResultTable({
                       type="button"
                       onClick={() => onEdit(l)}
                       aria-label={`Modifier ${l.productName}`}
-                      className="fs-touch-target rounded-lg p-1.5 text-neutral-500 hover:bg-black/5"
+                      className="fs-touch-target rounded-md p-1.5 text-neutral-500 hover:bg-black/5"
                     >
                       <MdEdit className="h-4 w-4" />
                     </button>
@@ -206,7 +206,7 @@ export function ResultTable({
                 </div>
               </div>
 
-              <div className="mt-2.5 rounded-lg bg-fs-surface-container/70 p-2.5 dark:bg-white/4">
+              <div className="mt-2.5 rounded-md bg-fs-surface-container/70 p-2.5 dark:bg-white/4">
                 <div className="flex items-baseline justify-between gap-2">
                   <span className="text-[11px] font-semibold uppercase tracking-wide text-neutral-500">
                     Revient à
@@ -292,14 +292,14 @@ export function ResultTable({
                   />
                 </label>
               ) : null}
-            </FsCard>
+            </LcCard>
           );
         })}
       </div>
 
       {/* Desktop : tableau dense, première colonne figée au défilement horizontal. */}
       <div className="hidden min-[1100px]:block">
-        <FsCard padding="p-0">
+        <LcCard padding="p-0">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[1040px] border-collapse text-sm">
               <thead>
@@ -396,7 +396,7 @@ export function ResultTable({
                           type="button"
                           onClick={() => onShowHistory(l)}
                           aria-label={`Historique des prix de ${l.productName}`}
-                          className="rounded-lg p-1.5 text-neutral-500 hover:bg-black/5"
+                          className="rounded-md p-1.5 text-neutral-500 hover:bg-black/5"
                         >
                           <MdHistory className="h-4 w-4" />
                         </button>
@@ -405,7 +405,7 @@ export function ResultTable({
                             type="button"
                             onClick={() => onEdit(l)}
                             aria-label={`Modifier ${l.productName}`}
-                            className="rounded-lg p-1.5 text-neutral-500 hover:bg-black/5"
+                            className="rounded-md p-1.5 text-neutral-500 hover:bg-black/5"
                           >
                             <MdEdit className="h-4 w-4" />
                           </button>
@@ -417,7 +417,7 @@ export function ResultTable({
               </tbody>
             </table>
           </div>
-        </FsCard>
+        </LcCard>
       </div>
     </>
   );

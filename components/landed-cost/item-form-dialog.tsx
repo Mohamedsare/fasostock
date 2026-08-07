@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { MdClose, MdInfoOutline } from "react-icons/md";
-import { FsCard, fsInputClass } from "@/components/ui/fs-screen-primitives";
+import { LcCard, lcInputClass } from "./ui";
 import { FsSearchSelect } from "@/components/ui/fs-search-select";
 import { MARGIN_OPTIONS, marginSuffix } from "@/lib/features/landed-cost/labels";
 import { formatCost, parseAmount } from "@/lib/features/landed-cost/format";
@@ -143,8 +143,8 @@ export function ItemFormDialog({
         if (e.target === e.currentTarget && !busy) onClose();
       }}
     >
-      <FsCard
-        className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-b-none shadow-xl sm:rounded-xl"
+      <LcCard
+        className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-b-none shadow-xl sm:rounded-md"
         padding="p-4 sm:p-5"
       >
         <div className="flex items-start justify-between gap-3">
@@ -156,7 +156,7 @@ export function ItemFormDialog({
             onClick={onClose}
             disabled={busy}
             aria-label="Fermer"
-            className="fs-touch-target -mr-1 -mt-1 rounded-lg p-1 text-neutral-500 hover:bg-black/5"
+            className="fs-touch-target -mr-1 -mt-1 rounded-md p-1 text-neutral-500 hover:bg-black/5"
           >
             <MdClose className="h-5 w-5" />
           </button>
@@ -170,7 +170,7 @@ export function ItemFormDialog({
           placeholder="Choisir un produit"
           searchPlaceholder="Nom du produit…"
           ariaLabel="Produit commandé"
-          className="mt-1.5"
+          className="mt-1.5 rounded-md"
         />
 
         <div className="mt-4 grid grid-cols-2 gap-3">
@@ -184,7 +184,7 @@ export function ItemFormDialog({
               onChange={(e) => setQuantity(e.target.value)}
               inputMode="decimal"
               placeholder="50"
-              className={fsInputClass("mt-1.5 font-semibold")}
+              className={lcInputClass("mt-1.5 font-semibold")}
             />
           </div>
           <div>
@@ -197,7 +197,7 @@ export function ItemFormDialog({
               onChange={(e) => setUnitPrice(e.target.value)}
               inputMode="decimal"
               placeholder="1200"
-              className={fsInputClass("mt-1.5 font-semibold")}
+              className={lcInputClass("mt-1.5 font-semibold")}
             />
           </div>
         </div>
@@ -224,7 +224,7 @@ export function ItemFormDialog({
                   onChange={(e) => setWeight(e.target.value)}
                   inputMode="decimal"
                   placeholder="2,5"
-                  className={fsInputClass("mt-1.5")}
+                  className={lcInputClass("mt-1.5")}
                 />
               </div>
             ) : null}
@@ -239,7 +239,7 @@ export function ItemFormDialog({
                   onChange={(e) => setVolume(e.target.value)}
                   inputMode="decimal"
                   placeholder="0,04"
-                  className={fsInputClass("mt-1.5")}
+                  className={lcInputClass("mt-1.5")}
                 />
               </div>
             ) : null}
@@ -257,7 +257,7 @@ export function ItemFormDialog({
               onChange={(e) => setManual(e.target.value)}
               inputMode="decimal"
               placeholder="1"
-              className={fsInputClass("mt-1.5")}
+              className={lcInputClass("mt-1.5")}
             />
             <p className="mt-1.5 text-[11px] leading-relaxed text-neutral-600">
               Poids relatif de cette ligne dans le partage des frais. « 2 » porte deux fois
@@ -267,7 +267,7 @@ export function ItemFormDialog({
         ) : null}
 
         {/* Marge : par défaut celle de l'arrivage, surchargeable ligne par ligne. */}
-        <div className="mt-4 rounded-[10px] border border-black/[0.08] p-3">
+        <div className="mt-4 rounded-md border border-black/[0.08] p-3">
           <label className="flex cursor-pointer items-start justify-between gap-3">
             <span className="min-w-0">
               <span className="block text-sm font-medium text-fs-text">
@@ -296,7 +296,7 @@ export function ItemFormDialog({
                 value={marginMode}
                 onChange={(e) => setMarginMode(e.target.value as MarginMode)}
                 aria-label="Mode de marge"
-                className={fsInputClass()}
+                className={lcInputClass()}
               >
                 {MARGIN_OPTIONS.map((m) => (
                   <option key={m.key} value={m.key}>
@@ -311,7 +311,7 @@ export function ItemFormDialog({
                   inputMode="decimal"
                   aria-label="Valeur de la marge"
                   placeholder="25"
-                  className={fsInputClass("w-28 pr-8 text-right font-semibold")}
+                  className={lcInputClass("w-28 pr-8 text-right font-semibold")}
                 />
                 <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-neutral-500">
                   {marginSuffix(marginMode)}
@@ -321,7 +321,7 @@ export function ItemFormDialog({
           ) : null}
         </div>
 
-        <label className="mt-3 flex cursor-pointer items-start justify-between gap-3 rounded-[10px] border border-black/[0.08] p-3">
+        <label className="mt-3 flex cursor-pointer items-start justify-between gap-3 rounded-md border border-black/[0.08] p-3">
           <span className="min-w-0">
             <span className="block text-sm font-medium text-fs-text">
               Mettre à jour le prix de vente
@@ -342,7 +342,7 @@ export function ItemFormDialog({
         </label>
 
         {error ? (
-          <p className="mt-3 flex gap-2 rounded-lg bg-red-50 px-3 py-2 text-xs font-medium leading-relaxed text-red-700 dark:bg-red-500/10 dark:text-red-300">
+          <p className="mt-3 flex gap-2 rounded-md bg-red-50 px-3 py-2 text-xs font-medium leading-relaxed text-red-700 dark:bg-red-500/10 dark:text-red-300">
             <MdInfoOutline className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
             <span>{error}</span>
           </p>
@@ -353,7 +353,7 @@ export function ItemFormDialog({
             type="button"
             onClick={onClose}
             disabled={busy}
-            className="rounded-xl border border-black/[0.08] bg-fs-card px-4 py-2.5 text-sm font-semibold text-neutral-800 disabled:opacity-60"
+            className="rounded-md border border-black/[0.08] bg-fs-card px-4 py-2.5 text-sm font-semibold text-neutral-800 disabled:opacity-60"
           >
             Annuler
           </button>
@@ -362,13 +362,13 @@ export function ItemFormDialog({
             onClick={submit}
             disabled={busy}
             className={cn(
-              "rounded-xl bg-fs-accent px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-60",
+              "rounded-md bg-fs-accent px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-60",
             )}
           >
             {busy ? "Enregistrement…" : editing ? "Enregistrer" : "Ajouter au lot"}
           </button>
         </div>
-      </FsCard>
+      </LcCard>
     </div>
   );
 }

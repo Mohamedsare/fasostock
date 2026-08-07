@@ -2,7 +2,8 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { MdClose, MdHistory, MdUndo } from "react-icons/md";
-import { FsCard, FsQueryErrorPanel } from "@/components/ui/fs-screen-primitives";
+import { FsQueryErrorPanel } from "@/components/ui/fs-screen-primitives";
+import { LcCard } from "./ui";
 import { fetchPriceHistory } from "@/lib/features/landed-cost/api";
 import { formatCost, formatQuantity } from "@/lib/features/landed-cost/format";
 import { queryKeys } from "@/lib/query/query-keys";
@@ -54,8 +55,8 @@ export function PriceHistoryDialog({
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <FsCard
-        className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-b-none shadow-xl sm:rounded-xl"
+      <LcCard
+        className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-b-none shadow-xl sm:rounded-md"
         padding="p-4 sm:p-5"
       >
         <div className="flex items-start justify-between gap-3">
@@ -67,7 +68,7 @@ export function PriceHistoryDialog({
             type="button"
             onClick={onClose}
             aria-label="Fermer"
-            className="fs-touch-target -mr-1 -mt-1 rounded-lg p-1 text-neutral-500 hover:bg-black/5"
+            className="fs-touch-target -mr-1 -mt-1 rounded-md p-1 text-neutral-500 hover:bg-black/5"
           >
             <MdClose className="h-5 w-5" />
           </button>
@@ -91,14 +92,14 @@ export function PriceHistoryDialog({
             {rows.map((r) => (
               <li
                 key={r.id}
-                className="rounded-[10px] border border-black/[0.06] bg-fs-surface-container/60 p-3 dark:bg-white/4"
+                className="rounded-md border border-black/[0.06] bg-fs-surface-container/60 p-3 dark:bg-white/4"
               >
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                   <span className="text-xs font-semibold text-fs-text">
                     {formatMoment(r.createdAt)}
                   </span>
                   {r.source === "cost_batch_revert" ? (
-                    <span className="inline-flex items-center gap-1 rounded-md bg-neutral-500/12 px-1.5 py-0.5 text-[11px] font-semibold text-neutral-700 dark:text-neutral-300">
+                    <span className="inline-flex items-center gap-1 rounded-sm bg-neutral-500/12 px-1.5 py-0.5 text-[11px] font-semibold text-neutral-700 dark:text-neutral-300">
                       <MdUndo className="h-3 w-3" aria-hidden />
                       Retour en arrière
                     </span>
@@ -151,7 +152,7 @@ export function PriceHistoryDialog({
             ))}
           </ol>
         )}
-      </FsCard>
+      </LcCard>
     </div>
   );
 }

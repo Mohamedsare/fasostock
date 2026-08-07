@@ -13,15 +13,8 @@ import {
   MdLocalShipping,
   MdSavings,
 } from "react-icons/md";
-import {
-  FsCard,
-  FsFab,
-  FsFilterChip,
-  FsPage,
-  FsQueryErrorPanel,
-  FsScreenHeader,
-  FsStickyMobileActions,
-} from "@/components/ui/fs-screen-primitives";
+import { FsFab, FsFilterChip, FsPage, FsQueryErrorPanel, FsScreenHeader, FsStickyMobileActions } from "@/components/ui/fs-screen-primitives";
+import { LcCard } from "./ui";
 import { FsConfirmDialog } from "@/components/ui/fs-confirm-dialog";
 import { ROUTES } from "@/lib/config/routes";
 import { useAppContext } from "@/lib/features/common/app-context";
@@ -64,9 +57,9 @@ function KpiCard({
   hint?: string;
 }) {
   return (
-    <FsCard padding="p-3">
+    <LcCard padding="p-3">
       <div className="flex items-center gap-2">
-        <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[color-mix(in_srgb,var(--fs-accent)_14%,transparent)] text-fs-accent">
+        <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-[color-mix(in_srgb,var(--fs-accent)_14%,transparent)] text-fs-accent">
           <Icon className="h-4 w-4" aria-hidden />
         </span>
         <span className="truncate text-[11px] font-semibold uppercase tracking-wide text-neutral-500">
@@ -75,7 +68,7 @@ function KpiCard({
       </div>
       <p className="mt-2 truncate text-lg font-bold text-fs-text">{value}</p>
       {hint ? <p className="mt-0.5 truncate text-[11px] text-neutral-500">{hint}</p> : null}
-    </FsCard>
+    </LcCard>
   );
 }
 
@@ -207,9 +200,9 @@ export function LandedCostScreen() {
     return (
       <FsPage>
         <FsScreenHeader title="Prix de revient" />
-        <FsCard padding="p-5">
+        <LcCard padding="p-5">
           <p className="text-sm text-neutral-500">Chargement…</p>
-        </FsCard>
+        </LcCard>
       </FsPage>
     );
   }
@@ -218,7 +211,7 @@ export function LandedCostScreen() {
     return (
       <FsPage>
         <FsScreenHeader title="Prix de revient" />
-        <FsCard padding="p-5">
+        <LcCard padding="p-5">
           <p className="text-sm font-bold text-fs-text">Module non activé</p>
           <p className="mt-2 text-sm leading-relaxed text-neutral-600">
             Le module « Prix de revient » répartit vos frais de transport, de douane et de
@@ -238,7 +231,7 @@ export function LandedCostScreen() {
             </Link>
             <LandedCostGuideButton onClick={() => setGuideOpen(true)} label="À quoi ça sert ?" />
           </div>
-        </FsCard>
+        </LcCard>
         {guideOpen ? <LandedCostGuide onClose={() => setGuideOpen(false)} /> : null}
       </FsPage>
     );
@@ -248,13 +241,13 @@ export function LandedCostScreen() {
     return (
       <FsPage>
         <FsScreenHeader title="Prix de revient" />
-        <FsCard padding="p-5">
+        <LcCard padding="p-5">
           <p className="text-sm font-bold text-fs-text">Accès réservé</p>
           <p className="mt-2 text-sm leading-relaxed text-neutral-600">
             Cette page touche aux prix d&apos;achat et de vente du catalogue. Demandez au
             propriétaire le droit « Gérer le prix de revient » dans Employés.
           </p>
-        </FsCard>
+        </LcCard>
       </FsPage>
     );
   }
@@ -366,7 +359,7 @@ export function LandedCostScreen() {
           <button
             type="button"
             onClick={() => setFormDialog({ open: true, editing: null })}
-            className="ml-auto hidden shrink-0 items-center gap-1.5 rounded-lg bg-fs-accent px-3 py-2 text-sm font-semibold text-white min-[900px]:inline-flex"
+            className="ml-auto hidden shrink-0 items-center gap-1.5 rounded-md bg-fs-accent px-3 py-2 text-sm font-semibold text-white min-[900px]:inline-flex"
           >
             <MdAdd className="h-4 w-4" aria-hidden />
             Nouvel arrivage
@@ -381,11 +374,11 @@ export function LandedCostScreen() {
           className="mt-3"
         />
       ) : batchesQ.isLoading ? (
-        <FsCard className="mt-3" padding="p-5">
+        <LcCard className="mt-3" padding="p-5">
           <p className="text-sm text-neutral-500">Chargement des arrivages…</p>
-        </FsCard>
+        </LcCard>
       ) : visible.length === 0 ? (
-        <FsCard className="mt-3" padding="p-5">
+        <LcCard className="mt-3" padding="p-5">
           <p className="text-sm font-bold text-fs-text">
             {batches.length === 0 ? "Votre premier arrivage" : "Aucun arrivage dans ce filtre"}
           </p>
@@ -415,7 +408,7 @@ export function LandedCostScreen() {
                 <button
                   type="button"
                   onClick={() => setFormDialog({ open: true, editing: null })}
-                  className="fs-touch-target inline-flex items-center gap-2 rounded-xl bg-fs-accent px-5 py-3 text-sm font-semibold text-white"
+                  className="fs-touch-target inline-flex items-center gap-2 rounded-md bg-fs-accent px-5 py-3 text-sm font-semibold text-white"
                 >
                   <MdAdd className="h-4 w-4" aria-hidden />
                   Créer un arrivage
@@ -428,7 +421,7 @@ export function LandedCostScreen() {
               </div>
             </>
           ) : null}
-        </FsCard>
+        </LcCard>
       ) : (
         <ul className="mt-3 space-y-2">
           {visible.map((b) => (
@@ -438,7 +431,7 @@ export function LandedCostScreen() {
                 onClick={() => setOpenBatchId(b.id)}
                 className="w-full text-left"
               >
-                <FsCard
+                <LcCard
                   className="transition-colors hover:border-fs-accent/30"
                   padding="p-3 sm:p-3.5"
                 >
@@ -494,7 +487,7 @@ export function LandedCostScreen() {
                       {formatCost(b.landedTotal)}
                     </span>
                   </div>
-                </FsCard>
+                </LcCard>
               </button>
             </li>
           ))}

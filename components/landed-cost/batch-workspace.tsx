@@ -17,11 +17,8 @@ import {
   MdUndo,
   MdWarningAmber,
 } from "react-icons/md";
-import {
-  FsCard,
-  FsQueryErrorPanel,
-  FsSectionLabel,
-} from "@/components/ui/fs-screen-primitives";
+import { FsQueryErrorPanel, FsSectionLabel } from "@/components/ui/fs-screen-primitives";
+import { LcCard } from "./ui";
 import { FsConfirmDialog } from "@/components/ui/fs-confirm-dialog";
 import {
   applyCostBatch,
@@ -312,13 +309,13 @@ export function BatchWorkspace({
   return (
     <div className="pb-24 min-[1024px]:pb-0">
       {/* En-tête de l'arrivage */}
-      <FsCard padding="p-3 sm:p-4">
+      <LcCard padding="p-3 sm:p-4">
         <div className="flex items-start gap-2">
           <button
             type="button"
             onClick={onBack}
             aria-label="Retour à la liste des arrivages"
-            className="fs-touch-target -ml-1 shrink-0 rounded-lg p-1.5 text-neutral-600 hover:bg-black/5"
+            className="fs-touch-target -ml-1 shrink-0 rounded-md p-1.5 text-neutral-600 hover:bg-black/5"
           >
             <MdArrowBack className="h-5 w-5" />
           </button>
@@ -346,7 +343,7 @@ export function BatchWorkspace({
                 onClick={onDuplicate}
                 aria-label="Refaire un arrivage identique"
                 title="Refaire un arrivage identique"
-                className="fs-touch-target rounded-lg p-1.5 text-neutral-500 hover:bg-black/5"
+                className="fs-touch-target rounded-md p-1.5 text-neutral-500 hover:bg-black/5"
               >
                 <MdContentCopy className="h-4 w-4" />
               </button>
@@ -357,7 +354,7 @@ export function BatchWorkspace({
                 onClick={onEditSettings}
                 aria-label="Réglages de l'arrivage"
                 title="Réglages de l'arrivage"
-                className="fs-touch-target rounded-lg p-1.5 text-neutral-500 hover:bg-black/5"
+                className="fs-touch-target rounded-md p-1.5 text-neutral-500 hover:bg-black/5"
               >
                 <MdSettings className="h-4 w-4" />
               </button>
@@ -368,7 +365,7 @@ export function BatchWorkspace({
                 onClick={onDeleteBatch}
                 aria-label="Supprimer l'arrivage"
                 title="Supprimer l'arrivage"
-                className="fs-touch-target rounded-lg p-1.5 text-neutral-500 hover:bg-red-500/10 hover:text-red-600"
+                className="fs-touch-target rounded-md p-1.5 text-neutral-500 hover:bg-red-500/10 hover:text-red-600"
               >
                 <MdDelete className="h-4 w-4" />
               </button>
@@ -377,7 +374,7 @@ export function BatchWorkspace({
         </div>
 
         {/* Le rappel qui évite le double comptage de stock. */}
-        <p className="mt-3 flex gap-2 rounded-lg bg-fs-surface-container/70 px-2.5 py-2 text-[11px] leading-relaxed text-neutral-600 dark:bg-white/4">
+        <p className="mt-3 flex gap-2 rounded-md bg-fs-surface-container/70 px-2.5 py-2 text-[11px] leading-relaxed text-neutral-600 dark:bg-white/4">
           <MdInfoOutline className="mt-0.5 h-4 w-4 shrink-0 text-neutral-400" aria-hidden />
           <span>
             {batch.stockMode === "receive"
@@ -390,7 +387,7 @@ export function BatchWorkspace({
         </p>
 
         <LandedCostGuideButton onClick={onOpenGuide} className="mt-2.5" />
-      </FsCard>
+      </LcCard>
 
       {queryError ? (
         <FsQueryErrorPanel
@@ -413,7 +410,7 @@ export function BatchWorkspace({
               <button
                 type="button"
                 onClick={() => setImportOpen((v) => !v)}
-                className="fs-touch-target inline-flex items-center gap-1 rounded-lg border border-black/[0.08] bg-fs-card px-2.5 py-1.5 text-xs font-semibold text-neutral-700"
+                className="fs-touch-target inline-flex items-center gap-1 rounded-md border border-black/[0.08] bg-fs-card px-2.5 py-1.5 text-xs font-semibold text-neutral-700"
               >
                 <MdDownload className="h-4 w-4" aria-hidden />
                 Reprendre un achat
@@ -421,7 +418,7 @@ export function BatchWorkspace({
               <button
                 type="button"
                 onClick={() => setItemDialog({ open: true, editing: null })}
-                className="fs-touch-target inline-flex items-center gap-1 rounded-lg bg-fs-accent px-2.5 py-1.5 text-xs font-semibold text-white"
+                className="fs-touch-target inline-flex items-center gap-1 rounded-md bg-fs-accent px-2.5 py-1.5 text-xs font-semibold text-white"
               >
                 <MdAdd className="h-4 w-4" aria-hidden />
                 Produit
@@ -431,7 +428,7 @@ export function BatchWorkspace({
         </div>
 
         {importOpen && editable ? (
-          <FsCard className="mt-2" padding="p-3">
+          <LcCard className="mt-2" padding="p-3">
             <p className="text-xs leading-relaxed text-neutral-600">
               Reprenez les lignes d&apos;un achat déjà saisi plutôt que de tout retaper.
               L&apos;arrivage passera alors en « prix seulement » — la marchandise ne sera pas
@@ -451,7 +448,7 @@ export function BatchWorkspace({
                       type="button"
                       disabled={importMut.isPending}
                       onClick={() => importMut.mutate(p.id)}
-                      className="fs-touch-target w-full truncate rounded-lg border border-black/[0.08] px-2.5 py-2 text-left text-xs font-medium text-neutral-800 hover:border-fs-accent/40 disabled:opacity-60"
+                      className="fs-touch-target w-full truncate rounded-md border border-black/[0.08] px-2.5 py-2 text-left text-xs font-medium text-neutral-800 hover:border-fs-accent/40 disabled:opacity-60"
                     >
                       {p.label}
                     </button>
@@ -459,19 +456,19 @@ export function BatchWorkspace({
                 ))}
               </ul>
             )}
-          </FsCard>
+          </LcCard>
         ) : null}
 
         {items.length === 0 ? (
-          <FsCard className="mt-2" padding="p-4">
+          <LcCard className="mt-2" padding="p-4">
             <p className="text-sm font-semibold text-fs-text">Aucun produit pour l&apos;instant</p>
             <p className="mt-1 text-xs leading-relaxed text-neutral-600">
               Ajoutez ce que vous avez commandé, avec le prix payé au fournisseur. Les frais
               viennent à l&apos;étape suivante.
             </p>
-          </FsCard>
+          </LcCard>
         ) : (
-          <FsCard className="mt-2" padding="p-0">
+          <LcCard className="mt-2" padding="p-0">
             <ul className="divide-y divide-black/[0.05]">
               {items.map((it) => (
                 <li key={it.id} className="flex items-center gap-2 px-3 py-2.5">
@@ -493,7 +490,7 @@ export function BatchWorkspace({
                         type="button"
                         onClick={() => setItemDialog({ open: true, editing: it })}
                         aria-label={`Modifier ${it.productName}`}
-                        className="fs-touch-target rounded-lg p-1.5 text-neutral-500 hover:bg-black/5"
+                        className="fs-touch-target rounded-md p-1.5 text-neutral-500 hover:bg-black/5"
                       >
                         <MdEdit className="h-4 w-4" />
                       </button>
@@ -501,7 +498,7 @@ export function BatchWorkspace({
                         type="button"
                         onClick={() => setItemToDelete(it)}
                         aria-label={`Retirer ${it.productName}`}
-                        className="fs-touch-target rounded-lg p-1.5 text-neutral-500 hover:bg-red-500/10 hover:text-red-600"
+                        className="fs-touch-target rounded-md p-1.5 text-neutral-500 hover:bg-red-500/10 hover:text-red-600"
                       >
                         <MdDelete className="h-4 w-4" />
                       </button>
@@ -510,7 +507,7 @@ export function BatchWorkspace({
                 </li>
               ))}
             </ul>
-          </FsCard>
+          </LcCard>
         )}
       </section>
 
@@ -522,7 +519,7 @@ export function BatchWorkspace({
             <button
               type="button"
               onClick={() => setChargeDialog({ open: true, editing: null })}
-              className="fs-touch-target inline-flex items-center gap-1 rounded-lg bg-fs-accent px-2.5 py-1.5 text-xs font-semibold text-white"
+              className="fs-touch-target inline-flex items-center gap-1 rounded-md bg-fs-accent px-2.5 py-1.5 text-xs font-semibold text-white"
             >
               <MdAdd className="h-4 w-4" aria-hidden />
               Frais
@@ -531,7 +528,7 @@ export function BatchWorkspace({
         </div>
 
         {charges.length === 0 ? (
-          <FsCard className="mt-2" padding="p-4">
+          <LcCard className="mt-2" padding="p-4">
             <div className="flex gap-2">
               <MdLocalShipping className="mt-0.5 h-5 w-5 shrink-0 text-neutral-400" aria-hidden />
               <div className="min-w-0">
@@ -542,9 +539,9 @@ export function BatchWorkspace({
                 </p>
               </div>
             </div>
-          </FsCard>
+          </LcCard>
         ) : (
-          <FsCard className="mt-2" padding="p-0">
+          <LcCard className="mt-2" padding="p-0">
             <ul className="divide-y divide-black/[0.05]">
               {charges.map((c) => (
                 <li key={c.id} className="flex items-center gap-2 px-3 py-2.5">
@@ -564,7 +561,7 @@ export function BatchWorkspace({
                         type="button"
                         onClick={() => setChargeDialog({ open: true, editing: c })}
                         aria-label={`Modifier ${c.label}`}
-                        className="fs-touch-target rounded-lg p-1.5 text-neutral-500 hover:bg-black/5"
+                        className="fs-touch-target rounded-md p-1.5 text-neutral-500 hover:bg-black/5"
                       >
                         <MdEdit className="h-4 w-4" />
                       </button>
@@ -572,7 +569,7 @@ export function BatchWorkspace({
                         type="button"
                         onClick={() => setChargeToDelete(c)}
                         aria-label={`Supprimer ${c.label}`}
-                        className="fs-touch-target rounded-lg p-1.5 text-neutral-500 hover:bg-red-500/10 hover:text-red-600"
+                        className="fs-touch-target rounded-md p-1.5 text-neutral-500 hover:bg-red-500/10 hover:text-red-600"
                       >
                         <MdDelete className="h-4 w-4" />
                       </button>
@@ -581,7 +578,7 @@ export function BatchWorkspace({
                 </li>
               ))}
             </ul>
-          </FsCard>
+          </LcCard>
         )}
       </section>
 
@@ -591,7 +588,7 @@ export function BatchWorkspace({
           <FsSectionLabel>3. Prix de revient et prix de vente</FsSectionLabel>
 
           {alerts.length > 0 ? (
-            <FsCard
+            <LcCard
               className="mt-2 border-amber-500/30 bg-amber-500/[0.06]"
               padding="p-3"
             >
@@ -619,7 +616,7 @@ export function BatchWorkspace({
                   ) : null}
                 </div>
               </div>
-            </FsCard>
+            </LcCard>
           ) : null}
 
           <div className="mt-2">
@@ -637,7 +634,7 @@ export function BatchWorkspace({
           </div>
 
           {/* Pied de page chiffré */}
-          <FsCard className="mt-3" padding="p-3 sm:p-4">
+          <LcCard className="mt-3" padding="p-3 sm:p-4">
             <div className="grid gap-x-8 sm:grid-cols-2">
               <div className="divide-y divide-black/[0.05]">
                 <TotalRow label="Marchandise" value={formatCost(totals.goods)} />
@@ -676,7 +673,7 @@ export function BatchWorkspace({
                 />
               </div>
             </div>
-          </FsCard>
+          </LcCard>
         </section>
       ) : null}
 
@@ -696,7 +693,7 @@ export function BatchWorkspace({
                 type="button"
                 onClick={() => setConfirmApply(true)}
                 disabled={lines.length === 0 || applyMut.isPending}
-                className="fs-touch-target inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-fs-accent px-5 py-3 text-sm font-semibold text-white disabled:opacity-50 min-[1024px]:flex-none"
+                className="fs-touch-target inline-flex flex-1 items-center justify-center gap-2 rounded-md bg-fs-accent px-5 py-3 text-sm font-semibold text-white disabled:opacity-50 min-[1024px]:flex-none"
               >
                 <MdCheckCircle className="h-4 w-4" aria-hidden />
                 {applyMut.isPending ? "Application…" : "Appliquer les prix"}
@@ -705,7 +702,7 @@ export function BatchWorkspace({
                 <button
                   type="button"
                   onClick={onCancelBatch}
-                  className="hidden rounded-xl border border-black/[0.08] bg-fs-card px-4 py-3 text-sm font-semibold text-neutral-700 min-[1024px]:inline-flex"
+                  className="hidden rounded-md border border-black/[0.08] bg-fs-card px-4 py-3 text-sm font-semibold text-neutral-700 min-[1024px]:inline-flex"
                 >
                   Abandonner
                 </button>
@@ -723,7 +720,7 @@ export function BatchWorkspace({
                   type="button"
                   onClick={() => setConfirmRevert(true)}
                   disabled={revertMut.isPending}
-                  className="fs-touch-target inline-flex items-center gap-2 rounded-xl border border-black/[0.08] bg-fs-card px-4 py-2.5 text-sm font-semibold text-neutral-700 disabled:opacity-60"
+                  className="fs-touch-target inline-flex items-center gap-2 rounded-md border border-black/[0.08] bg-fs-card px-4 py-2.5 text-sm font-semibold text-neutral-700 disabled:opacity-60"
                 >
                   <MdUndo className="h-4 w-4" aria-hidden />
                   {revertMut.isPending ? "Restauration…" : "Remettre les anciens prix"}
@@ -871,7 +868,7 @@ export function StatusChip({ batch }: { batch: CostBatch }) {
   return (
     <span
       className={cn(
-        "inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-semibold",
+        "inline-flex shrink-0 items-center gap-1 rounded-sm px-1.5 py-0.5 text-[11px] font-semibold",
         applied
           ? "bg-emerald-500/12 text-emerald-700 dark:text-emerald-300"
           : cancelled
