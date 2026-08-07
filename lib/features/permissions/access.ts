@@ -527,6 +527,8 @@ export function filterNavItemsForPermissions(
     if (href === ROUTES.audit) return h.canAudit && !h.isOwner;
     // Aide : visible par tous (tutoriels vidéo + contacts). Le guide détaillé interne reste owner.
     if (href === ROUTES.help) return true;
+    // Ses propres notifications : visible par tous, chacun ne voit que les siennes.
+    if (href === ROUTES.notifications) return true;
     if (href === ROUTES.subscription) return h.isOwner;
     if (href === ROUTES.integrations) return false;
     return true;
@@ -586,6 +588,9 @@ const APP_SHELL_ROUTE_PREFIXES: readonly string[] = [
   ROUTES.users,
   ROUTES.audit,
   ROUTES.settings,
+  // Ses propres notifications : aucun droit métier à vérifier, la RLS borne déjà
+  // chaque utilisateur à ses lignes. C'est aussi la cible des clics sur un push.
+  ROUTES.notifications,
   ROUTES.help,
   ROUTES.subscription,
   ROUTES.integrations,

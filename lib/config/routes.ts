@@ -56,6 +56,8 @@ export const ROUTES = {
   /** Module R. Humaine + Paie — activé par la plateforme. */
   hr: "/rh",
   settings: "/settings",
+  /** Historique des notifications reçues + activation des notifications push (tout utilisateur). */
+  notifications: "/notifications",
   users: "/users",
   audit: "/audit",
   help: "/help",

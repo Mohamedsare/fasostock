@@ -1,4 +1,8 @@
-import { listOwnerUserIds, sendWebPushToUsers } from "@/lib/features/push/send-web-push";
+import {
+  listOwnerUserIds,
+  PushNotConfiguredError,
+  sendPushNotificationToUsers,
+} from "@/lib/features/push/send-web-push";
 import { safeEqualStrings } from "@/lib/server/safe-compare";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
@@ -13,6 +17,8 @@ type BodyUser = {
   title?: string;
   body?: string | null;
   url?: string | null;
+  /** Catégorie (`admin_message` par défaut) — sert de `tag` côté Service Worker. */
+  type?: string | null;
 };
 
 function parseBody(raw: unknown): BodyUser | null {
@@ -25,6 +31,7 @@ function parseBody(raw: unknown): BodyUser | null {
     title: typeof o.title === "string" ? o.title : undefined,
     body: typeof o.body === "string" || o.body === null ? (o.body as string | null) : undefined,
     url: typeof o.url === "string" || o.url === null ? (o.url as string | null) : undefined,
+    type: typeof o.type === "string" ? o.type : undefined,
   };
 }
 
@@ -126,10 +133,11 @@ export async function POST(req: Request) {
   }
 
   try {
-    const result = await sendWebPushToUsers(userIds, {
+    const result = await sendPushNotificationToUsers(userIds, {
       title: body.title.trim(),
-      body: (typeof body.body === "string" ? body.body : body.body ?? "") ?? "",
+      body: typeof body.body === "string" ? body.body : "",
       url: typeof body.url === "string" && body.url.trim() ? body.url.trim() : "/notifications",
+      type: typeof body.type === "string" && body.type.trim() ? body.type.trim() : "admin_message",
     });
     return NextResponse.json({ ok: true, ...result });
   } catch (e) {
@@ -140,8 +148,9 @@ export async function POST(req: Request) {
         { status: 503 },
       );
     }
-    if (msg.includes("WEB_PUSH_VAPID")) {
-      return NextResponse.json({ error: msg }, { status: 503 });
+    // Clés VAPID absentes : défaut d'installation serveur, pas une erreur de l'appelant.
+    if (e instanceof PushNotConfiguredError) {
+      return NextResponse.json({ error: msg, code: "push_not_configured" }, { status: 503 });
     }
     return NextResponse.json({ error: msg }, { status: 500 });
   }

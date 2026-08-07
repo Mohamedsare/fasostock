@@ -1,31 +1,55 @@
 "use client";
 
 import { urlBase64ToUint8Array } from "@/lib/features/push/encoding";
+import { getVapidPublicKey, isWebPushConfigured } from "@/lib/features/push/public-key";
 import {
   deletePushSubscriptionByEndpoint,
   upsertPushSubscriptionRow,
 } from "@/lib/features/push/subscription-db";
 
-function getVapidPublicKey(): string | null {
-  const k = process.env.NEXT_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY?.trim();
-  return k || null;
+export { isWebPushConfigured };
+
+/**
+ * Les trois API doivent être présentes ensemble : iOS < 16.4 expose `Notification`
+ * sans `PushManager`, et un contexte non sécurisé n'a pas de `serviceWorker`.
+ * Sans ce triplet, proposer le bouton « Activer » ne mènerait qu'à une erreur.
+ */
+export function isWebPushSupported(): boolean {
+  return (
+    typeof window !== "undefined" &&
+    "serviceWorker" in navigator &&
+    "PushManager" in window &&
+    "Notification" in window
+  );
 }
 
-export function isWebPushConfigured(): boolean {
-  return Boolean(getVapidPublicKey());
+/** État de la permission navigateur, sans jamais la demander. */
+export function currentNotificationPermission(): NotificationPermission | "unsupported" {
+  if (!isWebPushSupported()) return "unsupported";
+  return Notification.permission;
 }
 
 async function ensurePushServiceWorker(): Promise<ServiceWorkerRegistration> {
-  if (typeof window === "undefined" || !("serviceWorker" in navigator)) {
-    throw new Error("Service Worker non disponible dans cet environnement.");
+  if (!isWebPushSupported()) {
+    throw new Error("Ce navigateur ne gère pas les notifications push.");
   }
   await navigator.serviceWorker.register("/sw.js", { scope: "/" });
   return navigator.serviceWorker.ready;
 }
 
+/**
+ * Abonne l'appareil courant. **Toujours appelé depuis un clic utilisateur** :
+ * `Notification.requestPermission()` déclenché au chargement se solde par un refus
+ * définitif sur Chrome, et l'utilisateur ne peut plus rien activer ensuite.
+ */
 export async function subscribeCurrentUserToWebPush(): Promise<void> {
   const vapid = getVapidPublicKey();
-  if (!vapid) throw new Error("Clé VAPID publique absente (NEXT_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY).");
+  if (!vapid) throw new Error("Clé VAPID publique absente (NEXT_PUBLIC_VAPID_PUBLIC_KEY).");
+  if (!isWebPushSupported()) {
+    throw new Error(
+      "Ce navigateur ne gère pas les notifications push. Sur iPhone, ajoutez d’abord FasoStock à l’écran d’accueil.",
+    );
+  }
   const permission = await Notification.requestPermission();
   if (permission === "denied") {
     throw new Error(
@@ -60,4 +84,15 @@ export async function unsubscribeCurrentUserFromWebPush(): Promise<void> {
     await sub.unsubscribe().catch(() => {});
     await deletePushSubscriptionByEndpoint(endpoint).catch(() => {});
   }
+}
+
+/** Abonnement Push de cet appareil, s'il existe déjà (aucune demande de permission). */
+export async function getCurrentPushSubscription(): Promise<PushSubscription | null> {
+  if (!isWebPushSupported() || Notification.permission !== "granted") return null;
+  let reg = await navigator.serviceWorker.getRegistration();
+  if (!reg) {
+    await navigator.serviceWorker.register("/sw.js", { scope: "/" });
+    reg = await navigator.serviceWorker.ready;
+  }
+  return reg.pushManager.getSubscription();
 }

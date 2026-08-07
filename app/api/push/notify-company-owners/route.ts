@@ -1,7 +1,7 @@
 import {
   listOwnerUserIdsForCompanies,
   PushNotConfiguredError,
-  sendWebPushToUsers,
+  sendPushNotificationToUsers,
 } from "@/lib/features/push/send-web-push";
 import { requireAuthUser, userBelongsToCompany } from "@/lib/server/api-auth";
 import { createClient } from "@/lib/supabase/server";
@@ -76,13 +76,14 @@ export async function POST(req: Request) {
         hint: "Aucun propriétaire actif trouvé pour ces entreprises (rôles / user_company_roles).",
       });
     }
-    const result = await sendWebPushToUsers(ownerIds, {
+    const result = await sendPushNotificationToUsers(ownerIds, {
       title: body.title.trim(),
-      body: (typeof body.body === "string" ? body.body : body.body ?? "") ?? "",
+      body: typeof body.body === "string" ? body.body : "",
       url:
         typeof body.url === "string" && body.url.trim()
           ? body.url.trim()
           : "/notifications",
+      type: "owner_alert",
     });
     return NextResponse.json({
       ok: true,

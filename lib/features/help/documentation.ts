@@ -1521,6 +1521,41 @@ export const DOC_GROUPS: DocGroup[] = [
         ],
         keywords: ["support", "dépannage", "assistance", "intervention", "impersonation"],
       },
+      {
+        id: "notifications",
+        title: "Notifications",
+        route: "/notifications",
+        tagline: "Vos messages reçus, et les alertes sur votre téléphone.",
+        access: "Tout le monde : chacun ne voit que ses propres messages.",
+        blocks: [
+          {
+            kind: "p",
+            text: "La page rassemble les messages qui vous ont été envoyés (équipe FasoStock, alertes de votre entreprise). Ils y restent même si vous n'avez rien activé : l'historique ne dépend pas du téléphone.",
+          },
+          {
+            kind: "steps",
+            items: [
+              "Ouvrez Notifications dans le menu.",
+              "Bouton « Activer les notifications » : le navigateur demande votre autorisation, répondez Autoriser.",
+              "La pastille verte « Activées » confirme que cet appareil recevra les alertes.",
+              "Refaites-le sur chaque appareil : téléphone, tablette, ordinateur de la boutique.",
+            ],
+          },
+          {
+            kind: "note",
+            tone: "warn",
+            title: "Si vous avez répondu « Bloquer »",
+            text: "Le navigateur garde ce refus et FasoStock ne peut plus rien demander. Touchez l'icône à gauche de l'adresse du site, autorisez les notifications, puis revenez sur la page.",
+          },
+          {
+            kind: "note",
+            tone: "tip",
+            title: "Sur iPhone",
+            text: "Ajoutez d'abord FasoStock à l'écran d'accueil (Partager › Sur l'écran d'accueil), puis rouvrez l'app depuis cette icône : c'est la seule façon de recevoir les alertes sur iPhone.",
+          },
+        ],
+        keywords: ["notification", "alerte", "push", "message", "activer", "autoriser", "téléphone"],
+      },
     ],
   },
 ];

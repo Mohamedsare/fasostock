@@ -234,6 +234,10 @@ export const queryKeys = {
   /** Panneau owner (ruptures, tendances…) — aligné `OwnerNotificationsDialog` Flutter. */
   ownerNotifications: (companyId: string, storeId: string | null) =>
     ["owner-notifications", companyId, storeId ?? "__all__"] as const,
+  /** Historique `notifications` de l'utilisateur connecté (messages reçus + push). */
+  myNotifications: ["my-notifications"] as const,
+  /** Compteur non lus — clé **préfixée** par `myNotifications` pour être invalidée avec elle. */
+  myNotificationsUnread: ["my-notifications", "unread-count"] as const,
   /** Module Comptabilité — préfixe `['accounting', companyId]` pour tout invalider. */
   accountingSetup: (companyId: string) => ["accounting", companyId, "setup"] as const,
   accountingAccounts: (companyId: string) => ["accounting", companyId, "accounts"] as const,

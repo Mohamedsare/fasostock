@@ -1,8 +1,12 @@
+import "server-only";
+
 import webpush from "web-push";
 
+import { getVapidPublicKey } from "@/lib/features/push/public-key";
+import { toWirePayload, type WebPushPayload } from "@/lib/features/push/types";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 
-export type WebPushPayload = { title: string; body: string; url?: string };
+export type { WebPushPayload } from "@/lib/features/push/types";
 
 let vapidConfigured = false;
 
@@ -25,18 +29,30 @@ function normalizeSubject(raw: string): string {
   return s.includes("@") ? `mailto:${s}` : DEFAULT_VAPID_SUBJECT;
 }
 
+/**
+ * Clé privée VAPID — `VAPID_PRIVATE_KEY`, avec repli sur l'ancien nom déjà déployé.
+ * Ce module est `server-only` : cette valeur ne peut pas fuir dans un bundle client.
+ */
+function getVapidPrivateKey(): string | null {
+  const preferred = process.env.VAPID_PRIVATE_KEY?.trim();
+  if (preferred) return preferred;
+  const legacy = process.env.WEB_PUSH_VAPID_PRIVATE_KEY?.trim();
+  return legacy || null;
+}
+
 function ensureVapid(): void {
   if (vapidConfigured) return;
-  const publicKey = process.env.NEXT_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY?.trim();
-  const privateKey = process.env.WEB_PUSH_VAPID_PRIVATE_KEY?.trim();
+  const publicKey = getVapidPublicKey();
+  const privateKey = getVapidPrivateKey();
   if (!publicKey || !privateKey) {
     throw new PushNotConfiguredError(
-      "NEXT_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY et WEB_PUSH_VAPID_PRIVATE_KEY sont requis.",
+      "NEXT_PUBLIC_VAPID_PUBLIC_KEY et VAPID_PRIVATE_KEY sont requis pour envoyer des notifications push.",
     );
   }
   // Le sujet est facultatif : sans lui, on retombe sur l'URL de l'app puis un mailto par défaut.
   const subject = normalizeSubject(
-    process.env.WEB_PUSH_VAPID_SUBJECT?.trim() ||
+    process.env.VAPID_SUBJECT?.trim() ||
+      process.env.WEB_PUSH_VAPID_SUBJECT?.trim() ||
       process.env.NEXT_PUBLIC_APP_URL?.trim() ||
       DEFAULT_VAPID_SUBJECT,
   );
@@ -66,38 +82,96 @@ async function removeDeadSubscription(endpoint: string): Promise<void> {
   }
 }
 
-export async function sendWebPushToUsers(
+export type PushSendResult = {
+  /** Nombre d'appareils (lignes `push_subscriptions`) réellement contactés. */
+  attempted: number;
+  failures: number;
+  /** Abonnements périmés supprimés en base (404 / 410 définitifs). */
+  removed: number;
+};
+
+/**
+ * Envoie un push à tous les appareils des utilisateurs indiqués.
+ *
+ * Un échec par appareil n'interrompt jamais la boucle : un téléphone perdu ne doit pas
+ * priver les autres de l'alerte. Les endpoints définitivement morts (404 / 410) sont
+ * purgés au passage — sans cela la table grossit indéfiniment et chaque envoi ralentit.
+ */
+export async function sendPushNotificationToUsers(
   userIds: string[],
   payload: WebPushPayload,
-): Promise<{ attempted: number; failures: number }> {
+): Promise<PushSendResult> {
   ensureVapid();
   const uniqueIds = [...new Set(userIds.filter(Boolean))];
   const rows = await loadSubscriptionsForUsers(uniqueIds);
+  const body = JSON.stringify(toWirePayload(payload));
+
   let failures = 0;
-  const body = JSON.stringify({
-    title: payload.title,
-    body: payload.body ?? "",
-    url: payload.url ?? "/notifications",
-  });
-  for (const row of rows) {
-    try {
-      await webpush.sendNotification(
-        {
-          endpoint: row.endpoint,
-          keys: { p256dh: row.p256dh, auth: row.auth },
-        },
-        body,
-        { TTL: 86_400 },
-      );
-    } catch (e: unknown) {
-      failures += 1;
-      const status = typeof e === "object" && e !== null && "statusCode" in e ? (e as { statusCode?: number }).statusCode : undefined;
-      if (status === 410 || status === 404) {
-        await removeDeadSubscription(row.endpoint);
+  let removed = 0;
+  const results = await Promise.allSettled(
+    rows.map(async (row) => {
+      try {
+        await webpush.sendNotification(
+          { endpoint: row.endpoint, keys: { p256dh: row.p256dh, auth: row.auth } },
+          body,
+          { TTL: 86_400 },
+        );
+        return true;
+      } catch (e: unknown) {
+        const status =
+          typeof e === "object" && e !== null && "statusCode" in e
+            ? (e as { statusCode?: number }).statusCode
+            : undefined;
+        // 404 / 410 : l'abonnement n'existe plus chez le service de push, il ne reviendra pas.
+        if (status === 410 || status === 404) {
+          await removeDeadSubscription(row.endpoint);
+          return "removed" as const;
+        }
+        return false;
       }
+    }),
+  );
+  for (const r of results) {
+    if (r.status === "rejected") {
+      failures += 1;
+      continue;
+    }
+    if (r.value === "removed") {
+      failures += 1;
+      removed += 1;
+    } else if (r.value === false) {
+      failures += 1;
     }
   }
-  return { attempted: rows.length, failures };
+
+  return { attempted: rows.length, failures, removed };
+}
+
+/** Envoi à un seul utilisateur (tous ses appareils). */
+export async function sendPushNotification(
+  userId: string,
+  payload: WebPushPayload,
+): Promise<PushSendResult> {
+  return sendPushNotificationToUsers([userId], payload);
+}
+
+/** Envoi à tous les propriétaires d'entreprise (message plateforme). */
+export async function sendPushNotificationToAllOwners(
+  payload: WebPushPayload,
+): Promise<PushSendResult> {
+  const ownerIds = await listOwnerUserIds();
+  return sendPushNotificationToUsers(ownerIds, payload);
+}
+
+/**
+ * Ancien nom, conservé pour les appelants existants (`/api/push/*`).
+ * @deprecated Utiliser `sendPushNotificationToUsers`.
+ */
+export async function sendWebPushToUsers(
+  userIds: string[],
+  payload: WebPushPayload,
+): Promise<PushSendResult> {
+  return sendPushNotificationToUsers(userIds, payload);
 }
 
 export async function listOwnerUserIds(): Promise<string[]> {

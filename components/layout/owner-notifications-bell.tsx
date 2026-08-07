@@ -6,7 +6,9 @@ import {
   type OwnerNotificationItem,
 } from "@/lib/features/notifications/owner-notifications";
 import { queryKeys } from "@/lib/query/query-keys";
+import { ROUTES } from "@/lib/config/routes";
 import { shellToolbarIconButtonClass } from "@/components/layout/shell-chrome";
+import Link from "next/link";
 import { cn } from "@/lib/utils/cn";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -269,6 +271,18 @@ export function OwnerNotificationsBell({
                 })}
               </ul>
             )}
+          </div>
+
+          {/* Les alertes ci-dessus sont calculées à la volée ; les messages reçus (admin,
+              push) vivent dans l'historique — d'où ce renvoi explicite. */}
+          <div className="border-t border-black/6 px-4 py-2.5">
+            <Link
+              href={ROUTES.notifications}
+              onClick={() => setOpen(false)}
+              className="text-xs font-semibold text-fs-accent hover:underline"
+            >
+              Voir mes messages et activer les notifications
+            </Link>
           </div>
         </div>
       ) : null}
