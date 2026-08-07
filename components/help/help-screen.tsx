@@ -12,7 +12,8 @@ import { TUTORIAL_MODULES, tutorialModuleLabel } from "@/lib/features/tutorials/
 import { parseYouTubeId, youTubeThumbUrl } from "@/lib/features/tutorials/youtube";
 import type { Tutorial } from "@/lib/features/tutorials/types";
 import { cn } from "@/lib/utils/cn";
-import { Mail, Package, Rocket, Settings, ShoppingCart, Truck } from "lucide-react";
+import { HelpDocumentation } from "@/components/help/help-documentation";
+import { Mail } from "lucide-react";
 import Image from "next/image";
 
 /** Support FasoStock — WhatsApp et téléphone (mêmes numéros). */
@@ -21,58 +22,6 @@ const FASOSTOCK_EMAIL = "contact@mohamedsare.com";
 const FASOSTOCK_PHONES: { display: string; waDigits: string; telHref: string }[] = [
   { display: "+212 771 66 80 79", waDigits: "212771668079", telHref: "tel:+212771668079" },
   { display: "+226 64712044", waDigits: "22664712044", telHref: "tel:+22664712044" },
-];
-
-const SECTIONS: {
-  title: string;
-  icon: typeof Rocket;
-  items: string[];
-}[] = [
-  {
-    title: "Démarrage",
-    icon: Rocket,
-    items: [
-      "Sélectionnez votre entreprise et la boutique dans la barre du haut.",
-      "Le tableau de bord affiche les indicateurs (ventes, stock).",
-      "Utilisez le menu pour accéder aux Produits, Ventes, Stock, Clients.",
-    ],
-  },
-  {
-    title: "Ventes",
-    icon: ShoppingCart,
-    items: [
-      "Caisse rapide : ventes rapides avec ticket thermique.",
-      "Facture A4 : ventes détaillées avec facture PDF personnalisable.",
-      "Historique des ventes : consultez, réimprimez ou téléchargez les factures.",
-    ],
-  },
-  {
-    title: "Produits et stock",
-    icon: Package,
-    items: [
-      "Produits : créez, modifiez, importez en CSV (modèle Excel ou CSV exportable).",
-      "Stock : ajustez les quantités, transférez entre boutiques.",
-      "Alertes : consultez les ruptures (menu Stock alertes pour les caissiers).",
-    ],
-  },
-  {
-    title: "Prix de revient",
-    icon: Truck,
-    items: [
-      "Un arrivage = une commande fournisseur + le transport, la douane, la manutention.",
-      "L'application partage ces frais sur chaque article : vous voyez ce que la marchandise vous coûte vraiment, et à quel prix la vendre.",
-      "Le guide complet, avec un exemple chiffré de bout en bout, s'ouvre depuis la page Prix de revient (bouton « Comment ça marche ? »).",
-    ],
-  },
-  {
-    title: "Paramètres",
-    icon: Settings,
-    items: [
-      "Paramétrage facture A4 : logo, slogan, signataire (par boutique).",
-      "Caisse rapide : impression automatique, type de quantité (+/- ou champ).",
-      "Abonnement : consultez votre plan dans Paramètres.",
-    ],
-  },
 ];
 
 function ContactFasoStockCard() {
@@ -326,8 +275,8 @@ export function HelpScreen() {
 
       {!isOwner ? (
         <p className="max-w-md text-sm leading-relaxed text-neutral-700">
-          Le guide détaillé ci-dessous est réservé au propriétaire de l&apos;entreprise. Utilisez les contacts
-          ci-dessus pour toute question.
+          La documentation détaillée est réservée au propriétaire de l&apos;entreprise. Utilisez les
+          contacts ci-dessus pour toute question.
         </p>
       ) : (
         <>
@@ -335,30 +284,7 @@ export function HelpScreen() {
             Bienvenue dans FasoStock. Voici l&apos;essentiel pour bien démarrer.
           </p>
 
-          <div className="flex flex-col gap-6">
-            {SECTIONS.map((section) => (
-              <FsCard key={section.title} padding="p-4 sm:p-5">
-                <div className="flex items-center gap-3">
-                  <section.icon
-                    className="h-6 w-6 shrink-0 text-fs-accent"
-                    strokeWidth={2}
-                    aria-hidden
-                  />
-                  <h2 className="text-base font-bold text-fs-text sm:text-lg">{section.title}</h2>
-                </div>
-                <ul className="mt-3 space-y-2">
-                  {section.items.map((line) => (
-                    <li key={line} className="flex gap-2 text-sm leading-relaxed text-neutral-800">
-                      <span className="shrink-0 font-semibold text-fs-accent" aria-hidden>
-                        •
-                      </span>
-                      <span>{line}</span>
-                    </li>
-                  ))}
-                </ul>
-              </FsCard>
-            ))}
-          </div>
+          <HelpDocumentation />
         </>
       )}
     </FsPage>
