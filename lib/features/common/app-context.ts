@@ -247,6 +247,8 @@ async function fetchAppContext(): Promise<AppContextData | null> {
       partsModuleEnabled: false,
       restockModuleEnabled: true,
       productLocationsEnabled: false,
+      productAliasesEnabled: false,
+      landedCostEnabled: false,
       onlineStoreEnabled: false,
       promoAdGenerationEnabled,
     };
@@ -259,7 +261,7 @@ async function fetchAppContext(): Promise<AppContextData | null> {
   const { data: companyRow, error: cErr } = await supabase
     .from("companies")
     .select(
-      "id, name, logo_url, business_type_slug, warehouse_feature_enabled, purchases_feature_enabled, transfers_feature_enabled, store_quota_increase_enabled, ai_predictions_enabled, warehouse_kpi_show_purchase_value, warehouse_kpi_show_sale_value, accounting_module_enabled, hr_module_enabled, expiry_module_enabled, parts_module_enabled, restock_module_enabled, product_locations_enabled, online_store_enabled",
+      "id, name, logo_url, business_type_slug, warehouse_feature_enabled, purchases_feature_enabled, transfers_feature_enabled, store_quota_increase_enabled, ai_predictions_enabled, warehouse_kpi_show_purchase_value, warehouse_kpi_show_sale_value, accounting_module_enabled, hr_module_enabled, expiry_module_enabled, parts_module_enabled, restock_module_enabled, product_locations_enabled, product_aliases_enabled, landed_cost_enabled, online_store_enabled",
     )
     .eq("id", primaryCompanyId)
     .maybeSingle();
@@ -297,6 +299,8 @@ async function fetchAppContext(): Promise<AppContextData | null> {
       partsModuleEnabled: false,
       restockModuleEnabled: true,
       productLocationsEnabled: false,
+      productAliasesEnabled: false,
+      landedCostEnabled: false,
       onlineStoreEnabled: false,
       promoAdGenerationEnabled,
     };
@@ -326,6 +330,8 @@ async function fetchAppContext(): Promise<AppContextData | null> {
     parts_module_enabled?: boolean | null;
     restock_module_enabled?: boolean | null;
     product_locations_enabled?: boolean | null;
+    product_aliases_enabled?: boolean | null;
+    landed_cost_enabled?: boolean | null;
     online_store_enabled?: boolean | null;
   };
   const warehouseFeatureEnabled = cr.warehouse_feature_enabled !== false;
@@ -343,6 +349,10 @@ async function fetchAppContext(): Promise<AppContextData | null> {
   const restockModuleEnabled = cr.restock_module_enabled !== false;
   // Emplacements : additif, activé par le propriétaire dans Paramètres.
   const productLocationsEnabled = cr.product_locations_enabled === true;
+  // Autres noms de produits : additif, activé par le propriétaire dans Paramètres.
+  const productAliasesEnabled = cr.product_aliases_enabled === true;
+  // Prix de revient : additif, activé par le propriétaire dans Paramètres.
+  const landedCostEnabled = cr.landed_cost_enabled === true;
   // Boutique en ligne : additif, ouvert par la plateforme (super admin).
   const onlineStoreEnabled = cr.online_store_enabled === true;
 
@@ -397,6 +407,8 @@ async function fetchAppContext(): Promise<AppContextData | null> {
       partsModuleEnabled,
       restockModuleEnabled,
       productLocationsEnabled,
+      productAliasesEnabled,
+      landedCostEnabled,
       onlineStoreEnabled,
       promoAdGenerationEnabled,
       supportSession: supportSession
@@ -482,6 +494,8 @@ async function fetchAppContext(): Promise<AppContextData | null> {
     partsModuleEnabled,
     restockModuleEnabled,
     productLocationsEnabled,
+    productAliasesEnabled,
+    landedCostEnabled,
     onlineStoreEnabled,
     promoAdGenerationEnabled,
   };

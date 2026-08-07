@@ -12,7 +12,7 @@ import { TUTORIAL_MODULES, tutorialModuleLabel } from "@/lib/features/tutorials/
 import { parseYouTubeId, youTubeThumbUrl } from "@/lib/features/tutorials/youtube";
 import type { Tutorial } from "@/lib/features/tutorials/types";
 import { cn } from "@/lib/utils/cn";
-import { Mail, Package, Rocket, Settings, ShoppingCart } from "lucide-react";
+import { Mail, Package, Rocket, Settings, ShoppingCart, Truck } from "lucide-react";
 import Image from "next/image";
 
 /** Support FasoStock — WhatsApp et téléphone (mêmes numéros). */
@@ -53,6 +53,15 @@ const SECTIONS: {
       "Produits : créez, modifiez, importez en CSV (modèle Excel ou CSV exportable).",
       "Stock : ajustez les quantités, transférez entre boutiques.",
       "Alertes : consultez les ruptures (menu Stock alertes pour les caissiers).",
+    ],
+  },
+  {
+    title: "Prix de revient",
+    icon: Truck,
+    items: [
+      "Un arrivage = une commande fournisseur + le transport, la douane, la manutention.",
+      "L'application partage ces frais sur chaque article : vous voyez ce que la marchandise vous coûte vraiment, et à quel prix la vendre.",
+      "Le guide complet, avec un exemple chiffré de bout en bout, s'ouvre depuis la page Prix de revient (bouton « Comment ça marche ? »).",
     ],
   },
   {

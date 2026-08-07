@@ -13,9 +13,22 @@ import type {
   ProductItem,
   ProductPackaging,
 } from "./types";
+import { normalizeSearchAliases, productSearchAliases } from "./search-aliases";
 
 const productSelect =
-  "id, company_id, name, sku, barcode, unit, purchase_price, sale_price, wholesale_price, wholesale_qty, stock_min, description, is_active, category_id, brand_id, product_scope, dci, dosage_form, therapeutic_class, laboratory, prescription_required, storage_conditions, category:categories(id, name), brand:brands(id, name), product_images(id, product_id, url, position), product_packagings(id, product_id, label, barcode, factor, price, position)";
+  "id, company_id, name, search_aliases, sku, barcode, unit, purchase_price, sale_price, wholesale_price, wholesale_qty, stock_min, description, is_active, category_id, brand_id, product_scope, dci, dosage_form, therapeutic_class, laboratory, prescription_required, storage_conditions, category:categories(id, name), brand:brands(id, name), product_images(id, product_id, url, position), product_packagings(id, product_id, label, barcode, factor, price, position)";
+
+/**
+ * Colonne `search_aliases` — envoyée UNIQUEMENT si le formulaire gère les autres noms
+ * (fonction activée par le propriétaire). Sinon on n'écrit rien : les alias déjà
+ * saisis survivent à une modification faite depuis un écran qui les ignore.
+ */
+function searchAliasesColumn(input: ProductFormInput): Record<string, string[]> {
+  if (!input.searchAliases) return {};
+  return {
+    search_aliases: normalizeSearchAliases(input.searchAliases, input.name),
+  };
+}
 
 /**
  * Convertit les champs métier du formulaire (ex. pharmacie) en colonnes SQL.
@@ -88,6 +101,7 @@ export async function listProducts(companyId: string): Promise<ProductItem[]> {
     const base = row as unknown as ProductItem;
     return {
       ...base,
+      search_aliases: productSearchAliases(base),
       wholesale_price: Number(base.wholesale_price ?? 0),
       wholesale_qty: Math.max(0, Math.floor(Number(base.wholesale_qty ?? 0))),
       category,
@@ -189,6 +203,7 @@ export async function createProduct(
     brand_id: input.brandId || null,
     product_scope: input.productScope,
     ...activityFieldColumns(input),
+    ...searchAliasesColumn(input),
   };
   const supabase = createClient();
   if (!navigator.onLine) {
@@ -233,6 +248,7 @@ export async function updateProduct(
     is_active: input.isActive,
     product_scope: input.productScope,
     ...activityFieldColumns(input),
+    ...searchAliasesColumn(input),
   };
   const supabase = createClient();
   if (!navigator.onLine) {
@@ -422,5 +438,22 @@ export async function deleteBrand(id: string) {
     return;
   }
   const { error } = await supabase.from("brands").delete().eq("id", id);
+  if (error) throw error;
+}
+
+/**
+ * Réglage entreprise « Autres noms de produits » — écrit par le propriétaire
+ * depuis Paramètres (RPC dédiée : la policy d'update sur `companies` est ouverte
+ * à tous les membres, le drapeau ne l'est pas).
+ */
+export async function setProductAliasesEnabled(
+  companyId: string,
+  enabled: boolean,
+): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase.rpc("company_set_product_aliases_enabled", {
+    p_company_id: companyId,
+    p_enabled: enabled,
+  });
   if (error) throw error;
 }

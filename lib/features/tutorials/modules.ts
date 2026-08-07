@@ -7,6 +7,7 @@ export const TUTORIAL_MODULES: readonly TutorialModule[] = [
   { key: "sales", label: "Ventes" },
   { key: "invoice_a4", label: "Configuration Facture A4" },
   { key: "stock", label: "Stock" },
+  { key: "landed_cost", label: "Prix de revient" },
   { key: "expiry", label: "Péremptions" },
   { key: "expenses", label: "Dépenses" },
   { key: "warehouse", label: "Magasin" },

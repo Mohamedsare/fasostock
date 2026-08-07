@@ -88,6 +88,16 @@ export type AppContextData = {
    */
   productLocationsEnabled: boolean;
   /**
+   * « Autres noms » des produits (alias de recherche) — désactivé par défaut,
+   * ouvert par le PROPRIÉTAIRE dans Paramètres (`companies.product_aliases_enabled`).
+   */
+  productAliasesEnabled: boolean;
+  /**
+   * Module Prix de revient (frais d'approche répartis sur un arrivage) — désactivé par
+   * défaut, ouvert par le PROPRIÉTAIRE dans Paramètres (`companies.landed_cost_enabled`).
+   */
+  landedCostEnabled: boolean;
+  /**
    * Boutique en ligne ouverte pour TOUTE l'entreprise par la plateforme
    * (`companies.online_store_enabled`). S'ajoute aux drapeaux boutique.
    */
@@ -231,6 +241,12 @@ export type AccessHelpers = {
   productLocationsOn: boolean;
   /** Page Emplacements : module ouvert ET propriétaire / permission dédiée. */
   canProductLocations: boolean;
+  /** « Autres noms » de produits activés par le propriétaire (saisie + recherche). */
+  productAliasesOn: boolean;
+  /** Module Prix de revient ouvert par le propriétaire pour l'entreprise. */
+  landedCostOn: boolean;
+  /** Page Prix de revient : module ouvert ET propriétaire / permission dédiée. */
+  canLandedCost: boolean;
   /** Boutique en ligne ouverte par la plateforme (entreprise ou boutique courante). */
   onlineStoreOn: boolean;
   /** Page Boutique en ligne : module ouvert ET propriétaire / permission dédiée. */
@@ -361,6 +377,13 @@ export function buildAccessHelpers(
   const productLocationsOn = data.productLocationsEnabled === true;
   const canProductLocations =
     productLocationsOn && (isOwner || hasPermission(P.productLocationsManage));
+  // Autres noms : simple aide à la saisie et à la recherche — aucune permission
+  // dédiée, quiconque gère déjà les produits en profite dès que le patron l'active.
+  const productAliasesOn = data.productAliasesEnabled === true;
+  // Prix de revient : additif, ouvert par le PROPRIÉTAIRE (Paramètres). Le module touche
+  // aux prix d'achat et de vente : le droit est donc distinct de celui des achats.
+  const landedCostOn = data.landedCostEnabled === true;
+  const canLandedCost = landedCostOn && (isOwner || hasPermission(P.landedCostManage));
   // Boutique en ligne : additif, ouvert par la PLATEFORME (entreprise ou boutique).
   const onlineStoreOn = onlineStoreOverride(data);
   const canOnlineStore =
@@ -416,6 +439,9 @@ export function buildAccessHelpers(
     canRestock,
     productLocationsOn,
     canProductLocations,
+    productAliasesOn,
+    landedCostOn,
+    canLandedCost,
     onlineStoreOn,
     canOnlineStore,
     expiryModuleOn,
@@ -466,6 +492,7 @@ export function filterNavItemsForPermissions(
     if (href === ROUTES.parts) return h.canParts;
     if (href === ROUTES.restock) return h.canRestock;
     if (href === ROUTES.productLocations) return h.canProductLocations;
+    if (href === ROUTES.landedCost) return h.canLandedCost;
     if (href === ROUTES.onlineStore) return h.canOnlineStore;
     if (href === ROUTES.barcodes) return h.canBarcodes;
     if (href === ROUTES.sales) return h.canSales;
@@ -531,6 +558,7 @@ const APP_SHELL_ROUTE_PREFIXES: readonly string[] = [
   ROUTES.parts,
   ROUTES.restock,
   ROUTES.productLocations,
+  ROUTES.landedCost,
   ROUTES.onlineStore,
   ROUTES.barcodes,
   ROUTES.sales,
@@ -624,6 +652,8 @@ export function canAccessPathname(
   // Emplacements : tant que le propriétaire n'a pas activé le module, l'URL directe
   // ne mène nulle part non plus.
   if (route === ROUTES.productLocations && !h.productLocationsOn) return false;
+  // Prix de revient : idem — le module touche aux prix, l'URL directe ne le contourne pas.
+  if (route === ROUTES.landedCost && !h.landedCostOn) return false;
   // Boutique en ligne : tant que la plateforme ne l'a pas ouverte, l'URL ne mène nulle part.
   if (route === ROUTES.onlineStore && !h.onlineStoreOn) return false;
   return isAppShellRoute(route);

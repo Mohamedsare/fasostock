@@ -26,6 +26,7 @@ import {
   fetchStoreBestSellerQty,
   updateCompletedPosSale,
 } from "@/lib/features/pos/api";
+import { productNameMatches } from "@/lib/features/products/search-aliases";
 import { posEffectiveUnitPrice } from "@/lib/features/pos/wholesale-unit-price";
 import { listActiveStorePromotions } from "@/lib/features/promotions/api";
 import { applyPromoPercent } from "@/lib/features/promotions/promo-math";
@@ -394,6 +395,11 @@ export function PosScreen({
    * lancée et la caisse est exactement celle d'avant.
    */
   const locationsModuleOn = ctx?.productLocationsEnabled === true;
+  /**
+   * « Autres noms » : le client dit « Omo », le catalogue dit « savon en poudre ».
+   * Activé par le propriétaire ⇒ la recherche caisse accepte les deux.
+   */
+  const productAliasesOn = ctx?.productAliasesEnabled === true;
   const peekLocationsPos =
     companyId.length > 0 && locationsModuleOn
       ? peekProductLocationsPosEnabled(companyId)
@@ -510,7 +516,7 @@ export function PosScreen({
       if (categoryId && p.category_id !== categoryId) return false;
       if (!q) return true;
       return (
-        p.name.toLowerCase().includes(q) ||
+        productNameMatches(p, q, productAliasesOn) ||
         (p.sku ?? "").toLowerCase().includes(q) ||
         (p.barcode ?? "").toLowerCase().includes(q) ||
         (p.product_packagings ?? []).some((pk) =>
@@ -526,7 +532,7 @@ export function PosScreen({
       list.sort((a, b) => qtyOf(b.id) - qtyOf(a.id));
     }
     return list;
-  }, [products, stockByProductId, categoryId, search, bestSellerQty]);
+  }, [products, stockByProductId, categoryId, search, bestSellerQty, productAliasesOn]);
 
   const subtotal = useMemo(
     () =>

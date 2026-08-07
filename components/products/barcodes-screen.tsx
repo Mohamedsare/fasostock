@@ -9,6 +9,7 @@ import { FsCard, FsPage, FsScreenHeader, fsInputClass } from "@/components/ui/fs
 import { useAppContext } from "@/lib/features/common/app-context";
 import { usePermissions } from "@/lib/features/permissions/use-permissions";
 import { listProducts, setProductBarcode } from "@/lib/features/products/api";
+import { productNameMatches } from "@/lib/features/products/search-aliases";
 import type { ProductItem } from "@/lib/features/products/types";
 import {
   ProductListThumbnail,
@@ -107,16 +108,21 @@ export function BarcodesScreen() {
   });
 
   const products = useMemo(() => productsQ.data ?? [], [productsQ.data]);
+  // « Autres noms » : même recherche qu'ailleurs quand le propriétaire l'a activée.
+  const productAliasesOn = ctx.data?.productAliasesEnabled === true;
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return products;
     return products.filter((p) => {
-      const name = p.name.toLowerCase();
       const sku = (p.sku ?? "").toLowerCase();
       const barcode = (p.barcode ?? "").toLowerCase();
-      return name.includes(q) || sku.includes(q) || barcode.includes(q);
+      return (
+        productNameMatches(p, q, productAliasesOn) ||
+        sku.includes(q) ||
+        barcode.includes(q)
+      );
     });
-  }, [products, search]);
+  }, [products, search, productAliasesOn]);
 
   const selectedRows = useMemo(() => {
     const byId = new Map(products.map((p) => [p.id, p]));

@@ -13,6 +13,11 @@ import type {
   ProductPackagingDraft,
   ProductScope,
 } from "@/lib/features/products/types";
+import {
+  MAX_SEARCH_ALIASES,
+  normalizeSearchAliases,
+  productSearchAliases,
+} from "@/lib/features/products/search-aliases";
 import { activityConfig } from "@/lib/features/activity/activity-config";
 import { cn } from "@/lib/utils/cn";
 import { toNumber } from "@/lib/utils/currency";
@@ -105,6 +110,12 @@ type Props = {
   expiryModuleEnabled?: boolean;
   /** SKU pré-rempli à la création (auto-généré, propre au tenant ; modifiable). */
   suggestedSku?: string;
+  /**
+   * « Autres noms » activés par le propriétaire (Paramètres). À false, la section
+   * n'est pas affichée ET le formulaire n'envoie pas la colonne : les alias déjà
+   * enregistrés restent en base, intacts.
+   */
+  searchAliasesEnabled?: boolean;
   onClose: () => void;
   onSubmit: (payload: ProductFormSavePayload) => void | Promise<void>;
   onCategoriesChanged: () => void;
@@ -134,6 +145,7 @@ export function ProductFormDialog({
   businessTypeSlug,
   expiryModuleEnabled,
   suggestedSku,
+  searchAliasesEnabled = false,
   onClose,
   onSubmit,
   onCategoriesChanged,
@@ -157,6 +169,25 @@ export function ProductFormDialog({
   );
 
   const [name, setName] = useState(initial?.name ?? "");
+  /**
+   * Autres noms (recherche seule). Une ligne = un champ ; on garde les chaînes
+   * telles que saisies, le nettoyage (vides, doublons, plafond) est fait à
+   * l'enregistrement par `normalizeSearchAliases` — et re-fait par la base.
+   */
+  const [aliases, setAliases] = useState<string[]>(
+    () => productSearchAliases(initial ?? { search_aliases: null }),
+  );
+  const addAlias = useCallback(() => {
+    setAliases((rows) =>
+      rows.length >= MAX_SEARCH_ALIASES ? rows : [...rows, ""],
+    );
+  }, []);
+  const updateAlias = useCallback((index: number, value: string) => {
+    setAliases((rows) => rows.map((r, i) => (i === index ? value : r)));
+  }, []);
+  const removeAlias = useCallback((index: number) => {
+    setAliases((rows) => rows.filter((_, i) => i !== index));
+  }, []);
   const [sku, setSku] = useState(
     initial ? (initial.sku ?? "") : (suggestedSku ?? ""),
   );
@@ -361,6 +392,10 @@ export function ProductFormDialog({
       brandId,
       productScope,
       isActive,
+      // Non géré (fonction désactivée) ⇒ `undefined` : la colonne n'est pas écrite.
+      searchAliases: searchAliasesEnabled
+        ? normalizeSearchAliases(aliases, name)
+        : undefined,
       activityFields:
         config.productFields.length > 0 ? activityFields : undefined,
     };
@@ -505,6 +540,65 @@ export function ProductFormDialog({
                 autoComplete="off"
               />
             </label>
+
+            {/* Autres noms : uniquement des clés de recherche. Le nom ci-dessus
+                reste celui affiché partout (tickets, factures, rapports). */}
+            {searchAliasesEnabled ? (
+              <div className="rounded-xl border border-black/[0.08] p-3">
+                <p className="text-sm font-semibold text-fs-text">
+                  Autres noms (recherche)
+                </p>
+                <p className="mt-0.5 text-[11px] leading-relaxed text-neutral-500">
+                  Les autres appellations du produit ({MAX_SEARCH_ALIASES} au
+                  maximum) : « Omo » pour « savon en poudre », « cube » pour
+                  « Maggi »… On retrouvera l&apos;article en cherchant l&apos;un de ces
+                  noms. Le nom affiché sur les tickets et les factures reste le nom
+                  ci-dessus.
+                </p>
+
+                {aliases.length > 0 ? (
+                  <div className="mt-2 space-y-2">
+                    {aliases.map((value, index) => (
+                      <div key={index} className="flex items-center gap-2">
+                        <input
+                          value={value}
+                          onChange={(e) => updateAlias(index, e.target.value)}
+                          className={fsInputClass()}
+                          placeholder={`Autre nom ${index + 1}`}
+                          aria-label={`Autre nom ${index + 1}`}
+                          autoCapitalize="words"
+                          autoComplete="off"
+                          maxLength={120}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeAlias(index)}
+                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-red-200 text-red-600"
+                          aria-label={`Retirer l'autre nom ${index + 1}`}
+                        >
+                          <MdClose className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+
+                {aliases.length < MAX_SEARCH_ALIASES ? (
+                  <button
+                    type="button"
+                    onClick={addAlias}
+                    className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-fs-accent/40 bg-fs-accent/[0.06] px-3 py-2 text-xs font-semibold text-fs-accent"
+                  >
+                    <MdAdd className="h-4 w-4" aria-hidden />
+                    Ajouter un autre nom
+                  </button>
+                ) : (
+                  <p className="mt-2 text-[11px] text-neutral-500">
+                    Maximum atteint ({MAX_SEARCH_ALIASES} autres noms).
+                  </p>
+                )}
+              </div>
+            ) : null}
 
             <div
               className={cn(

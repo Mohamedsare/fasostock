@@ -26,6 +26,10 @@ import { adjustStockAtomic } from "@/lib/features/inventory/api";
 import { useProductLocationMap } from "@/lib/features/product-locations/use-product-locations";
 import { createProductBatch } from "@/lib/features/products/batches-api";
 import { saveProductPackagings } from "@/lib/features/products/packagings-api";
+import {
+  productNameMatches,
+  productSearchAliases,
+} from "@/lib/features/products/search-aliases";
 import { suggestNextSku } from "@/lib/features/products/sku";
 import { P } from "@/lib/constants/permissions";
 import { useAppContext } from "@/lib/features/common/app-context";
@@ -201,6 +205,11 @@ export function ProductsScreen() {
    * pas activé — la page reste strictement identique pour les autres.
    */
   const productLocationsOn = helpers?.productLocationsOn ?? false;
+  /**
+   * « Autres noms » : la recherche du catalogue accepte les appellations
+   * alternatives et le formulaire les propose. Désactivé ⇒ rien ne change.
+   */
+  const productAliasesOn = helpers?.productAliasesOn ?? false;
   const productLocationsQ = useProductLocationMap(storeId, productLocationsOn);
   const locationByProduct = productLocationsQ.data ?? null;
   // Catalogue de la boutique courante : `null` = partage tout le catalogue de l'entreprise.
@@ -418,7 +427,7 @@ export function ProductsScreen() {
     const q = search.trim().toLowerCase();
     return products.filter((p) => {
       if (q) {
-        const okName = p.name.toLowerCase().includes(q);
+        const okName = productNameMatches(p, q, productAliasesOn);
         const okSku = (p.sku ?? "").toLowerCase().includes(q);
         const term = search.trim();
         const okBarcode =
@@ -437,7 +446,7 @@ export function ProductsScreen() {
       }
       return true;
     });
-  }, [products, search, categoryFilter, brandFilter, packagingFilter]);
+  }, [products, search, categoryFilter, brandFilter, packagingFilter, productAliasesOn]);
 
   const pageCount = filtered.length === 0 ? 0 : Math.ceil(filtered.length / PAGE_SIZE);
   const safePage = Math.min(page, Math.max(0, pageCount - 1));
@@ -726,6 +735,13 @@ export function ProductsScreen() {
                               );
                             })}
                         </div>
+                      ) : null}
+                      {/* Autres noms : discrets, mais visibles — le patron doit
+                          voir d'un coup d'œil ce qui rendra l'article trouvable. */}
+                      {productAliasesOn && productSearchAliases(p).length > 0 ? (
+                        <p className="mt-1 line-clamp-1 text-[11px] text-neutral-500">
+                          Aussi : {productSearchAliases(p).join(" · ")}
+                        </p>
                       ) : null}
                       {locationByProduct?.get(p.id) ? (
                         <div className="mt-1">
@@ -1076,6 +1092,7 @@ export function ProductsScreen() {
           businessTypeSlug={ctx.data?.businessTypeSlug}
           expiryModuleEnabled={expiryModuleOverride(ctx.data)}
           suggestedSku={suggestedSku}
+          searchAliasesEnabled={productAliasesOn}
           onClose={() => {
             setShowForm(false);
             setEditing(null);

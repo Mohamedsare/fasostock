@@ -32,6 +32,8 @@ import {
   setQuickPosPriceEditEnabled,
 } from "@/lib/features/settings/quick-pos-price-edit";
 import { setProductLocationsEnabled } from "@/lib/features/product-locations/api";
+import { setLandedCostEnabled } from "@/lib/features/landed-cost/api";
+import { setProductAliasesEnabled } from "@/lib/features/products/api";
 import {
   fetchProductLocationsPosEnabled,
   peekProductLocationsPosEnabled,
@@ -79,7 +81,9 @@ import {
   MdPalette,
   MdPerson,
   MdPlace,
+  MdLocalShipping,
   MdSave,
+  MdSell,
   MdSecurity,
   MdCreditCard,
   MdPriceChange,
@@ -448,6 +452,23 @@ export function SettingsScreen() {
     onError: (e) => toastMutationError("settings", e),
   });
 
+  const landedCostEnabled = ctxQ.data?.landedCostEnabled === true;
+  const landedCostMut = useMutation({
+    mutationFn: async (enabled: boolean) => {
+      if (!companyId) throw new Error("Entreprise introuvable.");
+      await setLandedCostEnabled(companyId, enabled);
+    },
+    onSuccess: async (_, enabled) => {
+      toast.success(
+        enabled
+          ? "Module Prix de revient activé. Ouvrez « Prix de revient » pour saisir votre premier arrivage."
+          : "Module Prix de revient désactivé. Vos arrivages et l'historique des prix sont conservés.",
+      );
+      await qc.invalidateQueries({ queryKey: queryKeys.appContext });
+    },
+    onError: (e) => toastMutationError("settings", e),
+  });
+
   const peekLocationsPos =
     companyId.length > 0 && isOwner && productLocationsEnabled
       ? peekProductLocationsPosEnabled(companyId)
@@ -474,6 +495,27 @@ export function SettingsScreen() {
       await qc.invalidateQueries({
         queryKey: queryKeys.productLocationsPosEnabled(companyId),
       });
+    },
+    onError: (e) => toastMutationError("settings", e),
+  });
+
+  /**
+   * « Autres noms » d'un produit (alias de recherche). Réglage entreprise, écrit
+   * par le propriétaire ; le contexte applicatif porte le drapeau.
+   */
+  const productAliasesEnabled = ctxQ.data?.productAliasesEnabled === true;
+  const productAliasesMut = useMutation({
+    mutationFn: async (enabled: boolean) => {
+      if (!companyId) throw new Error("Entreprise introuvable.");
+      await setProductAliasesEnabled(companyId, enabled);
+    },
+    onSuccess: async (_, enabled) => {
+      toast.success(
+        enabled
+          ? "Autres noms activés. Ajoutez-les dans la fiche produit."
+          : "Autres noms désactivés. Ceux déjà saisis sont conservés.",
+      );
+      await qc.invalidateQueries({ queryKey: queryKeys.appContext });
     },
     onError: (e) => toastMutationError("settings", e),
   });
@@ -883,6 +925,58 @@ export function SettingsScreen() {
         </FsCard>
       ) : null}
 
+      {/* Prix de revient (frais d'approche répartis) — owner uniquement */}
+      {isOwner && companyId ? (
+        <FsCard className="mt-5" padding="p-5">
+          <SettingsCardTitle icon={MdLocalShipping} title="Prix de revient" />
+          <p className="mt-2 text-xs leading-relaxed text-neutral-600 sm:text-sm">
+            Quand vous commandez chez un fournisseur, le transport, la douane et la manutention
+            s&apos;ajoutent à la facture. Ce module répartit ces frais sur chaque article pour
+            vous donner le prix de revient réel, puis calcule le prix de vente qui vous laisse
+            la marge voulue. Les frais changeant d&apos;un arrivage à l&apos;autre, il tient
+            compte de l&apos;ancien stock pour ne pas fausser vos marges.
+          </p>
+          <div className="mt-4 space-y-0 rounded-[10px] border border-black/[0.08]">
+            <label
+              className={cn(
+                "flex cursor-pointer items-start justify-between gap-3 px-3 py-3 sm:px-4",
+                landedCostMut.isPending && "pointer-events-none opacity-60",
+              )}
+            >
+              <span className="min-w-0">
+                <span className="block text-sm font-medium text-fs-text">
+                  Activer le prix de revient
+                </span>
+                <span className="mt-0.5 block text-xs text-neutral-600">
+                  {landedCostEnabled
+                    ? "Le menu « Prix de revient » est disponible. Accordez le droit aux employés dans Employés."
+                    : "Désactivé : rien ne change dans l'application, aucun prix n'est touché."}
+                </span>
+              </span>
+              <input
+                type="checkbox"
+                role="switch"
+                className="mt-1 h-5 w-9 shrink-0 cursor-pointer accent-fs-accent"
+                checked={landedCostEnabled}
+                disabled={landedCostMut.isPending}
+                onChange={(e) => {
+                  void landedCostMut.mutateAsync(e.target.checked);
+                }}
+              />
+            </label>
+          </div>
+          {landedCostEnabled ? (
+            <Link
+              href={ROUTES.landedCost}
+              className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-fs-accent hover:underline hover:underline-offset-2"
+            >
+              Ouvrir le prix de revient
+              <ChevronRight className="h-4 w-4" aria-hidden />
+            </Link>
+          ) : null}
+        </FsCard>
+      ) : null}
+
       {/* Emplacements physiques des produits — owner uniquement */}
       {isOwner && companyId ? (
         <FsCard className="mt-5" padding="p-5">
@@ -963,6 +1057,49 @@ export function SettingsScreen() {
               <ChevronRight className="h-4 w-4" aria-hidden />
             </Link>
           ) : null}
+        </FsCard>
+      ) : null}
+
+      {/* Autres noms d'un produit (alias de recherche) — owner uniquement */}
+      {isOwner && companyId ? (
+        <FsCard className="mt-5" padding="p-5">
+          <SettingsCardTitle icon={MdSell} title="Autres noms des produits" />
+          <p className="mt-2 text-xs leading-relaxed text-neutral-600 sm:text-sm">
+            Un même article n&apos;a pas le même nom pour tout le monde : « Omo » ou
+            « savon en poudre », « cube » ou « Maggi ». Vous pouvez donner jusqu&apos;à
+            4 autres noms à chaque produit : on le retrouve alors en cherchant
+            n&apos;importe lequel, au catalogue comme à la caisse. Le nom principal
+            reste le seul affiché sur les tickets, les factures et les rapports.
+          </p>
+          <div className="mt-4 space-y-0 rounded-[10px] border border-black/[0.08]">
+            <label
+              className={cn(
+                "flex cursor-pointer items-start justify-between gap-3 px-3 py-3 sm:px-4",
+                productAliasesMut.isPending && "pointer-events-none opacity-60",
+              )}
+            >
+              <span className="min-w-0">
+                <span className="block text-sm font-medium text-fs-text">
+                  Activer les autres noms
+                </span>
+                <span className="mt-0.5 block text-xs text-neutral-600">
+                  {productAliasesEnabled
+                    ? "La fiche produit propose « Autres noms », et la recherche les accepte."
+                    : "Désactivé : rien ne change dans l'application."}
+                </span>
+              </span>
+              <input
+                type="checkbox"
+                role="switch"
+                className="mt-1 h-5 w-9 shrink-0 cursor-pointer accent-fs-accent"
+                checked={productAliasesEnabled}
+                disabled={productAliasesMut.isPending}
+                onChange={(e) => {
+                  void productAliasesMut.mutateAsync(e.target.checked);
+                }}
+              />
+            </label>
+          </div>
         </FsCard>
       ) : null}
 

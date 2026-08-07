@@ -29,6 +29,8 @@ export const ROUTES = {
   restock: "/reassort",
   /** Module Emplacements : où se trouve physiquement un produit — activé par le propriétaire. */
   productLocations: "/emplacements",
+  /** Module Prix de revient : frais d'approche répartis sur un arrivage — activé par le propriétaire. */
+  landedCost: "/prix-revient",
   /** Boutique en ligne : vitrine publique + commandes web — activée par le super admin. */
   onlineStore: "/boutique-en-ligne",
   stores: "/stores",

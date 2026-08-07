@@ -59,6 +59,20 @@ export const queryKeys = {
   /** Module Emplacements — recherche « c'est où ? ». */
   productLocationSearch: (storeId: string | null, query: string) =>
     ["product-locations", storeId ?? "__none__", "search", query] as const,
+  /** Module Prix de revient — arrivages d'une entreprise (préfixe `['cost-batches']`). */
+  costBatches: (companyId: string, storeId: string | null) =>
+    ["cost-batches", companyId, storeId ?? "__all__"] as const,
+  /** Lignes produits d'un arrivage. */
+  costBatchItems: (batchId: string) => ["cost-batches", "items", batchId] as const,
+  /** Frais d'approche d'un arrivage. */
+  costBatchCharges: (batchId: string) => ["cost-batches", "charges", batchId] as const,
+  /** Calcul serveur d'un arrivage (frais répartis, coûts, prix conseillés). */
+  costBatchCompute: (batchId: string) => ["cost-batches", "compute", batchId] as const,
+  /** Achats déjà saisis, importables dans un arrivage. */
+  costBatchImportable: (companyId: string, storeId: string | null) =>
+    ["cost-batches", "importable", companyId, storeId ?? "__all__"] as const,
+  /** Historique des changements de prix d'un produit. */
+  productPriceHistory: (productId: string) => ["product-price-history", productId] as const,
   /** Tous les SKU (y compris produits supprimés) — pour la génération auto sans collision. */
   productSkus: (companyId: string) => ["product-skus", companyId] as const,
   /** Stock brut d'une boutique : `Record<product_id, quantité>` (`listStoreInventory`). */

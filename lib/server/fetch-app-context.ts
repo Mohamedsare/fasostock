@@ -20,7 +20,7 @@ export async function fetchAppContextForCompany(
   const { data: companyRow, error: cErr } = await supabase
     .from("companies")
     .select(
-      "id, name, logo_url, business_type_slug, warehouse_feature_enabled, purchases_feature_enabled, transfers_feature_enabled, store_quota_increase_enabled, ai_predictions_enabled, warehouse_kpi_show_purchase_value, warehouse_kpi_show_sale_value, accounting_module_enabled, hr_module_enabled, expiry_module_enabled, parts_module_enabled, restock_module_enabled, product_locations_enabled, online_store_enabled",
+      "id, name, logo_url, business_type_slug, warehouse_feature_enabled, purchases_feature_enabled, transfers_feature_enabled, store_quota_increase_enabled, ai_predictions_enabled, warehouse_kpi_show_purchase_value, warehouse_kpi_show_sale_value, accounting_module_enabled, hr_module_enabled, expiry_module_enabled, parts_module_enabled, restock_module_enabled, product_locations_enabled, product_aliases_enabled, landed_cost_enabled, online_store_enabled",
     )
     .eq("id", cid)
     .maybeSingle();
@@ -49,6 +49,8 @@ export async function fetchAppContextForCompany(
     parts_module_enabled?: boolean | null;
     restock_module_enabled?: boolean | null;
     product_locations_enabled?: boolean | null;
+    product_aliases_enabled?: boolean | null;
+    landed_cost_enabled?: boolean | null;
     online_store_enabled?: boolean | null;
   };
 
@@ -101,6 +103,8 @@ export async function fetchAppContextForCompany(
       partsModuleEnabled: cr.parts_module_enabled === true,
       restockModuleEnabled: cr.restock_module_enabled !== false,
       productLocationsEnabled: cr.product_locations_enabled === true,
+      productAliasesEnabled: cr.product_aliases_enabled === true,
+      landedCostEnabled: cr.landed_cost_enabled === true,
       onlineStoreEnabled: cr.online_store_enabled === true,
       // Flag évalué côté client (bouton uniquement) ; non requis pour les gardes de route serveur.
       promoAdGenerationEnabled: false,
@@ -148,6 +152,8 @@ export async function fetchAppContextForCompany(
     partsModuleEnabled: cr.parts_module_enabled === true,
     restockModuleEnabled: cr.restock_module_enabled !== false,
     productLocationsEnabled: cr.product_locations_enabled === true,
+    productAliasesEnabled: cr.product_aliases_enabled === true,
+    landedCostEnabled: cr.landed_cost_enabled === true,
     onlineStoreEnabled: cr.online_store_enabled === true,
     // Flag évalué côté client (bouton uniquement) ; non requis pour les gardes de route serveur.
     promoAdGenerationEnabled: false,

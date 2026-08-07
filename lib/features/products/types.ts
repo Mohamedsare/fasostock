@@ -71,6 +71,11 @@ export type ProductItem = {
   /** Conditionnements (paquet/carton) — tri par `position` asc. Vide si aucun. */
   product_packagings?: ProductPackaging[] | null;
   /**
+   * Autres appellations du produit (4 max) — SERVENT UNIQUEMENT À LA RECHERCHE.
+   * Le nom affiché partout (tickets, factures, rapports) reste `name`.
+   */
+  search_aliases?: string[] | null;
+  /**
    * Champs métier additionnels (ex. pharmacie). Colonnes nullables ajoutées par
    * migration additive — `null`/absent pour les métiers qui ne les utilisent pas.
    */
@@ -107,6 +112,12 @@ export type ProductFormInput = {
   brandId: string;
   productScope: ProductScope;
   isActive: boolean;
+  /**
+   * Autres noms du produit (recherche uniquement), saisis quand le propriétaire a
+   * activé la fonction. `undefined` = le formulaire ne gère pas ce champ → la couche
+   * API n'envoie alors PAS la colonne (les alias existants restent intacts).
+   */
+  searchAliases?: string[];
   /**
    * Champs métier additionnels (ex. pharmacie). `undefined` = métier sans champs
    * spécifiques → la couche API n'envoie alors aucune colonne supplémentaire.
