@@ -40,6 +40,9 @@ async function verifyTurnstile(token: string, ip: string): Promise<boolean> {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body,
+      /* Vérification anti-bot : doit répondre vite. Sans plafond, une panne Cloudflare
+         immobiliserait la route au lieu de refuser proprement l'inscription. */
+      signal: AbortSignal.timeout(10_000),
     });
     const data = (await res.json()) as { success?: boolean };
     return data.success === true;

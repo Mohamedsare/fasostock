@@ -12,6 +12,13 @@ import {
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
+/**
+ * Sans plafond, une connexion DeepSeek qui reste ouverte sans jamais répondre garde
+ * la fonction serverless — et son slot de concurrence — occupée jusqu'au délai de
+ * l'hébergeur. Quelques requêtes de ce type suffisent à rendre l'app injoignable.
+ */
+const LLM_TIMEOUT_MS = 60_000;
+
 const STRUCTURED_SYSTEM_PROMPT = `Tu es un expert IA senior en pilotage commercial et gestion de stock (FasoStock).
 Objectif: fournir des prédictions robustes, actionnables et un discours valorisant orienté performance.
 Tu dois répondre UNIQUEMENT avec un objet JSON valide, sans texte avant ou après. Pas de markdown, pas de \`\`\`json.
@@ -155,26 +162,35 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Contexte IA trop volumineux" }, { status: 400 });
   }
 
-  const response = await fetch("https://api.deepseek.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${key}`,
-    },
-    body: JSON.stringify({
-      model: "deepseek-chat",
-      messages: [
-        { role: "system", content: STRUCTURED_SYSTEM_PROMPT },
-        {
-          role: "user",
-          content: `Données:\n${contextText}\n\nRéponds UNIQUEMENT avec l'objet JSON demandé (forecast en XOF, tableaux restock_priorities/alerts/recommendations, commentary en français).`,
-        },
-      ],
-      max_tokens: 1200,
-      temperature: 0.3,
-      response_format: { type: "json_object" },
-    }),
-  });
+  let response: Response;
+  try {
+    response = await fetch("https://api.deepseek.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${key}`,
+      },
+      body: JSON.stringify({
+        model: "deepseek-chat",
+        messages: [
+          { role: "system", content: STRUCTURED_SYSTEM_PROMPT },
+          {
+            role: "user",
+            content: `Données:\n${contextText}\n\nRéponds UNIQUEMENT avec l'objet JSON demandé (forecast en XOF, tableaux restock_priorities/alerts/recommendations, commentary en français).`,
+          },
+        ],
+        max_tokens: 1200,
+        temperature: 0.3,
+        response_format: { type: "json_object" },
+      }),
+      signal: AbortSignal.timeout(LLM_TIMEOUT_MS),
+    });
+  } catch {
+    return NextResponse.json(
+      { error: "Le service IA ne répond pas. Réessayez dans un instant." },
+      { status: 504 },
+    );
+  }
 
   if (!response.ok) {
     const t = await response.text();

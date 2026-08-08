@@ -82,8 +82,20 @@ export async function POST(req: Request) {
 
   const history = toSafeHistory(body.history);
 
-  // DeepSeek est compatible avec l'API OpenAI (chat completions).
-  const client = new OpenAI({ apiKey: key, baseURL: "https://api.deepseek.com/v1" });
+  /*
+   * DeepSeek est compatible avec l'API OpenAI (chat completions).
+   *
+   * Route **publique** (chat du site vitrine) : c'est la plus exposée. Le SDK attend
+   * 10 minutes par défaut et retente 2 fois — soit une demi-heure pendant laquelle une
+   * requête garderait son slot de concurrence. Quelques visiteurs sur un incident
+   * DeepSeek suffiraient à saturer les fonctions et à emporter tout le site avec elles.
+   */
+  const client = new OpenAI({
+    apiKey: key,
+    baseURL: "https://api.deepseek.com/v1",
+    timeout: 30_000,
+    maxRetries: 1,
+  });
 
   let completion: Awaited<ReturnType<typeof client.chat.completions.create>>;
   try {

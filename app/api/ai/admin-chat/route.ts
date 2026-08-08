@@ -3,6 +3,13 @@ import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
+/**
+ * Sans plafond, une connexion DeepSeek qui reste ouverte sans jamais répondre garde
+ * la fonction serverless — et son slot de concurrence — occupée jusqu'au délai de
+ * l'hébergeur. Quelques requêtes de ce type suffisent à rendre l'app injoignable.
+ */
+const LLM_TIMEOUT_MS = 60_000;
+
 type Msg = { role: "user" | "assistant"; content: string };
 type SuggestedAction = {
   type: "set_company_active" | "set_company_ai_predictions";
@@ -271,20 +278,29 @@ Contraintes:
     },
   ];
 
-  const llmRes = await fetch("https://api.deepseek.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${key}`,
-    },
-    body: JSON.stringify({
-      model: "deepseek-chat",
-      messages: modelMessages,
-      max_tokens: 1200,
-      temperature: 0.2,
-      response_format: { type: "json_object" },
-    }),
-  });
+  let llmRes: Response;
+  try {
+    llmRes = await fetch("https://api.deepseek.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${key}`,
+      },
+      body: JSON.stringify({
+        model: "deepseek-chat",
+        messages: modelMessages,
+        max_tokens: 1200,
+        temperature: 0.2,
+        response_format: { type: "json_object" },
+      }),
+      signal: AbortSignal.timeout(LLM_TIMEOUT_MS),
+    });
+  } catch {
+    return NextResponse.json(
+      { error: "Le service IA ne répond pas. Réessayez dans un instant." },
+      { status: 504 },
+    );
+  }
 
   if (!llmRes.ok) {
     const t = await llmRes.text();
@@ -319,6 +335,11 @@ Reponds strictement en JSON valide:
 }
 Si aucune action: {"actions":[]}`;
 
+  /*
+   * Second appel purement optionnel (suggestions d'actions) : une panne ou une lenteur
+   * de DeepSeek ne doit pas priver le super-admin de la réponse déjà obtenue — on
+   * retombe simplement sur « aucune action suggérée ».
+   */
   const actionRes = await fetch("https://api.deepseek.com/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -340,10 +361,11 @@ Si aucune action: {"actions":[]}`;
       response_format: { type: "json_object" },
       max_tokens: 500,
     }),
-  });
+    signal: AbortSignal.timeout(LLM_TIMEOUT_MS),
+  }).catch(() => null);
 
   let suggestedActions: SuggestedAction[] = [];
-  if (actionRes.ok) {
+  if (actionRes?.ok) {
     try {
       const j = (await actionRes.json()) as { choices?: Array<{ message?: { content?: string } }> };
       const txt = j.choices?.[0]?.message?.content ?? "";

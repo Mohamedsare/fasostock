@@ -154,7 +154,12 @@ export async function POST(req: Request) {
   const discountPercent = Math.max(0, Math.min(100, Math.round(Number(body.discountPercent ?? 0))));
   const periodLabel = body.periodLabel ? String(body.periodLabel).trim().slice(0, 60) : null;
 
-  const client = new OpenAI({ apiKey: key });
+  /*
+   * La génération d'image est lente, mais le SDK attend 10 min et retente 2 fois par
+   * défaut : la fonction serait tuée par l'hébergeur (maxDuration 180 s) bien avant,
+   * en gardant son slot occupé jusqu'au bout. On échoue donc à l'intérieur du budget.
+   */
+  const client = new OpenAI({ apiKey: key, timeout: 150_000, maxRetries: 1 });
 
   // 2) Accroche + CTA (texte).
   const copy = await makeCopy(client, productName, discountPercent);

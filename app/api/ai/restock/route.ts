@@ -161,6 +161,9 @@ export async function POST(req: Request) {
         temperature: 0.2,
         response_format: { type: "json_object" },
       }),
+      /* Une connexion DeepSeek qui pend garderait un slot de concurrence occupé jusqu'au
+         délai de l'hébergeur — de quoi rendre l'app injoignable sous quelques requêtes. */
+      signal: AbortSignal.timeout(60_000),
     });
   } catch {
     return NextResponse.json(

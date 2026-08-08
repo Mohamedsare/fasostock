@@ -366,7 +366,64 @@ async function fetchDashboardLowStock(
   };
 }
 
-const CHUNK = 800;
+/**
+ * Taille de lot `in(...)` : le filtre voyage dans l'URL, et PostgREST refuse au-delà de
+ * quelques kilo-octets. À 800 identifiants l'URL dépassait 29 ko — le tableau de bord
+ * tombait donc en erreur dès qu'une entreprise passait 800 ventes sur la période, c'est
+ * à dire précisément chez les clients qui marchent bien. 120 (valeur déjà retenue dans
+ * `sales/api.ts` et `pos/api.ts`) tient dans ~4,5 ko, avec de la marge.
+ */
+const CHUNK = 120;
+
+/**
+ * Lots exécutés de front. Le découpage plus fin multiplie les allers-retours : les
+ * paralléliser garde le tableau de bord aussi rapide qu'avant, sans inonder la base.
+ */
+const CHUNK_CONCURRENCY = 4;
+
+/**
+ * Plafond de lignes que PostgREST renvoie par réponse (mesuré sur ce projet : 1000).
+ * Au-delà, la réponse est **tronquée en silence** — sans erreur, sans indice dans les
+ * données. Un lot de ventes peut largement dépasser ce seuil côté `sale_items` : sans
+ * pagination, le coût d'achat manquant gonflait la marge affichée. On lit donc chaque
+ * lot page par page jusqu'à en voir la fin.
+ */
+const MAX_ROWS_PER_RESPONSE = 1000;
+
+/**
+ * Exécute `run` sur chaque lot d'identifiants et concatène les lignes obtenues.
+ * Une erreur sur un lot fait échouer l'ensemble — un tableau de bord partiel afficherait
+ * des chiffres faux, ce qui est pire qu'un écran en erreur.
+ *
+ * `run` reçoit une fenêtre `[from, to]` à passer à `.range()`, et doit trier sur une clé
+ * stable (`.order("id")`) : sans tri déterministe, deux pages successives peuvent répéter
+ * ou omettre des lignes.
+ */
+async function fetchByChunks<T>(
+  ids: readonly string[],
+  run: (chunk: string[], from: number, to: number) => Promise<T[]>,
+): Promise<T[]> {
+  const chunks: string[][] = [];
+  for (let i = 0; i < ids.length; i += CHUNK) chunks.push(ids.slice(i, i + CHUNK));
+
+  const readChunkFully = async (chunk: string[]): Promise<T[]> => {
+    const rows: T[] = [];
+    for (let from = 0; ; from += MAX_ROWS_PER_RESPONSE) {
+      const page = await run(chunk, from, from + MAX_ROWS_PER_RESPONSE - 1);
+      rows.push(...page);
+      // Page incomplète = dernière page. Évite un aller-retour de plus dans le cas courant.
+      if (page.length < MAX_ROWS_PER_RESPONSE) return rows;
+    }
+  };
+
+  const out: T[] = [];
+  for (let i = 0; i < chunks.length; i += CHUNK_CONCURRENCY) {
+    const batch = chunks.slice(i, i + CHUNK_CONCURRENCY);
+    const settled = await Promise.all(batch.map(readChunkFully));
+    for (const rows of settled) out.push(...rows);
+  }
+  return out;
+}
 
 /**
  * Part réellement encaissée de chaque vente (0..1) — pour reconnaître le CA et la
@@ -384,38 +441,42 @@ async function fetchSaleRecognitionRatios(
   if (saleIds.length === 0) return ratioById;
 
   const totalById = new Map<string, number>();
-  for (let i = 0; i < saleIds.length; i += CHUNK) {
-    const chunk = saleIds.slice(i, i + CHUNK);
+  const totalRows = await fetchByChunks(saleIds, async (chunk, from, to) => {
     const { data, error } = await supabase
       .from("sales")
       .select("id, total")
-      .in("id", chunk);
+      .in("id", chunk)
+      .order("id")
+      .range(from, to);
     if (error) throw error;
-    for (const row of (data ?? []) as Array<{ id?: string; total?: number }>) {
-      if (row.id) totalById.set(row.id, Number(row.total ?? 0));
-    }
+    return (data ?? []) as Array<{ id?: string; total?: number }>;
+  });
+  for (const row of totalRows) {
+    if (row.id) totalById.set(row.id, Number(row.total ?? 0));
   }
 
   const paidById = new Map<string, number>();
   const hasPaymentRow = new Set<string>();
-  for (let i = 0; i < saleIds.length; i += CHUNK) {
-    const chunk = saleIds.slice(i, i + CHUNK);
+  const paymentRows = await fetchByChunks(saleIds, async (chunk, from, to) => {
     const { data, error } = await supabase
       .from("sale_payments")
       .select("sale_id, method, amount")
-      .in("sale_id", chunk);
+      .in("sale_id", chunk)
+      .order("id")
+      .range(from, to);
     if (error) throw error;
-    for (const row of (data ?? []) as Array<{
+    return (data ?? []) as Array<{
       sale_id?: string;
       method?: string;
       amount?: number;
-    }>) {
-      const sid = row.sale_id;
-      if (!sid) continue;
-      hasPaymentRow.add(sid);
-      if (row.method !== "other") {
-        paidById.set(sid, (paidById.get(sid) ?? 0) + Number(row.amount ?? 0));
-      }
+    }>;
+  });
+  for (const row of paymentRows) {
+    const sid = row.sale_id;
+    if (!sid) continue;
+    hasPaymentRow.add(sid);
+    if (row.method !== "other") {
+      paidById.set(sid, (paidById.get(sid) ?? 0) + Number(row.amount ?? 0));
     }
   }
 
@@ -481,8 +542,7 @@ async function fetchCashRecognizedInRange(
   const totalById = new Map<string, number>();
   const saleCreatedMsById = new Map<string, number>();
   const eligible = new Set<string>();
-  for (let i = 0; i < saleIds.length; i += CHUNK) {
-    const chunk = saleIds.slice(i, i + CHUNK);
+  const eligibleRows = await fetchByChunks(saleIds, async (chunk, from, to) => {
     let q = supabase
       .from("sales")
       .select("id, total, store_id, status, company_id, created_by, created_at")
@@ -491,38 +551,41 @@ async function fetchCashRecognizedInRange(
       .eq("status", "completed");
     if (storeId) q = q.eq("store_id", storeId);
     if (createdBy) q = q.eq("created_by", createdBy);
-    const { data, error } = await q;
+    const { data, error } = await q.order("id").range(from, to);
     if (error) throw error;
-    for (const row of (data ?? []) as Array<{ id?: string; total?: number; created_at?: string }>) {
-      if (!row.id) continue;
-      eligible.add(row.id);
-      totalById.set(row.id, Number(row.total ?? 0));
-      const ms = row.created_at ? Date.parse(row.created_at) : NaN;
-      saleCreatedMsById.set(row.id, Number.isFinite(ms) ? ms : 0);
-    }
+    return (data ?? []) as Array<{ id?: string; total?: number; created_at?: string }>;
+  });
+  for (const row of eligibleRows) {
+    if (!row.id) continue;
+    eligible.add(row.id);
+    totalById.set(row.id, Number(row.total ?? 0));
+    const ms = row.created_at ? Date.parse(row.created_at) : NaN;
+    saleCreatedMsById.set(row.id, Number.isFinite(ms) ? ms : 0);
   }
   if (eligible.size === 0) return { revenue: 0, margin: 0, creditRepayments: 0, byDay };
 
   // 3) Coût des ventes éligibles → ratio de marge par vente.
   const costById = new Map<string, number>();
   const eligibleIds = [...eligible];
-  for (let i = 0; i < eligibleIds.length; i += CHUNK) {
-    const chunk = eligibleIds.slice(i, i + CHUNK);
+  const costRows = await fetchByChunks(eligibleIds, async (chunk, from, to) => {
     const { data, error } = await supabase
       .from("sale_items")
       .select("sale_id, quantity, product:products(purchase_price)")
-      .in("sale_id", chunk);
+      .in("sale_id", chunk)
+      .order("id")
+      .range(from, to);
     if (error) throw error;
-    for (const row of (data ?? []) as Array<{
+    return (data ?? []) as Array<{
       sale_id?: string;
       quantity?: number;
       product?: { purchase_price?: number } | null;
-    }>) {
-      if (!row.sale_id) continue;
-      const qty = Number(row.quantity ?? 0);
-      const pp = Number(row.product?.purchase_price ?? 0);
-      costById.set(row.sale_id, (costById.get(row.sale_id) ?? 0) + pp * qty);
-    }
+    }>;
+  });
+  for (const row of costRows) {
+    if (!row.sale_id) continue;
+    const qty = Number(row.quantity ?? 0);
+    const pp = Number(row.product?.purchase_price ?? 0);
+    costById.set(row.sale_id, (costById.get(row.sale_id) ?? 0) + pp * qty);
   }
 
   // 4) Agrégation : recette = Σ paiements ; marge = Σ paiement × ratio de marge de la vente.
@@ -630,19 +693,18 @@ async function fetchSaleItemsForSaleIds(
   saleIds: string[],
 ): Promise<SaleItemRow[]> {
   if (saleIds.length === 0) return [];
-  const out: SaleItemRow[] = [];
-  for (let i = 0; i < saleIds.length; i += CHUNK) {
-    const chunk = saleIds.slice(i, i + CHUNK);
+  return fetchByChunks(saleIds, async (chunk, from, to) => {
     const { data, error } = await supabase
       .from("sale_items")
       .select(
         "sale_id, product_id, quantity, total, product:products(id, name, purchase_price, category_id, category:categories(id, name))",
       )
-      .in("sale_id", chunk);
+      .in("sale_id", chunk)
+      .order("id")
+      .range(from, to);
     if (error) throw error;
-    out.push(...((data ?? []) as SaleItemRow[]));
-  }
-  return out;
+    return (data ?? []) as SaleItemRow[];
+  });
 }
 
 function filterSaleItems(
@@ -666,19 +728,16 @@ async function fetchSalesRowsChunked(
   saleIds: string[],
 ): Promise<Array<{ id: string; created_at: string; total: number }>> {
   if (saleIds.length === 0) return [];
-  const out: Array<{ id: string; created_at: string; total: number }> = [];
-  for (let i = 0; i < saleIds.length; i += CHUNK) {
-    const chunk = saleIds.slice(i, i + CHUNK);
+  return fetchByChunks(saleIds, async (chunk, from, to) => {
     const { data, error } = await supabase
       .from("sales")
       .select("id, created_at, total")
-      .in("id", chunk);
+      .in("id", chunk)
+      .order("id")
+      .range(from, to);
     if (error) throw error;
-    out.push(
-      ...((data ?? []) as Array<{ id: string; created_at: string; total: number }>),
-    );
-  }
-  return out;
+    return (data ?? []) as Array<{ id: string; created_at: string; total: number }>;
+  });
 }
 
 async function computeSalesSummaryFiltered(
@@ -688,16 +747,16 @@ async function computeSalesSummaryFiltered(
   ratioById: Map<string, number>,
 ): Promise<SalesSummary> {
   if (matchedSaleIds.length === 0) return emptySummary();
-  const rows: Array<{ id?: string; total?: number }> = [];
-  for (let i = 0; i < matchedSaleIds.length; i += CHUNK) {
-    const chunk = matchedSaleIds.slice(i, i + CHUNK);
+  const rows = await fetchByChunks(matchedSaleIds, async (chunk, from, to) => {
     const { data, error } = await supabase
       .from("sales")
       .select("id, total")
-      .in("id", chunk);
+      .in("id", chunk)
+      .order("id")
+      .range(from, to);
     if (error) throw error;
-    rows.push(...((data ?? []) as Array<{ id?: string; total?: number }>));
-  }
+    return (data ?? []) as Array<{ id?: string; total?: number }>;
+  });
   let totalAmount = 0;
   for (const s of rows) {
     totalAmount += Number(s.total ?? 0) * ratioFor(ratioById, s.id);
@@ -1163,8 +1222,7 @@ export async function fetchTeamPerformance(params: {
     string,
     { total: number; sellerId: string; createdMs: number }
   >();
-  for (let i = 0; i < externalSaleIds.length; i += CHUNK) {
-    const chunk = externalSaleIds.slice(i, i + CHUNK);
+  const externalSaleRows = await fetchByChunks(externalSaleIds, async (chunk, from, to) => {
     let q = supabase
       .from("sales")
       .select("id, total, created_by, created_at, store_id")
@@ -1172,21 +1230,22 @@ export async function fetchTeamPerformance(params: {
       .eq("company_id", companyId)
       .eq("status", "completed");
     if (storeId) q = q.eq("store_id", storeId);
-    const { data, error } = await q;
+    const { data, error } = await q.order("id").range(from, to);
     if (error) throw error;
-    for (const row of (data ?? []) as Array<{
+    return (data ?? []) as Array<{
       id?: string;
       total?: number;
       created_by?: string;
       created_at?: string;
-    }>) {
-      if (!row.id || !row.created_by) continue;
-      externalSaleMeta.set(row.id, {
-        total: Number(row.total ?? 0),
-        sellerId: String(row.created_by),
-        createdMs: row.created_at ? Date.parse(row.created_at) : 0,
-      });
-    }
+    }>;
+  });
+  for (const row of externalSaleRows) {
+    if (!row.id || !row.created_by) continue;
+    externalSaleMeta.set(row.id, {
+      total: Number(row.total ?? 0),
+      sellerId: String(row.created_by),
+      createdMs: row.created_at ? Date.parse(row.created_at) : 0,
+    });
   }
 
   // 3) Lignes de vente de la période → articles, marge, top produits, coût.
@@ -1195,47 +1254,51 @@ export async function fetchTeamPerformance(params: {
   // Coût des ventes concernées par un encaissement externe (marge des remboursements).
   const externalCost = new Map<string, number>();
   const externalIds = [...externalSaleMeta.keys()];
-  for (let i = 0; i < externalIds.length; i += CHUNK) {
-    const chunk = externalIds.slice(i, i + CHUNK);
+  const externalCostRows = await fetchByChunks(externalIds, async (chunk, from, to) => {
     const { data, error } = await supabase
       .from("sale_items")
       .select("sale_id, quantity, product:products(purchase_price)")
-      .in("sale_id", chunk);
+      .in("sale_id", chunk)
+      .order("id")
+      .range(from, to);
     if (error) throw error;
-    for (const row of (data ?? []) as Array<{
+    return (data ?? []) as Array<{
       sale_id?: string;
       quantity?: number;
       product?: { purchase_price?: number } | null;
-    }>) {
-      if (!row.sale_id) continue;
-      externalCost.set(
-        row.sale_id,
-        (externalCost.get(row.sale_id) ?? 0) +
-          Number(row.product?.purchase_price ?? 0) * Number(row.quantity ?? 0),
-      );
-    }
+    }>;
+  });
+  for (const row of externalCostRows) {
+    if (!row.sale_id) continue;
+    externalCost.set(
+      row.sale_id,
+      (externalCost.get(row.sale_id) ?? 0) +
+        Number(row.product?.purchase_price ?? 0) * Number(row.quantity ?? 0),
+    );
   }
 
   // 4) Encaissé total par vente de la période → crédit restant dû.
   const paidByPeriodSale = new Map<string, number>();
-  for (let i = 0; i < periodSaleIds.length; i += CHUNK) {
-    const chunk = periodSaleIds.slice(i, i + CHUNK);
+  const periodPaymentRows = await fetchByChunks(periodSaleIds, async (chunk, from, to) => {
     const { data, error } = await supabase
       .from("sale_payments")
       .select("sale_id, method, amount")
-      .in("sale_id", chunk);
+      .in("sale_id", chunk)
+      .order("id")
+      .range(from, to);
     if (error) throw error;
-    for (const row of (data ?? []) as Array<{
+    return (data ?? []) as Array<{
       sale_id?: string;
       method?: string;
       amount?: number;
-    }>) {
-      if (!row.sale_id || row.method === "other") continue;
-      paidByPeriodSale.set(
-        row.sale_id,
-        (paidByPeriodSale.get(row.sale_id) ?? 0) + Number(row.amount ?? 0),
-      );
-    }
+    }>;
+  });
+  for (const row of periodPaymentRows) {
+    if (!row.sale_id || row.method === "other") continue;
+    paidByPeriodSale.set(
+      row.sale_id,
+      (paidByPeriodSale.get(row.sale_id) ?? 0) + Number(row.amount ?? 0),
+    );
   }
 
   const storeNameById = new Map<string, string>();

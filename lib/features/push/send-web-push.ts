@@ -73,13 +73,53 @@ async function loadSubscriptionsForUsers(userIds: string[]): Promise<SubRow[]> {
   return (data ?? []) as SubRow[];
 }
 
-async function removeDeadSubscription(endpoint: string): Promise<void> {
+/**
+ * Purge groupée : un client service-role par endpoint mort (et une requête par endpoint)
+ * ferait exploser le temps d'envoi le jour où un lot d'appareils expire ensemble —
+ * exactement le moment où l'alerte doit partir vite.
+ *
+ * Les endpoints sont de longues URL : on les découpe pour que le filtre `in.(…)`, qui
+ * voyage dans l'URL de la requête, reste sous la taille acceptée par le serveur.
+ */
+const DELETE_CHUNK = 25;
+
+async function removeDeadSubscriptions(endpoints: string[]): Promise<void> {
+  if (endpoints.length === 0) return;
   try {
     const svc = createServiceRoleClient();
-    await svc.from("push_subscriptions").delete().eq("endpoint", endpoint);
+    for (let i = 0; i < endpoints.length; i += DELETE_CHUNK) {
+      const chunk = endpoints.slice(i, i + DELETE_CHUNK);
+      await svc.from("push_subscriptions").delete().in("endpoint", chunk);
+    }
   } catch {
-    /* ignore */
+    /* ignore : un abonnement mort de plus ne justifie pas de faire échouer l'envoi */
   }
+}
+
+/**
+ * Nombre d'appareils contactés en parallèle.
+ *
+ * Sans bornes, un envoi à tous les propriétaires ouvrirait autant de connexions HTTPS
+ * qu'il y a d'appareils : au-delà de quelques centaines, la fonction serverless épuise
+ * ses sockets et sa mémoire, et l'envoi entier échoue au lieu d'être simplement lent.
+ */
+const PUSH_CONCURRENCY = 20;
+
+/** `task` ne doit jamais rejeter : chaque échec est déjà transformé en valeur. */
+async function mapWithConcurrency<T, R>(
+  items: readonly T[],
+  limit: number,
+  task: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let cursor = 0;
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    for (let i = cursor++; i < items.length; i = cursor++) {
+      results[i] = await task(items[i] as T);
+    }
+  });
+  await Promise.all(workers);
+  return results;
 }
 
 export type PushSendResult = {
@@ -113,57 +153,52 @@ export async function sendPushNotificationToUsers(
   const body = JSON.stringify(toWirePayload(payload));
 
   let failures = 0;
-  let removed = 0;
   const errors: { status?: number; message: string }[] = [];
-  const results = await Promise.allSettled(
-    rows.map(async (row) => {
-      try {
-        await webpush.sendNotification(
-          { endpoint: row.endpoint, keys: { p256dh: row.p256dh, auth: row.auth } },
-          body,
-          {
-            TTL: 86_400,
-            /*
-             * `high` est indispensable sur Android : en urgence normale, le message
-             * hérite d'une priorité FCM normale, que le mode Doze met en file jusqu'à
-             * la prochaine fenêtre de maintenance — le propriétaire recevait donc
-             * l'alerte de vente avec des minutes, voire des heures de retard, écran
-             * éteint. En `high`, FCM réveille l'appareil immédiatement.
-             */
-            urgency: "high",
-          },
-        );
-        return true;
-      } catch (e: unknown) {
-        const status =
-          typeof e === "object" && e !== null && "statusCode" in e
-            ? (e as { statusCode?: number }).statusCode
-            : undefined;
-        errors.push({ status, message: e instanceof Error ? e.message : String(e) });
-        // 404 / 410 : l'abonnement n'existe plus chez le service de push, il ne reviendra pas.
-        if (status === 410 || status === 404) {
-          await removeDeadSubscription(row.endpoint);
-          return "removed" as const;
-        }
-        return false;
+  const deadEndpoints: string[] = [];
+
+  const results = await mapWithConcurrency(rows, PUSH_CONCURRENCY, async (row) => {
+    try {
+      await webpush.sendNotification(
+        { endpoint: row.endpoint, keys: { p256dh: row.p256dh, auth: row.auth } },
+        body,
+        {
+          TTL: 86_400,
+          /*
+           * `high` est indispensable sur Android : en urgence normale, le message
+           * hérite d'une priorité FCM normale, que le mode Doze met en file jusqu'à
+           * la prochaine fenêtre de maintenance — le propriétaire recevait donc
+           * l'alerte de vente avec des minutes, voire des heures de retard, écran
+           * éteint. En `high`, FCM réveille l'appareil immédiatement.
+           */
+          urgency: "high",
+          /* Un service de push qui ne répond jamais bloquerait sinon l'envoi entier. */
+          timeout: 10_000,
+        },
+      );
+      return "sent" as const;
+    } catch (e: unknown) {
+      const status =
+        typeof e === "object" && e !== null && "statusCode" in e
+          ? (e as { statusCode?: number }).statusCode
+          : undefined;
+      errors.push({ status, message: e instanceof Error ? e.message : String(e) });
+      // 404 / 410 : l'abonnement n'existe plus chez le service de push, il ne reviendra pas.
+      if (status === 410 || status === 404) {
+        deadEndpoints.push(row.endpoint);
+        return "removed" as const;
       }
-    }),
-  );
+      return "failed" as const;
+    }
+  });
+
   for (const r of results) {
-    if (r.status === "rejected") {
-      failures += 1;
-      errors.push({ message: String(r.reason) });
-      continue;
-    }
-    if (r.value === "removed") {
-      failures += 1;
-      removed += 1;
-    } else if (r.value === false) {
-      failures += 1;
-    }
+    if (r !== "sent") failures += 1;
   }
 
-  return { attempted: rows.length, failures, removed, errors };
+  // Purge après coup : la notification part d'abord, le ménage ensuite.
+  await removeDeadSubscriptions(deadEndpoints);
+
+  return { attempted: rows.length, failures, removed: deadEndpoints.length, errors };
 }
 
 /** Envoi à un seul utilisateur (tous ses appareils). */
