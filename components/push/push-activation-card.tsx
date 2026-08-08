@@ -30,36 +30,40 @@ export function PushActivationCard({ className }: { className?: string }) {
   }, []);
 
   const runTest = useCallback(async () => {
-    setCountdown(TEST_DELAY_SECONDS);
-    if (timerRef.current !== null) window.clearInterval(timerRef.current);
-    timerRef.current = window.setInterval(() => {
-      setCountdown((c) => (c === null || c <= 1 ? null : c - 1));
-    }, 1000);
     try {
       /*
-       * `keepalive` : la requête doit survivre à la fermeture de l'onglet — c'est
-       * précisément ce que l'utilisateur va faire juste après avoir cliqué.
+       * Le serveur répond tout de suite et n'envoie qu'ensuite (`after`). Le décompte
+       * n'est donc lancé qu'une fois le test accepté : sinon on afficherait « fermez
+       * l'app » alors que rien n'est programmé.
        */
       const res = await fetch("/api/push/test", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        keepalive: true,
         body: JSON.stringify({ delaySeconds: TEST_DELAY_SECONDS }),
       });
-      const j = (await res.json().catch(() => ({}))) as { error?: string; attempted?: number };
+      const j = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) {
         toastError(j.error ?? `Test impossible (${res.status})`);
-      } else if (j.attempted === 0) {
-        toastError("Aucun appareil abonné : activez d’abord les notifications sur cet appareil.");
+        return;
       }
     } catch (e) {
       toastError(messageFromUnknownError(e));
-    } finally {
-      if (timerRef.current !== null) window.clearInterval(timerRef.current);
-      timerRef.current = null;
-      setCountdown(null);
+      return;
     }
+
+    setCountdown(TEST_DELAY_SECONDS);
+    if (timerRef.current !== null) window.clearInterval(timerRef.current);
+    timerRef.current = window.setInterval(() => {
+      setCountdown((c) => {
+        if (c === null || c <= 1) {
+          if (timerRef.current !== null) window.clearInterval(timerRef.current);
+          timerRef.current = null;
+          return null;
+        }
+        return c - 1;
+      });
+    }, 1000);
   }, []);
 
   // Sans clé VAPID au build, l'activation ne mènerait nulle part : on ne montre rien.
@@ -141,11 +145,24 @@ export function PushActivationCard({ className }: { className?: string }) {
       )}
 
       {countdown !== null ? (
-        <p className="mt-3 rounded-lg border border-fs-accent/25 bg-fs-accent/[0.06] px-3 py-2.5 text-sm text-fs-text">
-          <strong>Fermez FasoStock maintenant</strong> (bouton Accueil, puis retirez l’app des
-          applications récentes) et verrouillez l’écran. La notification part dans {countdown}{" "}
-          seconde{countdown > 1 ? "s" : ""}.
-        </p>
+        <div className="mt-3 rounded-lg border border-fs-accent/25 bg-fs-accent/6 px-3 py-2.5 text-sm text-fs-text">
+          <p>
+            <strong>Appuyez sur Accueil et verrouillez l’écran</strong> — la notification part dans{" "}
+            {countdown} seconde{countdown > 1 ? "s" : ""}.
+          </p>
+          {/* Sur beaucoup de ROMs Android (Tecno, Infinix, Xiaomi…), balayer l'app hors des
+              récentes équivaut à un arrêt forcé : le système bloque alors volontairement toute
+              notification jusqu'à la réouverture. Ce n'est pas le cas à tester en premier. */}
+          <p className="mt-2 text-xs text-neutral-600">
+            Ne retirez pas l’app des applications récentes pour ce premier test : sur beaucoup de
+            téléphones Android, ce geste force l’arrêt de l’application et bloque volontairement
+            ses notifications jusqu’à la prochaine ouverture.
+          </p>
+          <p className="mt-2 text-xs text-neutral-600">
+            Le test est déjà programmé sur le serveur : il aura lieu même si vous fermez tout. En
+            rouvrant l’app, le résultat détaillé apparaîtra dans la liste ci-dessous.
+          </p>
+        </div>
       ) : null}
 
       {push.error ? <p className="mt-3 text-sm text-red-600">{push.error}</p> : null}

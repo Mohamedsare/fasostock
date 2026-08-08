@@ -88,6 +88,12 @@ export type PushSendResult = {
   failures: number;
   /** Abonnements périmés supprimés en base (404 / 410 définitifs). */
   removed: number;
+  /**
+   * Détail des refus du service de push (FCM, Apple…). Décisif pour diagnostiquer :
+   * un `201` partout alors que le téléphone n'affiche rien innocente le serveur et
+   * désigne l'appareil (restriction de batterie, canal muet).
+   */
+  errors: { status?: number; message: string }[];
 };
 
 /**
@@ -108,6 +114,7 @@ export async function sendPushNotificationToUsers(
 
   let failures = 0;
   let removed = 0;
+  const errors: { status?: number; message: string }[] = [];
   const results = await Promise.allSettled(
     rows.map(async (row) => {
       try {
@@ -132,6 +139,7 @@ export async function sendPushNotificationToUsers(
           typeof e === "object" && e !== null && "statusCode" in e
             ? (e as { statusCode?: number }).statusCode
             : undefined;
+        errors.push({ status, message: e instanceof Error ? e.message : String(e) });
         // 404 / 410 : l'abonnement n'existe plus chez le service de push, il ne reviendra pas.
         if (status === 410 || status === 404) {
           await removeDeadSubscription(row.endpoint);
@@ -144,6 +152,7 @@ export async function sendPushNotificationToUsers(
   for (const r of results) {
     if (r.status === "rejected") {
       failures += 1;
+      errors.push({ message: String(r.reason) });
       continue;
     }
     if (r.value === "removed") {
@@ -154,7 +163,7 @@ export async function sendPushNotificationToUsers(
     }
   }
 
-  return { attempted: rows.length, failures, removed };
+  return { attempted: rows.length, failures, removed, errors };
 }
 
 /** Envoi à un seul utilisateur (tous ses appareils). */

@@ -1,25 +1,31 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 
 import {
   PushNotConfiguredError,
   sendPushNotification,
+  type PushSendResult,
 } from "@/lib/features/push/send-web-push";
 import { requireAuthUser } from "@/lib/server/api-auth";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/service-role";
 
 export const runtime = "nodejs";
-/* Le test différé attend jusqu'à 20 s avant d'émettre : la fonction doit vivre plus longtemps. */
-export const maxDuration = 30;
+/* L'envoi différé se poursuit après la réponse : la fonction doit vivre jusque-là. */
+export const maxDuration = 60;
 
-const MAX_DELAY_SECONDS = 20;
+const MAX_DELAY_SECONDS = 25;
 
 /**
- * Envoie une notification de test **à ses propres appareils uniquement** — jamais à
- * un autre utilisateur, quel que soit le corps de la requête.
+ * Notification de test envoyée **à ses propres appareils uniquement**.
  *
- * `delaySeconds` existe pour la seule question qu'on ne peut pas trancher autrement :
- * « est-ce que ça arrive quand l'app est fermée ? ». L'utilisateur lance le test,
- * ferme l'application, et la notification part une fois l'app hors de l'écran.
+ * Tout le travail se fait dans `after()`, donc **après** que la réponse est partie :
+ * un test lancé puis suivi de la fermeture de l'app ne doit pas dépendre de la
+ * connexion HTTP du téléphone, sinon on ne teste plus le push mais la connexion —
+ * c'était le défaut de la première version.
+ *
+ * Le résultat est écrit dans `notifications` : en rouvrant l'app, on lit si le
+ * serveur a bien émis. Sans cette trace, « je n'ai rien reçu » ne permet pas de
+ * distinguer un serveur muet d'un téléphone qui a filtré la notification.
  */
 export async function POST(req: Request) {
   let raw: unknown = {};
@@ -35,35 +41,74 @@ export async function POST(req: Request) {
   const supabase = await createClient();
   const auth = await requireAuthUser(supabase);
   if (!auth.ok) return auth.response;
+  const userId = auth.user.id;
 
-  if (delaySeconds > 0) {
-    await new Promise((resolve) => setTimeout(resolve, delaySeconds * 1000));
+  after(async () => {
+    if (delaySeconds > 0) {
+      await new Promise((resolve) => setTimeout(resolve, delaySeconds * 1000));
+    }
+    const sentAt = new Date();
+    try {
+      const result = await sendPushNotification(userId, {
+        title: "Test FasoStock",
+        body:
+          delaySeconds > 0
+            ? "Vous recevez ceci alors que l’application est fermée : les notifications fonctionnent."
+            : "Les notifications fonctionnent sur cet appareil.",
+        url: "/notifications",
+        type: "test",
+      });
+      await recordOutcome(userId, describeResult(result, sentAt, delaySeconds));
+    } catch (e) {
+      const msg =
+        e instanceof PushNotConfiguredError
+          ? "Clés VAPID absentes sur le serveur : aucun envoi possible."
+          : e instanceof Error
+            ? e.message
+            : String(e);
+      await recordOutcome(userId, `Test non envoyé — ${msg}`);
+    }
+  });
+
+  return NextResponse.json({ ok: true, scheduledInSeconds: delaySeconds });
+}
+
+function describeResult(
+  result: PushSendResult,
+  sentAt: Date,
+  delaySeconds: number,
+): string {
+  const heure = sentAt.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  if (result.attempted === 0) {
+    return `Aucun appareil abonné au moment du test (${heure}). Activez les notifications sur l’appareil concerné.`;
   }
+  const delivered = result.attempted - result.failures;
+  const lines = [
+    `Test envoyé à ${heure}${delaySeconds > 0 ? ` (après ${delaySeconds} s d’attente)` : ""}.`,
+    `Appareils contactés : ${result.attempted} — acceptés par le service de push : ${delivered}, refusés : ${result.failures}.`,
+  ];
+  for (const err of result.errors.slice(0, 3)) {
+    lines.push(`Refus : ${err.status ?? "?"} ${err.message}`);
+  }
+  if (result.failures === 0) {
+    lines.push(
+      "Le service de push a tout accepté. Si rien ne s’est affiché, la notification a été bloquée par le téléphone : autorisez l’activité en arrière-plan et retirez l’économiseur de batterie pour cette application.",
+    );
+  }
+  return lines.join("\n");
+}
 
+/** Trace lisible dans l'app — jamais de push en retour, ce serait circulaire. */
+async function recordOutcome(userId: string, body: string): Promise<void> {
   try {
-    const result = await sendPushNotification(auth.user.id, {
-      title: "Test FasoStock",
-      body: delaySeconds > 0
-        ? "Vous recevez ceci alors que l’application est fermée : les notifications fonctionnent."
-        : "Les notifications fonctionnent sur cet appareil.",
-      url: "/notifications",
-      type: "test",
+    const svc = createServiceRoleClient();
+    await svc.from("notifications").insert({
+      user_id: userId,
+      type: "push_diagnostic",
+      title: "Résultat du test de notification",
+      body,
     });
-    return NextResponse.json({ ok: true, ...result });
-  } catch (e) {
-    if (e instanceof PushNotConfiguredError) {
-      return NextResponse.json(
-        { error: e.message, code: "push_not_configured" },
-        { status: 503 },
-      );
-    }
-    const msg = e instanceof Error ? e.message : String(e);
-    if (msg.includes("SUPABASE_SERVICE_ROLE_KEY")) {
-      return NextResponse.json(
-        { error: "Envoi push indisponible : SUPABASE_SERVICE_ROLE_KEY manquant sur le serveur.", code: "push_not_configured" },
-        { status: 503 },
-      );
-    }
-    return NextResponse.json({ error: msg, code: "push_failed" }, { status: 500 });
+  } catch {
+    /* le diagnostic ne doit jamais casser la route */
   }
 }

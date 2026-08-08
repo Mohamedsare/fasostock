@@ -68,7 +68,11 @@ export async function notifyUsers(
     return { stored, push, pushConfigured: true };
   } catch (e) {
     if (e instanceof PushNotConfiguredError) {
-      return { stored, push: { attempted: 0, failures: 0, removed: 0 }, pushConfigured: false };
+      return {
+        stored,
+        push: { attempted: 0, failures: 0, removed: 0, errors: [] },
+        pushConfigured: false,
+      };
     }
     throw e;
   }

@@ -28,6 +28,8 @@ const TYPE_LABELS: Record<string, string> = {
   app_message: "Message",
   sale: "Vente",
   stock_alert: "Alerte de stock",
+  test: "Test",
+  push_diagnostic: "Diagnostic des notifications",
 };
 
 function typeLabel(type: string): string {
