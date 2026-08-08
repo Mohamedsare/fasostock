@@ -1,10 +1,15 @@
 "use client";
 
+import { useCallback, useEffect, useRef, useState } from "react";
+
 import { FsCard } from "@/components/ui/fs-screen-primitives";
 import { usePushState } from "@/lib/features/push/use-push-state";
-import { toastError, toastSuccess } from "@/lib/toast";
+import { messageFromUnknownError, toastError, toastSuccess } from "@/lib/toast";
 import { cn } from "@/lib/utils/cn";
-import { MdNotificationsActive, MdNotificationsOff } from "react-icons/md";
+import { MdNotificationsActive, MdNotificationsOff, MdScience } from "react-icons/md";
+
+/** Laisse le temps de sortir de l'app avant l'envoi — c'est tout l'intérêt du test. */
+const TEST_DELAY_SECONDS = 15;
 
 /**
  * Carte « Notifications sur cet appareil » — le seul endroit d'où part une demande
@@ -13,6 +18,49 @@ import { MdNotificationsActive, MdNotificationsOff } from "react-icons/md";
  */
 export function PushActivationCard({ className }: { className?: string }) {
   const push = usePushState();
+  const [countdown, setCountdown] = useState<number | null>(null);
+  const timerRef = useRef<number | null>(null);
+
+  // Le décompte ne doit pas survivre à la page : sinon il continue de tourner sur un
+  // composant démonté et l'utilisateur revient sur un état incohérent.
+  useEffect(() => {
+    return () => {
+      if (timerRef.current !== null) window.clearInterval(timerRef.current);
+    };
+  }, []);
+
+  const runTest = useCallback(async () => {
+    setCountdown(TEST_DELAY_SECONDS);
+    if (timerRef.current !== null) window.clearInterval(timerRef.current);
+    timerRef.current = window.setInterval(() => {
+      setCountdown((c) => (c === null || c <= 1 ? null : c - 1));
+    }, 1000);
+    try {
+      /*
+       * `keepalive` : la requête doit survivre à la fermeture de l'onglet — c'est
+       * précisément ce que l'utilisateur va faire juste après avoir cliqué.
+       */
+      const res = await fetch("/api/push/test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        keepalive: true,
+        body: JSON.stringify({ delaySeconds: TEST_DELAY_SECONDS }),
+      });
+      const j = (await res.json().catch(() => ({}))) as { error?: string; attempted?: number };
+      if (!res.ok) {
+        toastError(j.error ?? `Test impossible (${res.status})`);
+      } else if (j.attempted === 0) {
+        toastError("Aucun appareil abonné : activez d’abord les notifications sur cet appareil.");
+      }
+    } catch (e) {
+      toastError(messageFromUnknownError(e));
+    } finally {
+      if (timerRef.current !== null) window.clearInterval(timerRef.current);
+      timerRef.current = null;
+      setCountdown(null);
+    }
+  }, []);
 
   // Sans clé VAPID au build, l'activation ne mènerait nulle part : on ne montre rien.
   if (push.status === "unconfigured") return null;
@@ -68,17 +116,37 @@ export function PushActivationCard({ className }: { className?: string }) {
               type="button"
               disabled={push.busy}
               onClick={async () => {
-                const ok = await push.enable();
-                if (ok) toastSuccess("Notifications activées sur cet appareil.");
-                else if (push.error) toastError(push.error);
+                const r = await push.enable();
+                if (r.ok) toastSuccess("Notifications activées sur cet appareil.");
+                else if (r.error) toastError(r.error);
               }}
               className="inline-flex min-h-[40px] min-w-[160px] items-center justify-center gap-2 rounded-[10px] bg-fs-accent px-4 text-sm font-semibold text-white disabled:opacity-60"
             >
               {push.busy ? <Spinner tone="accent" label="Activation…" /> : "Activer les notifications"}
             </button>
           )}
+
+          {isOn ? (
+            <button
+              type="button"
+              disabled={countdown !== null}
+              onClick={() => void runTest()}
+              className="inline-flex min-h-[40px] items-center justify-center gap-2 rounded-[10px] border border-fs-accent/30 px-4 text-sm font-semibold text-fs-accent disabled:opacity-60"
+            >
+              <MdScience className="h-[18px] w-[18px]" aria-hidden />
+              {countdown !== null ? `Envoi dans ${countdown} s…` : "Tester, app fermée"}
+            </button>
+          ) : null}
         </div>
       )}
+
+      {countdown !== null ? (
+        <p className="mt-3 rounded-lg border border-fs-accent/25 bg-fs-accent/[0.06] px-3 py-2.5 text-sm text-fs-text">
+          <strong>Fermez FasoStock maintenant</strong> (bouton Accueil, puis retirez l’app des
+          applications récentes) et verrouillez l’écran. La notification part dans {countdown}{" "}
+          seconde{countdown > 1 ? "s" : ""}.
+        </p>
+      ) : null}
 
       {push.error ? <p className="mt-3 text-sm text-red-600">{push.error}</p> : null}
     </FsCard>

@@ -114,7 +114,17 @@ export async function sendPushNotificationToUsers(
         await webpush.sendNotification(
           { endpoint: row.endpoint, keys: { p256dh: row.p256dh, auth: row.auth } },
           body,
-          { TTL: 86_400 },
+          {
+            TTL: 86_400,
+            /*
+             * `high` est indispensable sur Android : en urgence normale, le message
+             * hérite d'une priorité FCM normale, que le mode Doze met en file jusqu'à
+             * la prochaine fenêtre de maintenance — le propriétaire recevait donc
+             * l'alerte de vente avec des minutes, voire des heures de retard, écran
+             * éteint. En `high`, FCM réveille l'appareil immédiatement.
+             */
+            urgency: "high",
+          },
         );
         return true;
       } catch (e: unknown) {

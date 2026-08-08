@@ -25,6 +25,7 @@ function readPayload(event) {
     badge: DEFAULT_ICON,
     url: DEFAULT_URL,
     type: null,
+    collapseKey: null,
     data: {},
   };
   try {
@@ -37,6 +38,7 @@ function readPayload(event) {
     out.badge = textOr(t.badge, out.badge);
     out.url = textOr(t.url, out.url);
     out.type = textOr(t.type, null);
+    out.collapseKey = textOr(t.collapseKey, null);
     if (t.data && typeof t.data === "object") out.data = t.data;
   } catch (_) {
     /* payload non JSON (texte brut ou vide) : on notifie quand même. */
@@ -46,14 +48,19 @@ function readPayload(event) {
 
 self.addEventListener("push", (event) => {
   var p = readPayload(event);
+  /* Par défaut chaque notification a son propre `tag` : deux ventes sont deux
+     informations, elles doivent s'empiler. Un `collapseKey` explicite (état qui se
+     périme) fait au contraire remplacer la précédente — et `renotify` garantit que
+     ce remplacement sonne au lieu de se glisser en silence dans le volet. */
+  var tag = p.collapseKey || "fs-" + Date.now() + "-" + Math.random().toString(36).slice(2, 8);
   event.waitUntil(
     self.registration.showNotification(p.title, {
       body: p.body || undefined,
       icon: p.icon,
       badge: p.badge,
-      /* Un `tag` par catégorie : deux alertes de même nature se remplacent au lieu
-         d'empiler dix bandeaux identiques sur le téléphone du propriétaire. */
-      tag: p.type || undefined,
+      tag: tag,
+      renotify: true,
+      vibrate: [200, 100, 200],
       data: { url: p.url, type: p.type, payload: p.data },
     }),
   );

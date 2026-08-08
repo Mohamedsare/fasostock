@@ -14,8 +14,14 @@ export type WebPushPayload = {
   badge?: string | null;
   /** Chemin ouvert au clic — relatif à l'app (ex. `/notifications`). */
   url?: string | null;
-  /** Catégorie métier (`admin_message`, `sale`, `stock_alert`…) — sert aussi de `tag`. */
+  /** Catégorie métier (`admin_message`, `sale`, `stock_alert`…). */
   type?: string | null;
+  /**
+   * Clé de regroupement : deux notifications de même clé se remplacent au lieu de
+   * s'empiler. À réserver aux messages qui se périment (« 3 produits en rupture »).
+   * Sans clé, chaque notification reste visible — deux ventes sont deux informations.
+   */
+  collapseKey?: string | null;
   /** Données libres transmises telles quelles au clic. */
   data?: Record<string, unknown> | null;
 };
@@ -32,6 +38,7 @@ export type WebPushWirePayload = {
   badge: string;
   url: string;
   type: string | null;
+  collapseKey: string | null;
   data: Record<string, unknown>;
 };
 
@@ -45,6 +52,7 @@ export function toWirePayload(payload: WebPushPayload): WebPushWirePayload {
     badge: payload.badge?.trim() || DEFAULT_PUSH_BADGE,
     url: url || DEFAULT_PUSH_URL,
     type: payload.type?.trim() || null,
+    collapseKey: payload.collapseKey?.trim() || null,
     data: payload.data ?? {},
   };
 }
