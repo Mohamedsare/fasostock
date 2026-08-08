@@ -932,7 +932,7 @@ export function WarehouseScreen() {
             type="button"
             onClick={() => refreshAll()}
             disabled={invQ.isFetching}
-            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-black/8 bg-fs-surface-container text-neutral-600 transition-colors hover:bg-black/3 active:bg-black/5"
+            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-black/8 bg-fs-surface-container text-neutral-600 transition-colors hover:bg-black/3 active:bg-black/5"
             aria-label="Actualiser"
           >
             <MdRefresh className={cn("h-4.5 w-4.5", invQ.isFetching && "animate-spin")} />
@@ -953,7 +953,7 @@ export function WarehouseScreen() {
               aria-selected={tab === i}
               onClick={() => setTab(i)}
               className={cn(
-                "shrink-0 snap-start rounded-lg border px-2.5 py-1 text-left text-[12px] leading-tight transition-all sm:px-3 sm:text-[13px]",
+                "shrink-0 snap-start rounded-md border px-2.5 py-1 text-left text-[12px] leading-tight transition-all sm:px-3 sm:text-[13px]",
                 "min-h-[30px] min-w-0 max-w-[min(100%,11rem)] sm:min-h-[32px] sm:max-w-none",
                 tab === i
                   ? "border-[#F97316] bg-[#F97316] font-bold text-white shadow-[0_2px_8px_rgba(249,115,22,0.28)]"
@@ -966,7 +966,7 @@ export function WarehouseScreen() {
         </FsHorizontalScroll>
       </div>
 
-      <div className="mt-3 rounded-md border border-black/6 bg-[color-mix(in_srgb,var(--fs-surface-container-highest)_55%,transparent)] px-3 py-1.5">
+      <div className="mt-3 rounded-sm border border-black/6 bg-[color-mix(in_srgb,var(--fs-surface-container-highest)_55%,transparent)] px-3 py-1.5">
         {warehouses.length > 1 ? (
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-[10px] font-semibold uppercase tracking-wide text-neutral-500">
@@ -1010,7 +1010,7 @@ export function WarehouseScreen() {
       {/* Dialog de confirmation de changement de dépôt */}
       {pendingWarehouseId != null && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-sm rounded-lg bg-fs-surface p-5 shadow-xl">
+          <div className="w-full max-w-sm rounded-md bg-fs-surface p-5 shadow-xl">
             <p className="text-[15px] font-bold text-fs-text">Changer de dépôt ?</p>
             <p className="mt-1.5 text-[13px] text-neutral-500">
               Vous allez basculer vers{" "}
@@ -1054,7 +1054,7 @@ export function WarehouseScreen() {
         <FsPullToRefresh onRefresh={refreshAll}>
           {tab === 0 ? (
             <div className="mt-3 space-y-3.5 sm:space-y-4">
-              <FsCard padding="p-3.5 sm:p-4" className="sm:rounded-lg">
+              <FsCard padding="p-3.5 sm:p-4" className="rounded-md sm:rounded-md">
                 <p className="text-[13px] font-semibold leading-snug text-fs-text sm:text-sm">
                   Tout gérer depuis le dépôt
                 </p>
@@ -1065,7 +1065,7 @@ export function WarehouseScreen() {
                   <button
                     type="button"
                     onClick={() => setEntryOpen(true)}
-                    className="inline-flex min-h-[36px] min-w-[44px] items-center gap-1.5 rounded-lg border-0 bg-[#F97316] px-3 py-1.5 text-[13px] font-bold text-white shadow-sm active:opacity-90 sm:min-h-[38px] sm:gap-2 sm:rounded-lg sm:px-4 sm:py-2 sm:text-sm"
+                    className="inline-flex min-h-[36px] min-w-[44px] items-center gap-1.5 rounded-md border-0 bg-[#F97316] px-3 py-1.5 text-[13px] font-bold text-white shadow-sm active:opacity-90 sm:min-h-[38px] sm:gap-2 sm:rounded-md sm:px-4 sm:py-2 sm:text-sm"
                   >
                     <MdAddCircleOutline className="h-[18px] w-[18px] shrink-0 sm:h-5 sm:w-5" />
                     Réception
@@ -1076,7 +1076,7 @@ export function WarehouseScreen() {
                       setDispatchDialogInvoiceId(null);
                       setDispatchOpen(true);
                     }}
-                    className="inline-flex min-h-[36px] min-w-[44px] items-center gap-1.5 rounded-lg border-0 bg-[#F97316] px-3 py-1.5 text-[13px] font-bold text-white shadow-sm active:opacity-90 sm:min-h-[38px] sm:gap-2 sm:rounded-lg sm:px-4 sm:py-2 sm:text-sm"
+                    className="inline-flex min-h-[36px] min-w-[44px] items-center gap-1.5 rounded-md border-0 bg-[#F97316] px-3 py-1.5 text-[13px] font-bold text-white shadow-sm active:opacity-90 sm:min-h-[38px] sm:gap-2 sm:rounded-md sm:px-4 sm:py-2 sm:text-sm"
                   >
                     <MdReceiptLong className="h-[18px] w-[18px] shrink-0 sm:h-5 sm:w-5" />
                     Facture / sortie
@@ -1084,7 +1084,7 @@ export function WarehouseScreen() {
                   <button
                     type="button"
                     onClick={() => setTab(1)}
-                    className="inline-flex min-h-[36px] min-w-[44px] items-center gap-1.5 rounded-lg bg-[#E6DDF6] px-3 py-1.5 text-[13px] font-bold text-[#7C3AED] active:opacity-90 sm:min-h-[38px] sm:gap-2 sm:rounded-lg sm:px-4 sm:py-2 sm:text-sm"
+                    className="inline-flex min-h-[36px] min-w-[44px] items-center gap-1.5 rounded-md bg-[#E6DDF6] px-3 py-1.5 text-[13px] font-bold text-[#7C3AED] active:opacity-90 sm:min-h-[38px] sm:gap-2 sm:rounded-md sm:px-4 sm:py-2 sm:text-sm"
                   >
                     <MdCategory className="h-[18px] w-[18px] shrink-0 sm:h-5 sm:w-5" />
                     Produits
@@ -1092,7 +1092,7 @@ export function WarehouseScreen() {
                   <button
                     type="button"
                     onClick={openTransferDialog}
-                    className="inline-flex min-h-[36px] min-w-[44px] items-center gap-1.5 rounded-lg bg-[#DCE5F3] px-3 py-1.5 text-[13px] font-bold text-[#2563EB] active:opacity-90 sm:min-h-[38px] sm:gap-2 sm:rounded-lg sm:px-4 sm:py-2 sm:text-sm"
+                    className="inline-flex min-h-[36px] min-w-[44px] items-center gap-1.5 rounded-md bg-[#DCE5F3] px-3 py-1.5 text-[13px] font-bold text-[#2563EB] active:opacity-90 sm:min-h-[38px] sm:gap-2 sm:rounded-md sm:px-4 sm:py-2 sm:text-sm"
                   >
                     <MdSwapHoriz className="h-[18px] w-[18px] shrink-0 sm:h-5 sm:w-5" />
                     Transferts
@@ -1100,7 +1100,7 @@ export function WarehouseScreen() {
                   <button
                     type="button"
                     onClick={() => setTab(5)}
-                    className="inline-flex min-h-[36px] min-w-[44px] items-center gap-1.5 rounded-lg bg-[#DFF3E7] px-3 py-1.5 text-[13px] font-bold text-[#15803D] active:opacity-90 sm:min-h-[38px] sm:gap-2 sm:rounded-lg sm:px-4 sm:py-2 sm:text-sm"
+                    className="inline-flex min-h-[36px] min-w-[44px] items-center gap-1.5 rounded-md bg-[#DFF3E7] px-3 py-1.5 text-[13px] font-bold text-[#15803D] active:opacity-90 sm:min-h-[38px] sm:gap-2 sm:rounded-md sm:px-4 sm:py-2 sm:text-sm"
                   >
                     <MdChecklist className="h-[18px] w-[18px] shrink-0 sm:h-5 sm:w-5" />
                     Inventaire
@@ -1109,7 +1109,7 @@ export function WarehouseScreen() {
                     type="button"
                     onClick={() => void exportWarehouseProductsPdf()}
                     disabled={exportingProductsPdf}
-                    className="inline-flex min-h-0 min-w-[38px] items-center gap-1 rounded-lg bg-[#FDECEC] px-2 py-0.5 text-[12px] font-bold leading-none text-[#B42318] active:opacity-90 disabled:opacity-60 sm:min-h-0 sm:gap-1.5 sm:rounded-lg sm:px-2.5 sm:py-1 sm:text-[13px]"
+                    className="inline-flex min-h-0 min-w-[38px] items-center gap-1 rounded-md bg-[#FDECEC] px-2 py-0.5 text-[12px] font-bold leading-none text-[#B42318] active:opacity-90 disabled:opacity-60 sm:min-h-0 sm:gap-1.5 sm:rounded-md sm:px-2.5 sm:py-1 sm:text-[13px]"
                   >
                     <MdPictureAsPdf className="h-[18px] w-[18px] shrink-0 sm:h-5 sm:w-5" />
                     {exportingProductsPdf ? "Export…" : "Produits PDF"}
@@ -1164,7 +1164,7 @@ export function WarehouseScreen() {
                     />
                   </div>
 
-                  <FsCard padding="p-3.5 sm:p-4" className="sm:rounded-lg">
+                  <FsCard padding="p-3.5 sm:p-4" className="rounded-md sm:rounded-md">
                     <div className="flex items-center gap-1.5 sm:gap-2">
                       <MdBarChart className="h-[18px] w-[18px] text-[#F97316] sm:h-5 sm:w-5" aria-hidden />
                       <p className="text-[13px] font-semibold leading-snug text-fs-text sm:text-sm">
@@ -1187,7 +1187,7 @@ export function WarehouseScreen() {
                           Pas encore de mouvements sur la période
                         </p>
                       ) : (
-                        <div className="grid h-full grid-cols-[auto_1fr] gap-2 rounded-xl border border-black/8 bg-fs-surface-low/40 px-2.5 py-2 sm:px-3 sm:py-2.5">
+                        <div className="grid h-full grid-cols-[auto_1fr] gap-2 rounded-md border border-black/8 bg-fs-surface-low/40 px-2.5 py-2 sm:px-3 sm:py-2.5">
                           <div className="flex h-[170px] flex-col justify-between pb-5 text-right text-[10px] font-medium text-neutral-500 sm:h-[190px] sm:text-[11px]">
                             {[1, 0.75, 0.5, 0.25, 0].map((t) => (
                               <span key={t} className="tabular-nums">
@@ -1233,7 +1233,7 @@ export function WarehouseScreen() {
                   </FsCard>
 
                   <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-                    <FsCard padding="p-3">
+                    <FsCard padding="p-3" className="rounded-md sm:rounded-md">
                       <p className="text-[11px] font-semibold uppercase tracking-wide text-neutral-500">Santé stock</p>
                       <p className="mt-1 text-xl font-extrabold text-fs-text">{decisionPanel.healthPct}%</p>
                       <p className="mt-1 text-xs text-neutral-600">
@@ -1242,7 +1242,7 @@ export function WarehouseScreen() {
                           : "Aucune alerte de seuil"}
                       </p>
                     </FsCard>
-                    <FsCard padding="p-3">
+                    <FsCard padding="p-3" className="rounded-md sm:rounded-md">
                       <p className="text-[11px] font-semibold uppercase tracking-wide text-neutral-500">Pression flux 30 j</p>
                       <p
                         className={cn(
@@ -1257,14 +1257,14 @@ export function WarehouseScreen() {
                         {decisionPanel.netFlow30 < 0 ? "Sorties > entrées : risque rupture" : "Couverture stable"}
                       </p>
                     </FsCard>
-                    <FsCard padding="p-3">
+                    <FsCard padding="p-3" className="rounded-md sm:rounded-md">
                       <p className="text-[11px] font-semibold uppercase tracking-wide text-neutral-500">Sorties 7 j</p>
                       <p className="mt-1 text-xl font-extrabold text-fs-text">{decisionPanel.dispatch7dCount}</p>
                       <p className="mt-1 text-xs text-neutral-600">{formatCurrency(decisionPanel.dispatchAmount7d)}</p>
                     </FsCard>
                   </div>
 
-                  <FsCard padding="p-3.5 sm:p-4">
+                  <FsCard padding="p-3.5 sm:p-4" className="rounded-md sm:rounded-md">
                     <div className="mb-2 flex items-center justify-between">
                       <p className="text-[13px] font-semibold text-fs-text sm:text-sm">Crédit bons de sortie (Magasin)</p>
                       <button
@@ -1276,23 +1276,23 @@ export function WarehouseScreen() {
                       </button>
                     </div>
                     <div className="grid grid-cols-1 gap-2 text-xs sm:grid-cols-2 lg:grid-cols-4">
-                      <div className="rounded-lg border border-orange-200 bg-orange-50 px-3 py-2">
+                      <div className="rounded-md border border-orange-200 bg-orange-50 px-3 py-2">
                         <p className="text-neutral-600">Restant à encaisser</p>
                         <p className="mt-1 text-sm font-extrabold text-orange-700">
                           {formatCurrency(decisionPanel.dispatchOutstandingTotal)}
                         </p>
                       </div>
-                      <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2">
+                      <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2">
                         <p className="text-neutral-600">Déjà encaissé</p>
                         <p className="mt-1 text-sm font-extrabold text-emerald-700">
                           {formatCurrency(decisionPanel.dispatchPaidTotal)}
                         </p>
                       </div>
-                      <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2">
+                      <div className="rounded-md border border-blue-200 bg-blue-50 px-3 py-2">
                         <p className="text-neutral-600">Dossiers ouverts</p>
                         <p className="mt-1 text-sm font-extrabold text-blue-700">{decisionPanel.dispatchOpenCount}</p>
                       </div>
-                      <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+                      <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2">
                         <p className="text-neutral-600">Reste 7 jours</p>
                         <p className="mt-1 text-sm font-extrabold text-amber-700">
                           {formatCurrency(decisionPanel.dispatchOpen7d)}
@@ -1301,7 +1301,7 @@ export function WarehouseScreen() {
                     </div>
                   </FsCard>
 
-                  <FsCard padding="p-3.5 sm:p-4">
+                  <FsCard padding="p-3.5 sm:p-4" className="rounded-md sm:rounded-md">
                     <div className="mb-2 flex items-center justify-between">
                       <p className="text-[13px] font-semibold text-fs-text sm:text-sm">Priorités de réapprovisionnement</p>
                       {decisionPanel.topLow.length > 0 ? (
@@ -1317,7 +1317,7 @@ export function WarehouseScreen() {
                     {decisionPanel.topLow.length === 0 ? (
                       <p className="text-xs text-neutral-600">Aucune priorité immédiate. Les seuils sont couverts.</p>
                     ) : (
-                      <FsHorizontalScroll className="rounded-xl border border-black/8">
+                      <FsHorizontalScroll className="rounded-md border border-black/8">
                         <table className="w-full min-w-[660px] text-left text-[12px] [&_thead_th]:whitespace-nowrap [&_tbody_td]:whitespace-nowrap">
                           <thead>
                             <tr className="border-b border-black/10 bg-fs-surface-low/80 text-[10px] uppercase tracking-wide text-neutral-600">
@@ -1345,7 +1345,7 @@ export function WarehouseScreen() {
                   </FsCard>
 
                   <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                    <FsCard padding="p-3.5 sm:p-4">
+                    <FsCard padding="p-3.5 sm:p-4" className="rounded-md sm:rounded-md">
                       <p className="text-[13px] font-semibold text-fs-text sm:text-sm">Transferts à traiter</p>
                       <p className="mt-1 text-2xl font-extrabold text-fs-text">{decisionPanel.pendingTransfersCount}</p>
                       <p className="mt-1 text-xs text-neutral-600">Brouillons / en attente / approuvés / expédiés.</p>
@@ -1357,14 +1357,14 @@ export function WarehouseScreen() {
                         Ouvrir Transfert
                       </button>
                     </FsCard>
-                    <FsCard padding="p-3.5 sm:p-4">
+                    <FsCard padding="p-3.5 sm:p-4" className="rounded-md sm:rounded-md">
                       <p className="text-[13px] font-semibold text-fs-text sm:text-sm">Stock dormant (30 j)</p>
                       {decisionPanel.dormantTop.length === 0 ? (
                         <p className="mt-2 text-xs text-neutral-600">Aucun article dormant significatif détecté.</p>
                       ) : (
                         <div className="mt-2 space-y-1.5">
                           {decisionPanel.dormantTop.map((l) => (
-                            <div key={l.productId} className="flex items-center justify-between gap-2 rounded-lg bg-fs-surface-container px-2.5 py-1.5">
+                            <div key={l.productId} className="flex items-center justify-between gap-2 rounded-md bg-fs-surface-container px-2.5 py-1.5">
                               <span className="truncate text-xs font-semibold text-fs-text">{l.productName}</span>
                               <span className="shrink-0 text-[11px] font-bold text-neutral-700">
                                 {formatCurrency(l.quantity * l.salePrice)}
@@ -1380,7 +1380,7 @@ export function WarehouseScreen() {
 
               <Link
                 href={ROUTES.purchases}
-                className="inline-flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-xl border border-black/10 py-2.5 text-[13px] font-semibold text-fs-text active:bg-neutral-50 sm:min-h-[48px] sm:gap-2 sm:py-3 sm:text-sm sm:w-auto"
+                className="inline-flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-md border border-black/10 py-2.5 text-[13px] font-semibold text-fs-text active:bg-neutral-50 sm:min-h-[48px] sm:gap-2 sm:py-3 sm:text-sm sm:w-auto"
               >
                 <MdLocalShipping className="h-[18px] w-[18px] sm:h-5 sm:w-5" />
                 Voir les achats fournisseurs
@@ -1550,7 +1550,7 @@ export function WarehouseScreen() {
           <button
             type="button"
             onClick={() => setActionMenuOpen(true)}
-            className="fixed bottom-8 right-8 z-40 hidden items-center gap-2 rounded-lg bg-[#F97316] px-5 py-3.5 text-sm font-semibold text-white shadow-[0_4px_5px_rgba(0,0,0,0.12),0_2px_4px_rgba(0,0,0,0.08)] min-[900px]:inline-flex"
+            className="fixed bottom-8 right-8 z-40 hidden items-center gap-2 rounded-md bg-[#F97316] px-5 py-3.5 text-sm font-semibold text-white shadow-[0_4px_5px_rgba(0,0,0,0.12),0_2px_4px_rgba(0,0,0,0.08)] min-[900px]:inline-flex"
           >
             <MdAdd className="h-5 w-5" />
             Gérer le dépôt
@@ -1564,14 +1564,14 @@ export function WarehouseScreen() {
           role="dialog"
           aria-modal="true"
         >
-          <div className="max-h-[92dvh] w-full overflow-hidden rounded-t-3xl bg-fs-surface shadow-2xl sm:max-h-[85vh] sm:max-w-md sm:rounded-2xl">
+          <div className="max-h-[92dvh] w-full overflow-hidden rounded-t-lg bg-fs-surface shadow-2xl sm:max-h-[85vh] sm:max-w-md sm:rounded-lg">
             <div className="mx-auto mt-2 h-1.5 w-10 rounded-full bg-neutral-300 min-[900px]:hidden" />
             <div className="flex items-center justify-between border-b border-black/6 px-4 py-3">
               <h2 className="text-base font-bold">Actions dépôt</h2>
               <button
                 type="button"
                 onClick={() => setActionMenuOpen(false)}
-                className="rounded-xl p-2"
+                className="rounded-md p-2"
                 aria-label="Fermer"
               >
                 <MdClose className="h-6 w-6" />
@@ -1718,7 +1718,7 @@ export function WarehouseScreen() {
 
       {transferDetailId ? (
         <div className="fixed inset-0 z-56 flex flex-col justify-end bg-black/45 sm:items-center sm:justify-center sm:p-4" role="dialog">
-          <div className="flex max-h-[min(88dvh,640px)] w-full flex-col rounded-t-2xl bg-fs-surface shadow-2xl sm:max-h-[85vh] sm:max-w-lg sm:rounded-2xl">
+          <div className="flex max-h-[min(88dvh,640px)] w-full flex-col rounded-t-lg bg-fs-surface shadow-2xl sm:max-h-[85vh] sm:max-w-lg sm:rounded-lg">
             <div className="flex items-center justify-between border-b border-black/6 px-4 py-3">
               <h2 className="text-base font-bold">Détail transfert</h2>
               <button type="button" onClick={() => setTransferDetailId(null)} className="p-2" aria-label="Fermer">
@@ -1754,7 +1754,7 @@ export function WarehouseScreen() {
                         {d.items.map((it) => (
                           <div
                             key={it.id}
-                            className="flex flex-col gap-1 rounded-[10px] border border-black/6 bg-fs-card px-3 py-2 text-xs sm:flex-row sm:items-center sm:justify-between"
+                            className="flex flex-col gap-1 rounded-md border border-black/6 bg-fs-card px-3 py-2 text-xs sm:flex-row sm:items-center sm:justify-between"
                           >
                             <span className="font-semibold">{it.productName ?? it.productId.slice(0, 8)}</span>
                             <span className="text-neutral-600">
@@ -1770,14 +1770,14 @@ export function WarehouseScreen() {
                               type="button"
                               disabled={approveMut.isPending}
                               onClick={() => approveMut.mutate(d.id)}
-                              className="fs-touch-target inline-flex w-full items-center justify-center gap-2 rounded-[10px] bg-violet-600 py-3.5 text-sm font-semibold text-white disabled:opacity-50"
+                              className="fs-touch-target inline-flex w-full items-center justify-center gap-2 rounded-md bg-violet-600 py-3.5 text-sm font-semibold text-white disabled:opacity-50"
                             >
                               <MdCheckCircle className="h-5 w-5" aria-hidden />
                               Approuver
                             </button>
                           ) : null}
                           {needsApproval && !canApproveTransfer ? (
-                            <p className="rounded-[10px] border border-violet-200 bg-violet-50 px-3 py-2 text-xs text-violet-900">
+                            <p className="rounded-md border border-violet-200 bg-violet-50 px-3 py-2 text-xs text-violet-900">
                               En attente d&apos;approbation par un utilisateur autorisé.
                             </p>
                           ) : null}
@@ -1786,7 +1786,7 @@ export function WarehouseScreen() {
                               type="button"
                               disabled={shipMut.isPending}
                               onClick={() => shipMut.mutate(d.id)}
-                              className="fs-touch-target w-full rounded-[10px] bg-fs-accent py-3.5 text-sm font-semibold text-white disabled:opacity-50"
+                              className="fs-touch-target w-full rounded-md bg-fs-accent py-3.5 text-sm font-semibold text-white disabled:opacity-50"
                             >
                               Expédier
                             </button>
@@ -1796,7 +1796,7 @@ export function WarehouseScreen() {
                               type="button"
                               disabled={receiveMut.isPending}
                               onClick={() => receiveMut.mutate(d.id)}
-                              className="fs-touch-target w-full rounded-[10px] bg-emerald-600 py-3.5 text-sm font-semibold text-white disabled:opacity-50"
+                              className="fs-touch-target w-full rounded-md bg-emerald-600 py-3.5 text-sm font-semibold text-white disabled:opacity-50"
                             >
                               Réceptionner
                             </button>
@@ -1806,7 +1806,7 @@ export function WarehouseScreen() {
                               type="button"
                               disabled={cancelMut.isPending}
                               onClick={() => cancelMut.mutate(d.id)}
-                              className="fs-touch-target w-full rounded-[10px] border border-amber-300 bg-amber-50 py-3 text-sm font-semibold text-amber-900"
+                              className="fs-touch-target w-full rounded-md border border-amber-300 bg-amber-50 py-3 text-sm font-semibold text-amber-900"
                             >
                               Annuler
                             </button>
@@ -1818,7 +1818,7 @@ export function WarehouseScreen() {
                               onClick={() => {
                                 if (confirm("Supprimer définitivement ce transfert ?")) deleteMut.mutate(d.id);
                               }}
-                              className="fs-touch-target inline-flex w-full items-center justify-center gap-2 rounded-[10px] border border-red-200 bg-red-50 py-3 text-sm font-semibold text-red-800"
+                              className="fs-touch-target inline-flex w-full items-center justify-center gap-2 rounded-md border border-red-200 bg-red-50 py-3 text-sm font-semibold text-red-800"
                             >
                               <MdDeleteOutline className="h-5 w-5" />
                               Supprimer
@@ -1837,7 +1837,7 @@ export function WarehouseScreen() {
 
       {dispatchEditId ? (
         <div className="fixed inset-0 z-57 flex flex-col justify-end bg-black/45 sm:items-center sm:justify-center sm:p-4" role="dialog">
-          <div className="flex max-h-[min(90dvh,680px)] w-full flex-col rounded-t-2xl bg-fs-surface shadow-2xl sm:max-h-[85vh] sm:max-w-2xl sm:rounded-2xl">
+          <div className="flex max-h-[min(90dvh,680px)] w-full flex-col rounded-t-lg bg-fs-surface shadow-2xl sm:max-h-[85vh] sm:max-w-2xl sm:rounded-lg">
             <div className="flex items-center justify-between border-b border-black/6 px-4 py-3">
               <h2 className="text-base font-bold">Modifier bon de sortie</h2>
               <button
@@ -1943,7 +1943,7 @@ export function WarehouseScreen() {
                       lines: dispatchEditLines,
                     });
                   }}
-                  className="fs-touch-target mt-4 w-full rounded-[10px] bg-[#F97316] py-3.5 text-sm font-semibold text-white disabled:opacity-50"
+                  className="fs-touch-target mt-4 w-full rounded-md bg-[#F97316] py-3.5 text-sm font-semibold text-white disabled:opacity-50"
                 >
                   {updateDispatchMut.isPending ? "Mise à jour…" : "Enregistrer les modifications"}
                 </button>
@@ -1955,7 +1955,7 @@ export function WarehouseScreen() {
 
       {dispatchDetailId ? (
         <div className="fixed inset-0 z-56 flex flex-col justify-end bg-black/45 sm:items-center sm:justify-center sm:p-4" role="dialog">
-          <div className="flex max-h-[min(88dvh,640px)] w-full flex-col rounded-t-2xl bg-fs-surface shadow-2xl sm:max-h-[85vh] sm:max-w-lg sm:rounded-2xl">
+          <div className="flex max-h-[min(88dvh,640px)] w-full flex-col rounded-t-lg bg-fs-surface shadow-2xl sm:max-h-[85vh] sm:max-w-lg sm:rounded-lg">
             <div className="flex items-center justify-between border-b border-black/6 px-4 py-3">
               <h2 className="text-base font-bold">Bon de sortie</h2>
               <button type="button" onClick={() => setDispatchDetailId(null)} className="p-2" aria-label="Fermer">
@@ -1985,7 +1985,7 @@ export function WarehouseScreen() {
                       ) : null}
                       <div className="mt-4 space-y-2">
                         {d.lines.map((l, i) => (
-                          <div key={i} className="flex justify-between gap-2 rounded-lg border border-black/6 px-3 py-2 text-sm">
+                          <div key={i} className="flex justify-between gap-2 rounded-md border border-black/6 px-3 py-2 text-sm">
                             <span className="min-w-0 font-medium">{l.productName}</span>
                             <span className="shrink-0 text-neutral-600">
                               {l.quantity} × {formatCurrency(l.unitPrice)}
@@ -1994,7 +1994,7 @@ export function WarehouseScreen() {
                         ))}
                       </div>
                       <p className="mt-4 text-right text-base font-bold">Total {formatCurrency(sub)}</p>
-                      <div className="mt-4 rounded-2xl bg-[#F5F5F5] px-3 py-3 sm:px-4 sm:py-3.5">
+                      <div className="mt-4 rounded-lg bg-[#F5F5F5] px-3 py-3 sm:px-4 sm:py-3.5">
                         <p className="mb-3 text-[11px] font-bold tracking-[0.06em] text-neutral-700 sm:text-xs">
                           FACTURE A4
                         </p>
@@ -2065,7 +2065,7 @@ export function WarehouseScreen() {
                           }
                           voidDispatchMut.mutate({ invoiceId: d.id });
                         }}
-                        className="fs-touch-target mt-4 w-full rounded-[10px] bg-red-600 py-3.5 text-sm font-semibold text-white"
+                        className="fs-touch-target mt-4 w-full rounded-md bg-red-600 py-3.5 text-sm font-semibold text-white"
                       >
                         Annuler le bon
                       </button>
@@ -2104,7 +2104,7 @@ function Kpi({
   return (
     <FsCard
       padding="px-2 py-1.5 sm:p-3"
-      className="min-h-[80px] rounded-lg border border-black/6 shadow-none sm:min-h-0 sm:rounded-lg"
+      className="min-h-[80px] rounded-md border border-black/6 shadow-none sm:min-h-0 sm:rounded-md"
     >
       <div
         className="[&>svg]:h-[18px] [&>svg]:w-[18px] sm:[&>svg]:h-5 sm:[&>svg]:w-5"
@@ -2142,10 +2142,10 @@ function ActionRow({
     <button
       type="button"
       onClick={onClick}
-      className="mb-2 flex w-full items-start gap-3 rounded-2xl border border-black/6 p-3 text-left transition-colors active:bg-neutral-50"
+      className="mb-2 flex w-full items-start gap-3 rounded-lg border border-black/6 p-3 text-left transition-colors active:bg-neutral-50"
     >
       <div
-        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-white"
+        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md text-white"
         style={{ backgroundColor: color }}
       >
         {icon}
@@ -2228,7 +2228,7 @@ function StockDepotTab({
             </button>
           )}
         </div>
-        <div className="rounded-xl border border-black/8 bg-fs-surface-container px-3 py-2">
+        <div className="rounded-md border border-black/8 bg-fs-surface-container px-3 py-2">
           <p className="text-xs font-semibold text-neutral-700">
             Produits: <span className="font-extrabold text-fs-text">{lines.length}</span>
             {filtered.length !== lines.length ? (
@@ -2242,7 +2242,7 @@ function StockDepotTab({
       {filtered.length === 0 ? (
         <p className="text-sm text-neutral-600">Aucun produit ne correspond au filtre.</p>
       ) : (
-        <FsHorizontalScroll className="rounded-2xl border border-black/8 bg-fs-card">
+        <FsHorizontalScroll className="rounded-lg border border-black/8 bg-fs-card">
           <table className="w-full min-w-[980px] border-collapse text-left text-[13px] [&_thead_th]:whitespace-nowrap [&_tbody_td]:whitespace-nowrap">
             <thead>
               <tr className="border-b border-black/10 bg-fs-surface-low/80 text-[11px] uppercase tracking-wide text-neutral-700">
@@ -2267,7 +2267,7 @@ function StockDepotTab({
                   <tr key={l.productId} className="border-b border-black/6 text-[13px] last:border-b-0 hover:bg-black/2">
                     <td className="px-3 py-2.5">
                       <div className="flex min-w-0 items-center gap-2.5">
-                        <ProductListThumbnail imageUrl={l.imageUrl} className="h-9 w-9 shrink-0 rounded-lg" previewOnTap />
+                        <ProductListThumbnail imageUrl={l.imageUrl} className="h-9 w-9 shrink-0 rounded-md" previewOnTap />
                         <div className="min-w-0">
                           <p className="truncate font-semibold text-fs-text">{l.productName}</p>
                           <p className="text-xs text-neutral-500">{l.unit}</p>
@@ -2296,7 +2296,7 @@ function StockDepotTab({
                           type="button"
                           onClick={() => onAdjust(l)}
                           className={cn(
-                            "inline-flex min-h-[36px] min-w-[36px] items-center justify-center rounded-xl border transition-all duration-150",
+                            "inline-flex min-h-[36px] min-w-[36px] items-center justify-center rounded-md border transition-all duration-150",
                             "border-[#F97316]/35 bg-[#FFF7ED] text-[#C2410C] shadow-[0_1px_2px_rgba(0,0,0,0.06)]",
                             "hover:-translate-y-px hover:bg-[#FFEDD5] hover:shadow-[0_4px_10px_rgba(249,115,22,0.2)] active:translate-y-0",
                             "dark:border-orange-400/40 dark:bg-orange-950/40 dark:text-orange-200",
@@ -2310,7 +2310,7 @@ function StockDepotTab({
                           type="button"
                           onClick={() => onThreshold(l)}
                           className={cn(
-                            "inline-flex min-h-[36px] min-w-[36px] items-center justify-center rounded-xl border transition-all duration-150",
+                            "inline-flex min-h-[36px] min-w-[36px] items-center justify-center rounded-md border transition-all duration-150",
                             "border-[#0EA5E9]/35 bg-[#F0F9FF] text-[#0369A1] shadow-[0_1px_2px_rgba(0,0,0,0.06)]",
                             "hover:-translate-y-px hover:bg-[#E0F2FE] hover:shadow-[0_4px_10px_rgba(14,165,233,0.22)] active:translate-y-0",
                             "dark:border-sky-400/40 dark:bg-sky-950/40 dark:text-sky-200",
@@ -2378,7 +2378,7 @@ function FilterChip({
       type="button"
       onClick={onClick}
       className={cn(
-        "min-h-[38px] rounded-xl border px-3 py-1.5 text-xs font-bold",
+        "min-h-[38px] rounded-md border px-3 py-1.5 text-xs font-bold",
         sel ? ring : "border-black/10 bg-neutral-100 text-neutral-800",
       )}
     >
@@ -2422,7 +2422,7 @@ function MouvementsTab({
         onChange={(e) => setSearch(e.target.value)}
         placeholder="Rechercher un produit (toutes ses entrées/sorties du magasin)…"
         aria-label="Rechercher un produit dans les mouvements du magasin"
-        className="h-11 w-full rounded-xl border border-black/10 bg-fs-card pl-11 pr-10 text-sm text-fs-text outline-none focus:border-fs-accent"
+        className="h-11 w-full rounded-md border border-black/10 bg-fs-card pl-11 pr-10 text-sm text-fs-text outline-none focus:border-fs-accent"
       />
       {search ? (
         <button
@@ -2473,7 +2473,7 @@ function MouvementsTab({
   return (
     <div className="space-y-3 pb-6">
       {searchBar}
-      <FsHorizontalScroll className="rounded-2xl border border-black/6 bg-fs-card">
+      <FsHorizontalScroll className="rounded-lg border border-black/6 bg-fs-card">
         <table className="w-full min-w-[1120px] border-collapse text-left text-[13px] [&_thead_th]:whitespace-nowrap [&_tbody_td]:whitespace-nowrap">
           <thead>
             <tr className="border-b border-black/10 bg-fs-surface-low/80 text-[11px] uppercase tracking-wide text-neutral-700">
@@ -2533,7 +2533,7 @@ function MouvementsTab({
                         type="button"
                         disabled={voidingId === m.referenceId}
                         onClick={() => onVoid(m)}
-                        className="inline-flex min-h-[34px] items-center rounded-lg border border-red-200 bg-red-50 px-3 py-1 text-xs font-bold text-red-700 disabled:opacity-50"
+                        className="inline-flex min-h-[34px] items-center rounded-md border border-red-200 bg-red-50 px-3 py-1 text-xs font-bold text-red-700 disabled:opacity-50"
                       >
                         {voidingId === m.referenceId ? "…" : "Annuler"}
                       </button>
@@ -2590,7 +2590,7 @@ function TransfertTab({
   if (transfers.length === 0) {
     return (
       <div className="pb-8">
-        <FsCard padding="p-4">
+        <FsCard padding="p-4" className="rounded-md sm:rounded-md">
           <p className="text-sm font-semibold text-fs-text">Transfert dépôt → boutique</p>
           <p className="mt-2 text-sm leading-relaxed text-neutral-600">
             Aucun transfert enregistré pour le moment.
@@ -2598,7 +2598,7 @@ function TransfertTab({
           <button
             type="button"
             onClick={onCreate}
-            className="mt-4 inline-flex min-h-[48px] min-w-[44px] items-center gap-2 rounded-xl bg-[#F97316] px-4 py-3 text-sm font-semibold text-white shadow-sm active:opacity-90"
+            className="mt-4 inline-flex min-h-[48px] min-w-[44px] items-center gap-2 rounded-md bg-[#F97316] px-4 py-3 text-sm font-semibold text-white shadow-sm active:opacity-90"
           >
             <MdSwapHoriz className="h-5 w-5" />
             Nouveau transfert
@@ -2615,12 +2615,12 @@ function TransfertTab({
       <button
         type="button"
         onClick={onCreate}
-        className="inline-flex min-h-[48px] min-w-[44px] items-center gap-2 rounded-xl bg-[#F97316] px-4 py-3 text-sm font-semibold text-white shadow-sm active:opacity-90"
+        className="inline-flex min-h-[48px] min-w-[44px] items-center gap-2 rounded-md bg-[#F97316] px-4 py-3 text-sm font-semibold text-white shadow-sm active:opacity-90"
       >
         <MdAdd className="h-5 w-5" />
         Nouveau transfert
       </button>
-      <FsHorizontalScroll className="rounded-2xl border border-black/6 bg-fs-card">
+      <FsHorizontalScroll className="rounded-lg border border-black/6 bg-fs-card">
         <table className="w-full min-w-[940px] border-collapse text-left text-[13px] [&_thead_th]:whitespace-nowrap [&_tbody_td]:whitespace-nowrap">
           <thead>
             <tr className="border-b border-black/10 bg-fs-surface-low/80 text-[11px] uppercase tracking-wide text-neutral-700">
@@ -2658,7 +2658,7 @@ function TransfertTab({
                       <button
                         type="button"
                         onClick={() => onOpen(t)}
-                        className="inline-flex min-h-[34px] items-center rounded-lg border border-[#F97316]/35 bg-[#FFF7ED] px-3 py-1 text-xs font-bold text-[#C2410C]"
+                        className="inline-flex min-h-[34px] items-center rounded-md border border-[#F97316]/35 bg-[#FFF7ED] px-3 py-1 text-xs font-bold text-[#C2410C]"
                       >
                         Ouvrir
                       </button>
@@ -2666,7 +2666,7 @@ function TransfertTab({
                         <button
                           type="button"
                           onClick={() => onDelete(t)}
-                          className="inline-flex min-h-[34px] min-w-[34px] items-center justify-center rounded-lg border border-red-200 bg-red-50 text-red-700"
+                          className="inline-flex min-h-[34px] min-w-[34px] items-center justify-center rounded-md border border-red-200 bg-red-50 text-red-700"
                           aria-label="Supprimer"
                           title="Supprimer"
                         >
@@ -2749,7 +2749,7 @@ function HistoriquesTab({
           placeholder="Rechercher un produit…"
           aria-label="Rechercher un produit dans l'historique des sorties"
           className={fsInputClass(
-            "h-12 rounded-2xl border-black/[0.08] pl-11 pr-11 shadow-sm sm:h-12 [&::-webkit-search-cancel-button]:hidden",
+            "h-12 rounded-lg border-black/[0.08] pl-11 pr-11 shadow-sm sm:h-12 [&::-webkit-search-cancel-button]:hidden",
           )}
         />
         {searchPending ? (
@@ -2826,7 +2826,7 @@ function HistoriquesTab({
   return (
     <div className="space-y-2 pb-6">
       {searchBar}
-      <FsHorizontalScroll className="rounded-xl border border-black/6 bg-[color-mix(in_srgb,var(--fs-surface-container-low)_100%,transparent)]">
+      <FsHorizontalScroll className="rounded-md border border-black/6 bg-[color-mix(in_srgb,var(--fs-surface-container-low)_100%,transparent)]">
         <table className="w-full min-w-[980px] border-collapse text-left [&_thead_th]:whitespace-nowrap">
           <thead>
             <tr className="border-b border-black/8 bg-[#F5F5F5] text-[11px] font-bold uppercase tracking-wide text-neutral-700">
@@ -2858,7 +2858,7 @@ function HistoriquesTab({
                       <button
                         type="button"
                         onClick={() => onEdit(r)}
-                        className="inline-flex min-h-[32px] min-w-[32px] items-center justify-center rounded-lg border border-[#2563EB]/35 bg-[#EFF6FF] text-[#1D4ED8]"
+                        className="inline-flex min-h-[32px] min-w-[32px] items-center justify-center rounded-md border border-[#2563EB]/35 bg-[#EFF6FF] text-[#1D4ED8]"
                         aria-label="Modifier"
                         title="Modifier"
                       >
@@ -2867,7 +2867,7 @@ function HistoriquesTab({
                       <button
                         type="button"
                         onClick={() => onOpen(r)}
-                        className="inline-flex min-h-[32px] items-center rounded-lg border border-[#F97316]/30 bg-white px-3 py-1 text-xs font-bold text-[#F97316]"
+                        className="inline-flex min-h-[32px] items-center rounded-md border border-[#F97316]/30 bg-white px-3 py-1 text-xs font-bold text-[#F97316]"
                       >
                         Voir
                       </button>
@@ -2875,7 +2875,7 @@ function HistoriquesTab({
                         type="button"
                         disabled={printingId === r.id}
                         onClick={() => void onPrint(r)}
-                        className="inline-flex min-h-[32px] items-center rounded-lg bg-[#F97316] px-3 py-1 text-xs font-bold text-white disabled:opacity-50"
+                        className="inline-flex min-h-[32px] items-center rounded-md bg-[#F97316] px-3 py-1 text-xs font-bold text-white disabled:opacity-50"
                       >
                         {printingId === r.id ? "Impression…" : "Imprimer direct"}
                       </button>
@@ -2887,7 +2887,7 @@ function HistoriquesTab({
                         type="button"
                         disabled={voidingId === r.id}
                         onClick={() => onVoid(r)}
-                        className="inline-flex min-h-[32px] items-center rounded-lg border border-red-200 bg-red-50 px-3 py-1 text-xs font-bold text-red-700 disabled:opacity-50"
+                        className="inline-flex min-h-[32px] items-center rounded-md border border-red-200 bg-red-50 px-3 py-1 text-xs font-bold text-red-700 disabled:opacity-50"
                       >
                         {voidingId === r.id ? "…" : "Annuler"}
                       </button>
@@ -2985,7 +2985,7 @@ function DispatchLinesSearchResults({
           <strong className="font-bold tabular-nums text-[#F97316]">{formatCurrency(totalAmount)}</strong>
         </span>
       </div>
-      <FsHorizontalScroll className="rounded-xl border border-black/6 bg-[color-mix(in_srgb,var(--fs-surface-container-low)_100%,transparent)]">
+      <FsHorizontalScroll className="rounded-md border border-black/6 bg-[color-mix(in_srgb,var(--fs-surface-container-low)_100%,transparent)]">
         <table className="w-full min-w-[860px] border-collapse text-left [&_thead_th]:whitespace-nowrap">
           <thead>
             <tr className="border-b border-black/8 bg-[#F5F5F5] text-[11px] font-bold uppercase tracking-wide text-neutral-700">
@@ -3026,7 +3026,7 @@ function DispatchLinesSearchResults({
                   <button
                     type="button"
                     onClick={() => onOpenInvoice(r.invoiceId)}
-                    className="inline-flex min-h-[32px] items-center rounded-lg border border-[#F97316]/30 bg-white px-3 py-1 text-xs font-bold text-[#F97316]"
+                    className="inline-flex min-h-[32px] items-center rounded-md border border-[#F97316]/30 bg-white px-3 py-1 text-xs font-bold text-[#F97316]"
                   >
                     Voir
                   </button>
@@ -3059,7 +3059,7 @@ function DispatchInvoiceActionButton({
       disabled={disabled}
       onClick={onClick}
       className={cn(
-        "touch-manipulation inline-flex min-h-12 min-w-0 w-full items-center justify-center gap-2 rounded-2xl bg-[#F97316] px-4 text-[15px] font-bold text-white shadow-sm transition-colors hover:bg-[#ea580c] disabled:opacity-50 sm:min-h-11 sm:rounded-xl sm:px-3 sm:text-sm sm:font-semibold",
+        "touch-manipulation inline-flex min-h-12 min-w-0 w-full items-center justify-center gap-2 rounded-lg bg-[#F97316] px-4 text-[15px] font-bold text-white shadow-sm transition-colors hover:bg-[#ea580c] disabled:opacity-50 sm:min-h-11 sm:rounded-md sm:px-3 sm:text-sm sm:font-semibold",
       )}
     >
       {loading ? (

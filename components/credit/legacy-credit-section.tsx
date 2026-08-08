@@ -604,7 +604,7 @@ export function LegacyCreditSection({
 
   return (
     <>
-      <FsCard className="mt-6" padding="p-4">
+      <FsCard className="rounded-md sm:rounded-md mt-6" padding="p-4">
         <div className="mb-3 flex flex-col gap-3 min-[420px]:flex-row min-[420px]:items-start min-[420px]:justify-between min-[420px]:gap-2">
           <div className="min-w-0">
             <p className="text-base font-bold text-fs-text sm:text-sm">Crédit libre (anciens soldes)</p>
@@ -616,7 +616,7 @@ export function LegacyCreditSection({
             <button
               type="button"
               onClick={() => setCreateOpen(true)}
-              className="touch-manipulation shrink-0 rounded-xl bg-fs-accent px-4 py-3 text-sm font-bold text-white active:opacity-95 sm:rounded-lg sm:px-3 sm:py-2 sm:text-xs"
+              className="touch-manipulation shrink-0 rounded-md bg-fs-accent px-4 py-3 text-sm font-bold text-white active:opacity-95 sm:rounded-md sm:px-3 sm:py-2 sm:text-xs"
             >
               + Nouveau
             </button>
@@ -642,7 +642,7 @@ export function LegacyCreditSection({
             onChange={(e) => setSectionSearch(e.target.value)}
           />
         </div>
-        <div className="mb-3 rounded-xl bg-fs-surface-container px-3 py-2 text-xs">
+        <div className="mb-3 rounded-md bg-fs-surface-container px-3 py-2 text-xs">
           Reste total crédit libre: <span className="font-bold text-fs-accent">{formatCurrency(totalOpen)}</span>
         </div>
         {q.isLoading ? (
@@ -711,7 +711,7 @@ export function LegacyCreditSection({
                           onClick={() => {
                             setHistoryFor(r);
                           }}
-                          className="touch-manipulation rounded-lg border border-black/10 bg-fs-surface-container px-3 py-2.5 text-xs font-bold text-neutral-800 active:opacity-95 dark:border-white/15 dark:text-neutral-100 sm:py-1"
+                          className="touch-manipulation rounded-md border border-black/10 bg-fs-surface-container px-3 py-2.5 text-xs font-bold text-neutral-800 active:opacity-95 dark:border-white/15 dark:text-neutral-100 sm:py-1"
                         >
                           Paiements
                         </button>
@@ -719,7 +719,7 @@ export function LegacyCreditSection({
                           <button
                             type="button"
                             onClick={() => setEditFor(r)}
-                            className="touch-manipulation whitespace-nowrap rounded-lg bg-fs-accent/15 px-2 py-2.5 text-xs font-bold text-fs-accent active:opacity-95 sm:px-3 sm:py-1"
+                            className="touch-manipulation whitespace-nowrap rounded-md bg-fs-accent/15 px-2 py-2.5 text-xs font-bold text-fs-accent active:opacity-95 sm:px-3 sm:py-1"
                           >
                             Modifier
                           </button>
@@ -728,7 +728,7 @@ export function LegacyCreditSection({
                           <button
                             type="button"
                             onClick={() => setPayFor(r)}
-                            className="touch-manipulation rounded-lg bg-fs-accent px-3 py-2.5 text-xs font-bold text-white active:opacity-95 sm:py-1"
+                            className="touch-manipulation rounded-md bg-fs-accent px-3 py-2.5 text-xs font-bold text-white active:opacity-95 sm:py-1"
                           >
                             Encaisser
                           </button>
@@ -743,7 +743,7 @@ export function LegacyCreditSection({
                               }
                               deleteMut.mutate({ creditId: r.id });
                             }}
-                            className="touch-manipulation rounded-lg border border-black/8 bg-fs-card px-2 py-1 text-xs font-semibold text-red-600 active:opacity-95 disabled:opacity-60"
+                            className="touch-manipulation rounded-md border border-black/8 bg-fs-card px-2 py-1 text-xs font-semibold text-red-600 active:opacity-95 disabled:opacity-60"
                             aria-label={`Supprimer le crédit libre ${r.title}`}
                             title="Supprimer"
                           >
@@ -801,7 +801,7 @@ export function LegacyCreditSection({
                 setShowSettledLegacy((v) => !v);
                 setSettledPage(0);
               }}
-              className="flex w-full touch-manipulation items-center justify-between gap-2 rounded-xl bg-fs-surface-container px-3 py-2.5 text-left text-sm font-bold text-fs-text active:opacity-95 sm:py-2 sm:text-xs"
+              className="flex w-full touch-manipulation items-center justify-between gap-2 rounded-md bg-fs-surface-container px-3 py-2.5 text-left text-sm font-bold text-fs-text active:opacity-95 sm:py-2 sm:text-xs"
             >
               <span>
                 Historique — crédits soldés
@@ -907,7 +907,7 @@ export function LegacyCreditSection({
                                 onClick={() => {
                                   setHistoryFor(entry.legacy);
                                 }}
-                                className="touch-manipulation rounded-lg border border-black/10 bg-fs-surface-container px-3 py-2.5 text-xs font-bold text-neutral-800 active:opacity-95 dark:border-white/15 dark:text-neutral-100 sm:py-1"
+                                className="touch-manipulation rounded-md border border-black/10 bg-fs-surface-container px-3 py-2.5 text-xs font-bold text-neutral-800 active:opacity-95 dark:border-white/15 dark:text-neutral-100 sm:py-1"
                               >
                                 Paiements
                               </button>
@@ -915,7 +915,7 @@ export function LegacyCreditSection({
                                 <button
                                   type="button"
                                   onClick={() => setEditFor(entry.legacy)}
-                                  className="touch-manipulation whitespace-nowrap rounded-lg bg-fs-accent/15 px-2 py-2.5 text-xs font-bold text-fs-accent active:opacity-95 sm:px-3 sm:py-1"
+                                  className="touch-manipulation whitespace-nowrap rounded-md bg-fs-accent/15 px-2 py-2.5 text-xs font-bold text-fs-accent active:opacity-95 sm:px-3 sm:py-1"
                                 >
                                   Modifier
                                 </button>
@@ -934,7 +934,7 @@ export function LegacyCreditSection({
                                     }
                                     deleteMut.mutate({ creditId: entry.legacy.id });
                                   }}
-                                  className="touch-manipulation rounded-lg border border-black/8 bg-fs-card px-2 py-1 text-xs font-semibold text-red-600 active:opacity-95 disabled:opacity-60"
+                                  className="touch-manipulation rounded-md border border-black/8 bg-fs-card px-2 py-1 text-xs font-semibold text-red-600 active:opacity-95 disabled:opacity-60"
                                   aria-label={`Supprimer le crédit libre ${entry.legacy.title}`}
                                   title="Supprimer"
                                 >
@@ -992,7 +992,7 @@ export function LegacyCreditSection({
                               type="button"
                               disabled={!onOpenSaleDetail}
                               onClick={() => onOpenSaleDetail?.(entry.sale.id)}
-                              className="touch-manipulation rounded-lg border border-black/10 bg-fs-surface-container px-3 py-2.5 text-xs font-bold text-neutral-800 active:opacity-95 disabled:cursor-not-allowed disabled:opacity-45 dark:border-white/15 dark:text-neutral-100 sm:py-1"
+                              className="touch-manipulation rounded-md border border-black/10 bg-fs-surface-container px-3 py-2.5 text-xs font-bold text-neutral-800 active:opacity-95 disabled:cursor-not-allowed disabled:opacity-45 dark:border-white/15 dark:text-neutral-100 sm:py-1"
                             >
                               Voir
                             </button>
@@ -1248,7 +1248,7 @@ function LegacyCreateDialog({
           aria-label="Fermer"
         />
         <div
-          className="relative z-10 flex max-h-[min(92dvh,900px)] w-full max-w-lg flex-col overflow-hidden rounded-t-[1.35rem] border border-black/10 bg-fs-card shadow-2xl sm:max-h-[min(88vh,820px)] sm:rounded-2xl dark:border-white/10"
+          className="relative z-10 flex max-h-[min(92dvh,900px)] w-full max-w-lg flex-col overflow-hidden rounded-t-lg border border-black/10 bg-fs-card shadow-2xl sm:max-h-[min(88vh,820px)] sm:rounded-lg dark:border-white/10"
           role="dialog"
           aria-modal="true"
           aria-labelledby="legacy-credit-create-title"
@@ -1268,7 +1268,7 @@ function LegacyCreateDialog({
               <div>
                 <label className={mobileLabelClass()}>Client</label>
                 {selectedCustomer ? (
-                  <div className="flex flex-col gap-3 rounded-xl border border-black/10 bg-fs-surface-container p-3 dark:border-white/10 sm:flex-row sm:items-center sm:gap-2 sm:p-3">
+                  <div className="flex flex-col gap-3 rounded-md border border-black/10 bg-fs-surface-container p-3 dark:border-white/10 sm:flex-row sm:items-center sm:gap-2 sm:p-3">
                     <div className="min-w-0 flex-1">
                       <p className="text-base font-semibold text-fs-text sm:text-sm">{selectedCustomer.name}</p>
                       {selectedCustomer.phone ? (
@@ -1281,7 +1281,7 @@ function LegacyCreateDialog({
                       ) : null}
                       <button
                         type="button"
-                        className="touch-manipulation w-full rounded-xl bg-fs-accent/15 px-4 py-3 text-sm font-bold text-fs-accent active:opacity-90 sm:w-auto sm:px-3 sm:py-2 sm:text-xs"
+                        className="touch-manipulation w-full rounded-md bg-fs-accent/15 px-4 py-3 text-sm font-bold text-fs-accent active:opacity-90 sm:w-auto sm:px-3 sm:py-2 sm:text-xs"
                         onClick={() => {
                           setCustomerId("");
                           setCustomerSearch("");
@@ -1314,7 +1314,7 @@ function LegacyCreateDialog({
                       <div
                         id={customerListboxId}
                         role="listbox"
-                        className="absolute left-0 right-0 z-20 mt-1 max-h-[min(42dvh,320px)] overflow-auto rounded-xl border border-black/10 bg-fs-card py-1 shadow-xl sm:max-h-60 dark:border-white/10"
+                        className="absolute left-0 right-0 z-20 mt-1 max-h-[min(42dvh,320px)] overflow-auto rounded-md border border-black/10 bg-fs-card py-1 shadow-xl sm:max-h-60 dark:border-white/10"
                       >
                         {filtered.map((c) => (
                           <button
@@ -1342,7 +1342,7 @@ function LegacyCreateDialog({
                                 setFullClientOpen(true);
                                 setListboxOpen(false);
                               }}
-                              className="touch-manipulation w-full rounded-xl bg-fs-accent py-3.5 text-base font-bold text-white sm:py-2.5 sm:text-sm"
+                              className="touch-manipulation w-full rounded-md bg-fs-accent py-3.5 text-base font-bold text-white sm:py-2.5 sm:text-sm"
                             >
                               {`Créer « ${searchTrim} »`}
                             </button>
@@ -1421,7 +1421,7 @@ function LegacyCreateDialog({
               <button
                 type="button"
                 onClick={onClose}
-                className="touch-manipulation min-h-12 w-full rounded-xl border border-black/10 py-3 text-base font-semibold active:bg-black/4 sm:flex-1 sm:py-2 sm:text-sm dark:border-white/15 dark:active:bg-white/6"
+                className="touch-manipulation min-h-12 w-full rounded-md border border-black/10 py-3 text-base font-semibold active:bg-black/4 sm:flex-1 sm:py-2 sm:text-sm dark:border-white/15 dark:active:bg-white/6"
               >
                 Annuler
               </button>
@@ -1440,7 +1440,7 @@ function LegacyCreateDialog({
                     internalNote: buildLegacyInternalNote(vendorName, note),
                   })
                 }
-                className="touch-manipulation min-h-12 w-full rounded-xl bg-fs-accent py-3 text-base font-bold text-white active:opacity-95 disabled:opacity-50 sm:flex-1 sm:py-2 sm:text-sm"
+                className="touch-manipulation min-h-12 w-full rounded-md bg-fs-accent py-3 text-base font-bold text-white active:opacity-95 disabled:opacity-50 sm:flex-1 sm:py-2 sm:text-sm"
               >
                 {busy ? "…" : "Enregistrer"}
               </button>
@@ -1627,7 +1627,7 @@ function LegacyEditDialog({
           aria-label="Fermer"
         />
         <div
-          className="relative z-10 flex max-h-[min(92dvh,900px)] w-full max-w-lg flex-col overflow-hidden rounded-t-[1.35rem] border border-black/10 bg-fs-card shadow-2xl sm:max-h-[min(88vh,820px)] sm:rounded-2xl dark:border-white/10"
+          className="relative z-10 flex max-h-[min(92dvh,900px)] w-full max-w-lg flex-col overflow-hidden rounded-t-lg border border-black/10 bg-fs-card shadow-2xl sm:max-h-[min(88vh,820px)] sm:rounded-lg dark:border-white/10"
           role="dialog"
           aria-modal="true"
           aria-labelledby="legacy-credit-edit-title"
@@ -1645,7 +1645,7 @@ function LegacyEditDialog({
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-4 pb-1 sm:px-5">
             <div className="space-y-4 pb-2 sm:space-y-3">
               {paidSoFar > EPS ? (
-                <p className="rounded-xl bg-fs-surface-container px-3 py-2 text-xs text-neutral-700">
+                <p className="rounded-md bg-fs-surface-container px-3 py-2 text-xs text-neutral-700">
                   Montant principal minimal :{" "}
                   <span className="font-bold text-fs-accent">{formatCurrency(minPrincipal)}</span>{" "}
                   (déjà encaissé).
@@ -1654,7 +1654,7 @@ function LegacyEditDialog({
               <div>
                 <label className={mobileLabelClass()}>Client</label>
                 {displayCustomer ? (
-                  <div className="flex flex-col gap-3 rounded-xl border border-black/10 bg-fs-surface-container p-3 dark:border-white/10 sm:flex-row sm:items-center sm:gap-2 sm:p-3">
+                  <div className="flex flex-col gap-3 rounded-md border border-black/10 bg-fs-surface-container p-3 dark:border-white/10 sm:flex-row sm:items-center sm:gap-2 sm:p-3">
                     <div className="min-w-0 flex-1">
                       <p className="text-base font-semibold text-fs-text sm:text-sm">{displayCustomer.name}</p>
                       {displayCustomer.phone ? (
@@ -1667,7 +1667,7 @@ function LegacyEditDialog({
                       ) : null}
                       <button
                         type="button"
-                        className="touch-manipulation w-full rounded-xl bg-fs-accent/15 px-4 py-3 text-sm font-bold text-fs-accent active:opacity-90 sm:w-auto sm:px-3 sm:py-2 sm:text-xs"
+                        className="touch-manipulation w-full rounded-md bg-fs-accent/15 px-4 py-3 text-sm font-bold text-fs-accent active:opacity-90 sm:w-auto sm:px-3 sm:py-2 sm:text-xs"
                         onClick={() => {
                           setCustomerId("");
                           setCustomerSearch("");
@@ -1700,7 +1700,7 @@ function LegacyEditDialog({
                       <div
                         id={customerListboxId}
                         role="listbox"
-                        className="absolute left-0 right-0 z-20 mt-1 max-h-[min(42dvh,320px)] overflow-auto rounded-xl border border-black/10 bg-fs-card py-1 shadow-xl sm:max-h-60 dark:border-white/10"
+                        className="absolute left-0 right-0 z-20 mt-1 max-h-[min(42dvh,320px)] overflow-auto rounded-md border border-black/10 bg-fs-card py-1 shadow-xl sm:max-h-60 dark:border-white/10"
                       >
                         {filtered.map((c) => (
                           <button
@@ -1728,7 +1728,7 @@ function LegacyEditDialog({
                                 setFullClientOpen(true);
                                 setListboxOpen(false);
                               }}
-                              className="touch-manipulation w-full rounded-xl bg-fs-accent py-3.5 text-base font-bold text-white sm:py-2.5 sm:text-sm"
+                              className="touch-manipulation w-full rounded-md bg-fs-accent py-3.5 text-base font-bold text-white sm:py-2.5 sm:text-sm"
                             >
                               {`Créer « ${searchTrim} »`}
                             </button>
@@ -1806,7 +1806,7 @@ function LegacyEditDialog({
               <button
                 type="button"
                 onClick={onClose}
-                className="touch-manipulation min-h-12 w-full rounded-xl border border-black/10 py-3 text-base font-semibold active:bg-black/4 sm:flex-1 sm:py-2 sm:text-sm dark:border-white/15 dark:active:bg-white/6"
+                className="touch-manipulation min-h-12 w-full rounded-md border border-black/10 py-3 text-base font-semibold active:bg-black/4 sm:flex-1 sm:py-2 sm:text-sm dark:border-white/15 dark:active:bg-white/6"
               >
                 Annuler
               </button>
@@ -1824,7 +1824,7 @@ function LegacyEditDialog({
                     internalNote: buildLegacyInternalNote(vendorName, note),
                   })
                 }
-                className="touch-manipulation min-h-12 w-full rounded-xl bg-fs-accent py-3 text-base font-bold text-white active:opacity-95 disabled:opacity-50 sm:flex-1 sm:py-2 sm:text-sm"
+                className="touch-manipulation min-h-12 w-full rounded-md bg-fs-accent py-3 text-base font-bold text-white active:opacity-95 disabled:opacity-50 sm:flex-1 sm:py-2 sm:text-sm"
               >
                 {busy ? "…" : "Enregistrer"}
               </button>
@@ -1885,7 +1885,7 @@ function LegacyPaymentsHistoryDialog({
     <div className="fixed inset-0 z-84 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:bg-black/45 sm:p-4">
       <button type="button" className="absolute inset-0 touch-manipulation" onClick={onClose} aria-label="Fermer" />
       <div
-        className="relative z-10 flex max-h-[min(88dvh,700px)] w-full max-w-2xl flex-col overflow-hidden rounded-t-[1.35rem] border border-black/10 bg-fs-card shadow-2xl sm:max-h-[85vh] sm:rounded-2xl dark:border-white/10"
+        className="relative z-10 flex max-h-[min(88dvh,700px)] w-full max-w-2xl flex-col overflow-hidden rounded-t-lg border border-black/10 bg-fs-card shadow-2xl sm:max-h-[85vh] sm:rounded-lg dark:border-white/10"
         role="dialog"
         aria-modal="true"
         aria-labelledby="legacy-credit-history-title"
@@ -1924,7 +1924,7 @@ function LegacyPaymentsHistoryDialog({
                 return (
                   <div
                     key={p.id}
-                    className="rounded-xl border border-black/10 bg-fs-surface-container p-3 dark:border-white/10"
+                    className="rounded-md border border-black/10 bg-fs-surface-container p-3 dark:border-white/10"
                   >
                     <div className="flex flex-col gap-2 min-[560px]:flex-row min-[560px]:items-center min-[560px]:justify-between">
                       <div className="min-w-0">
@@ -1945,7 +1945,7 @@ function LegacyPaymentsHistoryDialog({
                         </span>
                         <button
                           type="button"
-                          className="touch-manipulation rounded-lg bg-fs-accent px-3 py-2 text-xs font-bold text-white active:opacity-95"
+                          className="touch-manipulation rounded-md bg-fs-accent px-3 py-2 text-xs font-bold text-white active:opacity-95"
                           onClick={() =>
                             onReprint(
                               buildCreditRepaymentReceiptData({
@@ -2012,7 +2012,7 @@ function LegacyPaymentsHistoryDialog({
           <button
             type="button"
             onClick={onClose}
-            className="touch-manipulation min-h-11 w-full rounded-xl border border-black/10 py-2 text-sm font-semibold dark:border-white/15"
+            className="touch-manipulation min-h-11 w-full rounded-md border border-black/10 py-2 text-sm font-semibold dark:border-white/15"
           >
             Fermer
           </button>
@@ -2106,7 +2106,7 @@ function LegacyPayDialog({
     <div className="fixed inset-0 z-83 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:bg-black/45 sm:p-4">
       <button type="button" className="absolute inset-0 touch-manipulation" onClick={onClose} aria-label="Fermer" />
       <div
-        className="relative z-10 flex max-h-[min(88dvh,640px)] w-full max-w-md flex-col overflow-hidden rounded-t-[1.35rem] border border-black/10 bg-fs-card shadow-2xl sm:max-h-[min(85vh,600px)] sm:rounded-2xl dark:border-white/10"
+        className="relative z-10 flex max-h-[min(88dvh,640px)] w-full max-w-md flex-col overflow-hidden rounded-t-lg border border-black/10 bg-fs-card shadow-2xl sm:max-h-[min(85vh,600px)] sm:rounded-lg dark:border-white/10"
         role="dialog"
         aria-modal="true"
         aria-labelledby="legacy-credit-pay-title"
@@ -2201,7 +2201,7 @@ function LegacyPayDialog({
             <button
               type="button"
               onClick={onClose}
-              className="touch-manipulation min-h-12 w-full rounded-xl border border-black/10 py-3 text-base font-semibold active:bg-black/4 sm:flex-1 sm:py-2 sm:text-sm dark:border-white/15 dark:active:bg-white/6"
+              className="touch-manipulation min-h-12 w-full rounded-md border border-black/10 py-3 text-base font-semibold active:bg-black/4 sm:flex-1 sm:py-2 sm:text-sm dark:border-white/15 dark:active:bg-white/6"
             >
               Annuler
             </button>
@@ -2217,7 +2217,7 @@ function LegacyPayDialog({
                   reference: finalReference,
                 })
               }
-              className="touch-manipulation min-h-12 w-full rounded-xl bg-fs-accent py-3 text-base font-bold text-white active:opacity-95 disabled:opacity-50 sm:flex-1 sm:py-2 sm:text-sm"
+              className="touch-manipulation min-h-12 w-full rounded-md bg-fs-accent py-3 text-base font-bold text-white active:opacity-95 disabled:opacity-50 sm:flex-1 sm:py-2 sm:text-sm"
             >
               {busy ? "…" : "Valider"}
             </button>

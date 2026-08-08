@@ -230,7 +230,7 @@ export function CreditRepaymentsPanel({
   return (
     <div className="mt-6">
       {/* Sélecteur de période */}
-      <FsCard padding="p-3 sm:p-3.5">
+      <FsCard padding="p-3 sm:p-3.5" className="rounded-md sm:rounded-md">
         <div className="flex flex-wrap items-center gap-1.5">
           {PRESETS.map((p) => (
             <button
@@ -238,7 +238,7 @@ export function CreditRepaymentsPanel({
               type="button"
               onClick={() => applyPreset(p.key)}
               className={cn(
-                "inline-flex h-9 items-center rounded-full px-3 text-xs font-bold",
+                "inline-flex h-9 items-center rounded-md px-3 text-xs font-bold",
                 preset === p.key
                   ? "bg-fs-accent text-white"
                   : "border border-black/10 bg-fs-surface-container text-neutral-700 dark:border-white/10 dark:text-neutral-200",
@@ -252,7 +252,7 @@ export function CreditRepaymentsPanel({
           <button
             type="button"
             onClick={() => shiftRange(-1)}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-black/10 bg-fs-surface-container dark:border-white/10"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-black/10 bg-fs-surface-container dark:border-white/10"
             aria-label="Période précédente"
             title="Période précédente"
           >
@@ -286,7 +286,7 @@ export function CreditRepaymentsPanel({
             type="button"
             onClick={() => shiftRange(1)}
             disabled={!canGoForward}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-black/10 bg-fs-surface-container disabled:opacity-40 dark:border-white/10"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-black/10 bg-fs-surface-container disabled:opacity-40 dark:border-white/10"
             aria-label="Période suivante"
             title="Période suivante"
           >
@@ -298,7 +298,7 @@ export function CreditRepaymentsPanel({
               onClick={() => void onExport()}
               disabled={exporting || nothingToExport}
               title="Exporter la période en Excel (accordés + remboursés)"
-              className="inline-flex h-10 items-center gap-1.5 rounded-lg bg-emerald-600 px-3 text-xs font-bold text-white disabled:opacity-50"
+              className="inline-flex h-10 items-center gap-1.5 rounded-md bg-emerald-600 px-3 text-xs font-bold text-white disabled:opacity-50"
             >
               <MdDownload className={cn("h-4 w-4", exporting && "animate-pulse")} aria-hidden />
               {exporting ? "Export…" : "Excel"}
@@ -309,7 +309,7 @@ export function CreditRepaymentsPanel({
                 void grantedQ.refetch();
                 void repaidQ.refetch();
               }}
-              className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-black/10 bg-fs-surface-container px-3 text-xs font-semibold dark:border-white/10"
+              className="inline-flex h-10 items-center gap-1.5 rounded-md border border-black/10 bg-fs-surface-container px-3 text-xs font-semibold dark:border-white/10"
             >
               <MdRefresh className={cn("h-4 w-4", fetching && "animate-spin")} aria-hidden />
               Actualiser
@@ -321,9 +321,9 @@ export function CreditRepaymentsPanel({
 
       {/* Deux totaux de la période */}
       <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <FsCard className="border-2 border-sky-500/30" padding="p-4">
+        <FsCard className="rounded-md sm:rounded-md border-2 border-sky-500/30" padding="p-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-sky-500/15 text-sky-600">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-sky-500/15 text-sky-600">
               <MdCreditScore className="h-6 w-6" aria-hidden />
             </div>
             <div className="min-w-0">
@@ -340,9 +340,9 @@ export function CreditRepaymentsPanel({
             </div>
           </div>
         </FsCard>
-        <FsCard className="border-2 border-emerald-500/30" padding="p-4">
+        <FsCard className="rounded-md sm:rounded-md border-2 border-emerald-500/30" padding="p-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-600">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-emerald-500/15 text-emerald-600">
               <MdPayments className="h-6 w-6" aria-hidden />
             </div>
             <div className="min-w-0">
@@ -364,7 +364,7 @@ export function CreditRepaymentsPanel({
       </div>
 
       {/* Réconciliation avec le KPI « Déjà encaissé » */}
-      <FsCard className="mt-3" padding="p-3">
+      <FsCard className="rounded-md sm:rounded-md mt-3" padding="p-3">
         <div className="flex items-start gap-2">
           <MdInfoOutline className="mt-0.5 h-4 w-4 shrink-0 text-neutral-400" aria-hidden />
           <div className="min-w-0 text-xs text-neutral-600">
@@ -407,14 +407,14 @@ export function CreditRepaymentsPanel({
       </FsCard>
 
       {/* Sous-onglet + recherche + liste */}
-      <FsCard className="mt-4 overflow-hidden p-0" padding="p-0">
+      <FsCard className="rounded-md sm:rounded-md mt-4 overflow-hidden p-0" padding="p-0">
         <div className="flex flex-wrap items-center gap-2 border-b border-black/6 p-3 dark:border-white/10">
-          <div className="flex rounded-xl border border-black/10 p-0.5 dark:border-white/10">
+          <div className="flex rounded-md border border-black/10 p-0.5 dark:border-white/10">
             <button
               type="button"
               onClick={() => setSub("granted")}
               className={cn(
-                "min-h-[38px] rounded-lg px-3 py-1.5 text-xs font-bold",
+                "min-h-[38px] rounded-md px-3 py-1.5 text-xs font-bold",
                 sub === "granted" ? "bg-sky-600 text-white" : "text-neutral-600",
               )}
             >
@@ -424,7 +424,7 @@ export function CreditRepaymentsPanel({
               type="button"
               onClick={() => setSub("repaid")}
               className={cn(
-                "min-h-[38px] rounded-lg px-3 py-1.5 text-xs font-bold",
+                "min-h-[38px] rounded-md px-3 py-1.5 text-xs font-bold",
                 sub === "repaid" ? "bg-emerald-600 text-white" : "text-neutral-600",
               )}
             >
@@ -503,7 +503,7 @@ export function CreditRepaymentsPanel({
                             e.stopPropagation();
                             onOpenSaleDetail(r.saleId);
                           }}
-                          className="whitespace-nowrap rounded-lg bg-fs-accent/15 px-2 py-1 text-xs font-bold text-fs-accent"
+                          className="whitespace-nowrap rounded-md bg-fs-accent/15 px-2 py-1 text-xs font-bold text-fs-accent"
                         >
                           Voir la vente
                         </button>
@@ -593,7 +593,7 @@ export function CreditRepaymentsPanel({
                           e.stopPropagation();
                           onOpenSaleDetail(r.saleId);
                         }}
-                        className="whitespace-nowrap rounded-lg bg-fs-accent/15 px-2 py-1 text-xs font-bold text-fs-accent"
+                        className="whitespace-nowrap rounded-md bg-fs-accent/15 px-2 py-1 text-xs font-bold text-fs-accent"
                       >
                         Voir la vente
                       </button>

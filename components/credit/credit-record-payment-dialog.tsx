@@ -79,7 +79,7 @@ export function CreditRecordPaymentDialog({
   return (
     <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/45 p-0 sm:items-center sm:p-4">
       <button type="button" className="absolute inset-0" aria-label="Fermer" onClick={onClose} />
-      <div className="relative z-10 w-full max-w-md rounded-t-2xl border border-black/10 bg-fs-card p-4 shadow-2xl sm:rounded-2xl dark:border-white/10">
+      <div className="relative z-10 w-full max-w-md rounded-t-lg border border-black/10 bg-fs-card p-4 shadow-2xl sm:rounded-lg dark:border-white/10">
         <h3 className="text-lg font-bold text-fs-text">Enregistrer un paiement</h3>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <span className="text-sm text-neutral-600">{sale.sale_number}</span>
@@ -154,7 +154,7 @@ export function CreditRecordPaymentDialog({
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 rounded-xl border border-black/10 py-2.5 text-sm font-semibold dark:border-white/15"
+            className="flex-1 rounded-md border border-black/10 py-2.5 text-sm font-semibold dark:border-white/15"
           >
             Annuler
           </button>
@@ -171,7 +171,7 @@ export function CreditRecordPaymentDialog({
               })
             }
             className={cn(
-              "flex-1 rounded-xl bg-fs-accent py-2.5 text-sm font-bold text-white",
+              "flex-1 rounded-md bg-fs-accent py-2.5 text-sm font-bold text-white",
               "disabled:opacity-50",
             )}
           >

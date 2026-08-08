@@ -259,11 +259,11 @@ export function WarehouseEntryDialog({
                   type="button"
                   onClick={() => selectProduct(p)}
                   className={cn(
-                    "flex flex-col items-center justify-center rounded-[10px] bg-white px-1.5 py-1.5 text-center transition active:scale-[0.98] min-[900px]:rounded-[14px] min-[900px]:px-2.5 min-[900px]:py-2.5",
+                    "flex flex-col items-center justify-center rounded-md bg-white px-1.5 py-1.5 text-center transition active:scale-[0.98] min-[900px]:rounded-md min-[900px]:px-2.5 min-[900px]:py-2.5",
                     sel ? "border-[3px] border-[#F97316]" : "border border-[#E5E7EB]",
                   )}
                 >
-                  <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-md bg-[#F8F9FA] min-[900px]:h-12 min-[900px]:w-12 min-[900px]:rounded-lg">
+                  <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-sm bg-[#F8F9FA] min-[900px]:h-12 min-[900px]:w-12 min-[900px]:rounded-md">
                     {thumb ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={thumb} alt="" className="h-full w-full object-cover" />
@@ -351,7 +351,7 @@ export function WarehouseEntryDialog({
           onChange={(e) => setNotes(e.target.value)}
         />
         <div
-          className="mt-2 rounded-lg border border-[#E5E7EB] bg-white p-2.5 min-[900px]:mt-3.5 min-[900px]:rounded-xl min-[900px]:p-3.5"
+          className="mt-2 rounded-md border border-[#E5E7EB] bg-white p-2.5 min-[900px]:mt-3.5 min-[900px]:rounded-md min-[900px]:p-3.5"
           style={{ backgroundColor: POS_Q.bg }}
         >
           <div className="flex items-center gap-1 min-[900px]:gap-2">
@@ -383,7 +383,7 @@ export function WarehouseEntryDialog({
           type="button"
           disabled={saving}
           onClick={onClose}
-          className="min-h-[40px] flex-1 rounded-[10px] border border-[#E5E7EB] bg-white py-2 text-[12px] font-semibold text-[#1F2937] disabled:opacity-50 min-[900px]:min-h-[48px] min-[900px]:py-3.5 min-[900px]:text-sm"
+          className="min-h-[40px] flex-1 rounded-md border border-[#E5E7EB] bg-white py-2 text-[12px] font-semibold text-[#1F2937] disabled:opacity-50 min-[900px]:min-h-[48px] min-[900px]:py-3.5 min-[900px]:text-sm"
         >
           Annuler
         </button>
@@ -391,7 +391,7 @@ export function WarehouseEntryDialog({
           type="button"
           disabled={saving || listLoading || listError != null || whActiveCount === 0}
           onClick={submit}
-          className="min-h-[40px] flex-1 rounded-[10px] bg-[#F97316] py-2 text-[13px] font-bold leading-snug text-white disabled:opacity-50 min-[900px]:min-h-[52px] min-[900px]:py-4 min-[900px]:text-base"
+          className="min-h-[40px] flex-1 rounded-md bg-[#F97316] py-2 text-[13px] font-bold leading-snug text-white disabled:opacity-50 min-[900px]:min-h-[52px] min-[900px]:py-4 min-[900px]:text-base"
         >
           {saving ? (
             <span className="inline-block h-[22px] w-[22px] animate-spin rounded-full border-2 border-white border-t-transparent" />
@@ -417,7 +417,7 @@ export function WarehouseEntryDialog({
         <button
           type="button"
           onClick={() => productsQ.refetch()}
-          className="rounded-[10px] bg-[#F97316] px-4 py-2.5 text-sm font-semibold text-white"
+          className="rounded-md bg-[#F97316] px-4 py-2.5 text-sm font-semibold text-white"
         >
           Réessayer
         </button>
@@ -548,10 +548,10 @@ export function WarehouseAdjustmentDialog({
       role="dialog"
       aria-modal="true"
     >
-      <div className="flex max-h-[90vh] w-full max-w-md flex-col rounded-2xl bg-fs-surface shadow-2xl">
+      <div className="flex max-h-[90vh] w-full max-w-md flex-col rounded-lg bg-fs-surface shadow-2xl">
         <div className="flex items-center justify-between border-b border-black/6 px-4 py-3">
           <h2 className="text-base font-bold text-fs-text">Ajuster le stock dépôt</h2>
-          <button type="button" onClick={onClose} className="rounded-xl p-2 text-neutral-600" aria-label="Fermer">
+          <button type="button" onClick={onClose} className="rounded-md p-2 text-neutral-600" aria-label="Fermer">
             <MdClose className="h-6 w-6" />
           </button>
         </div>
@@ -567,7 +567,7 @@ export function WarehouseAdjustmentDialog({
               type="button"
               onClick={() => setDirection("increase")}
               className={cn(
-                "flex items-center justify-center gap-1.5 rounded-[10px] border py-2.5 text-sm font-semibold transition-colors",
+                "flex items-center justify-center gap-1.5 rounded-md border py-2.5 text-sm font-semibold transition-colors",
                 direction === "increase"
                   ? "border-emerald-500 bg-emerald-50 text-emerald-700"
                   : "border-black/10 bg-fs-card text-neutral-600",
@@ -580,7 +580,7 @@ export function WarehouseAdjustmentDialog({
               type="button"
               onClick={() => setDirection("decrease")}
               className={cn(
-                "flex items-center justify-center gap-1.5 rounded-[10px] border py-2.5 text-sm font-semibold transition-colors",
+                "flex items-center justify-center gap-1.5 rounded-md border py-2.5 text-sm font-semibold transition-colors",
                 direction === "decrease"
                   ? "border-red-500 bg-red-50 text-red-700"
                   : "border-black/10 bg-fs-card text-neutral-600",
@@ -628,7 +628,7 @@ export function WarehouseAdjustmentDialog({
             type="button"
             disabled={saving}
             onClick={submit}
-            className="mt-4 w-full rounded-[10px] bg-fs-accent py-3.5 text-sm font-semibold text-white disabled:opacity-50"
+            className="mt-4 w-full rounded-md bg-fs-accent py-3.5 text-sm font-semibold text-white disabled:opacity-50"
           >
             {saving ? "…" : "Enregistrer"}
           </button>
@@ -691,7 +691,7 @@ export function WarehouseThresholdDialog({
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/45 p-4" role="dialog" aria-modal="true">
-      <div className="w-full max-w-md rounded-2xl bg-fs-surface p-4 shadow-2xl">
+      <div className="w-full max-w-md rounded-lg bg-fs-surface p-4 shadow-2xl">
         <h2 className="text-base font-bold text-fs-text">Seuil magasin — {row.productName}</h2>
         <p className="mt-2 text-xs text-neutral-600">
           0 = utiliser le seuil produit ({row.stockMin}). Sinon seuil dédié au dépôt.
@@ -699,14 +699,14 @@ export function WarehouseThresholdDialog({
         <label className="mt-3 block text-[11px] font-semibold uppercase text-neutral-500">Seuil magasin</label>
         <input className={fsInputClass("mt-1")} inputMode="numeric" value={v} onChange={(e) => setV(e.target.value)} />
         <div className="mt-4 flex justify-end gap-2">
-          <button type="button" onClick={onClose} className="rounded-lg px-4 py-2 text-sm font-medium text-neutral-700">
+          <button type="button" onClick={onClose} className="rounded-md px-4 py-2 text-sm font-medium text-neutral-700">
             Annuler
           </button>
           <button
             type="button"
             disabled={saving}
             onClick={submit}
-            className="rounded-lg bg-fs-accent px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+            className="rounded-md bg-fs-accent px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
           >
             Enregistrer
           </button>
@@ -778,10 +778,10 @@ export function WarehouseExitSaleDialog({
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/45 p-4" role="dialog" aria-modal="true">
-      <div className="flex max-h-[min(88dvh,640px)] w-full max-w-md flex-col rounded-2xl bg-fs-surface shadow-2xl">
+      <div className="flex max-h-[min(88dvh,640px)] w-full max-w-md flex-col rounded-lg bg-fs-surface shadow-2xl">
         <div className="flex items-center justify-between border-b border-black/6 px-4 py-3">
           <h2 className="text-base font-bold text-fs-text">Rattacher une vente au dépôt</h2>
-          <button type="button" onClick={onClose} className="rounded-xl p-2" aria-label="Fermer">
+          <button type="button" onClick={onClose} className="rounded-md p-2" aria-label="Fermer">
             <MdClose className="h-6 w-6" />
           </button>
         </div>
@@ -817,14 +817,14 @@ export function WarehouseExitSaleDialog({
           )}
         </div>
         <div className="flex justify-end gap-2 border-t border-black/6 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-          <button type="button" onClick={onClose} className="min-h-[44px] rounded-lg px-4 py-2 text-sm">
+          <button type="button" onClick={onClose} className="min-h-[44px] rounded-md px-4 py-2 text-sm">
             Annuler
           </button>
           <button
             type="button"
             disabled={saving || !saleId || sales.length === 0}
             onClick={submit}
-            className="min-h-[44px] rounded-lg bg-[#F97316] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+            className="min-h-[44px] rounded-md bg-[#F97316] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
           >
             Enregistrer
           </button>
@@ -947,11 +947,11 @@ export function WarehouseCreateTransferFromDepotDialog({
       role="dialog"
       aria-modal="true"
     >
-      <div className="flex max-h-[min(92dvh,720px)] w-full flex-col rounded-t-3xl bg-fs-surface shadow-2xl sm:max-h-[90vh] sm:max-w-lg sm:rounded-2xl">
+      <div className="flex max-h-[min(92dvh,720px)] w-full flex-col rounded-t-lg bg-fs-surface shadow-2xl sm:max-h-[90vh] sm:max-w-lg sm:rounded-lg">
         <div className="mx-auto mt-2 h-1.5 w-10 rounded-full bg-neutral-300 sm:hidden" aria-hidden />
         <div className="flex items-center justify-between border-b border-black/6 px-4 py-3">
           <h2 className="text-base font-bold text-fs-text">Transfert dépôt → boutique</h2>
-          <button type="button" onClick={onClose} className="rounded-xl p-2" aria-label="Fermer">
+          <button type="button" onClick={onClose} className="rounded-md p-2" aria-label="Fermer">
             <MdClose className="h-6 w-6" />
           </button>
         </div>
@@ -982,11 +982,11 @@ export function WarehouseCreateTransferFromDepotDialog({
                 })
                 .slice(0, 18);
               return (
-              <div key={i} className="flex flex-wrap items-end gap-2 rounded-xl border border-black/6 bg-fs-card p-2">
+              <div key={i} className="flex flex-wrap items-end gap-2 rounded-md border border-black/6 bg-fs-card p-2">
                 <div className="flex min-w-0 flex-1 items-start gap-2">
                   <ProductListThumbnail
                     imageUrl={depotLineImageUrl}
-                    className="h-10 w-10 shrink-0 rounded-lg"
+                    className="h-10 w-10 shrink-0 rounded-md"
                   />
                   <div className="min-w-0 flex-1">
                     <span className="text-[10px] font-semibold uppercase text-neutral-500">Produit</span>
@@ -996,7 +996,7 @@ export function WarehouseCreateTransferFromDepotDialog({
                       onChange={(e) => setLineSearch(i, e.target.value)}
                       placeholder="Rechercher (nom, SKU, code-barres)…"
                     />
-                    <div className="mt-1.5 max-h-44 overflow-y-auto rounded-lg border border-black/8 bg-white">
+                    <div className="mt-1.5 max-h-44 overflow-y-auto rounded-md border border-black/8 bg-white">
                       {filteredLineProducts.length === 0 ? (
                         <p className="px-2 py-2 text-xs text-neutral-500">Aucun produit trouvé.</p>
                       ) : (
@@ -1017,7 +1017,7 @@ export function WarehouseCreateTransferFromDepotDialog({
                                 isSelected ? "bg-fs-accent/10" : "hover:bg-black/3",
                               )}
                             >
-                              <ProductListThumbnail imageUrl={thumb} className="h-8 w-8 shrink-0 rounded-md" />
+                              <ProductListThumbnail imageUrl={thumb} className="h-8 w-8 shrink-0 rounded-sm" />
                               <span className="min-w-0 flex-1 truncate text-xs text-fs-text">{p.name}</span>
                               <span className="shrink-0 text-[11px] text-neutral-500">Stock {st}</span>
                             </button>
@@ -1053,7 +1053,7 @@ export function WarehouseCreateTransferFromDepotDialog({
           <button
             type="button"
             onClick={submit}
-            className="fs-touch-target mt-4 w-full rounded-[10px] bg-[#F97316] py-3.5 text-sm font-semibold text-white shadow-sm"
+            className="fs-touch-target mt-4 w-full rounded-md bg-[#F97316] py-3.5 text-sm font-semibold text-white shadow-sm"
           >
             Créer le transfert
           </button>
@@ -1062,7 +1062,7 @@ export function WarehouseCreateTransferFromDepotDialog({
 
       {stockProblems != null && stockProblems.length > 0 ? (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4" role="alertdialog">
-          <div className="max-h-[min(80dvh,400px)] w-full max-w-sm overflow-y-auto rounded-2xl bg-fs-surface p-4 shadow-xl">
+          <div className="max-h-[min(80dvh,400px)] w-full max-w-sm overflow-y-auto rounded-lg bg-fs-surface p-4 shadow-xl">
             <p className="text-sm font-bold text-fs-text">Stock insuffisant</p>
             <p className="mt-2 text-xs leading-relaxed text-neutral-700">
               Au dépôt, le stock ne permet pas ce transfert :
@@ -1077,7 +1077,7 @@ export function WarehouseCreateTransferFromDepotDialog({
             <button
               type="button"
               onClick={() => setStockProblems(null)}
-              className="mt-4 w-full rounded-xl bg-[#F97316] py-3 text-sm font-semibold text-white"
+              className="mt-4 w-full rounded-md bg-[#F97316] py-3 text-sm font-semibold text-white"
             >
               OK
             </button>

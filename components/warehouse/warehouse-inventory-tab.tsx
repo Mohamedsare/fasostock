@@ -80,7 +80,7 @@ export function WarehouseInventoryTab({ companyId, warehouseId, warehouseName, c
 
   if (!canManage) {
     return (
-      <FsCard className="mt-3" padding="p-8">
+      <FsCard className="rounded-md sm:rounded-md mt-3" padding="p-8">
         <p className="text-center text-base text-neutral-600">
           Vous n&apos;avez pas le droit de faire l&apos;inventaire du dépôt.
         </p>
@@ -191,10 +191,10 @@ function WarehouseInventoryList({
     <div className="mt-3">
       {/* Démarrer / reprendre */}
       {openSession ? (
-        <FsCard className="border-l-4 border-l-amber-500" padding="p-4">
+        <FsCard className="rounded-md sm:rounded-md border-l-4 border-l-amber-500" padding="p-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-start gap-3">
-              <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-amber-500/12 text-amber-600">
+              <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-amber-500/12 text-amber-600">
                 <MdChecklist className="h-6 w-6" aria-hidden />
               </span>
               <div className="min-w-0">
@@ -208,7 +208,7 @@ function WarehouseInventoryList({
             <button
               type="button"
               onClick={() => onOpen(openSession.id)}
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-fs-accent px-5 text-sm font-bold text-white"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-fs-accent px-5 text-sm font-bold text-white"
             >
               Reprendre le comptage
               <MdArrowForward className="h-4 w-4" aria-hidden />
@@ -216,7 +216,7 @@ function WarehouseInventoryList({
           </div>
         </FsCard>
       ) : (
-        <FsCard padding="p-4">
+        <FsCard padding="p-4" className="rounded-md sm:rounded-md">
           <div className="flex items-center gap-2">
             <MdAdd className="h-5 w-5 text-fs-accent" aria-hidden />
             <p className="text-base font-bold text-fs-text">Nouvel inventaire du dépôt</p>
@@ -230,14 +230,14 @@ function WarehouseInventoryList({
               value={note}
               onChange={(e) => setNote(e.target.value)}
               placeholder="Note (optionnel) — ex. Inventaire mensuel dépôt"
-              className="min-h-11 flex-1 rounded-lg border border-black/10 bg-white px-3 text-sm text-fs-text outline-none focus:border-fs-accent focus:ring-2 focus:ring-fs-accent/20"
+              className="min-h-11 flex-1 rounded-md border border-black/10 bg-white px-3 text-sm text-fs-text outline-none focus:border-fs-accent focus:ring-2 focus:ring-fs-accent/20"
               maxLength={120}
             />
             <button
               type="button"
               disabled={startMut.isPending || !warehouseId}
               onClick={() => startMut.mutate()}
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-fs-accent px-5 text-sm font-bold text-white disabled:opacity-50"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-fs-accent px-5 text-sm font-bold text-white disabled:opacity-50"
             >
               <MdPlayArrow className="h-5 w-5" aria-hidden />
               {startMut.isPending ? "Création…" : "Démarrer l'inventaire"}
@@ -259,11 +259,11 @@ function WarehouseInventoryList({
           <FsQueryErrorPanel error={q.error} onRetry={() => q.refetch()} />
         </div>
       ) : q.isLoading ? (
-        <FsCard className="mt-3" padding="p-6">
+        <FsCard className="rounded-md sm:rounded-md mt-3" padding="p-6">
           <p className="text-sm text-neutral-600">Chargement…</p>
         </FsCard>
       ) : (q.data ?? []).length === 0 ? (
-        <FsCard className="mt-3" padding="p-8">
+        <FsCard className="rounded-md sm:rounded-md mt-3" padding="p-8">
           <div className="flex flex-col items-center text-center">
             <MdChecklist className="h-14 w-14 text-neutral-300" aria-hidden />
             <p className="mt-3 text-base font-semibold text-neutral-700">
@@ -351,7 +351,7 @@ function SessionCard({
   const varianceValue = session.varianceValuePurchase;
 
   return (
-    <FsCard padding="p-4" className="flex flex-col">
+    <FsCard padding="p-4" className="flex flex-col rounded-md sm:rounded-md">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <span
@@ -374,7 +374,7 @@ function SessionCard({
         <button
           type="button"
           onClick={onOpen}
-          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-black/10 text-neutral-600 hover:bg-black/[0.03]"
+          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-black/10 text-neutral-600 hover:bg-black/[0.03]"
           aria-label="Ouvrir la session"
         >
           <MdArrowForward className="h-5 w-5" aria-hidden />
@@ -623,7 +623,7 @@ function WarehouseInventoryCount({
     return (
       <div className="mt-3">
         <BackLink onBack={onBack} />
-        <FsCard className="mt-3" padding="p-6">
+        <FsCard className="rounded-md sm:rounded-md mt-3" padding="p-6">
           <p className="text-sm text-neutral-600">Chargement…</p>
         </FsCard>
       </div>
@@ -637,7 +637,7 @@ function WarehouseInventoryCount({
       <BackLink onBack={onBack} />
 
       {/* En-tête session */}
-      <FsCard className="mt-2" padding="p-4">
+      <FsCard className="rounded-md sm:rounded-md mt-2" padding="p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
@@ -652,7 +652,7 @@ function WarehouseInventoryCount({
 
         {/* Session terminée : on peut la rouvrir pour finir le comptage. */}
         {!isOpen ? (
-          <div className="mt-3 flex flex-col gap-2 rounded-lg border border-fs-accent/25 bg-fs-accent/[0.06] p-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="mt-3 flex flex-col gap-2 rounded-md border border-fs-accent/25 bg-fs-accent/[0.06] p-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-neutral-700">
               {session.status === "closed"
                 ? `Inventaire validé. Il reste ${Math.max(0, stats.total - stats.counted)} produits non comptés — vous pouvez reprendre là où vous en étiez.`
@@ -662,7 +662,7 @@ function WarehouseInventoryCount({
               type="button"
               disabled={reopenMut.isPending}
               onClick={() => setConfirm("reopen")}
-              className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-lg bg-fs-accent px-5 text-sm font-bold text-white disabled:opacity-50"
+              className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-md bg-fs-accent px-5 text-sm font-bold text-white disabled:opacity-50"
             >
               <MdReplay className="h-5 w-5" aria-hidden />
               {reopenMut.isPending ? "Reprise…" : "Reprendre le comptage"}
@@ -708,7 +708,7 @@ function WarehouseInventoryCount({
       </FsCard>
 
       {/* Recherche + filtres */}
-      <FsCard className="mt-3" padding="p-3">
+      <FsCard className="rounded-md sm:rounded-md mt-3" padding="p-3">
         <div className="relative">
           <MdSearch
             className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-neutral-400"
@@ -718,7 +718,7 @@ function WarehouseInventoryCount({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Rechercher un produit…"
-            className="min-h-11 w-full rounded-lg border border-black/10 bg-white pl-10 pr-3 text-sm text-fs-text outline-none focus:border-fs-accent focus:ring-2 focus:ring-fs-accent/20"
+            className="min-h-11 w-full rounded-md border border-black/10 bg-white pl-10 pr-3 text-sm text-fs-text outline-none focus:border-fs-accent focus:ring-2 focus:ring-fs-accent/20"
           />
         </div>
         <div className="mt-2 flex flex-wrap gap-1.5">
@@ -735,7 +735,7 @@ function WarehouseInventoryCount({
               type="button"
               onClick={() => setFilter(f.id)}
               className={cn(
-                "rounded-full px-3 py-1.5 text-xs font-semibold",
+                "rounded-md px-3 py-1.5 text-xs font-semibold",
                 filter === f.id ? "bg-fs-accent text-white" : "bg-fs-surface-container text-neutral-600",
               )}
             >
@@ -747,15 +747,15 @@ function WarehouseInventoryCount({
 
       {/* Liste des produits */}
       {itemsQ.isLoading ? (
-        <FsCard className="mt-3" padding="p-6">
+        <FsCard className="rounded-md sm:rounded-md mt-3" padding="p-6">
           <p className="text-sm text-neutral-600">Chargement des produits…</p>
         </FsCard>
       ) : filtered.length === 0 ? (
-        <FsCard className="mt-3" padding="p-8">
+        <FsCard className="rounded-md sm:rounded-md mt-3" padding="p-8">
           <p className="text-center text-sm text-neutral-500">Aucun produit pour ce filtre.</p>
         </FsCard>
       ) : (
-        <FsCard className="mt-3" padding="p-0">
+        <FsCard className="rounded-md sm:rounded-md mt-3" padding="p-0">
           <ul className="divide-y divide-black/[0.06]">
             {filtered.map((it) => (
               <CountRow
@@ -783,7 +783,7 @@ function WarehouseInventoryCount({
             type="button"
             disabled={cancelMut.isPending || validateMut.isPending}
             onClick={() => setConfirm("cancel")}
-            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg border border-red-200 bg-white px-5 text-sm font-bold text-red-600 disabled:opacity-50 sm:order-1"
+            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-md border border-red-200 bg-white px-5 text-sm font-bold text-red-600 disabled:opacity-50 sm:order-1"
           >
             <MdClose className="h-5 w-5" aria-hidden />
             Annuler la session
@@ -792,7 +792,7 @@ function WarehouseInventoryCount({
             type="button"
             disabled={validateMut.isPending || cancelMut.isPending || stats.counted === 0}
             onClick={() => setConfirm("validate")}
-            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-fs-accent px-6 text-sm font-bold text-white disabled:opacity-50 sm:order-2"
+            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-md bg-fs-accent px-6 text-sm font-bold text-white disabled:opacity-50 sm:order-2"
           >
             <MdCheckCircle className="h-5 w-5" aria-hidden />
             {validateMut.isPending ? "Validation…" : "Valider l'inventaire"}
@@ -885,7 +885,7 @@ function MiniStat({
           ? "text-neutral-400"
           : "text-fs-text";
   return (
-    <div className="rounded-lg border border-black/[0.06] bg-fs-surface-container/60 px-3 py-2">
+    <div className="rounded-md border border-black/[0.06] bg-fs-surface-container/60 px-3 py-2">
       <p className="text-[11px] font-medium leading-tight text-neutral-500">{label}</p>
       <p className={cn("mt-0.5 truncate text-sm font-bold", toneClass)}>{value}</p>
     </div>
@@ -945,7 +945,7 @@ function CountRow({
             }}
             placeholder={String(item.expectedQty)}
             className={cn(
-              "h-10 w-20 rounded-lg border bg-white px-2 text-center text-sm font-bold text-fs-text outline-none focus:ring-2 focus:ring-fs-accent/20",
+              "h-10 w-20 rounded-md border bg-white px-2 text-center text-sm font-bold text-fs-text outline-none focus:ring-2 focus:ring-fs-accent/20",
               counted != null ? "border-fs-accent/40" : "border-black/10",
             )}
             aria-label={`Quantité comptée ${item.productName}`}
@@ -955,7 +955,7 @@ function CountRow({
             onClick={onAcceptExpected}
             title="Confirmer la quantité théorique"
             aria-label="Confirmer la quantité théorique"
-            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-black/10 text-emerald-600 hover:bg-emerald-50"
+            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-black/10 text-emerald-600 hover:bg-emerald-50"
           >
             <MdCheck className="h-5 w-5" aria-hidden />
           </button>

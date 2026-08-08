@@ -132,7 +132,7 @@ export function CustomerCreditPanel({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-xl p-2 hover:bg-black/5 dark:hover:bg-white/10"
+            className="rounded-md p-2 hover:bg-black/5 dark:hover:bg-white/10"
             aria-label="Fermer"
           >
             <MdClose className="h-5 w-5" aria-hidden />
@@ -144,7 +144,7 @@ export function CustomerCreditPanel({
             <p className="text-sm text-neutral-600">Client introuvable pour la période filtrée.</p>
           ) : (
             <div className="space-y-4">
-              <div className="rounded-2xl border border-black/10 bg-fs-surface-low/60 p-3 dark:border-white/10">
+              <div className="rounded-lg border border-black/10 bg-fs-surface-low/60 p-3 dark:border-white/10">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <p className="truncate text-base font-bold text-fs-text">
@@ -175,31 +175,31 @@ export function CustomerCreditPanel({
               </div>
 
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                <div className="rounded-xl border-2 border-fs-accent/40 bg-fs-accent/5 px-3 py-2">
+                <div className="rounded-md border-2 border-fs-accent/40 bg-fs-accent/5 px-3 py-2">
                   <p className="text-[11px] text-neutral-600">Total dû (reste)</p>
                   <p className="text-base font-bold text-fs-accent">{formatCurrency(data.totalDue)}</p>
                 </div>
-                <div className="rounded-xl border border-black/10 px-3 py-2 dark:border-white/10">
+                <div className="rounded-md border border-black/10 px-3 py-2 dark:border-white/10">
                   <p className="text-[11px] text-neutral-600">Déjà encaissé</p>
                   <p className="text-base font-bold text-emerald-700 dark:text-emerald-400">
                     {formatCurrency(data.paidAll)}
                   </p>
                 </div>
-                <div className="rounded-xl border border-black/10 px-3 py-2 dark:border-white/10">
+                <div className="rounded-md border border-black/10 px-3 py-2 dark:border-white/10">
                   <p className="text-[11px] text-neutral-600">Crédit total</p>
                   <p className="text-base font-bold text-fs-text">{formatCurrency(data.saleTotal)}</p>
                 </div>
-                <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 dark:border-red-900/40 dark:bg-red-950/30">
+                <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 dark:border-red-900/40 dark:bg-red-950/30">
                   <p className="text-[11px] text-red-700 dark:text-red-300">En retard</p>
                   <p className="text-base font-bold text-red-700 dark:text-red-300">{formatCurrency(data.overdue)}</p>
                 </div>
-                <div className="rounded-xl border border-black/10 px-3 py-2 dark:border-white/10">
+                <div className="rounded-md border border-black/10 px-3 py-2 dark:border-white/10">
                   <p className="text-[11px] text-neutral-600">Taux recouvrement</p>
                   <p className="text-base font-bold text-fs-text">
                     {Math.max(0, Math.min(100, Math.round(data.recoveryRate)))}%
                   </p>
                 </div>
-                <div className="rounded-xl border border-black/10 px-3 py-2 dark:border-white/10">
+                <div className="rounded-md border border-black/10 px-3 py-2 dark:border-white/10">
                   <p className="text-[11px] text-neutral-600">Proch. échéance</p>
                   <p className="text-sm font-semibold text-fs-text">
                     {data.nextDue ? formatOperationDateTime(data.nextDue.toISOString()) : "—"}
@@ -219,7 +219,7 @@ export function CustomerCreditPanel({
                     return (
                       <li
                         key={s.id}
-                        className="rounded-xl border border-black/8 p-3 dark:border-white/10"
+                        className="rounded-md border border-black/8 p-3 dark:border-white/10"
                       >
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0">
@@ -276,7 +276,7 @@ export function CustomerCreditPanel({
                           <button
                             type="button"
                             onClick={() => onOpenSaleDetail(s.id)}
-                            className="whitespace-nowrap rounded-lg bg-fs-accent/15 px-2.5 py-1 text-xs font-bold text-fs-accent"
+                            className="whitespace-nowrap rounded-md bg-fs-accent/15 px-2.5 py-1 text-xs font-bold text-fs-accent"
                           >
                             Voir
                           </button>
@@ -284,7 +284,7 @@ export function CustomerCreditPanel({
                             <button
                               type="button"
                               onClick={() => onPay(s)}
-                              className="whitespace-nowrap rounded-lg bg-fs-accent px-2.5 py-1 text-xs font-bold text-white"
+                              className="whitespace-nowrap rounded-md bg-fs-accent px-2.5 py-1 text-xs font-bold text-white"
                             >
                               Encaisser
                             </button>

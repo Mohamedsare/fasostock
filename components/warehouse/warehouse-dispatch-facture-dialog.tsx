@@ -506,7 +506,7 @@ export function WarehouseDispatchDialog({
               <div className="px-3 pb-0 pt-2">
                 <div
                   className={cn(
-                    "overflow-hidden rounded-[14px] border border-[#E5E7EB]/90 bg-white shadow-sm",
+                    "overflow-hidden rounded-md border border-[#E5E7EB]/90 bg-white shadow-sm",
                   )}
                 >
                   <div className="flex flex-col gap-1 px-3 pb-0 pt-1 min-[900px]:px-3 min-[900px]:pt-1.5">
@@ -516,7 +516,7 @@ export function WarehouseDispatchDialog({
                         title="Fermer"
                         disabled={saving}
                         onClick={onClose}
-                        className="inline-flex h-[42px] w-11 shrink-0 items-center justify-center rounded-xl bg-[#F97316] text-white shadow-sm transition hover:opacity-95 disabled:opacity-40 min-[900px]:w-12"
+                        className="inline-flex h-[42px] w-11 shrink-0 items-center justify-center rounded-md bg-[#F97316] text-white shadow-sm transition hover:opacity-95 disabled:opacity-40 min-[900px]:w-12"
                         aria-label="Fermer"
                       >
                         <MdArrowBack className="h-6 w-6 text-white" aria-hidden />
@@ -528,7 +528,7 @@ export function WarehouseDispatchDialog({
                         />
                         <input
                           className={fsInputClass(
-                            "h-[42px] w-full rounded-xl border-[#E5E7EB] bg-[#F3F4F6] py-0.5 pl-11 pr-3 text-sm leading-snug text-[#1F2937] placeholder:text-[#1F2937]/50 min-[900px]:pl-12 min-[900px]:text-[15px]",
+                            "h-[42px] w-full rounded-md border-[#E5E7EB] bg-[#F3F4F6] py-0.5 pl-11 pr-3 text-sm leading-snug text-[#1F2937] placeholder:text-[#1F2937]/50 min-[900px]:pl-12 min-[900px]:text-[15px]",
                           )}
                           value={search}
                           onChange={(e) => setSearch(e.target.value)}
@@ -541,7 +541,7 @@ export function WarehouseDispatchDialog({
                         <select
                           key={customerSelectKey || "none"}
                           className={fsInputClass(
-                            "h-[42px] min-w-[140px] max-w-[180px] rounded-xl border-[#E5E7EB] bg-[#F3F4F6] px-2.5 text-sm text-[#1F2937] min-[900px]:min-w-[180px] min-[900px]:text-[14px]",
+                            "h-[42px] min-w-[140px] max-w-[180px] rounded-md border-[#E5E7EB] bg-[#F3F4F6] px-2.5 text-sm text-[#1F2937] min-[900px]:min-w-[180px] min-[900px]:text-[14px]",
                           )}
                           value={
                             customerId && customersForUi.some((c) => c.id === customerId) ? customerId : ""
@@ -565,7 +565,7 @@ export function WarehouseDispatchDialog({
                             setCreatePhone("");
                             setCreateModalOpen(true);
                           }}
-                          className="inline-flex h-[42px] w-11 shrink-0 items-center justify-center rounded-xl bg-[#F97316] text-white shadow-sm transition hover:opacity-95 disabled:opacity-50 min-[900px]:w-12"
+                          className="inline-flex h-[42px] w-11 shrink-0 items-center justify-center rounded-md bg-[#F97316] text-white shadow-sm transition hover:opacity-95 disabled:opacity-50 min-[900px]:w-12"
                         >
                           <MdPersonAdd className="h-[22px] w-[22px]" aria-hidden />
                         </button>
@@ -599,13 +599,13 @@ export function WarehouseDispatchDialog({
                                 if (!noStock) addToCartProduct(p);
                               }}
                               className={cn(
-                                "flex min-h-0 w-full flex-col items-center rounded-[14px] border bg-white px-1.5 py-1.5 text-center transition active:scale-[0.98]",
+                                "flex min-h-0 w-full flex-col items-center rounded-md border bg-white px-1.5 py-1.5 text-center transition active:scale-[0.98]",
                                 noStock
                                   ? "border-[#E5E7EB] opacity-45"
                                   : "border-[1.5px] border-[#F97316]/35 shadow-[0_2px_8px_rgba(249,115,22,0.08)]",
                               )}
                             >
-                              <div className="mx-auto flex h-[52px] w-full max-w-19 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[#F8F9FA]">
+                              <div className="mx-auto flex h-[52px] w-full max-w-19 shrink-0 items-center justify-center overflow-hidden rounded-md bg-[#F8F9FA]">
                                 {thumb ? (
                                   // eslint-disable-next-line @next/next/no-img-element
                                   <img
@@ -690,7 +690,7 @@ export function WarehouseDispatchDialog({
                               >
                                 <td className="max-w-[180px] py-2 pl-1 pr-2 align-middle">
                                   <div className="flex items-center gap-2">
-                                    <div className="flex h-9 w-9 shrink-0 overflow-hidden rounded-lg bg-[#F8F9FA]">
+                                    <div className="flex h-9 w-9 shrink-0 overflow-hidden rounded-md bg-[#F8F9FA]">
                                       {c.imageUrl ? (
                                         // eslint-disable-next-line @next/next/no-img-element
                                         <img src={productThumbUrl(c.imageUrl)!} alt="" className="h-full w-full object-cover" />
@@ -706,7 +706,7 @@ export function WarehouseDispatchDialog({
                                 </td>
                                 <td className="py-1 align-middle">
                                   <select
-                                    className="w-full max-w-[84px] rounded-lg border border-[#E5E7EB] bg-[#F3F4F6] px-1 py-1.5 text-[12px] text-[#1F2937]"
+                                    className="w-full max-w-[84px] rounded-md border border-[#E5E7EB] bg-[#F3F4F6] px-1 py-1.5 text-[12px] text-[#1F2937]"
                                     value={unitVal}
                                     onChange={(e) => setUnitRow(c.productId, e.target.value)}
                                   >
@@ -723,7 +723,7 @@ export function WarehouseDispatchDialog({
                                       <button
                                         type="button"
                                         onClick={() => updateQty(c.productId, -1)}
-                                        className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#F8F9FA] text-[#1F2937]"
+                                        className="flex h-9 w-9 items-center justify-center rounded-md bg-[#F8F9FA] text-[#1F2937]"
                                         aria-label="Moins"
                                       >
                                         <span className="text-base leading-none">−</span>
@@ -743,7 +743,7 @@ export function WarehouseDispatchDialog({
                                       <button
                                         type="button"
                                         onClick={() => updateQty(c.productId, 1)}
-                                        className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#F97316] text-white"
+                                        className="flex h-9 w-9 items-center justify-center rounded-md bg-[#F97316] text-white"
                                         aria-label="Plus"
                                       >
                                         <MdAdd className="h-4 w-4" />
@@ -753,7 +753,7 @@ export function WarehouseDispatchDialog({
                                 </td>
                                 <td className="py-2 align-middle">
                                   <input
-                                    className="w-[88px] rounded-lg border border-[#E5E7EB] px-1 py-1 text-right text-[13px] tabular-nums"
+                                    className="w-[88px] rounded-md border border-[#E5E7EB] px-1 py-1 text-right text-[13px] tabular-nums"
                                     inputMode="numeric"
                                     value={String(Math.round(c.unitPrice))}
                                     onChange={(e) => {
@@ -815,7 +815,7 @@ export function WarehouseDispatchDialog({
                             if (opt.id !== "mobile_money") setMobileProvider(null);
                           }}
                           className={cn(
-                            "min-h-[30px] rounded-full border px-2 text-[11px] font-semibold transition",
+                            "min-h-[30px] rounded-md border px-2 text-[11px] font-semibold transition",
                             selected
                               ? "border-[#F97316] bg-[#F97316]/10 text-[#C2410C]"
                               : "border-[#E5E7EB] bg-[#F3F4F6] text-[#1F2937]",
@@ -871,7 +871,7 @@ export function WarehouseDispatchDialog({
                               disabled={saving}
                               onClick={() => setMobileProvider(op.id as DispatchMobileProvider)}
                               className={cn(
-                                "min-h-[30px] rounded-full border px-2 text-[11px] font-semibold transition",
+                                "min-h-[30px] rounded-md border px-2 text-[11px] font-semibold transition",
                                 selected
                                   ? "border-[#F97316] bg-[#F97316]/10 text-[#C2410C]"
                                   : "border-[#E5E7EB] bg-[#F3F4F6] text-[#1F2937]",
@@ -899,7 +899,7 @@ export function WarehouseDispatchDialog({
                     type="button"
                     disabled={!canSubmit || saving}
                     onClick={() => void submit()}
-                    className="mt-2.5 min-h-[52px] w-full rounded-[10px] bg-[#F97316] py-3 text-base font-bold text-white disabled:opacity-50"
+                    className="mt-2.5 min-h-[52px] w-full rounded-md bg-[#F97316] py-3 text-base font-bold text-white disabled:opacity-50"
                   >
                     {saving ? (
                       <span className="inline-block h-[22px] w-[22px] animate-spin rounded-full border-2 border-white border-t-transparent" />
@@ -928,7 +928,7 @@ export function WarehouseDispatchDialog({
           role="presentation"
         >
           <div
-            className="max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-2xl bg-white p-5 shadow-2xl"
+            className="max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-lg bg-white p-5 shadow-2xl"
             role="dialog"
             aria-modal="true"
             aria-labelledby="wh-new-cust-title"
@@ -967,7 +967,7 @@ export function WarehouseDispatchDialog({
               <button
                 type="button"
                 onClick={() => !creatingCustomer && setCreateModalOpen(false)}
-                className="rounded-lg px-4 py-2 text-sm font-semibold text-[#1F2937] hover:bg-neutral-100"
+                className="rounded-md px-4 py-2 text-sm font-semibold text-[#1F2937] hover:bg-neutral-100"
               >
                 Annuler
               </button>
@@ -975,7 +975,7 @@ export function WarehouseDispatchDialog({
                 type="button"
                 disabled={creatingCustomer}
                 onClick={() => void submitCreateCustomer()}
-                className="rounded-lg bg-[#F97316] px-4 py-2 text-sm font-bold text-white disabled:opacity-50"
+                className="rounded-md bg-[#F97316] px-4 py-2 text-sm font-bold text-white disabled:opacity-50"
               >
                 {creatingCustomer ? "…" : "Enregistrer"}
               </button>
@@ -1071,7 +1071,7 @@ function WhDispatchQtyInput({
       inputMode="numeric"
       autoComplete="off"
       aria-label="Quantité"
-      className="w-16 rounded-lg border border-[#E5E7EB] px-1 py-1 text-center text-[13px] tabular-nums"
+      className="w-16 rounded-md border border-[#E5E7EB] px-1 py-1 text-center text-[13px] tabular-nums"
       value={display}
       onChange={(e) => {
         const v = e.target.value;

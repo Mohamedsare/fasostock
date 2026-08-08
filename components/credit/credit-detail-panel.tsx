@@ -122,7 +122,7 @@ export function CreditDetailPanel({
         <div className="flex h-dvh w-full max-w-lg flex-col border-l border-black/10 bg-fs-card shadow-2xl dark:border-white/10">
           <div className="flex items-center justify-between border-b border-black/10 px-4 py-3 dark:border-white/10">
             <h3 className="text-base font-bold text-fs-text">Détail crédit</h3>
-            <button type="button" onClick={onClose} className="rounded-xl p-2 hover:bg-black/5 dark:hover:bg-white/10">
+            <button type="button" onClick={onClose} className="rounded-md p-2 hover:bg-black/5 dark:hover:bg-white/10">
               <MdClose className="h-5 w-5" aria-hidden />
             </button>
           </div>
@@ -135,7 +135,7 @@ export function CreditDetailPanel({
               <p className="text-sm text-neutral-600">Vente introuvable.</p>
             ) : (
               <div className="space-y-4 text-sm">
-                <div className="rounded-2xl border border-black/10 bg-fs-surface-low/60 p-3 dark:border-white/10">
+                <div className="rounded-lg border border-black/10 bg-fs-surface-low/60 p-3 dark:border-white/10">
                   <p className="font-bold text-fs-text">{sale.sale_number}</p>
                   <p className="text-neutral-600">{sale.customer?.name ?? "—"}</p>
                   {sale.customer?.phone ? (
@@ -151,7 +151,7 @@ export function CreditDetailPanel({
                     {sale.store?.name ?? "—"} · {sale.created_by_label ?? "—"}
                   </p>
                 </div>
-                <div className="rounded-2xl border border-black/10 p-3 dark:border-white/10">
+                <div className="rounded-lg border border-black/10 p-3 dark:border-white/10">
                   <p className="text-xs font-semibold text-neutral-600">Montants</p>
                   <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
                     <span>Total TTC</span>
@@ -183,7 +183,7 @@ export function CreditDetailPanel({
                     ) : null}
                   </p>
                 </div>
-                <div className="rounded-2xl border border-black/10 p-3 dark:border-white/10">
+                <div className="rounded-lg border border-black/10 p-3 dark:border-white/10">
                   <p className="text-xs font-semibold text-neutral-600">Échéance & notes internes</p>
                   <label className="mt-2 block text-xs text-neutral-500">Date d&apos;échéance</label>
                   <input
@@ -202,7 +202,7 @@ export function CreditDetailPanel({
                     type="button"
                     disabled={metaMut.isPending || !canPay}
                     onClick={() => metaMut.mutate()}
-                    className="mt-2 w-full rounded-xl bg-neutral-800 py-2 text-xs font-bold text-white disabled:opacity-50 dark:bg-neutral-200 dark:text-neutral-900"
+                    className="mt-2 w-full rounded-md bg-neutral-800 py-2 text-xs font-bold text-white disabled:opacity-50 dark:bg-neutral-200 dark:text-neutral-900"
                   >
                     Enregistrer échéance / notes
                   </button>
@@ -226,7 +226,7 @@ export function CreditDetailPanel({
                         <li
                           key={p.id}
                           className={cn(
-                            "flex items-center gap-3 rounded-xl border px-3 py-2 text-xs",
+                            "flex items-center gap-3 rounded-md border px-3 py-2 text-xs",
                             isBooking
                               ? "border-dashed border-black/10 bg-black/[0.015] dark:border-white/10 dark:bg-white/[0.03]"
                               : today
@@ -322,7 +322,7 @@ export function CreditDetailPanel({
                   <button
                     type="button"
                     onClick={() => setPayOpen(true)}
-                    className="w-full rounded-xl bg-fs-accent py-3 text-sm font-bold text-white"
+                    className="w-full rounded-md bg-fs-accent py-3 text-sm font-bold text-white"
                   >
                     Enregistrer un paiement
                   </button>

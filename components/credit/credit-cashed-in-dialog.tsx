@@ -98,7 +98,7 @@ export function CreditCashedInDialog({
       role="dialog"
       aria-label="Détail des encaissements"
     >
-      <div className="flex max-h-[92vh] w-full flex-col rounded-t-2xl bg-fs-surface shadow-2xl sm:max-w-3xl sm:rounded-2xl">
+      <div className="flex max-h-[92vh] w-full flex-col rounded-t-lg bg-fs-surface shadow-2xl sm:max-w-3xl sm:rounded-lg">
         <div className="flex items-start justify-between gap-3 border-b border-black/6 px-4 py-3">
           <div className="min-w-0">
             <p className="text-sm font-bold text-fs-text">Détail des encaissements</p>
@@ -112,17 +112,17 @@ export function CreditCashedInDialog({
         {/* Décomposition : total = acomptes + remboursements */}
         <div className="border-b border-black/6 px-4 py-3">
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-            <div className="rounded-xl border-2 border-black/10 px-3 py-2 dark:border-white/10">
+            <div className="rounded-md border-2 border-black/10 px-3 py-2 dark:border-white/10">
               <p className="text-[11px] text-neutral-500">Déjà encaissé</p>
               <p className="text-lg font-bold text-fs-text">{formatCurrency(grandTotal)}</p>
             </div>
-            <div className="rounded-xl border border-amber-500/40 bg-amber-500/5 px-3 py-2">
+            <div className="rounded-md border border-amber-500/40 bg-amber-500/5 px-3 py-2">
               <p className="text-[11px] text-neutral-600">dont acomptes à la vente</p>
               <p className="text-lg font-bold text-amber-700 dark:text-amber-300">
                 {formatCurrency(data.downTotal)}
               </p>
             </div>
-            <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/5 px-3 py-2">
+            <div className="rounded-md border border-emerald-500/40 bg-emerald-500/5 px-3 py-2">
               <p className="text-[11px] text-neutral-600">dont remboursements</p>
               <p className="text-lg font-bold text-emerald-700 dark:text-emerald-400">
                 {formatCurrency(data.repaidTotal)}
@@ -140,12 +140,12 @@ export function CreditCashedInDialog({
 
         {/* Onglets + recherche */}
         <div className="flex flex-wrap items-center gap-2 border-b border-black/6 px-4 py-2.5">
-          <div className="flex rounded-xl border border-black/10 p-0.5 dark:border-white/10">
+          <div className="flex rounded-md border border-black/10 p-0.5 dark:border-white/10">
             <button
               type="button"
               onClick={() => setTab("down")}
               className={cn(
-                "min-h-[38px] rounded-lg px-3 py-1.5 text-xs font-bold",
+                "min-h-[38px] rounded-md px-3 py-1.5 text-xs font-bold",
                 tab === "down" ? "bg-amber-500 text-white" : "text-neutral-600",
               )}
             >
@@ -155,7 +155,7 @@ export function CreditCashedInDialog({
               type="button"
               onClick={() => setTab("repaid")}
               className={cn(
-                "min-h-[38px] rounded-lg px-3 py-1.5 text-xs font-bold",
+                "min-h-[38px] rounded-md px-3 py-1.5 text-xs font-bold",
                 tab === "repaid" ? "bg-emerald-600 text-white" : "text-neutral-600",
               )}
             >
@@ -281,7 +281,7 @@ export function CreditCashedInDialog({
           <button
             type="button"
             onClick={onClose}
-            className="inline-flex h-10 items-center rounded-lg bg-fs-accent px-4 text-sm font-bold text-white"
+            className="inline-flex h-10 items-center rounded-md bg-fs-accent px-4 text-sm font-bold text-white"
           >
             Fermer
           </button>

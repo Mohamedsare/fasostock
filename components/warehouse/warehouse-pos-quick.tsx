@@ -52,7 +52,7 @@ export function WarehousePosQuickHeader({
         type="button"
         onClick={onClose}
         disabled={closeDisabled}
-        className="min-h-[40px] min-w-[40px] shrink-0 rounded-lg p-1 text-white min-[900px]:min-h-[44px] min-[900px]:min-w-[44px] min-[900px]:rounded-xl min-[900px]:p-2 disabled:opacity-40"
+        className="min-h-[40px] min-w-[40px] shrink-0 rounded-md p-1 text-white min-[900px]:min-h-[44px] min-[900px]:min-w-[44px] min-[900px]:rounded-md min-[900px]:p-2 disabled:opacity-40"
         aria-label="Fermer"
       >
         <MdClose className="mx-auto h-[18px] w-[18px] min-[900px]:h-6 min-[900px]:w-6" />
@@ -83,8 +83,8 @@ export function WarehousePosQuickSearchInput({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         className={cn(
-          "h-full w-full rounded-[10px] border border-[#E5E7EB] bg-white pl-10 pr-2 text-[13px] text-[#1F2937] placeholder:text-[#1F2937]/50",
-          "min-[900px]:rounded-[12px] min-[900px]:pl-12 min-[900px]:pr-3 min-[900px]:text-[15px]",
+          "h-full w-full rounded-md border border-[#E5E7EB] bg-white pl-10 pr-2 text-[13px] text-[#1F2937] placeholder:text-[#1F2937]/50",
+          "min-[900px]:rounded-md min-[900px]:pl-12 min-[900px]:pr-3 min-[900px]:text-[15px]",
           "outline-none focus:border-2 focus:border-[#F97316]",
         )}
         placeholder={hintText}
@@ -125,7 +125,7 @@ function WhCategoryChip({ label, selected, onClick }: { label: string; selected:
       type="button"
       onClick={onClick}
       className={cn(
-        "shrink-0 rounded-lg border px-2.5 py-1 text-[12px] font-semibold transition-colors min-[900px]:rounded-xl min-[900px]:px-3.5 min-[900px]:py-1.5 min-[900px]:text-sm",
+        "shrink-0 rounded-md border px-2.5 py-1 text-[12px] font-semibold transition-colors min-[900px]:rounded-md min-[900px]:px-3.5 min-[900px]:py-1.5 min-[900px]:text-sm",
         selected ? "border-[#F97316] bg-[#F97316] text-white" : "border-[#E5E7EB] bg-[#F8F9FA] text-[#1F2937]",
       )}
     >
@@ -136,7 +136,7 @@ function WhCategoryChip({ label, selected, onClick }: { label: string; selected:
 
 /** Champs sur fond gris — fond blanc, rayon 12 (Flutter `warehousePosFormFieldDecoration`). Mobile-first plus compact. */
 export const whPosFormFieldClass =
-  "w-full rounded-[10px] border border-[#E5E7EB] bg-white px-2 py-1.5 text-[13px] text-[#1F2937] outline-none focus:border-2 focus:border-[#F97316] min-[900px]:rounded-[12px] min-[900px]:px-3 min-[900px]:py-2.5 min-[900px]:text-[15px]";
+  "w-full rounded-md border border-[#E5E7EB] bg-white px-2 py-1.5 text-[13px] text-[#1F2937] outline-none focus:border-2 focus:border-[#F97316] min-[900px]:rounded-md min-[900px]:px-3 min-[900px]:py-2.5 min-[900px]:text-[15px]";
 
 export const whPosLabelClass =
   "block text-[11px] font-medium leading-snug text-[#1F2937] min-[900px]:text-sm";
@@ -157,12 +157,12 @@ export function DispatchStepCard({
 }) {
   return (
     <div
-      className="rounded-xl border p-2.5 min-[900px]:rounded-2xl min-[900px]:p-3.5"
+      className="rounded-md border p-2.5 min-[900px]:rounded-lg min-[900px]:p-3.5"
       style={{ borderColor: POS_Q.border, backgroundColor: POS_Q.bg2 }}
     >
       <div className="flex gap-2 min-[900px]:gap-3">
         <div
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[#F97316] min-[900px]:h-10 min-[900px]:w-10 min-[900px]:rounded-xl"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-[#F97316] min-[900px]:h-10 min-[900px]:w-10 min-[900px]:rounded-md"
           style={{ backgroundColor: "rgba(249, 115, 22, 0.14)" }}
         >
           {icon}
@@ -187,7 +187,7 @@ export function DispatchStepCard({
 export function StepNumberChip({ label }: { label: string }) {
   return (
     <span
-      className="inline-flex rounded-md px-1 py-0.5 text-[11px] font-extrabold text-[#F97316] min-[900px]:rounded-lg min-[900px]:px-2 min-[900px]:text-[13px]"
+      className="inline-flex rounded-sm px-1 py-0.5 text-[11px] font-extrabold text-[#F97316] min-[900px]:rounded-md min-[900px]:px-2 min-[900px]:text-[13px]"
       style={{ backgroundColor: "rgba(249, 115, 22, 0.14)" }}
     >
       {label}

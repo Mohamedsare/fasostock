@@ -213,7 +213,7 @@ function KpiCard({
         <p className="line-clamp-2 text-xs text-neutral-600 min-[900px]:text-sm">{label}</p>
         <div
           className={cn(
-            "flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px]",
+            "flex h-9 w-9 shrink-0 items-center justify-center rounded-md",
             colorClass,
           )}
         >
@@ -238,7 +238,7 @@ function KpiCard({
   );
 
   const className = cn(
-    "flex min-h-[120px] min-w-0 flex-col justify-between overflow-hidden",
+    "flex min-h-[120px] min-w-0 flex-col justify-between overflow-hidden rounded-md sm:rounded-md",
     accentBorder && "border-2 border-fs-accent/40",
     onClick && "cursor-pointer text-left transition hover:border-fs-accent/40 hover:shadow-md",
   );
@@ -870,7 +870,7 @@ export function CreditScreen() {
     return (
       <FsPage>
         <FsScreenHeader title={terms.creditTitle} subtitle={terms.creditSubtitle} />
-        <FsCard padding="p-8">
+        <FsCard padding="p-8" className="rounded-md sm:rounded-md">
           <div className="flex flex-col items-center justify-center gap-4 text-center">
             <MdLock className="h-12 w-12 text-neutral-500" aria-hidden />
             <p className="text-sm font-medium text-neutral-600">
@@ -891,7 +891,7 @@ export function CreditScreen() {
       />
 
       {migrationHint ? (
-        <FsCard className="mb-6 border-red-200 bg-red-50/80 dark:border-red-900/50 dark:bg-red-950/40" padding="p-4">
+        <FsCard className="rounded-md sm:rounded-md mb-6 border-red-200 bg-red-50/80 dark:border-red-900/50 dark:bg-red-950/40" padding="p-4">
           <p className="text-sm font-semibold text-red-800 dark:text-red-200">
             Base de données à mettre à jour
           </p>
@@ -903,7 +903,7 @@ export function CreditScreen() {
         </FsCard>
       ) : null}
 
-      <FsCard className="mb-6" padding="p-3 sm:p-3.5">
+      <FsCard className="rounded-md sm:rounded-md mb-6" padding="p-3 sm:p-3.5">
         <div className="flex w-full min-w-0 flex-col gap-2.5 min-[900px]:flex-row min-[900px]:flex-wrap min-[900px]:items-center">
           <div className="flex min-w-0 max-w-full shrink-0 items-center gap-1.5">
             <label
@@ -987,7 +987,7 @@ export function CreditScreen() {
                   key={p.label}
                   type="button"
                   onClick={() => applyQuickRange(p.days)}
-                  className="rounded-lg border border-black/10 bg-fs-surface-container px-2 py-1 text-[11px] font-bold text-neutral-700 dark:border-white/10 dark:text-neutral-200"
+                  className="rounded-md border border-black/10 bg-fs-surface-container px-2 py-1 text-[11px] font-bold text-neutral-700 dark:border-white/10 dark:text-neutral-200"
                 >
                   {p.label}
                 </button>
@@ -999,7 +999,7 @@ export function CreditScreen() {
             <button
               type="button"
               onClick={() => void creditQ.refetch()}
-              className="inline-flex h-9 items-center gap-1 rounded-lg border border-black/10 bg-fs-surface-container px-2.5 text-xs font-semibold dark:border-white/10"
+              className="inline-flex h-9 items-center gap-1 rounded-md border border-black/10 bg-fs-surface-container px-2.5 text-xs font-semibold dark:border-white/10"
             >
               <MdRefresh className={cn("h-4 w-4 shrink-0", creditQ.isFetching && "animate-spin")} aria-hidden />
               Actualiser
@@ -1007,7 +1007,7 @@ export function CreditScreen() {
             <button
               type="button"
               onClick={resetCreditFilters}
-              className="inline-flex h-9 items-center rounded-lg border border-black/10 bg-fs-surface-container px-2.5 text-xs font-semibold dark:border-white/10"
+              className="inline-flex h-9 items-center rounded-md border border-black/10 bg-fs-surface-container px-2.5 text-xs font-semibold dark:border-white/10"
             >
               Réinitialiser
             </button>
@@ -1015,7 +1015,7 @@ export function CreditScreen() {
               <button
                 type="button"
                 onClick={() => exportSalesExcel()}
-                className="inline-flex h-9 items-center gap-1 rounded-lg border border-black/10 bg-fs-surface-container px-2.5 text-xs font-semibold dark:border-white/10"
+                className="inline-flex h-9 items-center gap-1 rounded-md border border-black/10 bg-fs-surface-container px-2.5 text-xs font-semibold dark:border-white/10"
               >
                 <MdDownload className="h-4 w-4 shrink-0" aria-hidden />
                 Excel
@@ -1104,22 +1104,22 @@ export function CreditScreen() {
         />
       </div>
 
-      <FsCard className="mt-4" padding="p-4">
+      <FsCard className="rounded-md sm:rounded-md mt-4" padding="p-4">
         <p className="text-sm font-bold text-fs-text">Priorité recouvrement</p>
         <div className="mt-2 grid grid-cols-1 gap-2 text-xs min-[900px]:grid-cols-3">
-          <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-red-700">
+          <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-red-700">
             En retard: <span className="font-bold">{formatCurrency(kpiBase.overdue)}</span>
           </div>
-          <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-amber-700">
+          <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-amber-700">
             À relancer aujourd&apos;hui: <span className="font-bold">{formatCurrency(kpiBase.dueToday)}</span>
           </div>
-          <div className="rounded-lg border border-teal-200 bg-teal-50 px-3 py-2 text-teal-700">
+          <div className="rounded-md border border-teal-200 bg-teal-50 px-3 py-2 text-teal-700">
             Échéance semaine: <span className="font-bold">{formatCurrency(kpiBase.dueWeek)}</span>
           </div>
         </div>
       </FsCard>
 
-      <FsCard className="mt-4" padding="p-4">
+      <FsCard className="rounded-md sm:rounded-md mt-4" padding="p-4">
         <div className="mb-2 flex items-center justify-between">
           <p className="text-sm font-bold text-fs-text">Top 5 clients à relancer</p>
           <span className="rounded-full bg-fs-accent/10 px-2 py-0.5 text-[11px] font-bold text-fs-accent">
@@ -1129,7 +1129,7 @@ export function CreditScreen() {
         {topRelanceRows.length === 0 ? (
           <p className="text-xs text-neutral-600">Aucun client à relancer pour la période sélectionnée.</p>
         ) : (
-          <FsHorizontalScroll className="rounded-xl border border-black/8">
+          <FsHorizontalScroll className="rounded-md border border-black/8">
             <table className="w-full min-w-[680px] text-left text-[12px] [&_thead_th]:whitespace-nowrap [&_tbody_td]:whitespace-nowrap">
               <thead>
                 <tr className="border-b border-black/10 bg-fs-surface-low/80 text-[10px] uppercase tracking-wide text-neutral-600">
@@ -1169,7 +1169,7 @@ export function CreditScreen() {
       </FsCard>
 
       {cancelledCreditMeta.count > 0 ? (
-        <FsCard className="mt-4 border-slate-200 bg-slate-50/80" padding="p-3">
+        <FsCard className="rounded-md sm:rounded-md mt-4 border-slate-200 bg-slate-50/80" padding="p-3">
           <div className="flex flex-wrap items-center gap-2 text-xs text-slate-700">
             <span className="rounded-full bg-slate-200 px-2 py-0.5 font-bold">Créances neutralisées</span>
             <span>
@@ -1180,7 +1180,7 @@ export function CreditScreen() {
         </FsCard>
       ) : null}
 
-      <FsCard className="mt-6" padding="p-4">
+      <FsCard className="rounded-md sm:rounded-md mt-6" padding="p-4">
         <div className="flex flex-col gap-3 min-[900px]:flex-row min-[900px]:flex-wrap min-[900px]:items-end min-[900px]:gap-x-3 min-[900px]:gap-y-2">
           <div className="relative w-full min-w-0 shrink-0 min-[900px]:w-72 min-[900px]:max-w-sm">
             <MdSearch
@@ -1225,12 +1225,12 @@ export function CreditScreen() {
                 </option>
               ))}
             </select>
-            <div className="flex rounded-xl border border-black/10 p-0.5 dark:border-white/10">
+            <div className="flex rounded-md border border-black/10 p-0.5 dark:border-white/10">
               <button
                 type="button"
                 onClick={() => setView("sale")}
                 className={cn(
-                  "min-h-[40px] rounded-lg px-3 py-1.5 text-xs font-bold",
+                  "min-h-[40px] rounded-md px-3 py-1.5 text-xs font-bold",
                   view === "sale" ? "bg-fs-accent text-white" : "text-neutral-600",
                 )}
               >
@@ -1240,7 +1240,7 @@ export function CreditScreen() {
                 type="button"
                 onClick={() => setView("customer")}
                 className={cn(
-                  "min-h-[40px] rounded-lg px-3 py-1.5 text-xs font-bold",
+                  "min-h-[40px] rounded-md px-3 py-1.5 text-xs font-bold",
                   view === "customer" ? "bg-fs-accent text-white" : "text-neutral-600",
                 )}
               >
@@ -1250,14 +1250,14 @@ export function CreditScreen() {
                 type="button"
                 onClick={() => setView("repayments")}
                 className={cn(
-                  "min-h-[40px] rounded-lg px-3 py-1.5 text-xs font-bold",
+                  "min-h-[40px] rounded-md px-3 py-1.5 text-xs font-bold",
                   view === "repayments" ? "bg-fs-accent text-white" : "text-neutral-600",
                 )}
               >
                 Par jour
               </button>
             </div>
-            <span className="inline-flex min-h-[40px] items-center rounded-lg bg-fs-accent/10 px-2.5 text-xs font-bold text-fs-accent">
+            <span className="inline-flex min-h-[40px] items-center rounded-md bg-fs-accent/10 px-2.5 text-xs font-bold text-fs-accent">
               Filtres actifs: {activeFilterCount}
             </span>
           </div>
@@ -1284,7 +1284,7 @@ export function CreditScreen() {
                 setCustomerPage(0);
               }}
               className={cn(
-                "min-h-[34px] whitespace-nowrap rounded-full px-3 py-1 text-[11px] font-bold",
+                "min-h-[34px] whitespace-nowrap rounded-md px-3 py-1 text-[11px] font-bold",
                 chip === key
                   ? "bg-fs-accent text-white"
                   : "bg-fs-surface-container text-neutral-700 dark:text-neutral-200",
@@ -1309,7 +1309,7 @@ export function CreditScreen() {
           onOpenSaleDetail={(id) => setDetailId(id)}
         />
       ) : (
-      <FsCard className="mt-6 overflow-hidden p-0" padding="p-0">
+      <FsCard className="rounded-md sm:rounded-md mt-6 overflow-hidden p-0" padding="p-0">
         {creditQ.isLoading ? (
           <div className="flex justify-center py-16">
             <div className="h-9 w-9 animate-spin rounded-full border-2 border-fs-accent border-t-transparent" />
@@ -1442,7 +1442,7 @@ export function CreditScreen() {
                               <button
                                 type="button"
                                 onClick={() => setDetailId(s.id)}
-                                className="whitespace-nowrap rounded-lg bg-fs-accent/15 px-2 py-1 text-xs font-bold text-fs-accent"
+                                className="whitespace-nowrap rounded-md bg-fs-accent/15 px-2 py-1 text-xs font-bold text-fs-accent"
                               >
                                 Voir
                               </button>
@@ -1451,7 +1451,7 @@ export function CreditScreen() {
                                   type="button"
                                   title="Enregistrer un paiement"
                                   onClick={() => setPaySale(s)}
-                                  className="whitespace-nowrap rounded-lg bg-fs-accent px-2 py-1 text-xs font-bold text-white"
+                                  className="whitespace-nowrap rounded-md bg-fs-accent px-2 py-1 text-xs font-bold text-white"
                                 >
                                   Encaisser
                                 </button>
@@ -1512,7 +1512,7 @@ export function CreditScreen() {
                                 e.preventDefault();
                                 setDispatchDetailId(d.id);
                               }}
-                              className="whitespace-nowrap rounded-lg bg-fs-accent/15 px-2 py-1 text-xs font-bold text-fs-accent"
+                              className="whitespace-nowrap rounded-md bg-fs-accent/15 px-2 py-1 text-xs font-bold text-fs-accent"
                             >
                               Voir
                             </Link>
@@ -1528,7 +1528,7 @@ export function CreditScreen() {
                                     remainingAmount: d.remainingAmount,
                                   })
                                 }
-                                className="whitespace-nowrap rounded-lg bg-fs-accent px-2 py-1 text-xs font-bold text-white"
+                                className="whitespace-nowrap rounded-md bg-fs-accent px-2 py-1 text-xs font-bold text-white"
                               >
                                 Encaisser
                               </button>
@@ -1633,14 +1633,14 @@ export function CreditScreen() {
                             e.stopPropagation();
                             setCustomerDetailId(c.customerId);
                           }}
-                          className="inline-flex whitespace-nowrap rounded-lg bg-fs-accent px-2 py-1 text-xs font-bold text-white"
+                          className="inline-flex whitespace-nowrap rounded-md bg-fs-accent px-2 py-1 text-xs font-bold text-white"
                         >
                           Détail
                         </button>
                         <Link
                           href={ROUTES.customers}
                           onClick={(e) => e.stopPropagation()}
-                          className="inline-flex whitespace-nowrap rounded-lg bg-fs-accent/15 px-2 py-1 text-xs font-bold text-fs-accent"
+                          className="inline-flex whitespace-nowrap rounded-md bg-fs-accent/15 px-2 py-1 text-xs font-bold text-fs-accent"
                         >
                           Clients
                         </Link>
@@ -1656,7 +1656,7 @@ export function CreditScreen() {
       </FsCard>
       )}
       {view === "sale" && salePageCount > 1 ? (
-        <FsCard className="mt-4" padding="px-4 py-3 sm:py-3">
+        <FsCard className="rounded-md sm:rounded-md mt-4" padding="px-4 py-3 sm:py-3">
           <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
             {!isPaginationNarrow ? (
               <span className="mr-2 text-xs text-neutral-600">
@@ -1705,7 +1705,7 @@ export function CreditScreen() {
         </FsCard>
       ) : null}
       {view === "customer" && customerPageCount > 1 ? (
-        <FsCard className="mt-4" padding="px-4 py-3 sm:py-3">
+        <FsCard className="rounded-md sm:rounded-md mt-4" padding="px-4 py-3 sm:py-3">
           <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
             {!isPaginationNarrow ? (
               <span className="mr-2 text-xs text-neutral-600">
@@ -1815,7 +1815,7 @@ export function CreditScreen() {
 
       {dispatchDetailId ? (
         <div className="fixed inset-0 z-56 flex flex-col justify-end bg-black/45 sm:items-center sm:justify-center sm:p-4" role="dialog">
-          <div className="flex max-h-[min(88dvh,640px)] w-full flex-col rounded-t-2xl bg-fs-surface shadow-2xl sm:max-h-[85vh] sm:max-w-lg sm:rounded-2xl">
+          <div className="flex max-h-[min(88dvh,640px)] w-full flex-col rounded-t-lg bg-fs-surface shadow-2xl sm:max-h-[85vh] sm:max-w-lg sm:rounded-lg">
             <div className="flex items-center justify-between border-b border-black/6 px-4 py-3">
               <h2 className="text-base font-bold">Bon de sortie</h2>
               <button type="button" onClick={() => setDispatchDetailId(null)} className="p-2" aria-label="Fermer">
@@ -1845,7 +1845,7 @@ export function CreditScreen() {
                       ) : null}
                       <div className="mt-4 space-y-2">
                         {d.lines.map((l, i) => (
-                          <div key={i} className="flex justify-between gap-2 rounded-lg border border-black/6 px-3 py-2 text-sm">
+                          <div key={i} className="flex justify-between gap-2 rounded-md border border-black/6 px-3 py-2 text-sm">
                             <span className="min-w-0 font-medium">{l.productName}</span>
                             <span className="shrink-0 text-neutral-600">
                               {l.quantity} × {formatCurrency(l.unitPrice)}
@@ -1873,7 +1873,7 @@ export function CreditScreen() {
                             }}
                             disabled={Math.max(0, Math.round(sub - parseDispatchPaymentInfo(d.notes, sub).paidAmount)) <= CREDIT_AMOUNT_EPS}
                             className={cn(
-                              "inline-flex rounded-lg px-3 py-1.5 text-xs font-bold text-white",
+                              "inline-flex rounded-md px-3 py-1.5 text-xs font-bold text-white",
                               Math.max(0, Math.round(sub - parseDispatchPaymentInfo(d.notes, sub).paidAmount)) <= CREDIT_AMOUNT_EPS
                                 ? "cursor-not-allowed bg-neutral-300 text-neutral-600"
                                 : "bg-fs-accent",
@@ -1969,7 +1969,7 @@ function DispatchCreditPayDialog({ open, invoice, loading, onClose, onSubmit }: 
 
   return (
     <div className="fixed inset-0 z-58 flex flex-col justify-end bg-black/45 sm:items-center sm:justify-center sm:p-4" role="dialog">
-      <div className="w-full rounded-t-2xl bg-fs-surface shadow-2xl sm:max-w-md sm:rounded-2xl">
+      <div className="w-full rounded-t-lg bg-fs-surface shadow-2xl sm:max-w-md sm:rounded-lg">
         <div className="flex items-center justify-between border-b border-black/6 px-4 py-3">
           <div>
             <p className="text-sm text-neutral-500">Encaisser bon dépôt</p>
@@ -1981,7 +1981,7 @@ function DispatchCreditPayDialog({ open, invoice, loading, onClose, onSubmit }: 
         </div>
 
         <div className="space-y-3 px-4 py-3">
-          <div className="rounded-xl border border-black/8 bg-fs-surface-low/70 px-3 py-2 text-sm">
+          <div className="rounded-md border border-black/8 bg-fs-surface-low/70 px-3 py-2 text-sm">
             <div className="flex items-center justify-between">
               <span className="text-neutral-600">Total</span>
               <span className="font-semibold">{formatCurrency(invoice.totalAmount)}</span>
@@ -2009,7 +2009,7 @@ function DispatchCreditPayDialog({ open, invoice, loading, onClose, onSubmit }: 
                   type="button"
                   onClick={() => setMethod(m.id as "cash" | "mobile_money" | "card")}
                   className={cn(
-                    "rounded-lg border px-2 py-2 font-bold transition",
+                    "rounded-md border px-2 py-2 font-bold transition",
                     method === m.id
                       ? "border-fs-accent bg-fs-accent/10 text-fs-accent"
                       : "border-black/8 bg-white text-neutral-700 hover:bg-black/2",
@@ -2075,7 +2075,7 @@ function DispatchCreditPayDialog({ open, invoice, loading, onClose, onSubmit }: 
             type="button"
             onClick={onClose}
             disabled={loading}
-            className="flex-1 rounded-lg border border-black/10 px-3 py-2 text-sm font-semibold text-neutral-700"
+            className="flex-1 rounded-md border border-black/10 px-3 py-2 text-sm font-semibold text-neutral-700"
           >
             Fermer
           </button>
@@ -2090,7 +2090,7 @@ function DispatchCreditPayDialog({ open, invoice, loading, onClose, onSubmit }: 
               })
             }
             className={cn(
-              "flex-1 rounded-lg px-3 py-2 text-sm font-bold text-white",
+              "flex-1 rounded-md px-3 py-2 text-sm font-bold text-white",
               canSubmit ? "bg-fs-accent" : "cursor-not-allowed bg-neutral-300 text-neutral-500",
             )}
           >
