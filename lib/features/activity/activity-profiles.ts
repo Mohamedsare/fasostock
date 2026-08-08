@@ -77,9 +77,7 @@ const ACTIVITY_PROFILES: ActivityProfile[] = [
     slug: "grossiste-distribution",
     hiddenNavHrefs: [],
     navLabelOverrides: {
-      [ROUTES.sales]: "Commandes",
       [ROUTES.customers]: "Clients B2B",
-      [ROUTES.reports]: "Pilotage",
     },
   },
   {
@@ -297,11 +295,11 @@ export function activityUiTerms(
     return {
       storeSingular: "Boutique",
       storesPlural: "Boutiques",
-      dashboardTitle: "Pilotage",
-      reportsTitle: "Pilotage",
+      dashboardTitle: "Tableau de bord",
+      reportsTitle: "Rapports",
       productsTitle: "Articles",
       productsSubtitle: "Catalogue, familles et marques",
-      salesHistoryTitle: "Historique des commandes",
+      salesHistoryTitle: "Historique des ventes",
       purchasesTitle: "Achats",
       purchasesDescription: "Voir, modifier, annuler ou supprimer les achats fournisseurs.",
       purchasesCreateActionLabel: "Nouvel achat",

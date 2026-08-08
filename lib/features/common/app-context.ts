@@ -236,9 +236,9 @@ async function fetchAppContext(): Promise<AppContextData | null> {
       roleSlug: isSuperAdmin ? "super_admin" : null,
       warehouseFeatureEnabled: true,
       purchasesFeatureEnabled: true,
-      transfersFeatureEnabled: true,
+      transfersFeatureEnabled: false,
       storeQuotaIncreaseEnabled: true,
-      aiPredictionsEnabled: true,
+      aiPredictionsEnabled: false,
       warehouseKpiShowPurchaseValue: true,
       warehouseKpiShowSaleValue: true,
       accountingModuleEnabled: false,
@@ -288,9 +288,9 @@ async function fetchAppContext(): Promise<AppContextData | null> {
       roleSlug: isSuperAdmin ? "super_admin" : null,
       warehouseFeatureEnabled: true,
       purchasesFeatureEnabled: true,
-      transfersFeatureEnabled: true,
+      transfersFeatureEnabled: false,
       storeQuotaIncreaseEnabled: true,
-      aiPredictionsEnabled: true,
+      aiPredictionsEnabled: false,
       warehouseKpiShowPurchaseValue: true,
       warehouseKpiShowSaleValue: true,
       accountingModuleEnabled: false,
@@ -336,7 +336,9 @@ async function fetchAppContext(): Promise<AppContextData | null> {
   };
   const warehouseFeatureEnabled = cr.warehouse_feature_enabled !== false;
   const purchasesFeatureEnabled = cr.purchases_feature_enabled !== false;
-  const transfersFeatureEnabled = cr.transfers_feature_enabled !== false;
+  // Additif : Transferts et Prédictions IA restent fermés tant que le super admin
+  // ne les a pas ouverts pour l'entreprise (défaut base = false, migration 00176).
+  const transfersFeatureEnabled = cr.transfers_feature_enabled === true;
   const storeQuotaIncreaseEnabled = cr.store_quota_increase_enabled !== false;
   const aiPredictionsEnabled = cr.ai_predictions_enabled === true;
   const warehouseKpiShowPurchaseValue = cr.warehouse_kpi_show_purchase_value !== false;

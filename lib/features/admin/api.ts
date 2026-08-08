@@ -63,7 +63,7 @@ export async function adminListCompanies(): Promise<AdminCompany[]> {
       aiPredictionsEnabled: r.ai_predictions_enabled === true,
       warehouseFeatureEnabled: r.warehouse_feature_enabled !== false,
       purchasesFeatureEnabled: r.purchases_feature_enabled !== false,
-      transfersFeatureEnabled: r.transfers_feature_enabled !== false,
+      transfersFeatureEnabled: r.transfers_feature_enabled === true,
       storeQuotaIncreaseEnabled: r.store_quota_increase_enabled !== false,
       warehouseKpiShowPurchaseValue: r.warehouse_kpi_show_purchase_value !== false,
       warehouseKpiShowSaleValue: r.warehouse_kpi_show_sale_value !== false,

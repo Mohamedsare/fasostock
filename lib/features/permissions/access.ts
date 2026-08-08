@@ -289,7 +289,7 @@ export function buildAccessHelpers(
   const canReports =
     hasPermission(P.reportsViewGlobal) || hasPermission(P.reportsViewStore);
   const canAi =
-    hasPermission(P.aiInsightsView) && data.aiPredictionsEnabled !== false;
+    hasPermission(P.aiInsightsView) && data.aiPredictionsEnabled === true;
   const canUsers =
     hasPermission(P.usersManage) || isOwner;
   const canSettings = hasPermission(P.settingsManage);
@@ -297,7 +297,7 @@ export function buildAccessHelpers(
     (hasPermission(P.stockTransfer) ||
       hasPermission(P.transfersCreate) ||
       hasPermission(P.transfersApprove)) &&
-    data.transfersFeatureEnabled !== false;
+    data.transfersFeatureEnabled === true;
   const canDashboard = hasPermission(P.dashboardView);
   const canProducts =
     hasPermission(P.productsView) ||
