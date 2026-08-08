@@ -76,11 +76,15 @@ const COST_CHUNK = 120;
  *
  * Une vente absente du résultat (aucune ligne lisible) n'est pas inventée : l'écran
  * affiche « — » plutôt qu'un bénéfice égal au chiffre d'affaires.
+ *
+ * Objet simple et NON une `Map` : ce résultat transite par le cache TanStack persisté
+ * (IndexedDB, JSON). Une `Map` y devient `{}` à la relecture et fait planter l'écran —
+ * même piège que `listStoreInventory` (voir `RQ_PERSIST_BUSTER`).
  */
 export async function fetchSalesCost(
   saleIds: string[],
-): Promise<Map<string, SaleCostAggregate>> {
-  const out = new Map<string, SaleCostAggregate>();
+): Promise<Record<string, SaleCostAggregate>> {
+  const out: Record<string, SaleCostAggregate> = {};
   const ids = [...new Set(saleIds.filter(Boolean))];
   if (ids.length === 0) return out;
 
@@ -101,7 +105,7 @@ export async function fetchSalesCost(
       ) as { purchase_price?: number | null } | null | undefined;
       const purchasePrice = Number(product?.purchase_price ?? 0);
       const quantity = Number(raw.quantity ?? 0);
-      const cur = out.get(saleId) ?? {
+      const cur = out[saleId] ?? {
         itemsTotal: 0,
         cost: 0,
         lineCount: 0,
@@ -112,7 +116,7 @@ export async function fetchSalesCost(
       cur.lineCount += 1;
       // Prix d'achat à 0 = non renseigné : compté à part pour signaler la surestimation.
       if (!(purchasePrice > 0)) cur.linesWithoutCost += 1;
-      out.set(saleId, cur);
+      out[saleId] = cur;
     }
   }
   return out;

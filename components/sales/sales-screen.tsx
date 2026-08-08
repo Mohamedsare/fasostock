@@ -661,7 +661,7 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
         // Le bénéfice n'est chargé que pour la page à l'écran : l'export, lui, le
         // calcule sur toute la sélection. Un échec ici n'annule pas l'export —
         // le fichier sort simplement sans les colonnes de marge.
-        let costById: Map<string, SaleCostAggregate> | undefined;
+        let costById: Record<string, SaleCostAggregate> | undefined;
         if (canSeeProfit) {
           try {
             costById = await fetchSalesCost(
@@ -1188,7 +1188,7 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
                         <td className="px-3 py-2 text-right">
                           <SaleProfitCell
                             sale={s}
-                            agg={costById?.get(s.id)}
+                            agg={costById?.[s.id]}
                             loading={profitLoading}
                           />
                         </td>
@@ -1286,7 +1286,7 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
                   key={s.id}
                   sale={s}
                   stores={stores}
-                  profitAgg={canSeeProfit ? costById?.get(s.id) : undefined}
+                  profitAgg={canSeeProfit ? costById?.[s.id] : undefined}
                   showProfit={canSeeProfit}
                   profitLoading={profitLoading}
                   canCancel={canCancelSale}

@@ -7,10 +7,32 @@ import {
   RQ_PERSIST_BUSTER,
 } from "@/lib/offline";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  defaultShouldDehydrateQuery,
+  QueryClient,
+  QueryClientProvider,
+} from "@tanstack/react-query";
 import { useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
 
 const noopSubscribe = () => () => {};
+
+/**
+ * Le cache persisté transite par `JSON.stringify` : une `Map` / `Set` y devient `{}`
+ * et l'écran qui appelle `.get()` dessus plante à la relecture (historique des ventes,
+ * août 2026). Plutôt que d'écrire une donnée qui reviendra cassée, on ne persiste pas
+ * cette requête — elle sera simplement refetchée. Contrôle sur 2 niveaux : suffisant
+ * pour les `Map` renvoyées telles quelles ou dans un champ de premier niveau, sans
+ * coûter un parcours profond à chaque écriture (throttle 1 s).
+ */
+function isJsonSafeQueryData(data: unknown, depth = 0): boolean {
+  if (data instanceof Map || data instanceof Set) return false;
+  if (depth >= 2 || data == null || typeof data !== "object") return true;
+  const values = Array.isArray(data) ? data : Object.values(data);
+  for (const v of values) {
+    if (!isJsonSafeQueryData(v, depth + 1)) return false;
+  }
+  return true;
+}
 
 function makeClient() {
   const client = new QueryClient({
@@ -58,6 +80,10 @@ export function QueryProvider({ children }: { children: ReactNode }) {
         persister,
         maxAge: RQ_MAX_AGE_MS,
         buster: RQ_PERSIST_BUSTER,
+        dehydrateOptions: {
+          shouldDehydrateQuery: (query) =>
+            defaultShouldDehydrateQuery(query) && isJsonSafeQueryData(query.state.data),
+        },
       }}
     >
       {children}

@@ -34,7 +34,7 @@ export function salesToSpreadsheetMatrix(
      * Coût d'achat par vente. Fourni ⇒ trois colonnes de plus ; absent ⇒ export
      * identique à avant (un caissier n'exporte pas de colonnes vides).
      */
-    costById?: Map<string, SaleCostAggregate>;
+    costById?: Record<string, SaleCostAggregate>;
   },
 ): { headers: string[]; rows: ProSheetCell[][] } {
   const costById = options?.costById;
@@ -58,7 +58,7 @@ export function salesToSpreadsheetMatrix(
       SETTLEMENT_LABELS[st.kind],
     ];
     if (!costById) return base;
-    const profit = computeSaleProfit(s, costById.get(s.id));
+    const profit = computeSaleProfit(s, costById[s.id]);
     // Bénéfice incalculable (aucun prix d'achat connu) : cellules vides, pas des zéros
     // qui se laisseraient additionner dans un tableau croisé.
     if (!profit || profit.unknown) return [...base, "", "", ""];
