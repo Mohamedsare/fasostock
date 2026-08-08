@@ -457,7 +457,7 @@ export function ProductFormDialog({
   return (
     <div className="fixed inset-0 z-[70] flex items-end justify-center bg-black/45 p-0 sm:items-center sm:p-6">
       <div
-        className="flex max-h-[min(700px,88vh)] w-full max-w-[520px] flex-col rounded-t-2xl border border-black/[0.08] bg-fs-card shadow-2xl sm:rounded-2xl"
+        className="flex max-h-[min(700px,88vh)] w-full max-w-[520px] flex-col rounded-t-lg border border-black/[0.08] bg-fs-card shadow-2xl sm:rounded-lg"
         role="dialog"
         aria-labelledby="product-form-title"
       >
@@ -478,7 +478,7 @@ export function ProductFormDialog({
                   <img
                     src={img.url}
                     alt=""
-                    className="h-16 w-16 rounded-lg border border-black/[0.08] object-cover"
+                    className="h-16 w-16 rounded-md border border-black/[0.08] object-cover"
                   />
                   <button
                     type="button"
@@ -496,7 +496,7 @@ export function ProductFormDialog({
                   <img
                     src={src}
                     alt=""
-                    className="h-16 w-16 rounded-lg border border-black/[0.08] object-cover"
+                    className="h-16 w-16 rounded-md border border-black/[0.08] object-cover"
                   />
                   <button
                     type="button"
@@ -519,7 +519,7 @@ export function ProductFormDialog({
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="flex h-16 w-16 items-center justify-center rounded-lg border-2 border-dashed border-black/[0.2] text-neutral-400 transition hover:border-fs-accent hover:text-fs-accent"
+                className="flex h-16 w-16 items-center justify-center rounded-md border-2 border-dashed border-black/[0.2] text-neutral-400 transition hover:border-fs-accent hover:text-fs-accent"
                 aria-label="Ajouter des images"
               >
                 <MdAddPhotoAlternate className="h-8 w-8" />
@@ -544,7 +544,7 @@ export function ProductFormDialog({
             {/* Autres noms : uniquement des clés de recherche. Le nom ci-dessus
                 reste celui affiché partout (tickets, factures, rapports). */}
             {searchAliasesEnabled ? (
-              <div className="rounded-xl border border-black/[0.08] p-3">
+              <div className="rounded-md border border-black/[0.08] p-3">
                 <p className="text-sm font-semibold text-fs-text">
                   Autres noms (recherche)
                 </p>
@@ -573,7 +573,7 @@ export function ProductFormDialog({
                         <button
                           type="button"
                           onClick={() => removeAlias(index)}
-                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-red-200 text-red-600"
+                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-red-200 text-red-600"
                           aria-label={`Retirer l'autre nom ${index + 1}`}
                         >
                           <MdClose className="h-4 w-4" />
@@ -587,7 +587,7 @@ export function ProductFormDialog({
                   <button
                     type="button"
                     onClick={addAlias}
-                    className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-fs-accent/40 bg-fs-accent/[0.06] px-3 py-2 text-xs font-semibold text-fs-accent"
+                    className="mt-2 inline-flex items-center gap-1.5 rounded-md border border-fs-accent/40 bg-fs-accent/[0.06] px-3 py-2 text-xs font-semibold text-fs-accent"
                   >
                     <MdAdd className="h-4 w-4" aria-hidden />
                     Ajouter un autre nom
@@ -635,7 +635,7 @@ export function ProductFormDialog({
             </div>
 
             {config.productFields.length > 0 ? (
-              <fieldset className="rounded-xl border border-fs-accent/30 bg-fs-accent/[0.04] p-3">
+              <fieldset className="rounded-md border border-fs-accent/30 bg-fs-accent/[0.04] p-3">
                 <legend className="px-1 text-xs font-semibold text-fs-accent">
                   {config.productFieldsSectionTitle ?? "Informations métier"}
                 </legend>
@@ -777,7 +777,7 @@ export function ProductFormDialog({
             {/* Conditionnements : paquet / carton avec leur code-barres et prix.
                 Le stock reste compté en pièces ; scanner un conditionnement ajoute
                 `factor` pièces au panier (caisse rapide). */}
-            <div className="rounded-xl border border-black/[0.08] p-3">
+            <div className="rounded-md border border-black/[0.08] p-3">
               <p className="text-sm font-semibold text-fs-text">
                 Conditionnements
               </p>
@@ -792,7 +792,7 @@ export function ProductFormDialog({
                   {packagings.map((r) => (
                     <div
                       key={r.key}
-                      className="rounded-lg border border-black/[0.08] bg-fs-surface-container/40 p-2.5"
+                      className="rounded-md border border-black/[0.08] bg-fs-surface-container/40 p-2.5"
                     >
                       <div className="flex items-end gap-2">
                         <label className="min-w-0 flex-1">
@@ -821,7 +821,7 @@ export function ProductFormDialog({
                         <button
                           type="button"
                           onClick={() => removePackaging(r.key)}
-                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-red-200 text-red-600"
+                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-red-200 text-red-600"
                           aria-label="Retirer le conditionnement"
                         >
                           <MdClose className="h-4 w-4" />
@@ -879,7 +879,7 @@ export function ProductFormDialog({
               <button
                 type="button"
                 onClick={addPackaging}
-                className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-fs-accent/40 bg-fs-accent/[0.06] px-3 py-2 text-xs font-semibold text-fs-accent"
+                className="mt-2 inline-flex items-center gap-1.5 rounded-md border border-fs-accent/40 bg-fs-accent/[0.06] px-3 py-2 text-xs font-semibold text-fs-accent"
               >
                 <MdAdd className="h-4 w-4" aria-hidden />
                 Ajouter un conditionnement
@@ -925,7 +925,7 @@ export function ProductFormDialog({
 
             {/* Suivi de péremption — métiers à suivi de lots, à la création */}
             {config.batchTracking && !isEdit ? (
-              <div className="rounded-xl border border-fs-accent/30 bg-fs-accent/[0.04] p-3">
+              <div className="rounded-md border border-fs-accent/30 bg-fs-accent/[0.04] p-3">
                 <p className="mb-1 text-xs font-semibold text-fs-accent">
                   Date de péremption (optionnel)
                 </p>
@@ -1000,7 +1000,7 @@ export function ProductFormDialog({
                     onClick={() => void handleAddCategory()}
                     disabled={!canAddCategory}
                     className={cn(
-                      "fs-touch-target inline-flex shrink-0 items-center justify-center rounded-[10px] border-0",
+                      "fs-touch-target inline-flex shrink-0 items-center justify-center rounded-md border-0",
                       canAddCategory
                         ? "bg-[var(--fs-pos-orange)] text-white shadow-sm"
                         : "bg-neutral-200 text-neutral-500",
@@ -1040,7 +1040,7 @@ export function ProductFormDialog({
                     onClick={() => void handleAddBrand()}
                     disabled={!canAddBrand}
                     className={cn(
-                      "fs-touch-target inline-flex shrink-0 items-center justify-center rounded-[10px] border-0",
+                      "fs-touch-target inline-flex shrink-0 items-center justify-center rounded-md border-0",
                       canAddBrand
                         ? "bg-[var(--fs-pos-orange)] text-white shadow-sm"
                         : "bg-neutral-200 text-neutral-500",
@@ -1077,7 +1077,7 @@ export function ProductFormDialog({
             type="button"
             onClick={onClose}
             disabled={loading}
-            className="fs-touch-target min-h-11 rounded-xl border border-black/[0.1] px-4 text-sm font-semibold text-fs-text hover:bg-fs-surface-container disabled:opacity-50"
+            className="fs-touch-target min-h-11 rounded-md border border-black/[0.1] px-4 text-sm font-semibold text-fs-text hover:bg-fs-surface-container disabled:opacity-50"
           >
             Annuler
           </button>
@@ -1085,7 +1085,7 @@ export function ProductFormDialog({
             type="button"
             disabled={loading || inlineBusy}
             onClick={() => void handleSubmit()}
-            className="fs-touch-target min-h-11 min-w-[7rem] rounded-xl bg-fs-accent px-4 text-sm font-semibold text-white hover:opacity-95 disabled:opacity-50"
+            className="fs-touch-target min-h-11 min-w-[7rem] rounded-md bg-fs-accent px-4 text-sm font-semibold text-white hover:opacity-95 disabled:opacity-50"
           >
             {loading ? (
               <span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />

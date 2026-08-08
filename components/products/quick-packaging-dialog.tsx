@@ -144,7 +144,7 @@ export function QuickPackagingDialog({
       aria-label="Ajouter un conditionnement"
     >
       <button type="button" className="absolute inset-0 -z-0" aria-label="Fermer" onClick={onClose} />
-      <div className="relative z-10 flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-3xl bg-fs-surface shadow-2xl sm:max-h-[88vh] sm:max-w-md sm:rounded-2xl">
+      <div className="relative z-10 flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-lg bg-fs-surface shadow-2xl sm:max-h-[88vh] sm:max-w-md sm:rounded-lg">
         <div className="mx-auto mt-2 h-1.5 w-10 rounded-full bg-neutral-300 sm:hidden" />
 
         {/* En-tête */}
@@ -162,7 +162,7 @@ export function QuickPackagingDialog({
           <button
             type="button"
             onClick={onClose}
-            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-neutral-500 hover:bg-black/5"
+            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-neutral-500 hover:bg-black/5"
             aria-label="Fermer"
           >
             <MdClose className="h-5 w-5" aria-hidden />
@@ -177,7 +177,7 @@ export function QuickPackagingDialog({
               {existing.map((pk) => (
                 <span
                   key={pk.id}
-                  className="inline-flex items-center gap-1 rounded-md bg-fs-surface-container px-1.5 py-0.5 text-[10px] font-medium text-neutral-600"
+                  className="inline-flex items-center gap-1 rounded-sm bg-fs-surface-container px-1.5 py-0.5 text-[10px] font-medium text-neutral-600"
                 >
                   <MdInventory2 className="h-3 w-3 text-fs-accent" aria-hidden />
                   <span className="font-semibold text-fs-text">{pk.label}</span>
@@ -199,7 +199,7 @@ export function QuickPackagingDialog({
                   type="button"
                   onClick={() => setLabel(l)}
                   className={cn(
-                    "rounded-lg border px-2.5 py-1 text-xs font-semibold transition-colors",
+                    "rounded-md border px-2.5 py-1 text-xs font-semibold transition-colors",
                     label === l
                       ? "border-fs-accent bg-fs-accent/10 text-fs-accent"
                       : "border-black/10 bg-fs-card text-neutral-700 hover:border-fs-accent/40",
@@ -214,7 +214,7 @@ export function QuickPackagingDialog({
               onChange={(e) => setLabel(e.target.value)}
               placeholder="ou saisir un libellé personnalisé…"
               maxLength={40}
-              className="mt-2 min-h-11 w-full rounded-lg border border-black/10 bg-white px-3 text-sm text-fs-text outline-none focus:border-fs-accent focus:ring-2 focus:ring-fs-accent/20"
+              className="mt-2 min-h-11 w-full rounded-md border border-black/10 bg-white px-3 text-sm text-fs-text outline-none focus:border-fs-accent focus:ring-2 focus:ring-fs-accent/20"
             />
           </div>
 
@@ -229,7 +229,7 @@ export function QuickPackagingDialog({
                 value={factor}
                 onChange={(e) => setFactor(e.target.value.replace(/[^\d]/g, ""))}
                 placeholder="ex. 24"
-                className="mt-1.5 min-h-11 w-full rounded-lg border border-black/10 bg-white px-3 text-sm font-bold text-fs-text outline-none focus:border-fs-accent focus:ring-2 focus:ring-fs-accent/20"
+                className="mt-1.5 min-h-11 w-full rounded-md border border-black/10 bg-white px-3 text-sm font-bold text-fs-text outline-none focus:border-fs-accent focus:ring-2 focus:ring-fs-accent/20"
               />
             </div>
             <div>
@@ -241,7 +241,7 @@ export function QuickPackagingDialog({
                 value={price}
                 onChange={(e) => setPrice(e.target.value.replace(/[^\d\s.,]/g, ""))}
                 placeholder={factorNum > 0 ? formatCurrency(factorNum * product.sale_price) : "auto"}
-                className="mt-1.5 min-h-11 w-full rounded-lg border border-black/10 bg-white px-3 text-sm font-bold text-fs-text outline-none focus:border-fs-accent focus:ring-2 focus:ring-fs-accent/20"
+                className="mt-1.5 min-h-11 w-full rounded-md border border-black/10 bg-white px-3 text-sm font-bold text-fs-text outline-none focus:border-fs-accent focus:ring-2 focus:ring-fs-accent/20"
               />
             </div>
           </div>
@@ -259,21 +259,21 @@ export function QuickPackagingDialog({
               value={barcode}
               onChange={(e) => setBarcode(e.target.value)}
               placeholder="Scanner ou saisir le GTIN du carton/paquet"
-              className="mt-1.5 min-h-11 w-full rounded-lg border border-black/10 bg-white px-3 text-sm text-fs-text outline-none focus:border-fs-accent focus:ring-2 focus:ring-fs-accent/20"
+              className="mt-1.5 min-h-11 w-full rounded-md border border-black/10 bg-white px-3 text-sm text-fs-text outline-none focus:border-fs-accent focus:ring-2 focus:ring-fs-accent/20"
             />
           </div>
 
           {/* Aperçu live */}
           <div
             className={cn(
-              "rounded-xl border p-3 transition-colors",
+              "rounded-md border p-3 transition-colors",
               canSave
                 ? "border-fs-accent/30 bg-fs-accent/[0.06]"
                 : "border-black/[0.06] bg-fs-surface-container/60",
             )}
           >
             <div className="flex items-center gap-2">
-              <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-fs-accent/12 text-fs-accent">
+              <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-fs-accent/12 text-fs-accent">
                 <MdInventory2 className="h-5 w-5" aria-hidden />
               </span>
               <div className="min-w-0">
@@ -302,7 +302,7 @@ export function QuickPackagingDialog({
           <button
             type="button"
             onClick={onClose}
-            className="inline-flex min-h-11 flex-1 items-center justify-center rounded-lg border border-black/10 bg-white text-sm font-semibold text-neutral-700"
+            className="inline-flex min-h-11 flex-1 items-center justify-center rounded-md border border-black/10 bg-white text-sm font-semibold text-neutral-700"
           >
             Annuler
           </button>
@@ -310,7 +310,7 @@ export function QuickPackagingDialog({
             type="button"
             disabled={!canSave || saveMut.isPending}
             onClick={() => saveMut.mutate()}
-            className="inline-flex min-h-11 flex-[1.4] items-center justify-center gap-2 rounded-lg bg-fs-accent text-sm font-bold text-white disabled:opacity-50"
+            className="inline-flex min-h-11 flex-[1.4] items-center justify-center gap-2 rounded-md bg-fs-accent text-sm font-bold text-white disabled:opacity-50"
           >
             {saveMut.isPending ? (
               <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/60 border-t-transparent" />

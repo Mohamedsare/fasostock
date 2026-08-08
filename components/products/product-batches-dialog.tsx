@@ -142,7 +142,7 @@ export function ProductBatchesDialog({
   return (
     <div className="fixed inset-0 z-[70] flex items-end justify-center bg-black/45 p-0 sm:items-center sm:p-6">
       <div
-        className="flex max-h-[min(720px,90vh)] w-full max-w-[560px] flex-col rounded-t-2xl border border-black/[0.08] bg-fs-card shadow-2xl sm:rounded-2xl"
+        className="flex max-h-[min(720px,90vh)] w-full max-w-[560px] flex-col rounded-t-lg border border-black/[0.08] bg-fs-card shadow-2xl sm:rounded-lg"
         role="dialog"
         aria-labelledby="batches-title"
       >
@@ -158,7 +158,7 @@ export function ProductBatchesDialog({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg p-2 text-neutral-500 hover:bg-fs-surface-container"
+            className="rounded-md p-2 text-neutral-500 hover:bg-fs-surface-container"
             aria-label="Fermer"
           >
             <MdClose className="h-5 w-5" />
@@ -167,7 +167,7 @@ export function ProductBatchesDialog({
 
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 sm:px-6">
           {/* Formulaire ajout / édition */}
-          <div className="rounded-xl border border-fs-accent/30 bg-fs-accent/[0.04] p-3">
+          <div className="rounded-md border border-fs-accent/30 bg-fs-accent/[0.04] p-3">
             <p className="mb-2 text-xs font-semibold text-fs-accent">
               {isEditing ? "Modifier le lot" : "Ajouter un lot"}
             </p>
@@ -239,7 +239,7 @@ export function ProductBatchesDialog({
                       setEdit(EMPTY_EDIT);
                       setErrorMsg(null);
                     }}
-                    className="min-h-10 rounded-xl border border-black/[0.1] px-3 text-sm font-semibold text-fs-text"
+                    className="min-h-10 rounded-md border border-black/[0.1] px-3 text-sm font-semibold text-fs-text"
                   >
                     Annuler
                   </button>
@@ -248,7 +248,7 @@ export function ProductBatchesDialog({
                   type="button"
                   disabled={saveMutation.isPending}
                   onClick={submit}
-                  className="inline-flex min-h-10 items-center gap-1 rounded-xl bg-fs-accent px-3 text-sm font-semibold text-white disabled:opacity-50"
+                  className="inline-flex min-h-10 items-center gap-1 rounded-md bg-fs-accent px-3 text-sm font-semibold text-white disabled:opacity-50"
                 >
                   <MdAdd className="h-5 w-5" />
                   {isEditing ? "Mettre à jour" : "Ajouter"}
@@ -262,7 +262,7 @@ export function ProductBatchesDialog({
             {batchesQ.isLoading ? (
               <li className="text-sm text-neutral-500">Chargement…</li>
             ) : batches.length === 0 ? (
-              <li className="rounded-xl bg-fs-surface-container px-3 py-4 text-center text-sm text-neutral-500">
+              <li className="rounded-md bg-fs-surface-container px-3 py-4 text-center text-sm text-neutral-500">
                 Aucune date enregistrée. Ajoutez un lot ci-dessus avec sa date de péremption.
               </li>
             ) : (
@@ -271,7 +271,7 @@ export function ProductBatchesDialog({
                 return (
                   <li
                     key={b.id}
-                    className="flex items-center gap-2 rounded-xl border border-black/[0.06] bg-fs-card px-3 py-2"
+                    className="flex items-center gap-2 rounded-md border border-black/[0.06] bg-fs-card px-3 py-2"
                   >
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-1.5">
@@ -280,7 +280,7 @@ export function ProductBatchesDialog({
                         </span>
                         <span
                           className={cn(
-                            "inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-semibold",
+                            "inline-flex items-center rounded-sm px-1.5 py-0.5 text-[10px] font-semibold",
                             tone.className,
                           )}
                         >
@@ -295,7 +295,7 @@ export function ProductBatchesDialog({
                     <button
                       type="button"
                       onClick={() => startEdit(b)}
-                      className="rounded-lg p-2 text-fs-accent hover:bg-fs-surface-container"
+                      className="rounded-md p-2 text-fs-accent hover:bg-fs-surface-container"
                       aria-label="Modifier le lot"
                     >
                       <MdEdit className="h-4 w-4" />
@@ -305,7 +305,7 @@ export function ProductBatchesDialog({
                       onClick={() => {
                         if (confirm("Supprimer ce lot ?")) deleteMutation.mutate(b.id);
                       }}
-                      className="rounded-lg p-2 text-red-600 hover:bg-fs-surface-container"
+                      className="rounded-md p-2 text-red-600 hover:bg-fs-surface-container"
                       aria-label="Supprimer le lot"
                     >
                       <MdDeleteOutline className="h-4 w-4" />
@@ -321,7 +321,7 @@ export function ProductBatchesDialog({
           <button
             type="button"
             onClick={onClose}
-            className="min-h-11 rounded-xl border border-black/[0.1] px-4 text-sm font-semibold text-fs-text hover:bg-fs-surface-container"
+            className="min-h-11 rounded-md border border-black/[0.1] px-4 text-sm font-semibold text-fs-text hover:bg-fs-surface-container"
           >
             Fermer
           </button>

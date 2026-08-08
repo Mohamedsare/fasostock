@@ -473,7 +473,7 @@ export function ProductsScreen() {
     const fallback = getProductsFallbackRoute(helpers);
     return (
       <div className="flex flex-1 flex-col items-center justify-center px-4 py-10">
-        <div className="w-full max-w-md rounded-2xl border border-black/[0.08] bg-fs-card p-6 shadow-sm">
+        <div className="w-full max-w-md rounded-lg border border-black/[0.08] bg-fs-card p-6 shadow-sm">
           <div className="flex flex-col items-center text-center">
             <MdLockPerson className="h-14 w-14 text-red-600" aria-hidden />
             <h2 className="mt-3 text-xl font-extrabold text-neutral-900">
@@ -491,7 +491,7 @@ export function ProductsScreen() {
                   router.push(fallback);
                 }
               }}
-              className="mt-6 inline-flex items-center justify-center gap-2 rounded-xl bg-fs-accent px-5 py-2.5 text-sm font-semibold text-white"
+              className="mt-6 inline-flex items-center justify-center gap-2 rounded-md bg-fs-accent px-5 py-2.5 text-sm font-semibold text-white"
             >
               <MdArrowBack className="h-4 w-4" aria-hidden />
               Retour
@@ -513,7 +513,7 @@ export function ProductsScreen() {
       />
 
       {tab === "products" && productsQ.isError ? (
-        <div className="mt-2 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+        <div className="mt-2 rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-800">
           <p>
             {(productsQ.error as Error)?.message ??
               "Impossible de charger les produits."}
@@ -578,7 +578,7 @@ export function ProductsScreen() {
                       }
                     })();
                   }}
-                  className="fs-touch-target inline-flex items-center justify-center gap-2 rounded-[10px] border border-black/[0.1] bg-fs-card px-4 py-3 text-sm font-semibold text-neutral-800 disabled:opacity-40"
+                  className="fs-touch-target inline-flex items-center justify-center gap-2 rounded-md border border-black/[0.1] bg-fs-card px-4 py-3 text-sm font-semibold text-neutral-800 disabled:opacity-40"
                 >
                   <MdDownload className="h-[18px] w-[18px] shrink-0" aria-hidden />
                   Exporter Excel
@@ -587,7 +587,7 @@ export function ProductsScreen() {
                   <button
                     type="button"
                     onClick={() => setShowImportCsv(true)}
-                    className="fs-touch-target inline-flex items-center justify-center gap-2 rounded-[10px] border border-black/[0.1] bg-fs-card px-4 py-3 text-sm font-semibold text-neutral-800"
+                    className="fs-touch-target inline-flex items-center justify-center gap-2 rounded-md border border-black/[0.1] bg-fs-card px-4 py-3 text-sm font-semibold text-neutral-800"
                   >
                     <MdUpload className="h-[18px] w-[18px] shrink-0" aria-hidden />
                     Importer CSV
@@ -681,10 +681,10 @@ export function ProductsScreen() {
               return (
                 <article
                   key={p.id}
-                  className="rounded-lg border border-black/[0.06] bg-fs-card p-3 shadow-sm"
+                  className="rounded-md border border-black/[0.06] bg-fs-card p-3 shadow-sm"
                 >
                   <div className="flex items-start gap-3">
-                    <ProductListThumbnail imageUrl={thumbUrl} previewOnTap className="rounded-md" />
+                    <ProductListThumbnail imageUrl={thumbUrl} previewOnTap className="rounded-sm" />
                     <div className="min-w-0 flex-1">
                       <h3
                         className={cn(
@@ -777,7 +777,7 @@ export function ProductsScreen() {
                             setEditing(p);
                             setShowForm(true);
                           }}
-                          className="rounded-md border border-black/[0.08] bg-fs-card px-2 py-1 text-xs font-semibold text-fs-accent"
+                          className="rounded-sm border border-black/[0.08] bg-fs-card px-2 py-1 text-xs font-semibold text-fs-accent"
                           aria-label="Modifier"
                         >
                           <MdEdit className="h-4 w-4" aria-hidden />
@@ -787,7 +787,7 @@ export function ProductsScreen() {
                         <button
                           type="button"
                           onClick={() => setQuickPkgProduct(p)}
-                          className="rounded-md border border-fs-accent/30 bg-fs-accent/[0.06] px-2 py-1 text-xs font-semibold text-fs-accent"
+                          className="rounded-sm border border-fs-accent/30 bg-fs-accent/[0.06] px-2 py-1 text-xs font-semibold text-fs-accent"
                           aria-label="Ajouter un conditionnement"
                           title="Ajouter rapidement un conditionnement (carton, paquet…)"
                         >
@@ -798,7 +798,7 @@ export function ProductsScreen() {
                         <button
                           type="button"
                           onClick={() => setBatchesProduct(p)}
-                          className="inline-flex items-center gap-1 rounded-md border border-fs-accent/30 bg-fs-accent/[0.06] px-2 py-1 text-xs font-semibold text-fs-accent"
+                          className="inline-flex items-center gap-1 rounded-sm border border-fs-accent/30 bg-fs-accent/[0.06] px-2 py-1 text-xs font-semibold text-fs-accent"
                           aria-label="Dates de péremption"
                           title="Enregistrer / voir les dates de péremption"
                         >
@@ -812,7 +812,7 @@ export function ProductsScreen() {
                           onClick={() =>
                             mutateToggle.mutate({ id: p.id, active: !p.is_active })
                           }
-                          className="rounded-md border border-black/[0.08] bg-fs-card px-2 py-1 text-xs font-semibold text-neutral-700"
+                          className="rounded-sm border border-black/[0.08] bg-fs-card px-2 py-1 text-xs font-semibold text-neutral-700"
                           aria-label={p.is_active ? "Désactiver" : "Activer"}
                         >
                           {p.is_active ? (
@@ -830,7 +830,7 @@ export function ProductsScreen() {
                               mutateDelete.mutate(p.id);
                             }
                           }}
-                          className="rounded-md border border-black/[0.08] bg-fs-card px-2 py-1 text-xs font-semibold text-red-600"
+                          className="rounded-sm border border-black/[0.08] bg-fs-card px-2 py-1 text-xs font-semibold text-red-600"
                           aria-label="Supprimer"
                         >
                           <MdDeleteOutline className="h-4 w-4" aria-hidden />
@@ -861,7 +861,7 @@ export function ProductsScreen() {
           </div>
 
           {pageCount > 1 ? (
-            <div className="mb-24 mt-3 rounded-xl border border-black/[0.06] bg-fs-card px-4 py-3 shadow-sm">
+            <div className="mb-24 mt-3 rounded-md border border-black/[0.06] bg-fs-card px-4 py-3 shadow-sm">
               <div className="flex flex-wrap items-center justify-center gap-3">
                 <span className="hidden text-sm text-neutral-500 min-[500px]:inline">
                   {rangeStart} – {rangeEnd} sur {filtered.length}
@@ -871,7 +871,7 @@ export function ProductsScreen() {
                   disabled={safePage <= 0}
                   onClick={() => setPage((p) => Math.max(0, p - 1))}
                   className={cn(
-                    "inline-flex min-h-10 min-w-10 items-center justify-center rounded-lg border px-2 py-2 text-sm disabled:opacity-40",
+                    "inline-flex min-h-10 min-w-10 items-center justify-center rounded-md border px-2 py-2 text-sm disabled:opacity-40",
                     safePage <= 0
                       ? "border-black/[0.1] bg-fs-card text-neutral-500"
                       : "border-fs-accent bg-fs-accent text-white",
@@ -887,7 +887,7 @@ export function ProductsScreen() {
                   disabled={safePage >= pageCount - 1}
                   onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
                   className={cn(
-                    "inline-flex min-h-10 min-w-10 items-center justify-center rounded-lg border px-2 py-2 text-sm disabled:opacity-40",
+                    "inline-flex min-h-10 min-w-10 items-center justify-center rounded-md border px-2 py-2 text-sm disabled:opacity-40",
                     safePage >= pageCount - 1
                       ? "border-black/[0.1] bg-fs-card text-neutral-500"
                       : "border-fs-accent bg-fs-accent text-white",
@@ -905,7 +905,7 @@ export function ProductsScreen() {
       ) : null}
 
       {tab === "categories" ? (
-        <FsCard padding="p-5">
+        <FsCard padding="p-5" className="rounded-md sm:rounded-md">
           <h2 className="text-base font-semibold text-neutral-900">Catégories</h2>
           {!readOnlyCategoriesBrands ? (
             <div className="mt-3 flex gap-2">
@@ -924,7 +924,7 @@ export function ProductsScreen() {
                 }}
                 disabled={!canAddCategoryInline}
                 className={cn(
-                  "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition",
+                  "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md transition",
                   canAddCategoryInline
                     ? "bg-[#f97316] text-white shadow-sm active:scale-[0.99]"
                     : "bg-neutral-200/90 text-neutral-500 disabled:cursor-not-allowed",
@@ -942,7 +942,7 @@ export function ProductsScreen() {
             {categories.map((c) => (
               <li
                 key={c.id}
-                className="flex items-center gap-2 rounded-xl bg-fs-surface-container px-3 py-2 text-sm"
+                className="flex items-center gap-2 rounded-md bg-fs-surface-container px-3 py-2 text-sm"
               >
                 <span className="min-w-0 flex-1 truncate">{c.name}</span>
                 {!readOnlyCategoriesBrands ? (
@@ -954,7 +954,7 @@ export function ProductsScreen() {
                         mutateUpdateCategory.mutate({ id: c.id, name: next.trim() });
                       }
                     }}
-                    className="inline-flex min-h-10 min-w-10 shrink-0 items-center justify-center rounded-lg p-2 text-fs-accent"
+                    className="inline-flex min-h-10 min-w-10 shrink-0 items-center justify-center rounded-md p-2 text-fs-accent"
                     title="Modifier"
                     aria-label={`Modifier ${c.name}`}
                   >
@@ -967,7 +967,7 @@ export function ProductsScreen() {
                     onClick={() => {
                       if (confirm(`Supprimer "${c.name}" ?`)) mutateDeleteCategory.mutate(c.id);
                     }}
-                    className="inline-flex min-h-10 min-w-10 shrink-0 items-center justify-center rounded-lg p-2 text-red-600"
+                    className="inline-flex min-h-10 min-w-10 shrink-0 items-center justify-center rounded-md p-2 text-red-600"
                     title="Supprimer"
                     aria-label={`Supprimer ${c.name}`}
                   >
@@ -981,7 +981,7 @@ export function ProductsScreen() {
       ) : null}
 
       {tab === "brands" ? (
-        <FsCard padding="p-4 sm:p-5">
+        <FsCard padding="p-4 sm:p-5" className="rounded-md sm:rounded-md">
           <h2 className="text-base font-semibold text-neutral-900">Marques</h2>
           {!readOnlyCategoriesBrands ? (
             <div className="mt-2.5 flex max-[259px]:flex-col max-[259px]:gap-2 min-[260px]:flex-row min-[260px]:gap-2">
@@ -1000,7 +1000,7 @@ export function ProductsScreen() {
                 }}
                 disabled={!canAddBrandInline}
                 className={cn(
-                  "inline-flex h-11 w-full shrink-0 items-center justify-center rounded-xl transition min-[260px]:w-11",
+                  "inline-flex h-11 w-full shrink-0 items-center justify-center rounded-md transition min-[260px]:w-11",
                   canAddBrandInline
                     ? "bg-[#f97316] text-white shadow-sm active:scale-[0.99]"
                     : "bg-neutral-200/90 text-neutral-500 disabled:cursor-not-allowed",
@@ -1018,7 +1018,7 @@ export function ProductsScreen() {
             {brands.map((b) => (
               <li
                 key={b.id}
-                className="flex items-center gap-2 rounded-xl bg-fs-surface-container px-3 py-2 text-sm"
+                className="flex items-center gap-2 rounded-md bg-fs-surface-container px-3 py-2 text-sm"
               >
                 <span className="min-w-0 flex-1 truncate">{b.name}</span>
                 {!readOnlyCategoriesBrands ? (
@@ -1030,7 +1030,7 @@ export function ProductsScreen() {
                         mutateUpdateBrand.mutate({ id: b.id, name: next.trim() });
                       }
                     }}
-                    className="inline-flex min-h-10 min-w-10 shrink-0 items-center justify-center rounded-lg p-2 text-fs-accent"
+                    className="inline-flex min-h-10 min-w-10 shrink-0 items-center justify-center rounded-md p-2 text-fs-accent"
                     title="Modifier"
                     aria-label={`Modifier ${b.name}`}
                   >
@@ -1043,7 +1043,7 @@ export function ProductsScreen() {
                     onClick={() => {
                       if (confirm(`Supprimer "${b.name}" ?`)) mutateDeleteBrand.mutate(b.id);
                     }}
-                    className="inline-flex min-h-10 min-w-10 shrink-0 items-center justify-center rounded-lg p-2 text-red-600"
+                    className="inline-flex min-h-10 min-w-10 shrink-0 items-center justify-center rounded-md p-2 text-red-600"
                     title="Supprimer"
                     aria-label={`Supprimer ${b.name}`}
                   >
@@ -1073,7 +1073,7 @@ export function ProductsScreen() {
               setEditing(null);
               setShowForm(true);
             }}
-            className="fixed bottom-8 right-8 z-40 hidden items-center gap-2 rounded-2xl bg-[#f97316] px-5 py-3.5 text-sm font-semibold text-white shadow-lg min-[900px]:inline-flex"
+            className="fixed bottom-8 right-8 z-40 hidden items-center gap-2 rounded-lg bg-[#f97316] px-5 py-3.5 text-sm font-semibold text-white shadow-lg min-[900px]:inline-flex"
           >
             <MdAdd className="h-5 w-5 shrink-0" aria-hidden />
             Nouveau produit
@@ -1186,7 +1186,7 @@ function EmptyBlock({
   icon?: ComponentType<{ className?: string }>;
 }) {
   return (
-    <div className="rounded-2xl border border-dashed border-black/[0.12] bg-fs-card px-4 py-8 text-center text-sm text-neutral-600">
+    <div className="rounded-lg border border-dashed border-black/[0.12] bg-fs-card px-4 py-8 text-center text-sm text-neutral-600">
       {Icon ? (
         <Icon className="mx-auto mb-3 h-10 w-10 text-neutral-300" aria-hidden />
       ) : null}

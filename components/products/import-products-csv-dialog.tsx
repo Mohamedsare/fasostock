@@ -111,7 +111,7 @@ export function ImportProductsCsvDialog({
   return (
     <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/45 p-0 sm:items-center sm:p-4">
       <div
-        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-fs-card p-4 shadow-2xl sm:rounded-2xl"
+        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-lg bg-fs-card p-4 shadow-2xl sm:rounded-lg"
         role="dialog"
         aria-labelledby="import-csv-title"
       >
@@ -147,7 +147,7 @@ export function ImportProductsCsvDialog({
                 }
               })();
             }}
-            className="fs-touch-target inline-flex items-center justify-center gap-2 rounded-xl border-2 border-fs-accent/40 bg-fs-accent/10 px-4 py-3 text-sm font-semibold text-fs-text"
+            className="fs-touch-target inline-flex items-center justify-center gap-2 rounded-md border-2 border-fs-accent/40 bg-fs-accent/10 px-4 py-3 text-sm font-semibold text-fs-text"
           >
             <MdDownload className="h-5 w-5 shrink-0 text-fs-accent" aria-hidden />
             Télécharger le modèle Excel (recommandé)
@@ -157,7 +157,7 @@ export function ImportProductsCsvDialog({
             onClick={() =>
               downloadCsv("modele-import-produits.csv", getProductsCsvModelTemplate())
             }
-            className="fs-touch-target inline-flex items-center justify-center gap-2 rounded-xl border border-black/[0.12] px-4 py-3 text-sm font-semibold text-neutral-700"
+            className="fs-touch-target inline-flex items-center justify-center gap-2 rounded-md border border-black/[0.12] px-4 py-3 text-sm font-semibold text-neutral-700"
           >
             <MdDownload className="h-5 w-5 shrink-0" aria-hidden />
             Télécharger le modèle CSV (import direct)
@@ -166,7 +166,7 @@ export function ImportProductsCsvDialog({
             type="button"
             onClick={onPickFile}
             disabled={importing}
-            className="fs-touch-target inline-flex min-h-[48px] items-center justify-center gap-2 rounded-xl border border-black/[0.12] px-4 py-3 text-sm font-semibold text-neutral-800"
+            className="fs-touch-target inline-flex min-h-[48px] items-center justify-center gap-2 rounded-md border border-black/[0.12] px-4 py-3 text-sm font-semibold text-neutral-800"
           >
             <MdUploadFile className="h-5 w-5 shrink-0" aria-hidden />
             <span className="min-w-0 truncate text-left">
@@ -200,7 +200,7 @@ export function ImportProductsCsvDialog({
           <p className="mt-2 text-sm text-red-600">{previewError}</p>
         ) : null}
         {importErrors.length > 0 ? (
-          <div className="mt-3 max-h-48 overflow-y-auto rounded-lg border border-red-200 bg-red-50 p-2 text-xs text-red-800">
+          <div className="mt-3 max-h-48 overflow-y-auto rounded-md border border-red-200 bg-red-50 p-2 text-xs text-red-800">
             <p className="font-semibold">Erreurs :</p>
             <ul className="mt-1 list-inside list-disc space-y-1">
               {importErrors.slice(0, 10).map((e, i) => (
@@ -220,7 +220,7 @@ export function ImportProductsCsvDialog({
             type="button"
             onClick={onClose}
             disabled={importing}
-            className="flex-1 rounded-xl border border-black/[0.1] px-3 py-3 text-sm font-semibold"
+            className="flex-1 rounded-md border border-black/[0.1] px-3 py-3 text-sm font-semibold"
           >
             Annuler
           </button>
@@ -233,7 +233,7 @@ export function ImportProductsCsvDialog({
               !!previewError
             }
             onClick={() => void onImport()}
-            className="flex-1 rounded-xl bg-fs-accent px-3 py-3 text-sm font-semibold text-white disabled:opacity-50"
+            className="flex-1 rounded-md bg-fs-accent px-3 py-3 text-sm font-semibold text-white disabled:opacity-50"
           >
             {importing ? "Import…" : "Importer"}
           </button>
