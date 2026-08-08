@@ -165,6 +165,11 @@ export const queryKeys = {
     from: string;
     to: string;
   }) => ["sales", params] as const,
+  /**
+   * Coût d'achat des ventes affichées (colonne « Bénéfice ») — clé bâtie sur la page
+   * de résultats en cours, pas sur la période : on ne charge que ce qui est à l'écran.
+   */
+  salesCost: (saleIds: string[]) => ["sales-cost", saleIds.join(",")] as const,
   creditSales: (params: {
     companyId: string;
     storeId: string | null;

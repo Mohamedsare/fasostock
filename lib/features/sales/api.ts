@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { fallbackCreatorLabel, fetchCreatorLabels } from "@/lib/features/users/creator-labels";
 import { localDayEndIso, localDayStartIso } from "@/lib/utils/local-day";
 import type { SaleItem, SaleStatus } from "./types";
+import type { SaleCostAggregate } from "./sale-profit";
 
 const saleSelect =
   "id, company_id, store_id, customer_id, sale_number, status, subtotal, discount, tax, total, created_by, created_at, updated_at, sale_mode, document_type, prescription_number, credit_due_at, store:stores(id, name), customer:customers(id, name, phone)";
@@ -63,6 +64,58 @@ export async function listSales(params: {
     ...r,
     created_by_label: labelByUser.get(r.created_by) ?? fallbackCreatorLabel(r.created_by),
   }));
+}
+
+/** Taille de lot `in(...)` : au-delà, l'URL PostgREST devient trop longue. */
+const COST_CHUNK = 120;
+
+/**
+ * Coût d'achat agrégé des ventes demandées — alimente la colonne « Bénéfice » de
+ * l'historique. Volontairement appelé sur les seules ventes **affichées** (une page)
+ * pour ne pas alourdir le chargement de la liste.
+ *
+ * Une vente absente du résultat (aucune ligne lisible) n'est pas inventée : l'écran
+ * affiche « — » plutôt qu'un bénéfice égal au chiffre d'affaires.
+ */
+export async function fetchSalesCost(
+  saleIds: string[],
+): Promise<Map<string, SaleCostAggregate>> {
+  const out = new Map<string, SaleCostAggregate>();
+  const ids = [...new Set(saleIds.filter(Boolean))];
+  if (ids.length === 0) return out;
+
+  const supabase = createClient();
+  for (let i = 0; i < ids.length; i += COST_CHUNK) {
+    const chunk = ids.slice(i, i + COST_CHUNK);
+    const { data, error } = await supabase
+      .from("sale_items")
+      .select("sale_id, quantity, total, product:products(purchase_price)")
+      .in("sale_id", chunk);
+    if (error) throw error;
+    for (const raw of (data ?? []) as Array<Record<string, unknown>>) {
+      const saleId = String(raw.sale_id ?? "");
+      if (!saleId) continue;
+      const productRaw = raw.product;
+      const product = (
+        Array.isArray(productRaw) ? productRaw[0] : productRaw
+      ) as { purchase_price?: number | null } | null | undefined;
+      const purchasePrice = Number(product?.purchase_price ?? 0);
+      const quantity = Number(raw.quantity ?? 0);
+      const cur = out.get(saleId) ?? {
+        itemsTotal: 0,
+        cost: 0,
+        lineCount: 0,
+        linesWithoutCost: 0,
+      };
+      cur.itemsTotal += Number(raw.total ?? 0);
+      cur.cost += purchasePrice * quantity;
+      cur.lineCount += 1;
+      // Prix d'achat à 0 = non renseigné : compté à part pour signaler la surestimation.
+      if (!(purchasePrice > 0)) cur.linesWithoutCost += 1;
+      out.set(saleId, cur);
+    }
+  }
+  return out;
 }
 
 export async function cancelSale(saleId: string): Promise<void> {

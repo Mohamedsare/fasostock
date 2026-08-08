@@ -8,7 +8,20 @@ import { P } from "@/lib/constants/permissions";
 import { useAppContext } from "@/lib/features/common/app-context";
 import { usePermissions } from "@/lib/features/permissions/use-permissions";
 import type { AccessHelpers } from "@/lib/features/permissions/access";
-import { cancelSale, listSales, purgeCancelledSaleAsOwner } from "@/lib/features/sales/api";
+import {
+  cancelSale,
+  fetchSalesCost,
+  listSales,
+  purgeCancelledSaleAsOwner,
+} from "@/lib/features/sales/api";
+import {
+  computeSaleProfit,
+  profitTier,
+  saleProfitCountable,
+  PROFIT_TIER_BAR_CLASS,
+  PROFIT_TIER_TEXT_CLASS,
+  type SaleCostAggregate,
+} from "@/lib/features/sales/sale-profit";
 import type { SaleItem, SaleStatus } from "@/lib/features/sales/types";
 import { queryKeys } from "@/lib/query/query-keys";
 import {
@@ -64,6 +77,7 @@ import {
   MdDescription,
   MdDownload,
   MdFilterAltOff,
+  MdHelpOutline,
   MdLocalOffer,
   MdLockPerson,
   MdEdit,
@@ -76,6 +90,7 @@ import {
   MdShoppingCart,
   MdTableChart,
   MdVisibility,
+  MdWarningAmber,
 } from "react-icons/md";
 
 const PAGE_SIZE = 20;
@@ -173,6 +188,112 @@ function SaleDownPaymentCell({ sale }: { sale: SaleItem }) {
   );
 }
 
+/** Attente du coût d'achat : une barre discrète plutôt qu'un « — » qui clignote. */
+function ProfitSkeleton({ compact }: { compact?: boolean }) {
+  return (
+    <span
+      className={cn(
+        "block h-4 w-16 animate-pulse rounded bg-neutral-200/80 dark:bg-white/10",
+        !compact && "ml-auto",
+      )}
+      aria-label="Calcul du bénéfice"
+    />
+  );
+}
+
+/**
+ * Bénéfice de la vente : montant, taux de marge et jauge.
+ * Trois cas explicites plutôt qu'un chiffre trompeur : calculé, non calculable
+ * (aucun prix d'achat connu), ou sous-estimé (certaines lignes sans prix d'achat).
+ */
+function SaleProfitCell({
+  sale,
+  agg,
+  loading,
+  compact,
+}: {
+  sale: SaleItem;
+  agg: SaleCostAggregate | undefined;
+  loading: boolean;
+  /** Vue carte (mobile) : aligné à gauche, sans jauge. */
+  compact?: boolean;
+}) {
+  if (!saleProfitCountable(sale)) {
+    return <span className="text-neutral-400">—</span>;
+  }
+  const p = computeSaleProfit(sale, agg);
+  if (!p) {
+    return loading ? (
+      <ProfitSkeleton compact={compact} />
+    ) : (
+      <span className="text-neutral-400">—</span>
+    );
+  }
+  if (p.unknown) {
+    return (
+      <span
+        className="inline-flex items-center gap-1 rounded-lg bg-neutral-400/15 px-2 py-1 text-[11px] font-semibold text-neutral-500"
+        title="Prix d'achat non renseigné sur les articles de cette vente : le bénéfice ne peut pas être calculé."
+      >
+        <MdHelpOutline className="h-3.5 w-3.5 shrink-0" aria-hidden />
+        n.c.
+      </span>
+    );
+  }
+
+  const tier = profitTier(p);
+  const rate = Math.round(p.marginPercent);
+  const barWidth = Math.max(0, Math.min(100, p.marginPercent));
+  const title = [
+    `Bénéfice = ${formatCurrency(p.revenue)} facturé − ${formatCurrency(p.cost)} d'achat`,
+    p.understated
+      ? `Prix d'achat manquant sur ${p.linesWithoutCost} ligne(s) : bénéfice surestimé.`
+      : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+  return (
+    <span
+      className={cn(
+        "inline-flex",
+        // Carte mobile : tout sur une ligne, à côté du libellé « Bénéfice ».
+        compact ? "items-baseline gap-1.5" : "flex-col items-end gap-0.5",
+      )}
+      title={title}
+    >
+      <span
+        className={cn(
+          "text-sm font-bold tabular-nums leading-tight",
+          PROFIT_TIER_TEXT_CLASS[tier],
+        )}
+      >
+        {p.profit > 0 ? "+" : ""}
+        {formatCurrency(p.profit)}
+      </span>
+      <span className="flex items-center gap-1 leading-none">
+        {!compact ? (
+          <span className="h-1 w-8 overflow-hidden rounded-full bg-neutral-200 dark:bg-white/15">
+            <span
+              className={cn("block h-full rounded-full", PROFIT_TIER_BAR_CLASS[tier])}
+              style={{ width: `${barWidth}%` }}
+            />
+          </span>
+        ) : null}
+        <span className="text-[11px] font-semibold tabular-nums text-neutral-500">
+          {rate} %
+        </span>
+        {p.understated ? (
+          <MdWarningAmber
+            className="h-3.5 w-3.5 shrink-0 text-amber-500"
+            aria-label="Prix d'achat manquant sur certaines lignes"
+          />
+        ) : null}
+      </span>
+    </span>
+  );
+}
+
 /**
  * Comment la vente a été encaissée : Espèces, Orange Money, Moov Money, Wave, Carte…
  * Un mobile money sans opérateur identifiable (paiement ancien) reste « Mobile Money ».
@@ -230,6 +351,11 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
     hasPermission(P.salesInvoiceA4) || hasPermission(P.salesCreate);
   const canCancelSale = hasPermission(P.salesCancel);
   const canUpdateSale = hasPermission(P.salesUpdate);
+  /**
+   * Le bénéfice révèle les prix d'achat : réservé à qui voit déjà les marges
+   * (propriétaire ou droit Rapports). Un caissier ne voit tout simplement pas la colonne.
+   */
+  const canSeeProfit = isOwner || (helpers?.canReports ?? false);
 
   const [status, setStatus] = useState<SaleStatus | "">("");
   const [storeFilter, setStoreFilter] = useState("");
@@ -443,6 +569,27 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
     visibleSales.length === 0 ? 0 : safePage * PAGE_SIZE + 1;
   const rangeEnd = Math.min((safePage + 1) * PAGE_SIZE, visibleSales.length);
 
+  /**
+   * Bénéfice : coût d'achat des seules ventes de la page affichée. Même cadence de
+   * rafraîchissement que la liste, pour que les deux colonnes racontent la même minute.
+   */
+  const pagedProfitIds = useMemo(
+    () => paged.filter((s) => s.status === "completed").map((s) => s.id),
+    [paged],
+  );
+  const salesCostQ = useQuery({
+    queryKey: queryKeys.salesCost(pagedProfitIds),
+    queryFn: () => fetchSalesCost(pagedProfitIds),
+    enabled: canSeeProfit && pagedProfitIds.length > 0,
+    refetchInterval: 10_000,
+    refetchIntervalInBackground: true,
+    // Le coût d'achat bouge rarement : la page précédente reste affichée pendant le fetch.
+    placeholderData: (prev) => prev,
+  });
+  const costById = salesCostQ.data;
+  /** Vrai tant que le coût des ventes de la page n'est pas arrivé (page suivante comprise). */
+  const profitLoading = salesCostQ.isPending || salesCostQ.isFetching;
+
   const headerDescription = useMemo(() => {
     if (isRestaurant) {
       if (preset === "new_order") return "Commandes en brouillon a finaliser.";
@@ -511,10 +658,22 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
     const d = new Date().toISOString().slice(0, 10);
     void (async () => {
       try {
-        const { headers, rows } = salesToSpreadsheetMatrix(
-          visibleSales,
-          stores,
-        );
+        // Le bénéfice n'est chargé que pour la page à l'écran : l'export, lui, le
+        // calcule sur toute la sélection. Un échec ici n'annule pas l'export —
+        // le fichier sort simplement sans les colonnes de marge.
+        let costById: Map<string, SaleCostAggregate> | undefined;
+        if (canSeeProfit) {
+          try {
+            costById = await fetchSalesCost(
+              visibleSales.filter((s) => s.status === "completed").map((s) => s.id),
+            );
+          } catch {
+            toast.info("Colonnes de bénéfice indisponibles : export sans la marge.");
+          }
+        }
+        const { headers, rows } = salesToSpreadsheetMatrix(visibleSales, stores, {
+          costById,
+        });
         await downloadProSpreadsheet(
           `${isRestaurant ? "commandes" : "ventes"}-${d}.xlsx`,
           isRestaurant ? "Commandes" : "Ventes",
@@ -974,6 +1133,14 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
                     <th className="px-3 py-2.5">{isRestaurant ? "Commande par" : "Vente par"}</th>
                     <th className="px-3 py-2.5">Client</th>
                     <th className="px-3 py-2.5 text-right">Total</th>
+                    {canSeeProfit ? (
+                      <th
+                        className="px-3 py-2.5 text-right"
+                        title="Total facturé moins le prix d'achat des articles vendus (remise comprise)"
+                      >
+                        Bénéfice
+                      </th>
+                    ) : null}
                     <th
                       className="px-3 py-2.5 text-right"
                       title="Encaissé au moment de la vente sur une vente à crédit"
@@ -1017,6 +1184,15 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
                       <td className="px-3 py-2 text-right font-semibold">
                         {formatCurrency(s.total)}
                       </td>
+                      {canSeeProfit ? (
+                        <td className="px-3 py-2 text-right">
+                          <SaleProfitCell
+                            sale={s}
+                            agg={costById?.get(s.id)}
+                            loading={profitLoading}
+                          />
+                        </td>
+                      ) : null}
                       <td className="px-3 py-2 text-right tabular-nums">
                         <SaleDownPaymentCell sale={s} />
                       </td>
@@ -1110,6 +1286,9 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
                   key={s.id}
                   sale={s}
                   stores={stores}
+                  profitAgg={canSeeProfit ? costById?.get(s.id) : undefined}
+                  showProfit={canSeeProfit}
+                  profitLoading={profitLoading}
                   canCancel={canCancelSale}
                   canEdit={canUpdateSale}
                   isOwner={isOwner}
@@ -1418,6 +1597,9 @@ function ActionCard({
 function SaleCard({
   sale,
   stores,
+  profitAgg,
+  showProfit,
+  profitLoading,
   canCancel,
   canEdit,
   isOwner,
@@ -1429,6 +1611,10 @@ function SaleCard({
 }: {
   sale: SaleItem;
   stores: { id: string; name: string }[];
+  /** Coût d'achat de la vente — absent tant qu'il charge, ou si le bénéfice est masqué. */
+  profitAgg?: SaleCostAggregate;
+  showProfit: boolean;
+  profitLoading: boolean;
   canCancel: boolean;
   canEdit: boolean;
   isOwner: boolean;
@@ -1510,6 +1696,19 @@ function SaleCard({
           <span className="block text-base font-bold text-fs-text">
             {formatCurrency(sale.total)}
           </span>
+          {showProfit && saleProfitCountable(sale) ? (
+            <span className="mt-1 flex items-center gap-1.5">
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-neutral-500">
+                Bénéfice
+              </span>
+              <SaleProfitCell
+                sale={sale}
+                agg={profitAgg}
+                loading={profitLoading}
+                compact
+              />
+            </span>
+          ) : null}
           {(() => {
             const st = saleSettlement(sale);
             if (!st.hasCredit || st.kind === "void") return null;
