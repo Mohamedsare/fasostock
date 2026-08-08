@@ -9,11 +9,11 @@ import { getSaleDetail } from "@/lib/features/sales/api";
 import type { CreditSaleRow } from "@/lib/features/credit/types";
 import { CREDIT_AMOUNT_EPS, paidTotal, remainingTotal } from "@/lib/features/credit/credit-math";
 import type { SaleItem } from "@/lib/features/sales/types";
+import { buildReceiptTicketDataFromSale } from "@/lib/features/receipt/build-receipt-ticket-data";
 import {
-  buildReceiptTicketDataFromSale,
-  paymentMethodLabel,
-  paymentMethodsLabel,
-} from "@/lib/features/receipt/build-receipt-ticket-data";
+  paymentDisplay,
+  salePaymentDisplays,
+} from "@/lib/features/payments/payment-display";
 import type { ReceiptTicketData } from "@/lib/features/receipt/receipt-ticket-types";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDateTime } from "@/lib/utils/date";
@@ -315,9 +315,21 @@ export function SaleDetailModal({
                       <p className="text-xs font-semibold text-neutral-500">
                         Mode de paiement
                       </p>
-                      <p className="mt-1 text-sm font-bold text-fs-text">
-                        {paymentMethodsLabel(sale.sale_payments ?? [])}
-                      </p>
+                      <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                        {salePaymentDisplays(sale.sale_payments, {
+                          includeCredit: true,
+                        }).map((d) => (
+                          <span
+                            key={d.kind}
+                            className={cn(
+                              "inline-block rounded-lg px-2.5 py-1 text-xs font-bold",
+                              d.pillClass,
+                            )}
+                          >
+                            {d.label}
+                          </span>
+                        ))}
+                      </div>
                     </div>
                   ) : null}
 
@@ -371,7 +383,7 @@ export function SaleDetailModal({
                             className="flex items-center justify-between py-0.5 text-sm"
                           >
                             <span className="text-neutral-700">
-                              {paymentMethodLabel(p.method)}
+                              {paymentDisplay(p).label}
                             </span>
                             <span className="font-bold text-fs-text">
                               {formatCurrency(p.amount)}

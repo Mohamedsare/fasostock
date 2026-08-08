@@ -20,6 +20,7 @@ import { formatDateTime, toIsoDate } from "@/lib/utils/date";
 import { salesToSpreadsheetMatrix } from "@/lib/features/sales/csv";
 import { downloadProSpreadsheet } from "@/lib/utils/spreadsheet-export-pro";
 import { saleSellerLabel, saleStoreLabel } from "@/lib/features/sales/sale-display";
+import { salePaymentDisplays } from "@/lib/features/payments/payment-display";
 import {
   SETTLEMENT_EPS,
   SETTLEMENT_LABELS,
@@ -168,6 +169,30 @@ function SaleDownPaymentCell({ sale }: { sale: SaleItem }) {
       title="Encaissé au moment de la vente — le reste est à crédit"
     >
       {formatCurrency(s.downPayment)}
+    </span>
+  );
+}
+
+/**
+ * Comment la vente a été encaissée : Espèces, Orange Money, Moov Money, Wave, Carte…
+ * Un mobile money sans opérateur identifiable (paiement ancien) reste « Mobile Money ».
+ */
+function SalePaymentChips({ sale }: { sale: SaleItem }) {
+  const displays = salePaymentDisplays(sale.sale_payments);
+  if (displays.length === 0) return <span className="text-neutral-400">—</span>;
+  return (
+    <span className="inline-flex flex-wrap items-center gap-1">
+      {displays.map((d) => (
+        <span
+          key={d.kind}
+          className={cn(
+            "inline-block whitespace-nowrap rounded-lg px-2.5 py-1 text-xs font-semibold",
+            d.pillClass,
+          )}
+        >
+          {d.label}
+        </span>
+      ))}
     </span>
   );
 }
@@ -955,6 +980,12 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
                     >
                       Acompte
                     </th>
+                    <th
+                      className="px-3 py-2.5"
+                      title="Espèces, Orange Money, Moov Money, Wave, carte…"
+                    >
+                      Paiement
+                    </th>
                     <th className="px-3 py-2.5" title="Payé, payé partiellement, ou à crédit">
                       Règlement
                     </th>
@@ -988,6 +1019,9 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
                       </td>
                       <td className="px-3 py-2 text-right tabular-nums">
                         <SaleDownPaymentCell sale={s} />
+                      </td>
+                      <td className="px-3 py-2">
+                        <SalePaymentChips sale={s} />
                       </td>
                       <td className="px-3 py-2">
                         <SaleSettlementChip sale={s} />
@@ -1462,6 +1496,11 @@ function SaleCard({
       <p className="mt-1 line-clamp-2 text-xs leading-normal text-neutral-800">
         {subtitle}
       </p>
+      {salePaymentDisplays(sale.sale_payments).length > 0 ? (
+        <div className="mt-2">
+          <SalePaymentChips sale={sale} />
+        </div>
+      ) : null}
       <div
         className="mt-3 flex items-center"
         onClick={(e) => e.stopPropagation()}

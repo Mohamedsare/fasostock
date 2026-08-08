@@ -3,6 +3,7 @@ import type { ProSheetCell } from "@/lib/utils/spreadsheet-export-pro";
 import { escapeCsv } from "@/lib/utils/csv";
 import { saleSellerLabel, saleStoreLabel } from "./sale-display";
 import { SETTLEMENT_LABELS, saleSettlement } from "./sale-settlement";
+import { salePaymentsLabel } from "@/lib/features/payments/payment-display";
 
 const SALES_HEADERS = [
   "numero",
@@ -17,6 +18,7 @@ const SALES_HEADERS = [
   "total",
   "acompte",
   "reste_du",
+  "paiement",
   "reglement",
 ] as const;
 
@@ -40,6 +42,7 @@ export function salesToSpreadsheetMatrix(
       Number(s.total ?? 0),
       st.hasCredit ? st.downPayment : 0,
       st.remaining,
+      salePaymentsLabel(s.sale_payments),
       SETTLEMENT_LABELS[st.kind],
     ];
   });

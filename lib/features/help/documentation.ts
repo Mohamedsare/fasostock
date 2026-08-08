@@ -617,6 +617,7 @@ export const DOC_GROUPS: DocGroup[] = [
               "Ajoutez les articles : scannez le code-barres, ou tapez le nom et touchez le produit. Un bip et une vibration confirment l'ajout au panier.",
               "Ajustez les quantités et, si besoin, le conditionnement (unité, paquet, carton).",
               "Touchez Payer, choisissez le mode : espèces, mobile money, carte — ou crédit si l'option est activée.",
+              "En mobile money, précisez l'opérateur : Orange Money, Moov Money ou Wave. Il apparaît ensuite sur le ticket et dans l'historique des ventes.",
               "Le ticket s'imprime, automatiquement si vous l'avez réglé ainsi.",
             ],
           },
@@ -702,6 +703,7 @@ export const DOC_GROUPS: DocGroup[] = [
             items: [
               "Filtrer par période avec les puces rapides, ou choisir des dates précises.",
               "Filtrer par vendeur : utile pour vérifier une caisse en fin de journée.",
+              "Voir d'un coup d'œil comment chaque vente a été payée : la colonne Paiement dit Espèces, Orange Money, Moov Money, Wave ou Carte.",
               "Ouvrir une vente pour voir son détail ligne par ligne.",
               "Réimprimer le ticket ou télécharger la facture.",
               "Envoyer le document au client par WhatsApp ou une autre application.",

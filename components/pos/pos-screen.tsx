@@ -27,6 +27,12 @@ import {
   updateCompletedPosSale,
 } from "@/lib/features/pos/api";
 import { productNameMatches } from "@/lib/features/products/search-aliases";
+import {
+  buildMobileMoneyReference,
+  mobileMoneyProviderFromReference,
+  MOBILE_MONEY_PROVIDERS,
+  type MobileMoneyProvider,
+} from "@/lib/features/payments/payment-display";
 import { posEffectiveUnitPrice } from "@/lib/features/pos/wholesale-unit-price";
 import { listActiveStorePromotions } from "@/lib/features/promotions/api";
 import { applyPromoPercent } from "@/lib/features/promotions/promo-math";
@@ -190,6 +196,11 @@ export function PosScreen({
   const [cart, setCart] = useState<CartRow[]>([]);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
   const [quickPayment, setQuickPayment] = useState<QuickPayment>("cash");
+  /**
+   * Mobile money : opérateur encaisseur. Sans valeur par défaut — le caissier choisit,
+   * sinon l'historique afficherait « Orange Money » pour un paiement Wave.
+   */
+  const [mobileProvider, setMobileProvider] = useState<MobileMoneyProvider | null>(null);
   const isPharmacy = ctx?.businessTypeSlug === "pharmacie";
   const [prescriptionNumber, setPrescriptionNumber] = useState("");
   const [discount, setDiscount] = useState("0");
@@ -555,6 +566,9 @@ export function PosScreen({
   /** Facture A4 « À crédit » : même logique — l'acompte saisi est réellement encaissé. */
   const isA4CreditSale = isA4Like && paymentMethod === "other";
   const isCreditSale = isQuickCreditSale || isA4CreditSale;
+  /** Vente encaissée en mobile money : l'opérateur doit être précisé. */
+  const isMobileMoneySale =
+    mode === "quick" ? quickPayment === "mobile_money" : paymentMethod === "mobile_money";
   /** Acompte encaissé au comptoir sur une vente à crédit (0 = rien encaissé). */
   const creditDownPayment = isCreditSale
     ? Math.min(Math.max(0, amountReceivedValue), total)
@@ -605,6 +619,10 @@ export function PosScreen({
       amountReceivedValue < total
     ) {
       return "Montant reçu insuffisant.";
+    }
+    // Sans opérateur, l'historique ne dirait que « Mobile Money » : on l'exige à la vente.
+    if (isMobileMoneySale && !mobileProvider) {
+      return "Choisissez l'opérateur mobile money (Orange, Moov ou Wave).";
     }
     return null;
   }
@@ -709,6 +727,10 @@ export function PosScreen({
           } else if (pm === "cash" || pm === "mobile_money" || pm === "card") {
             if (mode === "quick") setQuickPayment(pm as QuickPayment);
             else setPaymentMethod(pm as PaymentMethod);
+            // Mobile money : l'opérateur d'origine est relu dans la référence.
+            if (pm === "mobile_money") {
+              setMobileProvider(mobileMoneyProviderFromReference(pays[0].reference));
+            }
           } else if (pm === "other" && mode !== "quick") {
             setPaymentMethod("other");
           }
@@ -764,9 +786,19 @@ export function PosScreen({
    */
   function buildQuickPayments(): PosPaymentLine[] {
     if (!isQuickCreditSale) {
-      return [{ method: quickPayment as PaymentMethod, amount: total }];
+      const method = quickPayment as PaymentMethod;
+      return [{ method, amount: total, reference: mobileMoneyReference(method) }];
     }
     return buildCreditPayments();
+  }
+
+  /**
+   * Opérateur mobile money écrit dans `sale_payments.reference` : c'est lui que relit
+   * l'historique des ventes pour afficher « Orange Money » plutôt que « Mobile Money ».
+   */
+  function mobileMoneyReference(method: PaymentMethod): string | null {
+    if (method !== "mobile_money") return null;
+    return buildMobileMoneyReference(mobileProvider);
   }
 
   /**
@@ -790,7 +822,13 @@ export function PosScreen({
     if (isA4CreditSale) return buildCreditPayments();
     const acompte = amountReceivedValue;
     const normalized = acompte <= 0 ? total : Math.min(Math.max(acompte, 0.01), total);
-    return [{ method: paymentMethod, amount: normalized }];
+    return [
+      {
+        method: paymentMethod,
+        amount: normalized,
+        reference: mobileMoneyReference(paymentMethod),
+      },
+    ];
   }
 
   const createMut = useMutation({
@@ -851,6 +889,7 @@ export function PosScreen({
               discount: discountValue,
               total,
               quickPayment,
+              mobileProvider: quickPayment === "mobile_money" ? mobileProvider : null,
               amountReceivedValue,
               change,
               // Imprimé dès qu'un client est associé, même sur une vente comptant.
@@ -1570,6 +1609,8 @@ export function PosScreen({
       setQuickPayment={setQuickPayment}
       paymentMethod={paymentMethod}
       setPaymentMethod={setPaymentMethod}
+      mobileProvider={mobileProvider}
+      setMobileProvider={setMobileProvider}
       customerId={customerId}
       setCustomerId={setCustomerId}
       customers={customers}
@@ -2853,6 +2894,8 @@ function PosCartPanel({
   setQuickPayment,
   paymentMethod,
   setPaymentMethod,
+  mobileProvider,
+  setMobileProvider,
   customerId,
   setCustomerId,
   customers,
@@ -2902,6 +2945,9 @@ function PosCartPanel({
   setQuickPayment: (m: QuickPayment) => void;
   paymentMethod: PaymentMethod;
   setPaymentMethod: (m: PaymentMethod) => void;
+  /** Opérateur mobile money sélectionné (`null` tant que le caissier n'a pas choisi). */
+  mobileProvider?: MobileMoneyProvider | null;
+  setMobileProvider?: (p: MobileMoneyProvider) => void;
   customerId: string;
   setCustomerId: (v: string) => void;
   customers: Array<{ id: string; name: string }>;
@@ -2932,6 +2978,9 @@ function PosCartPanel({
   setPrescriptionNumber?: (v: string) => void;
 }) {
   const isA4Cart = mode !== "quick";
+  const isMobileMoneyCart = isA4Cart
+    ? paymentMethod === "mobile_money"
+    : quickPayment === "mobile_money";
   /** Échéance du crédit : repliée par défaut (rarement saisie), dépliée à la demande. */
   const [dueDateOpen, setDueDateOpen] = useState(false);
   /** Aligné `PosCartPanel` Flutter : `scrollBodyWithFooter` + `cartListBody` (vue tableau). */
@@ -3054,6 +3103,39 @@ function PosCartPanel({
           })}
         </div>
       )}
+
+      {/* Mobile money : quel opérateur encaisse. Obligatoire — sans lui, l'historique
+       * des ventes ne pourrait afficher que « Mobile Money ». */}
+      {isMobileMoneyCart ? (
+        <div className="mt-2 px-0 min-[900px]:px-3">
+          <span className="mb-1 block text-[11px] font-semibold text-[#6B7280]">
+            Opérateur mobile money
+          </span>
+          <div className="grid grid-cols-3 gap-1.5">
+            {MOBILE_MONEY_PROVIDERS.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => setMobileProvider?.(p.id)}
+                aria-pressed={mobileProvider === p.id}
+                className={cn(
+                  "truncate rounded-lg px-1 py-2 text-xs font-semibold transition-colors",
+                  mobileProvider === p.id
+                    ? "bg-[#F97316] text-white"
+                    : "bg-[#F8F9FA] text-[#1F2937]",
+                )}
+              >
+                {p.short}
+              </button>
+            ))}
+          </div>
+          {!mobileProvider ? (
+            <p className="mt-1 text-[11px] font-medium text-[#DC2626]">
+              Choisissez l&apos;opérateur avant d&apos;encaisser.
+            </p>
+          ) : null}
+        </div>
+      ) : null}
 
       {/* Vente à crédit (caisse rapide) : client obligatoire, acompte et échéance.
        * Bloc compact — l'échéance (rarement saisie) reste repliée par défaut. */}

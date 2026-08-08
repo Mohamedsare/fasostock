@@ -3,6 +3,11 @@ import type {
   ReceiptTicketItem,
 } from "./receipt-ticket-types";
 import type { Store } from "@/lib/features/stores/types";
+import {
+  mobileMoneyProviderLabel,
+  salePaymentsLabel,
+  type MobileMoneyProvider,
+} from "@/lib/features/payments/payment-display";
 
 /** `credit` = vente à crédit en caisse rapide (réglage entreprise, cf. `quick-pos-credit.ts`). */
 export type QuickPaymentMethod = "cash" | "mobile_money" | "card" | "credit";
@@ -19,6 +24,8 @@ export type PosReceiptSnap = {
   discount: number;
   total: number;
   quickPayment: QuickPaymentMethod;
+  /** Mobile money : opérateur choisi en caisse — imprimé tel quel sur le ticket. */
+  mobileProvider?: MobileMoneyProvider | null;
   amountReceivedValue: number;
   change: number;
   /** Client associé à la vente (facultatif au comptant, obligatoire à crédit). */
@@ -31,11 +38,14 @@ export type PosReceiptSnap = {
   creditDueLabel?: string | null;
 };
 
-function quickPaymentLabel(m: QuickPaymentMethod): string {
+function quickPaymentLabel(
+  m: QuickPaymentMethod,
+  provider?: MobileMoneyProvider | null,
+): string {
   if (m === "cash") return "Espèces";
   if (m === "card") return "Carte";
   if (m === "credit") return "À crédit";
-  return "Mobile money";
+  return provider ? mobileMoneyProviderLabel(provider) : "Mobile money";
 }
 
 /** Aligné sur `_paymentLabels` / `_reprintReceipt` (Flutter `sale_detail_dialog.dart`). */
@@ -75,7 +85,7 @@ type SaleLikeForReceipt = {
     total: number;
     product?: { name: string | null } | null;
   }>;
-  sale_payments: Array<{ method: string }>;
+  sale_payments: Array<{ method: string; reference?: string | null }>;
   customer?: { name: string | null; phone: string | null } | null;
 };
 
@@ -102,7 +112,8 @@ export function buildReceiptTicketDataFromSale(
     subtotal: sale.subtotal,
     discount: sale.discount,
     total: sale.total,
-    paymentMethod: paymentMethodsLabel(sale.sale_payments),
+    // Réimpression : l'opérateur mobile money est relu depuis la référence du paiement.
+    paymentMethod: salePaymentsLabel(sale.sale_payments, { includeCredit: true }),
     amountReceived: null,
     change: null,
     date: new Date(sale.created_at),
@@ -141,7 +152,7 @@ export function buildReceiptTicketData(
     subtotal: snap.subtotal,
     discount: snap.discount,
     total: snap.total,
-    paymentMethod: quickPaymentLabel(snap.quickPayment),
+    paymentMethod: quickPaymentLabel(snap.quickPayment, snap.mobileProvider),
     amountReceived: showMoney ? ar : null,
     change: showMoney && snap.change >= 0 ? snap.change : null,
     date,
