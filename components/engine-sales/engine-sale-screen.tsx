@@ -9,6 +9,8 @@ import type {
   EnginePaymentMethod,
   EngineWheels,
 } from "@/lib/features/engine-sales/types";
+import { listAvailableEngineUnits } from "@/lib/features/engine-units/api";
+import { engineUnitLabel } from "@/lib/features/engine-units/types";
 import { listProducts, listStoreInventory } from "@/lib/features/products/api";
 import { firstProductImageUrl } from "@/lib/features/products/product-images";
 import { useStoreCatalog } from "@/lib/features/stores/use-store-catalog";
@@ -72,8 +74,10 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 export function EngineSaleScreen({ storeId }: { storeId: string }) {
   const router = useRouter();
   const qc = useQueryClient();
-  const { data: ctx, hasPermission } = usePermissions();
+  const { data: ctx, helpers, hasPermission } = usePermissions();
   const companyId = ctx?.companyId ?? "";
+  /** Motos identifiées : le vendeur choisit l'engin au lieu de retaper son châssis. */
+  const engineUnitsOn = helpers?.engineUnitsOn ?? false;
   const store = ctx?.stores.find((s) => s.id === storeId);
   const storeEnabled = store?.engineSalesEnabled === true;
   const canCreate =
@@ -135,6 +139,31 @@ export function EngineSaleScreen({ storeId }: { storeId: string }) {
   const [color, setColor] = useState("");
   const [condition, setCondition] = useState<EngineCondition | "">("");
 
+  /**
+   * Engin physique choisi (motos identifiées). Vide = saisie manuelle, comme avant.
+   * La liste ne contient que les engins encore en cour pour ce modèle.
+   */
+  const [engineUnitId, setEngineUnitId] = useState("");
+  const engineUnitsQ = useQuery({
+    queryKey: queryKeys.engineUnitsAvailable(productId, storeId),
+    queryFn: () => listAvailableEngineUnits(productId, storeId),
+    enabled: engineUnitsOn && Boolean(productId),
+    staleTime: 30_000,
+  });
+  const availableUnits = useMemo(() => engineUnitsQ.data ?? [], [engineUnitsQ.data]);
+
+  /** Choisir la moto remplit le châssis, le moteur et la couleur — plus de ressaisie. */
+  function pickEngineUnit(id: string) {
+    setEngineUnitId(id);
+    const unit = availableUnits.find((u) => u.id === id);
+    if (!unit) return;
+    setChassis(unit.chassisNumber);
+    setMotor(unit.engineNumber ?? "");
+    setColor(unit.color ?? "");
+    // Un engin identifié, c'est UNE moto : la quantité ne peut plus être 2.
+    setQuantity(1);
+  }
+
   // Paiement
   const [paymentMethod, setPaymentMethod] = useState<EnginePaymentMethod>("cash");
   const [amountPaid, setAmountPaid] = useState(0);
@@ -168,6 +197,11 @@ export function EngineSaleScreen({ storeId }: { storeId: string }) {
       setUnitPrice(Number(p.sale_price ?? 0));
       setDesignation(p.name);
     }
+    // Changer de modèle invalide l'engin choisi : ses numéros ne sont pas ceux-là.
+    setEngineUnitId("");
+    setChassis("");
+    setMotor("");
+    setColor("");
     setStep("details");
   }
 
@@ -177,6 +211,7 @@ export function EngineSaleScreen({ storeId }: { storeId: string }) {
         companyId,
         storeId,
         productId,
+        engineUnitId: engineUnitId || null,
         quantity: Math.max(1, Math.trunc(quantity)),
         unitPrice,
         payments: amountPaid > 0 ? [{ method: paymentMethod, amount: amountPaid }] : [],
@@ -224,6 +259,16 @@ export function EngineSaleScreen({ storeId }: { storeId: string }) {
     onSuccess: async (res) => {
       await qc.invalidateQueries({ queryKey: queryKeys.engineSales({ companyId, storeId }) });
       await qc.invalidateQueries({ queryKey: queryKeys.productInventory(storeId) });
+      if (engineUnitsOn) {
+        await qc.invalidateQueries({ queryKey: ["engine-units"] });
+      }
+      // La vente est passée mais la moto est restée « en stock » : on le dit tout de
+      // suite, sinon l'écart n'apparaîtra qu'à l'inventaire, des semaines plus tard.
+      if (res.engineUnitMarked === false) {
+        toast.error(
+          "Vente enregistrée, mais la moto n'a pas pu être marquée comme vendue. Ouvrez sa fiche pour vérifier.",
+        );
+      }
       // Vente créée hors ligne (mise en file d'attente) : pas de facture PDF tant que
       // la synchronisation n'a pas eu lieu côté serveur.
       if (res.saleId.startsWith("offline:")) {
@@ -450,14 +495,62 @@ export function EngineSaleScreen({ storeId }: { storeId: string }) {
                 />
               </Field>
             </div>
+            {/* Motos identifiées : choisir l'engin plutôt que relever son châssis sur
+                le cadre. Une faute de frappe ici bloque la carte grise du client. */}
+            {engineUnitsOn ? (
+              <div className="sm:col-span-2">
+                <Field label="Moto à vendre">
+                  <select
+                    className={input}
+                    value={engineUnitId}
+                    onChange={(e) => pickEngineUnit(e.target.value)}
+                    disabled={engineUnitsQ.isPending}
+                  >
+                    <option value="">
+                      {engineUnitsQ.isPending
+                        ? "Chargement…"
+                        : availableUnits.length === 0
+                          ? "Aucune moto enregistrée — saisie manuelle"
+                          : "Saisie manuelle (aucune moto choisie)"}
+                    </option>
+                    {availableUnits.map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {engineUnitLabel(u)}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                {engineUnitId ? (
+                  <p className="mt-1 text-[11px] text-neutral-500">
+                    Châssis, moteur et couleur repris de la moto choisie. Elle sortira du
+                    stock à l&apos;enregistrement de la vente.
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
             <Field label="N° châssis">
-              <input className={input} value={chassis} onChange={(e) => setChassis(e.target.value)} />
+              <input
+                className={input}
+                value={chassis}
+                onChange={(e) => setChassis(e.target.value)}
+                readOnly={Boolean(engineUnitId)}
+              />
             </Field>
             <Field label="N° moteur">
-              <input className={input} value={motor} onChange={(e) => setMotor(e.target.value)} />
+              <input
+                className={input}
+                value={motor}
+                onChange={(e) => setMotor(e.target.value)}
+                readOnly={Boolean(engineUnitId)}
+              />
             </Field>
             <Field label="Couleur">
-              <input className={input} value={color} onChange={(e) => setColor(e.target.value)} />
+              <input
+                className={input}
+                value={color}
+                onChange={(e) => setColor(e.target.value)}
+                readOnly={Boolean(engineUnitId)}
+              />
             </Field>
             <Field label="Quantité">
               <input
@@ -465,6 +558,7 @@ export function EngineSaleScreen({ storeId }: { storeId: string }) {
                 className={input}
                 value={quantity}
                 onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                readOnly={Boolean(engineUnitId)}
               />
             </Field>
           </div>

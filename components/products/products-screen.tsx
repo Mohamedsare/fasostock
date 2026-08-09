@@ -26,6 +26,7 @@ import { adjustStockAtomic } from "@/lib/features/inventory/api";
 import { useProductLocationMap } from "@/lib/features/product-locations/use-product-locations";
 import { createProductBatch } from "@/lib/features/products/batches-api";
 import { saveProductPackagings } from "@/lib/features/products/packagings-api";
+import { saveEngineUnits } from "@/lib/features/engine-units/api";
 import {
   productNameMatches,
   productSearchAliases,
@@ -210,6 +211,11 @@ export function ProductsScreen() {
    * alternatives et le formulaire les propose. Désactivé ⇒ rien ne change.
    */
   const productAliasesOn = helpers?.productAliasesOn ?? false;
+  /**
+   * Motos identifiées : la fiche produit propose la liste des engins (châssis, moteur,
+   * couleur). Désactivé ⇒ aucune requête, aucune écriture, rien ne change.
+   */
+  const engineUnitsOn = helpers?.engineUnitsOn ?? false;
   const productLocationsQ = useProductLocationMap(storeId, productLocationsOn);
   const locationByProduct = productLocationsQ.data ?? null;
   // Catalogue de la boutique courante : `null` = partage tout le catalogue de l'entreprise.
@@ -250,6 +256,20 @@ export function ProductsScreen() {
             payload.removedPackagingIds,
           );
         }
+        // Motos identifiées (châssis / moteur / couleur) — en ligne uniquement.
+        if (
+          engineUnitsOn &&
+          navigator.onLine &&
+          (payload.engineUnits.length > 0 || payload.removedEngineUnitIds.length > 0)
+        ) {
+          await saveEngineUnits(
+            companyId,
+            editingId,
+            storeId,
+            payload.engineUnits,
+            payload.removedEngineUnitIds,
+          );
+        }
         return;
       }
       const created = await createProduct(companyId, payload.input, storeId);
@@ -276,6 +296,10 @@ export function ProductsScreen() {
         if (navigator.onLine && payload.packagings.length > 0) {
           await saveProductPackagings(companyId, productId, payload.packagings, []);
         }
+        // Motos identifiées saisies à la création (châssis / moteur / couleur).
+        if (engineUnitsOn && navigator.onLine && payload.engineUnits.length > 0) {
+          await saveEngineUnits(companyId, productId, storeId, payload.engineUnits, []);
+        }
       }
       // Lot daté initial (métiers à suivi de péremption) → table product_batches.
       if (productId && payload.initialBatch?.expiryDate) {
@@ -291,6 +315,11 @@ export function ProductsScreen() {
     onSuccess: async (_, vars) => {
       await qc.invalidateQueries({ queryKey: queryKeys.products(companyId) });
       await qc.invalidateQueries({ queryKey: queryKeys.productSkus(companyId) });
+      // Motos identifiées : la fiche produit et le choix de l'engin à la vente
+      // doivent voir les châssis qui viennent d'être saisis.
+      if (engineUnitsOn) {
+        await qc.invalidateQueries({ queryKey: ["engine-units"] });
+      }
       // Rafraîchit la page Péremptions + la carte du tableau de bord.
       await qc.invalidateQueries({ queryKey: ["expiry-list", companyId] });
       await qc.invalidateQueries({ queryKey: ["expiry-summary", companyId] });
@@ -1096,6 +1125,7 @@ export function ProductsScreen() {
           expiryModuleEnabled={expiryModuleOverride(ctx.data)}
           suggestedSku={suggestedSku}
           searchAliasesEnabled={productAliasesOn}
+          engineUnitsEnabled={engineUnitsOn}
           onClose={() => {
             setShowForm(false);
             setEditing(null);

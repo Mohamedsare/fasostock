@@ -119,6 +119,12 @@ export async function renderReceiptThermalHtml(
   parts.push(
     `<div class="mono">Paiement : ${escapeHtml(payU)}</div>`,
   );
+  // Vente réglée en deux moyens (espèces + mobile money) : le détail fait la preuve.
+  for (const split of data.paymentSplit ?? []) {
+    parts.push(
+      `<div class="row"><span>${tx(split.label)}</span><span>${escapeHtml(receiptIntAmount(Math.round(split.amount), data.currencyCode))}</span></div>`,
+    );
+  }
   if (isCash) {
     parts.push(
       `<div class="mono">Reçu     : ${escapeHtml(receiptIntAmount(Math.round(data.amountReceived ?? data.total), data.currencyCode))}</div>`,

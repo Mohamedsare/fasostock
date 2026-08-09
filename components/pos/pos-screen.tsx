@@ -30,6 +30,7 @@ import { productNameMatches } from "@/lib/features/products/search-aliases";
 import {
   buildMobileMoneyReference,
   mobileMoneyProviderFromReference,
+  mobileMoneyProviderLabel,
   MOBILE_MONEY_PROVIDERS,
   type MobileMoneyProvider,
 } from "@/lib/features/payments/payment-display";
@@ -41,6 +42,12 @@ import { factureTabStripHeightPx } from "@/lib/utils/facture-tab-layout";
 import { fetchInvoiceTablePosEnabled } from "@/lib/features/settings/invoice-table-pos";
 import { fetchQuickPosCreditEnabled } from "@/lib/features/settings/quick-pos-credit";
 import { fetchQuickPosPriceEditEnabled } from "@/lib/features/settings/quick-pos-price-edit";
+import {
+  effectiveQuickPosProviders,
+  fetchQuickPosPayments,
+  peekQuickPosPayments,
+  QUICK_POS_PAYMENTS_DEFAULT,
+} from "@/lib/features/settings/quick-pos-payments";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { ROUTES, storeFactureTabPath } from "@/lib/config/routes";
 import { queryKeys } from "@/lib/query/query-keys";
@@ -177,8 +184,11 @@ function isBoutiqueScope(scope: string | null | undefined): boolean {
   return s === "both" || s === "boutique_only";
 }
 type PaymentMethod = "cash" | "mobile_money" | "card" | "other";
-/** `credit` : vente à crédit en caisse rapide — soumise au réglage entreprise du propriétaire. */
-type QuickPayment = "cash" | "mobile_money" | "card" | "credit";
+/**
+ * `credit` : vente à crédit en caisse rapide — soumise au réglage entreprise du propriétaire.
+ * `mixed` : une partie en espèces, le reste en mobile money (même réserve : réglage owner).
+ */
+type QuickPayment = "cash" | "mobile_money" | "card" | "credit" | "mixed";
 
 export function PosScreen({
   storeId,
@@ -203,6 +213,8 @@ export function PosScreen({
    * sinon l'historique afficherait « Orange Money » pour un paiement Wave.
    */
   const [mobileProvider, setMobileProvider] = useState<MobileMoneyProvider | null>(null);
+  /** Paiement mixte : part réglée en espèces, le reste passe en mobile money. */
+  const [splitCashAmount, setSplitCashAmount] = useState("");
   const isPharmacy = ctx?.businessTypeSlug === "pharmacie";
   const [prescriptionNumber, setPrescriptionNumber] = useState("");
   const [discount, setDiscount] = useState("0");
@@ -318,6 +330,30 @@ export function PosScreen({
     staleTime: 60_000,
   });
   const quickPriceEditEnabled = mode === "quick" && quickPriceEditCompanyQ.data === true;
+
+  // Encaissement en caisse rapide : opérateurs mobile money proposés, paiement mixte,
+  // client masqué (Paramètres › « Caisse POS rapide — encaissement »). Désactivé par
+  // défaut : `QUICK_POS_PAYMENTS_DEFAULT` reproduit la caisse d'origine.
+  const peekQuickPay = companyId.length > 0 ? peekQuickPosPayments(companyId) : undefined;
+  const quickPaymentsQ = useQuery({
+    queryKey: queryKeys.quickPosPayments(companyId),
+    queryFn: () => fetchQuickPosPayments(companyId),
+    enabled: Boolean(companyId && mode === "quick" && canAccess),
+    staleTime: 60_000,
+    ...(peekQuickPay !== undefined ? { initialData: peekQuickPay } : {}),
+  });
+  const quickPaymentsSettings =
+    mode === "quick" ? (quickPaymentsQ.data ?? QUICK_POS_PAYMENTS_DEFAULT) : QUICK_POS_PAYMENTS_DEFAULT;
+  /** Opérateurs réellement proposés au caissier (les trois tant que le réglage est coupé). */
+  const allowedProviders = useMemo(
+    () => effectiveQuickPosProviders(quickPaymentsSettings),
+    [quickPaymentsSettings],
+  );
+  const quickSplitEnabled =
+    mode === "quick" && quickPaymentsSettings.enabled && quickPaymentsSettings.splitEnabled;
+  const hideQuickCustomer =
+    mode === "quick" && quickPaymentsSettings.enabled && quickPaymentsSettings.hideCustomer;
+
   const posQ = useQuery({
     queryKey: ["pos", mode, companyId, storeId] as const,
     queryFn: () =>
@@ -568,9 +604,18 @@ export function PosScreen({
   /** Facture A4 « À crédit » : même logique — l'acompte saisi est réellement encaissé. */
   const isA4CreditSale = isA4Like && paymentMethod === "other";
   const isCreditSale = isQuickCreditSale || isA4CreditSale;
+  /** Vente réglée en deux fois au comptoir : une part espèces, le reste en mobile money. */
+  const isMixedSale = mode === "quick" && quickPayment === "mixed";
+  /** Part espèces du paiement mixte, bornée au total (le reste part en mobile money). */
+  const splitCashValue = isMixedSale
+    ? Math.min(Math.max(0, toNumber(splitCashAmount)), total)
+    : 0;
+  const splitMobileValue = isMixedSale ? Math.max(0, total - splitCashValue) : 0;
   /** Vente encaissée en mobile money : l'opérateur doit être précisé. */
   const isMobileMoneySale =
-    mode === "quick" ? quickPayment === "mobile_money" : paymentMethod === "mobile_money";
+    mode === "quick"
+      ? quickPayment === "mobile_money" || isMixedSale
+      : paymentMethod === "mobile_money";
   /** Acompte encaissé au comptoir sur une vente à crédit (0 = rien encaissé). */
   const creditDownPayment = isCreditSale
     ? Math.min(Math.max(0, amountReceivedValue), total)
@@ -583,6 +628,43 @@ export function PosScreen({
       setQuickPayment("cash");
     }
   }, [quickCreditEnabled, quickPayment, activeEditSaleId]);
+
+  /*
+   * Client masqué : on efface aussi la sélection, sinon un client choisi juste avant
+   * que le propriétaire ne coupe l'option resterait attaché aux ventes suivantes sans
+   * que le caissier puisse le voir. La vente à crédit garde son client (obligatoire),
+   * et une vente rouverte conserve le sien (on ne dépouille pas l'historique).
+   */
+  useEffect(() => {
+    if (!hideQuickCustomer || activeEditSaleId) return;
+    if (quickPayment !== "credit" && customerId) setCustomerId("");
+  }, [hideQuickCustomer, activeEditSaleId, quickPayment, customerId]);
+
+  // Idem pour le paiement mixte coupé en cours de session.
+  useEffect(() => {
+    if (!quickSplitEnabled && quickPayment === "mixed" && !activeEditSaleId) {
+      setQuickPayment("cash");
+    }
+  }, [quickSplitEnabled, quickPayment, activeEditSaleId]);
+
+  /*
+   * Un seul opérateur autorisé : le caissier n'a rien à choisir, on le pose d'office.
+   * Et si l'opérateur mémorisé n'est plus proposé (le propriétaire vient de le
+   * décocher), on l'efface plutôt que d'écrire un opérateur interdit dans l'historique.
+   */
+  useEffect(() => {
+    if (mode !== "quick") return;
+    // Modification d'une vente déjà enregistrée : on ne réécrit pas son opérateur d'origine.
+    if (activeEditSaleId) return;
+    if (allowedProviders.length === 1) {
+      const only = allowedProviders[0];
+      if (mobileProvider !== only) setMobileProvider(only);
+      return;
+    }
+    if (mobileProvider && !allowedProviders.includes(mobileProvider)) {
+      setMobileProvider(null);
+    }
+  }, [mode, allowedProviders, mobileProvider, activeEditSaleId]);
 
   /** Aligné `PosQuickPage._handlePayment` / `PosPage._handlePayment` (Flutter) — validations + toasts. */
   function getPosPayValidationError(): string | null {
@@ -622,9 +704,26 @@ export function PosScreen({
     ) {
       return "Montant reçu insuffisant.";
     }
+    if (isMixedSale) {
+      // Une vente mixte déjà enregistrée reste modifiable même si le propriétaire a
+      // coupé le réglage depuis : on ne bloque que les nouvelles.
+      if (!quickSplitEnabled && !activeEditSaleId) {
+        return "Le paiement mixte n'est pas activé pour cette entreprise.";
+      }
+      if (splitCashValue <= 0) {
+        return "Indiquez la part payée en espèces (sinon choisissez MOBILE).";
+      }
+      if (splitMobileValue <= 0) {
+        return "Les espèces couvrent tout le total : choisissez CASH.";
+      }
+    }
     // Sans opérateur, l'historique ne dirait que « Mobile Money » : on l'exige à la vente.
     if (isMobileMoneySale && !mobileProvider) {
-      return "Choisissez l'opérateur mobile money (Orange, Moov ou Wave).";
+      return allowedProviders.length === 1
+        ? "Choisissez l'opérateur mobile money."
+        : `Choisissez l'opérateur mobile money (${allowedProviders
+            .map((id) => mobileMoneyProviderLabel(id))
+            .join(", ")}).`;
     }
     return null;
   }
@@ -719,7 +818,18 @@ export function PosScreen({
         const pays = sale.sale_payments ?? [];
         // Ligne `other` = solde mis à crédit : la vente garde sa nature à la modification.
         const hadCredit = pays.some((p) => p.method === "other");
-        if (pays.length > 0) {
+        // Espèces + mobile money sur la même vente = paiement mixte : sans ce test, la
+        // réouverture la prendrait pour du comptant et écraserait la part mobile money.
+        const cashLine = pays.find((p) => p.method === "cash");
+        const mobileLine = pays.find((p) => p.method === "mobile_money");
+        const wasMixed = !hadCredit && Boolean(cashLine) && Boolean(mobileLine);
+        if (wasMixed && mode === "quick") {
+          setQuickPayment("mixed");
+          setSplitCashAmount(String(cashLine?.amount ?? 0));
+          setMobileProvider(mobileMoneyProviderFromReference(mobileLine?.reference));
+          setAmountReceivedTouched(false);
+          setAmountReceived("");
+        } else if (pays.length > 0) {
           const pm = pays[0].method;
           if (hadCredit) {
             // Vente à crédit : la ligne `cash` d'acompte ne doit pas la faire
@@ -787,11 +897,21 @@ export function PosScreen({
    * rapports (« crédit accordé » = Σ des lignes `other`).
    */
   function buildQuickPayments(): PosPaymentLine[] {
-    if (!isQuickCreditSale) {
-      const method = quickPayment as PaymentMethod;
-      return [{ method, amount: total, reference: mobileMoneyReference(method) }];
+    if (isQuickCreditSale) return buildCreditPayments();
+    // Mixte : deux lignes réelles (espèces + mobile money) — l'historique, les rapports
+    // et la caisse voient exactement ce que le client a donné, sans arrondi ni fiction.
+    if (isMixedSale) {
+      return [
+        { method: "cash", amount: splitCashValue },
+        {
+          method: "mobile_money",
+          amount: splitMobileValue,
+          reference: mobileMoneyReference("mobile_money"),
+        },
+      ];
     }
-    return buildCreditPayments();
+    const method = quickPayment as PaymentMethod;
+    return [{ method, amount: total, reference: mobileMoneyReference(method) }];
   }
 
   /**
@@ -891,7 +1011,11 @@ export function PosScreen({
               discount: discountValue,
               total,
               quickPayment,
-              mobileProvider: quickPayment === "mobile_money" ? mobileProvider : null,
+              mobileProvider:
+                quickPayment === "mobile_money" || isMixedSale ? mobileProvider : null,
+              // Ticket d'une vente mixte : le client doit lire les deux parts payées.
+              splitCash: isMixedSale ? splitCashValue : null,
+              splitMobile: isMixedSale ? splitMobileValue : null,
               amountReceivedValue,
               change,
               // Imprimé dès qu'un client est associé, même sur une vente comptant.
@@ -944,6 +1068,7 @@ export function PosScreen({
         setDiscount("0");
         setAmountReceived("");
         setAmountReceivedTouched(false);
+        setSplitCashAmount("");
         setCustomerId("");
         setCreditDueDate("");
         setActiveEditSaleId(null);
@@ -965,11 +1090,12 @@ export function PosScreen({
       setDiscount("0");
       setAmountReceived("");
       setAmountReceivedTouched(false);
+      setSplitCashAmount("");
       setCustomerId("");
       setCreditDueDate("");
       setPrescriptionNumber("");
-      // Vente à crédit soldée : la caisse revient au comptant pour le client suivant.
-      if (quickPayment === "credit") setQuickPayment("cash");
+      // Vente à crédit ou mixte soldée : la caisse revient au comptant pour le client suivant.
+      if (quickPayment === "credit" || quickPayment === "mixed") setQuickPayment("cash");
       if (res.saleId.startsWith(OFFLINE_SALE_ID_PREFIX)) {
         toast.success(
           "Vente enregistrée localement. Synchronisation à la reconnexion.",
@@ -1635,10 +1761,23 @@ export function PosScreen({
       setPaymentMethod={setPaymentMethod}
       mobileProvider={mobileProvider}
       setMobileProvider={setMobileProvider}
+      // Opérateurs proposés : ceux du réglage, plus celui d'une vente rouverte pour
+      // qu'une ancienne vente Wave reste lisible même si Wave n'est plus encaissé.
+      mobileProviders={
+        mobileProvider && !allowedProviders.includes(mobileProvider)
+          ? [...allowedProviders, mobileProvider]
+          : allowedProviders
+      }
       customerId={customerId}
       setCustomerId={setCustomerId}
       customers={customers}
+      hideQuickCustomer={hideQuickCustomer}
       allowQuickCredit={quickCreditEnabled || quickPayment === "credit"}
+      allowQuickSplit={quickSplitEnabled || quickPayment === "mixed"}
+      splitCashAmount={splitCashAmount}
+      setSplitCashAmount={setSplitCashAmount}
+      splitCashValue={splitCashValue}
+      splitMobileValue={splitMobileValue}
       allowQuickPriceEdit={quickPriceEditEnabled}
       creditDueDate={creditDueDate}
       setCreditDueDate={setCreditDueDate}
@@ -1656,6 +1795,7 @@ export function PosScreen({
         setDiscount("0");
         setAmountReceived("");
         setAmountReceivedTouched(false);
+        setSplitCashAmount("");
         setPrescriptionNumber("");
         setCreditDueDate("");
       }}
@@ -2940,10 +3080,17 @@ function PosCartPanel({
   setPaymentMethod,
   mobileProvider,
   setMobileProvider,
+  mobileProviders,
   customerId,
   setCustomerId,
   customers,
+  hideQuickCustomer,
   allowQuickCredit,
+  allowQuickSplit,
+  splitCashAmount,
+  setSplitCashAmount,
+  splitCashValue,
+  splitMobileValue,
   allowQuickPriceEdit,
   creditDueDate,
   setCreditDueDate,
@@ -2992,11 +3139,22 @@ function PosCartPanel({
   /** Opérateur mobile money sélectionné (`null` tant que le caissier n'a pas choisi). */
   mobileProvider?: MobileMoneyProvider | null;
   setMobileProvider?: (p: MobileMoneyProvider) => void;
+  /** Opérateurs proposés en caisse rapide (réglage entreprise) — les trois par défaut. */
+  mobileProviders?: MobileMoneyProvider[];
   customerId: string;
   setCustomerId: (v: string) => void;
   customers: Array<{ id: string; name: string }>;
+  /** Caisse rapide : le propriétaire a masqué le client sur les ventes comptant. */
+  hideQuickCustomer?: boolean;
   /** Caisse rapide : le propriétaire autorise la vente à crédit (réglage entreprise). */
   allowQuickCredit?: boolean;
+  /** Caisse rapide : le propriétaire autorise le paiement mixte espèces + mobile money. */
+  allowQuickSplit?: boolean;
+  /** Paiement mixte : part réglée en espèces (saisie libre), le reste en mobile money. */
+  splitCashAmount?: string;
+  setSplitCashAmount?: (v: string) => void;
+  splitCashValue?: number;
+  splitMobileValue?: number;
   /** Caisse rapide : le propriétaire autorise la saisie du prix unitaire au panier. */
   allowQuickPriceEdit?: boolean;
   /** Échéance de la créance (`yyyy-mm-dd`), facultative. */
@@ -3022,9 +3180,34 @@ function PosCartPanel({
   setPrescriptionNumber?: (v: string) => void;
 }) {
   const isA4Cart = mode !== "quick";
+  const isMixedCart = !isA4Cart && quickPayment === "mixed";
   const isMobileMoneyCart = isA4Cart
     ? paymentMethod === "mobile_money"
-    : quickPayment === "mobile_money";
+    : quickPayment === "mobile_money" || isMixedCart;
+  const providerChoices =
+    !isA4Cart && mobileProviders && mobileProviders.length > 0
+      ? mobileProviders
+      : MOBILE_MONEY_PROVIDERS.map((p) => p.id);
+  /**
+   * Modes proposés au caissier. « MIXTE » et « CRÉDIT » n'apparaissent que si le
+   * propriétaire les a ouverts — sinon la rangée reste à trois boutons comme avant.
+   */
+  const quickPaymentButtons: Array<[QuickPayment, string]> = [
+    ["cash", "CASH"],
+    ["card", "CARTE"],
+    [
+      "mobile_money",
+      // Un seul opérateur encaissé : le bouton porte son nom (« ORANGE »), le
+      // caissier reconnaît ce qu'il touche au lieu d'un « MOBILE » abstrait.
+      providerChoices.length === 1
+        ? (MOBILE_MONEY_PROVIDERS.find((p) => p.id === providerChoices[0])?.short ??
+            "MOBILE"
+          ).toUpperCase()
+        : "MOBILE",
+    ],
+    ...(allowQuickSplit ? ([["mixed", "MIXTE"]] as Array<[QuickPayment, string]>) : []),
+    ...(allowQuickCredit ? ([["credit", "CRÉDIT"]] as Array<[QuickPayment, string]>) : []),
+  ];
   /** Échéance du crédit : repliée par défaut (rarement saisie), dépliée à la demande. */
   const [dueDateOpen, setDueDateOpen] = useState(false);
   /** Aligné `PosCartPanel` Flutter : `scrollBodyWithFooter` + `cartListBody` (vue tableau). */
@@ -3085,30 +3268,27 @@ function PosCartPanel({
         <div
           className={cn(
             "mt-3 grid gap-1.5 px-0 min-[900px]:px-3",
-            // 4 modes : une seule rangée, libellés resserrés (pas de 2ᵉ rangée à scroller).
-            allowQuickCredit ? "grid-cols-4" : "grid-cols-3",
+            // Une seule rangée quel que soit le nombre de modes : libellés resserrés
+            // plutôt qu'une 2ᵉ rangée à scroller au moment d'encaisser.
+            quickPaymentButtons.length >= 5
+              ? "grid-cols-5"
+              : quickPaymentButtons.length === 4
+                ? "grid-cols-4"
+                : "grid-cols-3",
           )}
         >
-          {(allowQuickCredit
-            ? ([
-                ["cash", "CASH"],
-                ["card", "CARTE"],
-                ["mobile_money", "MOBILE"],
-                ["credit", "CRÉDIT"],
-              ] as const)
-            : ([
-                ["cash", "CASH"],
-                ["card", "CARTE"],
-                ["mobile_money", "MOBILE"],
-              ] as const)
-          ).map(([key, label]) => (
+          {quickPaymentButtons.map(([key, label]) => (
             <button
               key={key}
               type="button"
               onClick={() => setQuickPayment(key)}
               className={cn(
                 "truncate rounded-lg px-1 py-2 font-semibold transition-colors",
-                allowQuickCredit ? "text-[11px]" : "text-xs",
+                quickPaymentButtons.length >= 5
+                  ? "text-[10px]"
+                  : quickPaymentButtons.length === 4
+                    ? "text-[11px]"
+                    : "text-xs",
                 quickPayment === key
                   ? "bg-[#F97316] text-white"
                   : "bg-[#F8F9FA] text-[#1F2937]",
@@ -3151,33 +3331,74 @@ function PosCartPanel({
       {/* Mobile money : quel opérateur encaisse. Obligatoire — sans lui, l'historique
        * des ventes ne pourrait afficher que « Mobile Money ». */}
       {isMobileMoneyCart ? (
-        <div className="mt-2 px-0 min-[900px]:px-3">
-          <span className="mb-1 block text-[11px] font-semibold text-[#6B7280]">
-            Opérateur mobile money
-          </span>
-          <div className="grid grid-cols-3 gap-1.5">
-            {MOBILE_MONEY_PROVIDERS.map((p) => (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => setMobileProvider?.(p.id)}
-                aria-pressed={mobileProvider === p.id}
-                className={cn(
-                  "truncate rounded-lg px-1 py-2 text-xs font-semibold transition-colors",
-                  mobileProvider === p.id
-                    ? "bg-[#F97316] text-white"
-                    : "bg-[#F8F9FA] text-[#1F2937]",
-                )}
-              >
-                {p.short}
-              </button>
-            ))}
+        /* Un seul opérateur encaissé : rien à choisir — le bouton porte déjà son nom,
+         * et le récapitulatif du paiement mixte le nomme aussi. */
+        providerChoices.length === 1 ? null : (
+          <div className="mt-2 px-0 min-[900px]:px-3">
+            <span className="mb-1 block text-[11px] font-semibold text-[#6B7280]">
+              Opérateur mobile money
+            </span>
+            <div
+              className={cn(
+                "grid gap-1.5",
+                providerChoices.length >= 3 ? "grid-cols-3" : "grid-cols-2",
+              )}
+            >
+              {MOBILE_MONEY_PROVIDERS.filter((p) => providerChoices.includes(p.id)).map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => setMobileProvider?.(p.id)}
+                  aria-pressed={mobileProvider === p.id}
+                  className={cn(
+                    "truncate rounded-lg px-1 py-2 text-xs font-semibold transition-colors",
+                    mobileProvider === p.id
+                      ? "bg-[#F97316] text-white"
+                      : "bg-[#F8F9FA] text-[#1F2937]",
+                  )}
+                >
+                  {p.short}
+                </button>
+              ))}
+            </div>
+            {!mobileProvider ? (
+              <p className="mt-1 text-[11px] font-medium text-[#DC2626]">
+                Choisissez l&apos;opérateur avant d&apos;encaisser.
+              </p>
+            ) : null}
           </div>
-          {!mobileProvider ? (
-            <p className="mt-1 text-[11px] font-medium text-[#DC2626]">
-              Choisissez l&apos;opérateur avant d&apos;encaisser.
-            </p>
-          ) : null}
+        )
+      ) : null}
+
+      {/* Paiement mixte : le client donne une partie en espèces, le reste passe en
+       * mobile money. Une seule saisie (la part espèces) — le reste se déduit tout
+       * seul, c'est la question qu'on pose au comptoir. */}
+      {isMixedCart ? (
+        <div className="mt-3 rounded-lg border border-[#F97316]/40 bg-[#FFF7ED] p-2.5 min-[900px]:mx-3">
+          <label className="block">
+            <span className="mb-1 block text-[11px] font-semibold text-[#9A3412]">
+              Part payée en espèces
+            </span>
+            <input
+              className={fsInputClass(
+                "rounded-md bg-white px-2 py-2 text-[13px] sm:px-2 sm:py-2 sm:text-[13px]",
+              )}
+              value={splitCashAmount ?? ""}
+              onChange={(e) => setSplitCashAmount?.(e.target.value)}
+              inputMode="decimal"
+              placeholder="0"
+              aria-label="Part payée en espèces"
+            />
+          </label>
+          <div className="mt-2 flex items-center justify-between gap-2 text-xs text-[#9A3412]">
+            <span>
+              Espèces <b>{formatCurrency(splitCashValue ?? 0)}</b>
+            </span>
+            <span className="whitespace-nowrap">
+              {mobileProvider ? mobileMoneyProviderLabel(mobileProvider) : "Mobile money"}{" "}
+              <b className="text-sm font-extrabold">{formatCurrency(splitMobileValue ?? 0)}</b>
+            </span>
+          </div>
         </div>
       ) : null}
 
@@ -3260,8 +3481,10 @@ function PosCartPanel({
       ) : null}
 
       {/* Client FACULTATIF sur toute vente comptant (caisse rapide et facture A4).
-       * À crédit, le client est déjà saisi — et obligatoire — dans le bloc ci-dessus. */}
-      {isA4Cart || quickPayment !== "credit" ? (
+       * À crédit, le client est déjà saisi — et obligatoire — dans le bloc ci-dessus.
+       * Le propriétaire peut masquer ce bloc en caisse rapide : au comptoir à fort
+       * débit, personne n'enregistre le client et le champ ne fait que ralentir. */}
+      {isA4Cart || (quickPayment !== "credit" && !hideQuickCustomer) ? (
         <div className="mt-3 px-0 min-[900px]:px-3">
           <label className="mb-1 block text-[11px] font-medium text-[#6B7280]">
             Client (facultatif)

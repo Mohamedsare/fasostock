@@ -261,6 +261,7 @@ export const DOC_GROUPS: DocGroup[] = [
               "Saisie des quantités : boutons + / − ou champ libre.",
               "Vente à crédit en caisse rapide : ajoute un bouton « CRÉDIT » au moment du paiement. Désactivé par défaut.",
               "Saisie du prix en caisse rapide : rend le prix unitaire modifiable dans le panier. À n'ouvrir que si vous négociez réellement vos prix — sinon vos marges deviennent imprévisibles.",
+              "Encaissement en caisse rapide (désactivé par défaut) : n'afficher que les opérateurs mobile money que vous encaissez (un seul coché = choisi automatiquement), autoriser le paiement mixte espèces + mobile money sur une même vente, et masquer le client si vous ne l'enregistrez pas.",
               "Affichage de l'emplacement du produit à la caisse (si le module Emplacements est actif).",
               "Affichage des modèles compatibles à la caisse (si le module Pièces est actif).",
             ],
@@ -636,6 +637,9 @@ export const DOC_GROUPS: DocGroup[] = [
             title: "Options que le propriétaire peut ouvrir",
             items: [
               "Bouton CRÉDIT : vendre à un client qui paiera plus tard, avec ou sans acompte.",
+              "Bouton MIXTE : le client règle une partie en espèces et le reste en mobile money. Vous saisissez la part en espèces, le reste se calcule tout seul — et les deux montants figurent sur le ticket comme dans l'historique.",
+              "Opérateurs mobile money restreints : si vous n'encaissez que de l'Orange Money, cochez-le seul et il sera choisi automatiquement, sans un clic de plus.",
+              "Client masqué : au comptoir à fort débit, le sélecteur de client disparaît des ventes comptant (la vente à crédit continue de l'exiger).",
               "Prix unitaire modifiable dans le panier : pour les commerces où l'on négocie.",
               "Emplacement du produit affiché : pour envoyer chercher l'article sans quitter l'écran.",
               "Modèles compatibles affichés : pour la pièce détachée.",
@@ -817,6 +821,69 @@ export const DOC_GROUPS: DocGroup[] = [
           },
         ],
         keywords: ["moto", "engin", "châssis", "moteur", "vente", "qr", "vérification"],
+      },
+      {
+        id: "engine-units",
+        title: "Motos identifiées",
+        route: "/products",
+        tagline: "Le châssis, le moteur et la couleur de chaque moto, enregistrés une seule fois.",
+        access: "Propriétaire, et employés qui gèrent déjà les produits.",
+        activation:
+          "Activé par le propriétaire dans Paramètres › Motos identifiées. Proposé aux entreprises dont l'activité est « Ventes d'engins ».",
+        blocks: [
+          {
+            kind: "p",
+            text: "Dix motos du même modèle dans la cour, ce sont dix engins différents : chacun porte son numéro de châssis gravé, son numéro de moteur et sa couleur. Le catalogue, lui, n'affiche qu'une ligne « Sanili 110, stock 10 ». Cette fonction donne son identité à chaque exemplaire.",
+          },
+          {
+            kind: "steps",
+            title: "À la réception des motos",
+            items: [
+              "Ouvrez la fiche de l'engin dans Produits (ou créez-la).",
+              "Dans « Motos enregistrées », ajoutez une ligne par moto physique.",
+              "Saisissez le numéro de châssis (obligatoire), le numéro de moteur et la couleur.",
+              "Enregistrez. Les numéros sont rangés en majuscules sans espace : « lc4b 12 34 » et « LC4B1234 » sont la même moto.",
+            ],
+          },
+          {
+            kind: "steps",
+            title: "À la vente",
+            items: [
+              "Dans Vente Engins, choisissez le modèle comme d'habitude.",
+              "Dans « Moto à vendre », choisissez l'engin dans la liste des motos en stock.",
+              "Châssis, moteur et couleur se remplissent seuls et partent tels quels sur la facture.",
+              "À l'enregistrement, la moto sort du stock : elle passe en « Vendue » et n'est plus proposée.",
+            ],
+          },
+          {
+            kind: "note",
+            tone: "tip",
+            title: "Pourquoi c'est important",
+            text: "Un chiffre faux dans un numéro de châssis, et c'est la carte grise du client qui coince. Saisi une fois, relu une fois, le numéro ne se retape plus jamais.",
+          },
+          {
+            kind: "note",
+            tone: "info",
+            title: "Deux motos ne peuvent pas porter le même châssis",
+            text: "Si un numéro est déjà enregistré ailleurs, l'application refuse et vous le dit : c'est souvent une moto saisie deux fois, ou un chiffre mal lu.",
+          },
+          {
+            kind: "note",
+            tone: "warn",
+            title: "Les motos vendues ne se modifient plus",
+            text: "Elles figurent sur la facture d'un client. La fiche produit les affiche en bas de liste, marquées « Vendue », pour mémoire.",
+          },
+        ],
+        keywords: [
+          "châssis",
+          "chassis",
+          "numéro de moteur",
+          "couleur",
+          "moto",
+          "engin",
+          "identification",
+          "vin",
+        ],
       },
       {
         id: "engine-registration",

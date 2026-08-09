@@ -95,6 +95,11 @@ export const queryKeys = {
   /** Ventes d'engins (module Vente Engins). */
   engineSales: (params: { companyId: string; storeId: string | null }) =>
     ["engine-sales", params] as const,
+  /** Engins identifiés d'un produit (châssis / moteur / couleur) — fiche produit. */
+  engineUnits: (productId: string) => ["engine-units", productId] as const,
+  /** Engins encore en stock pour ce produit — choix de la moto à la vente. */
+  engineUnitsAvailable: (productId: string, storeId: string | null) =>
+    ["engine-units", productId, "available", storeId ?? "__all__"] as const,
   /** Dossiers d'immatriculation engins (module Immatriculation Engins). */
   engineRegistrations: (params: { companyId: string; storeId: string | null }) =>
     ["engine-registrations", params] as const,

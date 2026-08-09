@@ -93,6 +93,12 @@ export type AppContextData = {
    */
   productAliasesEnabled: boolean;
   /**
+   * « Motos identifiées » (châssis / moteur / couleur par engin) — désactivé par défaut,
+   * ouvert par le PROPRIÉTAIRE dans Paramètres (`companies.engine_units_enabled`).
+   * Proposé uniquement à l'activité « Ventes d'engins » (cf. `engineUnitsAvailableForActivity`).
+   */
+  engineUnitsEnabled: boolean;
+  /**
    * Module Prix de revient (frais d'approche répartis sur un arrivage) — désactivé par
    * défaut, ouvert par le PROPRIÉTAIRE dans Paramètres (`companies.landed_cost_enabled`).
    */
@@ -150,6 +156,39 @@ export function restockModuleActive(
   }
   if (data.stores.length === 0) return true;
   return data.stores.some((s) => s.restockModuleEnabled !== false);
+}
+
+/**
+ * Activités auxquelles « Motos identifiées » est proposé.
+ *
+ * Saisir un châssis et un numéro de moteur n'a de sens que là où on vend l'engin
+ * lui-même : ailleurs, la carte n'apparaît même pas dans Paramètres.
+ */
+export const ENGINE_UNITS_BUSINESS_TYPES: readonly string[] = ["vente-engins"];
+
+/** L'activité de l'entreprise permet-elle de proposer les motos identifiées ? */
+export function engineUnitsAvailableForActivity(
+  businessTypeSlug: string | null | undefined,
+): boolean {
+  return (
+    businessTypeSlug != null &&
+    ENGINE_UNITS_BUSINESS_TYPES.includes(businessTypeSlug)
+  );
+}
+
+/**
+ * Les motos identifiées sont-elles actives ici ? Il faut les DEUX : la bonne activité
+ * et le drapeau ouvert par le propriétaire. Une entreprise qui change d'activité perd
+ * l'affichage sans rien perdre en base.
+ */
+export function engineUnitsActive(
+  data: AppContextData | null | undefined,
+): boolean {
+  if (!data) return false;
+  return (
+    data.engineUnitsEnabled === true &&
+    engineUnitsAvailableForActivity(data.businessTypeSlug)
+  );
 }
 
 /**
@@ -243,6 +282,11 @@ export type AccessHelpers = {
   canProductLocations: boolean;
   /** « Autres noms » de produits activés par le propriétaire (saisie + recherche). */
   productAliasesOn: boolean;
+  /**
+   * Motos identifiées : activité « Ventes d'engins » ET drapeau ouvert par le
+   * propriétaire. Saisie du châssis dans la fiche produit + choix de l'engin à la vente.
+   */
+  engineUnitsOn: boolean;
   /** Module Prix de revient ouvert par le propriétaire pour l'entreprise. */
   landedCostOn: boolean;
   /** Page Prix de revient : module ouvert ET propriétaire / permission dédiée. */
@@ -380,6 +424,9 @@ export function buildAccessHelpers(
   // Autres noms : simple aide à la saisie et à la recherche — aucune permission
   // dédiée, quiconque gère déjà les produits en profite dès que le patron l'active.
   const productAliasesOn = data.productAliasesEnabled === true;
+  // Motos identifiées : même esprit — pas de permission dédiée, celui qui saisit déjà
+  // les produits saisit les châssis. Réservé à l'activité « Ventes d'engins ».
+  const engineUnitsOn = engineUnitsActive(data);
   // Prix de revient : additif, ouvert par le PROPRIÉTAIRE (Paramètres). Le module touche
   // aux prix d'achat et de vente : le droit est donc distinct de celui des achats.
   const landedCostOn = data.landedCostEnabled === true;
@@ -440,6 +487,7 @@ export function buildAccessHelpers(
     productLocationsOn,
     canProductLocations,
     productAliasesOn,
+    engineUnitsOn,
     landedCostOn,
     canLandedCost,
     onlineStoreOn,

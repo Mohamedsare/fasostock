@@ -1,3 +1,5 @@
+import type { EngineUnitDraft } from "@/lib/features/engine-units/types";
+
 export type ProductStatus = "active" | "inactive";
 
 export type ProductCategory = {
@@ -147,6 +149,14 @@ export type ProductFormSavePayload = {
   packagings: ProductPackagingDraft[];
   /** Ids de conditionnements existants supprimés dans le formulaire. */
   removedPackagingIds: string[];
+  /**
+   * Engins identifiés voulus (châssis / moteur / couleur), quand la fonction « Motos
+   * identifiées » est active. Les engins déjà VENDUS ne figurent pas ici : ils sont sur
+   * une facture et le formulaire les montre en lecture seule.
+   */
+  engineUnits: EngineUnitDraft[];
+  /** Ids d'engins (encore en stock) retirés dans le formulaire. */
+  removedEngineUnitIds: string[];
   /** Création uniquement — ajustement stock boutique si > 0. */
   initialStock: number;
   /**

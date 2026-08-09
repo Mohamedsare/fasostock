@@ -248,6 +248,7 @@ async function fetchAppContext(): Promise<AppContextData | null> {
       restockModuleEnabled: true,
       productLocationsEnabled: false,
       productAliasesEnabled: false,
+      engineUnitsEnabled: false,
       landedCostEnabled: false,
       onlineStoreEnabled: false,
       promoAdGenerationEnabled,
@@ -261,7 +262,7 @@ async function fetchAppContext(): Promise<AppContextData | null> {
   const { data: companyRow, error: cErr } = await supabase
     .from("companies")
     .select(
-      "id, name, logo_url, business_type_slug, warehouse_feature_enabled, purchases_feature_enabled, transfers_feature_enabled, store_quota_increase_enabled, ai_predictions_enabled, warehouse_kpi_show_purchase_value, warehouse_kpi_show_sale_value, accounting_module_enabled, hr_module_enabled, expiry_module_enabled, parts_module_enabled, restock_module_enabled, product_locations_enabled, product_aliases_enabled, landed_cost_enabled, online_store_enabled",
+      "id, name, logo_url, business_type_slug, warehouse_feature_enabled, purchases_feature_enabled, transfers_feature_enabled, store_quota_increase_enabled, ai_predictions_enabled, warehouse_kpi_show_purchase_value, warehouse_kpi_show_sale_value, accounting_module_enabled, hr_module_enabled, expiry_module_enabled, parts_module_enabled, restock_module_enabled, product_locations_enabled, product_aliases_enabled, engine_units_enabled, landed_cost_enabled, online_store_enabled",
     )
     .eq("id", primaryCompanyId)
     .maybeSingle();
@@ -300,6 +301,7 @@ async function fetchAppContext(): Promise<AppContextData | null> {
       restockModuleEnabled: true,
       productLocationsEnabled: false,
       productAliasesEnabled: false,
+      engineUnitsEnabled: false,
       landedCostEnabled: false,
       onlineStoreEnabled: false,
       promoAdGenerationEnabled,
@@ -331,6 +333,7 @@ async function fetchAppContext(): Promise<AppContextData | null> {
     restock_module_enabled?: boolean | null;
     product_locations_enabled?: boolean | null;
     product_aliases_enabled?: boolean | null;
+    engine_units_enabled?: boolean | null;
     landed_cost_enabled?: boolean | null;
     online_store_enabled?: boolean | null;
   };
@@ -353,6 +356,9 @@ async function fetchAppContext(): Promise<AppContextData | null> {
   const productLocationsEnabled = cr.product_locations_enabled === true;
   // Autres noms de produits : additif, activé par le propriétaire dans Paramètres.
   const productAliasesEnabled = cr.product_aliases_enabled === true;
+  // Motos identifiées (châssis / moteur / couleur) : additif, activé par le propriétaire
+  // dans Paramètres. L'activité est vérifiée à l'affichage (`engineUnitsActive`).
+  const engineUnitsEnabled = cr.engine_units_enabled === true;
   // Prix de revient : additif, activé par le propriétaire dans Paramètres.
   const landedCostEnabled = cr.landed_cost_enabled === true;
   // Boutique en ligne : additif, ouvert par la plateforme (super admin).
@@ -410,6 +416,7 @@ async function fetchAppContext(): Promise<AppContextData | null> {
       restockModuleEnabled,
       productLocationsEnabled,
       productAliasesEnabled,
+      engineUnitsEnabled,
       landedCostEnabled,
       onlineStoreEnabled,
       promoAdGenerationEnabled,
@@ -497,6 +504,7 @@ async function fetchAppContext(): Promise<AppContextData | null> {
     restockModuleEnabled,
     productLocationsEnabled,
     productAliasesEnabled,
+    engineUnitsEnabled,
     landedCostEnabled,
     onlineStoreEnabled,
     promoAdGenerationEnabled,

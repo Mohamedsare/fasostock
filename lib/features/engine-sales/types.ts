@@ -54,6 +54,12 @@ export type CreateEngineSaleInput = {
   storeId: string;
   /** Produit du catalogue (engin) — sert au stock et au prix. */
   productId: string;
+  /**
+   * Engin PHYSIQUE choisi dans la liste des motos identifiées (`engine_units`).
+   * `null` = fonction inactive ou aucun engin choisi : la vente se comporte comme avant,
+   * châssis et moteur restant ceux tapés à la main.
+   */
+  engineUnitId?: string | null;
   quantity: number;
   unitPrice: number;
   payments: Array<{ method: EnginePaymentMethod; amount: number; reference?: string | null }>;
@@ -69,6 +75,13 @@ export type CreateEngineSaleResult = {
   saleId: string;
   saleNumber: string;
   verificationToken: string;
+  /**
+   * L'engin choisi a-t-il bien été sorti du stock ? `false` = la vente est enregistrée
+   * (le client a payé) mais la moto est restée « en stock » — l'écran le signale pour
+   * que le vendeur corrige la fiche plutôt que de le découvrir à l'inventaire.
+   * `undefined` quand aucun engin identifié n'était en jeu.
+   */
+  engineUnitMarked?: boolean;
 };
 
 /** Un règlement rattaché à la vente (table `sale_payments`). */

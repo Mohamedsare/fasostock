@@ -144,6 +144,14 @@ export function ReceiptTicketPreview({ data }: { data: ReceiptTicketData }) {
         />
         <div style={{ height: 8 }} />
         <AmountRow label="Paiement" value={payU} size={9.5} />
+        {(data.paymentSplit ?? []).map((p, i) => (
+          <AmountRow
+            key={i}
+            label={p.label}
+            value={receiptIntAmount(Math.round(p.amount))}
+            size={9.5}
+          />
+        ))}
         {isCashLike ? (
           <>
             <AmountRow

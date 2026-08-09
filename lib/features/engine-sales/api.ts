@@ -299,7 +299,23 @@ export async function persistEngineSale(
     .maybeSingle();
   const saleNumber = String((saleRow as { sale_number?: string } | null)?.sale_number ?? saleId);
 
-  return { saleId, saleNumber, verificationToken };
+  // 5. Sortie de l'engin identifié choisi par le vendeur (motos identifiées).
+  //    La vente est DÉJÀ enregistrée : si le marquage échoue (engin pris entre-temps
+  //    par une autre caisse, réseau qui lâche), on ne l'annule surtout pas — le client
+  //    a payé. On remonte l'échec à l'écran, qui invite à corriger la fiche de l'engin.
+  let engineUnitMarked: boolean | undefined;
+  if (params.engineUnitId) {
+    const { error: unitErr } = await supabase.rpc("engine_unit_mark_sold", {
+      p_unit_id: params.engineUnitId,
+      p_sale_id: saleId,
+    });
+    engineUnitMarked = !unitErr;
+    if (unitErr) {
+      console.error("engine_unit_mark_sold failed", unitErr);
+    }
+  }
+
+  return { saleId, saleNumber, verificationToken, engineUnitMarked };
 }
 
 /**

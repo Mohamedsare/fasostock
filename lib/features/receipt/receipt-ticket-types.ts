@@ -27,6 +27,11 @@ export type ReceiptTicketData = {
   discount: number;
   total: number;
   paymentMethod: string;
+  /**
+   * Vente réglée en plusieurs moyens (caisse rapide : espèces + mobile money) —
+   * détail imprimé sous la ligne « Paiement ». Absent, le ticket est inchangé.
+   */
+  paymentSplit?: Array<{ label: string; amount: number }> | null;
   amountReceived?: number | null;
   change?: number | null;
   date: Date;

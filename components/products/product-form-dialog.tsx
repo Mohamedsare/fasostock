@@ -19,8 +19,18 @@ import {
   productSearchAliases,
 } from "@/lib/features/products/search-aliases";
 import { activityConfig } from "@/lib/features/activity/activity-config";
+import { listEngineUnits } from "@/lib/features/engine-units/api";
+import {
+  ENGINE_UNIT_FIELD_MAX_LENGTH,
+  findDuplicateChassis,
+  normalizeEngineUnitDrafts,
+  type EngineUnit,
+  type EngineUnitDraft,
+} from "@/lib/features/engine-units/types";
+import { queryKeys } from "@/lib/query/query-keys";
 import { cn } from "@/lib/utils/cn";
 import { toNumber } from "@/lib/utils/currency";
+import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MdAdd, MdAddPhotoAlternate, MdClose } from "react-icons/md";
 
@@ -80,6 +90,15 @@ const PACKAGING_LABELS = [
   "Palette",
 ] as const;
 
+/** Ligne « un engin » éditable : ce qui est gravé sur la moto posée dans la cour. */
+type EngineUnitRow = {
+  key: string;
+  id?: string;
+  chassis: string;
+  motor: string;
+  color: string;
+};
+
 /** Ligne de conditionnement éditable (champs numériques en chaînes). */
 type PackagingRow = {
   key: string;
@@ -116,6 +135,12 @@ type Props = {
    * enregistrés restent en base, intacts.
    */
   searchAliasesEnabled?: boolean;
+  /**
+   * « Motos identifiées » activées par le propriétaire (Paramètres) et activité
+   * « Ventes d'engins ». À false, la section n'est pas affichée et aucun engin n'est
+   * touché : ceux déjà saisis restent en base.
+   */
+  engineUnitsEnabled?: boolean;
   onClose: () => void;
   onSubmit: (payload: ProductFormSavePayload) => void | Promise<void>;
   onCategoriesChanged: () => void;
@@ -146,6 +171,7 @@ export function ProductFormDialog({
   expiryModuleEnabled,
   suggestedSku,
   searchAliasesEnabled = false,
+  engineUnitsEnabled = false,
   onClose,
   onSubmit,
   onCategoriesChanged,
@@ -260,6 +286,68 @@ export function ProductFormDialog({
       return rows.filter((r) => r.key !== key);
     });
   }, []);
+  /**
+   * Engins identifiés (châssis / moteur / couleur). Une ligne = UNE moto physique.
+   * Les engins déjà vendus ne sont pas éditables : ils figurent sur une facture.
+   */
+  const engineUnitsQ = useQuery({
+    queryKey: queryKeys.engineUnits(initial?.id ?? ""),
+    queryFn: () => listEngineUnits(initial?.id ?? ""),
+    enabled: engineUnitsEnabled && isEdit,
+    staleTime: 30_000,
+  });
+  const [engineUnits, setEngineUnits] = useState<EngineUnitRow[]>([]);
+  const [removedEngineUnitIds, setRemovedEngineUnitIds] = useState<string[]>([]);
+  /**
+   * Une seule hydratation : un rafraîchissement de la requête ne doit pas écraser
+   * les châssis en cours de frappe.
+   */
+  const engineUnitsHydrated = useRef(false);
+  useEffect(() => {
+    if (engineUnitsHydrated.current) return;
+    const rows = engineUnitsQ.data;
+    if (!rows) return;
+    engineUnitsHydrated.current = true;
+    setEngineUnits(
+      rows
+        .filter((u) => u.status === "in_stock")
+        .map((u) => ({
+          key: u.id,
+          id: u.id,
+          chassis: u.chassisNumber,
+          motor: u.engineNumber ?? "",
+          color: u.color ?? "",
+        })),
+    );
+  }, [engineUnitsQ.data]);
+
+  const soldEngineUnits = useMemo<EngineUnit[]>(
+    () => (engineUnitsQ.data ?? []).filter((u) => u.status === "sold"),
+    [engineUnitsQ.data],
+  );
+
+  const addEngineUnit = useCallback(() => {
+    setEngineUnits((rows) => [
+      ...rows,
+      { key: newRowKey(), chassis: "", motor: "", color: "" },
+    ]);
+  }, []);
+  const updateEngineUnit = useCallback(
+    (key: string, field: "chassis" | "motor" | "color", value: string) => {
+      setEngineUnits((rows) =>
+        rows.map((r) => (r.key === key ? { ...r, [field]: value } : r)),
+      );
+    },
+    [],
+  );
+  const removeEngineUnit = useCallback((key: string) => {
+    setEngineUnits((rows) => {
+      const row = rows.find((r) => r.key === key);
+      if (row?.id) setRemovedEngineUnitIds((ids) => [...ids, row.id as string]);
+      return rows.filter((r) => r.key !== key);
+    });
+  }, []);
+
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [inlineBusy, setInlineBusy] = useState(false);
 
@@ -373,7 +461,66 @@ export function ProductFormDialog({
         seenBarcodes.add(bc);
       }
     }
+    // Engins : un châssis saisi deux fois, c'est deux fois la même moto — on le dit
+    // tout de suite plutôt que de laisser la base refuser l'enregistrement complet.
+    if (engineUnitsEnabled) {
+      const drafts = engineUnitDrafts();
+      const dup = findDuplicateChassis(drafts);
+      if (dup) {
+        return `Le châssis ${dup} est saisi deux fois. Chaque moto a son propre numéro.`;
+      }
+      const incomplete = engineUnits.find(
+        (r) => !r.chassis.trim() && (r.motor.trim() || r.color.trim()),
+      );
+      if (incomplete) {
+        return "Renseignez le numéro de châssis de chaque moto (c'est lui qui l'identifie).";
+      }
+      // Hors ligne, l'enregistrement des motos n'est pas mis en file d'attente : mieux
+      // vaut le dire que laisser croire que des châssis ont été saisis pour rien.
+      // On ne bloque QUE si les motos ont changé — modifier le prix d'un engin hors
+      // ligne doit rester possible.
+      if (
+        engineUnitsChanged(drafts) &&
+        typeof navigator !== "undefined" &&
+        navigator.onLine === false
+      ) {
+        return "Vous êtes hors ligne : les motos ne peuvent pas être enregistrées maintenant. Reconnectez-vous, puis réessayez.";
+      }
+    }
     return null;
+  }
+
+  /**
+   * Les motos ont-elles bougé depuis l'ouverture de la fiche ? Sert à ne pas bloquer
+   * une modification de produit faite hors ligne quand aucun châssis n'a été touché.
+   */
+  function engineUnitsChanged(drafts: EngineUnitDraft[]): boolean {
+    if (removedEngineUnitIds.length > 0) return true;
+    if (drafts.some((d) => !d.id)) return true;
+    const inStock = (engineUnitsQ.data ?? []).filter((u) => u.status === "in_stock");
+    if (drafts.length !== inStock.length) return true;
+    const known = new Map(inStock.map((u) => [u.id, u] as const));
+    return drafts.some((d) => {
+      const u = known.get(d.id as string);
+      if (!u) return true;
+      return (
+        u.chassisNumber !== d.chassisNumber ||
+        (u.engineNumber ?? "") !== d.engineNumber ||
+        (u.color ?? "") !== d.color
+      );
+    });
+  }
+
+  /** Lignes engin nettoyées (vides retirées, numéros en majuscules sans espace). */
+  function engineUnitDrafts(): EngineUnitDraft[] {
+    return normalizeEngineUnitDrafts(
+      engineUnits.map((r) => ({
+        ...(r.id ? { id: r.id } : {}),
+        chassisNumber: r.chassis,
+        engineNumber: r.motor,
+        color: r.color,
+      })),
+    );
   }
 
   function buildPayload(): ProductFormSavePayload {
@@ -425,12 +572,24 @@ export function ProductFormDialog({
         price: r.price.trim() ? Math.max(0, toNumber(r.price)) : null,
       });
     }
+    // Engins : une ligne existante vidée de son châssis est traitée comme retirée.
+    const cleanEngineUnits = engineUnitsEnabled ? engineUnitDrafts() : [];
+    const keptEngineUnitIds = new Set(
+      cleanEngineUnits.map((d) => d.id).filter(Boolean) as string[],
+    );
+    const droppedEngineUnitIds = engineUnits
+      .map((r) => r.id)
+      .filter((id): id is string => Boolean(id) && !keptEngineUnitIds.has(id as string));
     return {
       input,
       pendingImages: pendingFiles,
       removedImageIds,
       packagings: cleanPackagings,
       removedPackagingIds: [...removedPackagingIds, ...droppedExistingIds],
+      engineUnits: cleanEngineUnits,
+      removedEngineUnitIds: engineUnitsEnabled
+        ? [...removedEngineUnitIds, ...droppedEngineUnitIds]
+        : [],
       initialStock: Math.max(0, Math.round(toNumber(initialStock))),
       initialBatch,
     };
@@ -928,6 +1087,143 @@ export function ProductFormDialog({
                 </label>
               ) : null}
             </div>
+
+            {/* Motos identifiées : une ligne = UNE moto, avec ce qui est gravé dessus.
+                Le produit reste le modèle ; ces numéros partent sur la facture au
+                moment de la vente, sans être retapés. */}
+            {engineUnitsEnabled ? (
+              <div className="rounded-md border border-black/[0.08] p-3">
+                <p className="flex items-center justify-between gap-2 text-sm font-semibold text-fs-text">
+                  <span>Motos enregistrées</span>
+                  {engineUnits.length > 0 ? (
+                    <span className="shrink-0 text-[11px] font-medium text-neutral-500">
+                      {engineUnits.length} en stock
+                    </span>
+                  ) : null}
+                </p>
+                <p className="mt-0.5 text-[11px] leading-relaxed text-neutral-500">
+                  Une ligne par moto : le numéro de châssis, le numéro de moteur et la
+                  couleur. À la vente, vous choisirez la moto dans cette liste et son
+                  châssis partira tel quel sur la facture.
+                </p>
+
+                {engineUnitsQ.isPending && isEdit ? (
+                  <div className="mt-3 flex justify-center py-3" role="status" aria-label="Chargement">
+                    <div className="h-6 w-6 animate-spin rounded-full border-2 border-fs-accent border-t-transparent" />
+                  </div>
+                ) : null}
+
+                {engineUnits.length > 0 ? (
+                  <div className="mt-2 space-y-2">
+                    {engineUnits.map((r, index) => (
+                      <div
+                        key={r.key}
+                        className="rounded-md border border-black/[0.08] bg-fs-surface-container/40 p-2.5"
+                      >
+                        <div className="flex items-end gap-2">
+                          <label className="min-w-0 flex-1">
+                            <span className="mb-1 block text-[11px] font-medium text-neutral-600">
+                              N° châssis *
+                            </span>
+                            <input
+                              value={r.chassis}
+                              onChange={(e) =>
+                                updateEngineUnit(r.key, "chassis", e.target.value)
+                              }
+                              className={fsInputClass()}
+                              placeholder={`Moto ${index + 1}`}
+                              aria-label={`Numéro de châssis de la moto ${index + 1}`}
+                              autoCapitalize="characters"
+                              autoComplete="off"
+                              spellCheck={false}
+                              maxLength={ENGINE_UNIT_FIELD_MAX_LENGTH}
+                            />
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => removeEngineUnit(r.key)}
+                            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-red-200 text-red-600"
+                            aria-label={`Retirer la moto ${index + 1}`}
+                          >
+                            <MdClose className="h-4 w-4" />
+                          </button>
+                        </div>
+                        <div className="mt-2 flex flex-col gap-2 min-[401px]:flex-row">
+                          <label className="min-w-0 flex-1">
+                            <span className="mb-1 block text-[11px] font-medium text-neutral-600">
+                              N° moteur
+                            </span>
+                            <input
+                              value={r.motor}
+                              onChange={(e) =>
+                                updateEngineUnit(r.key, "motor", e.target.value)
+                              }
+                              className={fsInputClass()}
+                              aria-label={`Numéro de moteur de la moto ${index + 1}`}
+                              autoCapitalize="characters"
+                              autoComplete="off"
+                              spellCheck={false}
+                              maxLength={ENGINE_UNIT_FIELD_MAX_LENGTH}
+                            />
+                          </label>
+                          <label className="min-w-0 flex-1">
+                            <span className="mb-1 block text-[11px] font-medium text-neutral-600">
+                              Couleur
+                            </span>
+                            <input
+                              value={r.color}
+                              onChange={(e) =>
+                                updateEngineUnit(r.key, "color", e.target.value)
+                              }
+                              className={fsInputClass()}
+                              placeholder="Ex. Rouge"
+                              aria-label={`Couleur de la moto ${index + 1}`}
+                              autoComplete="off"
+                              maxLength={ENGINE_UNIT_FIELD_MAX_LENGTH}
+                            />
+                          </label>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+
+                <button
+                  type="button"
+                  onClick={addEngineUnit}
+                  className="mt-2 inline-flex items-center gap-1.5 rounded-md border border-fs-accent/40 bg-fs-accent/[0.06] px-3 py-2 text-xs font-semibold text-fs-accent"
+                >
+                  <MdAdd className="h-4 w-4" aria-hidden />
+                  Ajouter une moto
+                </button>
+
+                {/* Motos déjà facturées : on les montre pour la traçabilité, mais on n'y
+                    touche plus — elles figurent sur la facture d'un client. */}
+                {soldEngineUnits.length > 0 ? (
+                  <div className="mt-3 border-t border-black/[0.06] pt-2.5">
+                    <p className="text-[11px] font-semibold text-neutral-600">
+                      Déjà vendues ({soldEngineUnits.length})
+                    </p>
+                    <ul className="mt-1 space-y-1">
+                      {soldEngineUnits.map((u) => (
+                        <li
+                          key={u.id}
+                          className="flex items-center justify-between gap-2 text-[11px] text-neutral-500"
+                        >
+                          <span className="truncate">
+                            {u.chassisNumber}
+                            {u.color ? ` · ${u.color}` : ""}
+                          </span>
+                          <span className="shrink-0 rounded-full bg-neutral-100 px-2 py-0.5 font-medium">
+                            Vendue
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
 
             {/* Suivi de péremption — métiers à suivi de lots, à la création */}
             {config.batchTracking && !isEdit ? (

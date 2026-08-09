@@ -31,9 +31,22 @@ import {
   peekQuickPosPriceEditEnabled,
   setQuickPosPriceEditEnabled,
 } from "@/lib/features/settings/quick-pos-price-edit";
+import {
+  fetchQuickPosPayments,
+  peekQuickPosPayments,
+  setQuickPosPayments,
+  QUICK_POS_PAYMENTS_DEFAULT,
+  type QuickPosPaymentsSettings,
+} from "@/lib/features/settings/quick-pos-payments";
+import {
+  MOBILE_MONEY_PROVIDERS,
+  type MobileMoneyProvider,
+} from "@/lib/features/payments/payment-display";
 import { setProductLocationsEnabled } from "@/lib/features/product-locations/api";
 import { setLandedCostEnabled } from "@/lib/features/landed-cost/api";
 import { setProductAliasesEnabled } from "@/lib/features/products/api";
+import { setEngineUnitsEnabled } from "@/lib/features/engine-units/api";
+import { engineUnitsAvailableForActivity } from "@/lib/features/permissions/access";
 import {
   fetchProductLocationsPosEnabled,
   peekProductLocationsPosEnabled,
@@ -72,6 +85,7 @@ import {
   type ReactNode,
 } from "react";
 import {
+  MdAccountBalanceWallet,
   MdAddPhotoAlternate,
   MdBrightness4,
   MdBrightness7,
@@ -98,6 +112,7 @@ import {
   MdShoppingCart,
   MdStore,
   MdTableChart,
+  MdTwoWheeler,
   MdWarningAmber,
 } from "react-icons/md";
 
@@ -443,6 +458,54 @@ export function SettingsScreen() {
     onError: (e) => toastMutationError("settings", e),
   });
 
+  /*
+   * Encaissement en caisse rapide (opérateurs proposés, paiement mixte, client masqué).
+   * Un seul réglage JSON : les trois options servent le même comptoir et se règlent
+   * ensemble. Interrupteur maître coupé par défaut ⇒ caisse inchangée.
+   */
+  const peekQuickPayments =
+    companyId.length > 0 && isOwner ? peekQuickPosPayments(companyId) : undefined;
+  const quickPaymentsQ = useQuery({
+    queryKey: queryKeys.quickPosPayments(companyId),
+    queryFn: () => fetchQuickPosPayments(companyId),
+    enabled: Boolean(companyId && isOwner),
+    staleTime: 30_000,
+    ...(peekQuickPayments !== undefined ? { initialData: peekQuickPayments } : {}),
+  });
+  const quickPayments = quickPaymentsQ.data ?? QUICK_POS_PAYMENTS_DEFAULT;
+
+  const quickPaymentsMut = useMutation({
+    mutationFn: async (next: QuickPosPaymentsSettings) => {
+      if (!companyId) throw new Error("Entreprise introuvable.");
+      await setQuickPosPayments(companyId, next);
+      return next;
+    },
+    onSuccess: async (next) => {
+      toast.success(
+        next.enabled
+          ? "Encaissement caisse rapide enregistré."
+          : "Encaissement caisse rapide remis au fonctionnement standard.",
+      );
+      await qc.invalidateQueries({ queryKey: queryKeys.quickPosPayments(companyId) });
+    },
+    onError: (e) => toastMutationError("settings", e),
+  });
+
+  /** Un opérateur au moins doit rester coché : sans lui, plus aucun encaissement mobile. */
+  function toggleQuickProvider(id: MobileMoneyProvider, checked: boolean) {
+    const current = quickPayments.providers;
+    const next = checked
+      ? MOBILE_MONEY_PROVIDERS.map((p) => p.id).filter(
+          (p) => p === id || current.includes(p),
+        )
+      : current.filter((p) => p !== id);
+    if (next.length === 0) {
+      toast.info("Gardez au moins un opérateur mobile money.");
+      return;
+    }
+    void quickPaymentsMut.mutateAsync({ ...quickPayments, providers: next });
+  }
+
   /* Devise de l'entreprise — owner uniquement, verrouillée dès la première vente. */
   const peekCurrency =
     companyId.length > 0 && isOwner ? peekCompanyCurrency(companyId) : undefined;
@@ -554,6 +617,31 @@ export function SettingsScreen() {
         enabled
           ? "Autres noms activés. Ajoutez-les dans la fiche produit."
           : "Autres noms désactivés. Ceux déjà saisis sont conservés.",
+      );
+      await qc.invalidateQueries({ queryKey: queryKeys.appContext });
+    },
+    onError: (e) => toastMutationError("settings", e),
+  });
+
+  /**
+   * « Motos identifiées » : châssis / moteur / couleur de CHAQUE engin, saisis dans la
+   * fiche produit puis repris tels quels sur la facture. Réglage entreprise écrit par le
+   * propriétaire ; la carte n'est proposée qu'à l'activité « Ventes d'engins ».
+   */
+  const engineUnitsEnabled = ctxQ.data?.engineUnitsEnabled === true;
+  const engineUnitsAvailable = engineUnitsAvailableForActivity(
+    ctxQ.data?.businessTypeSlug,
+  );
+  const engineUnitsMut = useMutation({
+    mutationFn: async (enabled: boolean) => {
+      if (!companyId) throw new Error("Entreprise introuvable.");
+      await setEngineUnitsEnabled(companyId, enabled);
+    },
+    onSuccess: async (_, enabled) => {
+      toast.success(
+        enabled
+          ? "Motos identifiées activées. Saisissez les châssis dans la fiche de chaque engin."
+          : "Motos identifiées désactivées. Les châssis déjà saisis sont conservés.",
       );
       await qc.invalidateQueries({ queryKey: queryKeys.appContext });
     },
@@ -938,6 +1026,164 @@ export function SettingsScreen() {
         </FsCard>
       ) : null}
 
+      {/* Encaissement en caisse rapide — owner uniquement */}
+      {isOwner && companyId ? (
+        <FsCard className="mt-5" padding="p-5">
+          <SettingsCardTitle
+            icon={MdAccountBalanceWallet}
+            title="Caisse POS rapide — encaissement"
+          />
+          <p className="mt-2 text-xs leading-relaxed text-neutral-600 sm:text-sm">
+            Adapte la caisse rapide à votre comptoir : n&apos;afficher que le ou les
+            opérateurs mobile money que vous encaissez réellement, accepter un règlement
+            partagé (espèces + mobile money sur la même vente), et masquer le client quand
+            vous ne l&apos;enregistrez pas. Désactivé, la caisse reste telle quelle.
+          </p>
+          {quickPaymentsQ.isPending ? (
+            <div className="mt-4 flex justify-center py-4" role="status" aria-label="Chargement">
+              <div className="h-8 w-8 animate-spin rounded-full border-2 border-fs-accent border-t-transparent" />
+            </div>
+          ) : (
+            <div className="mt-4 divide-y divide-black/[0.06] rounded-[10px] border border-black/[0.08]">
+              <label
+                className={cn(
+                  "flex cursor-pointer items-start justify-between gap-3 px-3 py-3 sm:px-4",
+                  quickPaymentsMut.isPending && "pointer-events-none opacity-60",
+                )}
+              >
+                <span className="min-w-0">
+                  <span className="block text-sm font-medium text-fs-text">
+                    Personnaliser l&apos;encaissement de la caisse rapide
+                  </span>
+                  <span className="mt-0.5 block text-xs text-neutral-600">
+                    {quickPayments.enabled
+                      ? "Vos réglages ci-dessous s'appliquent à toutes vos caisses rapides."
+                      : "Désactivé : trois opérateurs proposés, pas de paiement mixte, client affiché."}
+                  </span>
+                </span>
+                <input
+                  type="checkbox"
+                  role="switch"
+                  className="mt-1 h-5 w-9 shrink-0 cursor-pointer accent-fs-accent"
+                  checked={quickPayments.enabled}
+                  disabled={quickPaymentsMut.isPending}
+                  onChange={(e) => {
+                    void quickPaymentsMut.mutateAsync({
+                      ...quickPayments,
+                      enabled: e.target.checked,
+                    });
+                  }}
+                />
+              </label>
+
+              {quickPayments.enabled ? (
+                <>
+                  <div
+                    className={cn(
+                      "px-3 py-3 sm:px-4",
+                      quickPaymentsMut.isPending && "pointer-events-none opacity-60",
+                    )}
+                  >
+                    <span className="block text-sm font-medium text-fs-text">
+                      Opérateurs mobile money proposés
+                    </span>
+                    <span className="mt-0.5 block text-xs text-neutral-600">
+                      Décochez ceux que vous n&apos;encaissez pas. Un seul opérateur coché,
+                      et il est choisi automatiquement à la vente : plus rien à cliquer.
+                    </span>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {MOBILE_MONEY_PROVIDERS.map((p) => {
+                        const on = quickPayments.providers.includes(p.id);
+                        return (
+                          <button
+                            key={p.id}
+                            type="button"
+                            role="switch"
+                            aria-checked={on}
+                            disabled={quickPaymentsMut.isPending}
+                            onClick={() => toggleQuickProvider(p.id, !on)}
+                            className={cn(
+                              "rounded-full border px-3 py-1.5 text-xs font-semibold",
+                              on
+                                ? "border-fs-accent bg-fs-accent/10 text-fs-text"
+                                : "border-black/[0.12] bg-white text-neutral-500",
+                            )}
+                          >
+                            {p.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <label
+                    className={cn(
+                      "flex cursor-pointer items-start justify-between gap-3 px-3 py-3 sm:px-4",
+                      quickPaymentsMut.isPending && "pointer-events-none opacity-60",
+                    )}
+                  >
+                    <span className="min-w-0">
+                      <span className="block text-sm font-medium text-fs-text">
+                        Autoriser le paiement mixte (espèces + mobile money)
+                      </span>
+                      <span className="mt-0.5 block text-xs text-neutral-600">
+                        {quickPayments.splitEnabled
+                          ? "Le bouton « MIXTE » permet de répartir le total entre les deux."
+                          : "Désactivé : une vente est réglée par un seul moyen de paiement."}
+                      </span>
+                    </span>
+                    <input
+                      type="checkbox"
+                      role="switch"
+                      className="mt-1 h-5 w-9 shrink-0 cursor-pointer accent-fs-accent"
+                      checked={quickPayments.splitEnabled}
+                      disabled={quickPaymentsMut.isPending}
+                      onChange={(e) => {
+                        void quickPaymentsMut.mutateAsync({
+                          ...quickPayments,
+                          splitEnabled: e.target.checked,
+                        });
+                      }}
+                    />
+                  </label>
+
+                  <label
+                    className={cn(
+                      "flex cursor-pointer items-start justify-between gap-3 px-3 py-3 sm:px-4",
+                      quickPaymentsMut.isPending && "pointer-events-none opacity-60",
+                    )}
+                  >
+                    <span className="min-w-0">
+                      <span className="block text-sm font-medium text-fs-text">
+                        Masquer le client en caisse rapide
+                      </span>
+                      <span className="mt-0.5 block text-xs text-neutral-600">
+                        {quickPayments.hideCustomer
+                          ? "Le sélecteur de client disparaît des ventes comptant. La vente à crédit continue de l'exiger."
+                          : "Désactivé : le client reste proposé (facultatif) sur chaque vente."}
+                      </span>
+                    </span>
+                    <input
+                      type="checkbox"
+                      role="switch"
+                      className="mt-1 h-5 w-9 shrink-0 cursor-pointer accent-fs-accent"
+                      checked={quickPayments.hideCustomer}
+                      disabled={quickPaymentsMut.isPending}
+                      onChange={(e) => {
+                        void quickPaymentsMut.mutateAsync({
+                          ...quickPayments,
+                          hideCustomer: e.target.checked,
+                        });
+                      }}
+                    />
+                  </label>
+                </>
+              ) : null}
+            </div>
+          )}
+        </FsCard>
+      ) : null}
+
       {/* Caisse Facture A4 */}
       <FsCard className="mt-5" padding="p-5">
         <SettingsCardTitle icon={MdShoppingCart} title="Caisse Facture A4" />
@@ -1203,6 +1449,49 @@ export function SettingsScreen() {
                 disabled={productAliasesMut.isPending}
                 onChange={(e) => {
                   void productAliasesMut.mutateAsync(e.target.checked);
+                }}
+              />
+            </label>
+          </div>
+        </FsCard>
+      ) : null}
+
+      {/* Motos identifiées (châssis / moteur / couleur) — owner, activité « Ventes d'engins » */}
+      {isOwner && companyId && engineUnitsAvailable ? (
+        <FsCard className="mt-5" padding="p-5">
+          <SettingsCardTitle icon={MdTwoWheeler} title="Motos identifiées" />
+          <p className="mt-2 text-xs leading-relaxed text-neutral-600 sm:text-sm">
+            Dix motos du même modèle dans la cour, ce sont dix engins différents : chacun a
+            son numéro de châssis, son numéro de moteur et sa couleur. Enregistrez-les une
+            seule fois dans la fiche de l&apos;engin. À la vente, vous choisissez la moto
+            dans la liste : le châssis part sur la facture sans être retapé, et vous savez à
+            tout moment quelle moto est vendue et laquelle reste en stock.
+          </p>
+          <div className="mt-4 space-y-0 rounded-[10px] border border-black/[0.08]">
+            <label
+              className={cn(
+                "flex cursor-pointer items-start justify-between gap-3 px-3 py-3 sm:px-4",
+                engineUnitsMut.isPending && "pointer-events-none opacity-60",
+              )}
+            >
+              <span className="min-w-0">
+                <span className="block text-sm font-medium text-fs-text">
+                  Activer les motos identifiées
+                </span>
+                <span className="mt-0.5 block text-xs text-neutral-600">
+                  {engineUnitsEnabled
+                    ? "La fiche de l'engin propose « Motos enregistrées », et la vente permet de choisir la moto."
+                    : "Désactivé : rien ne change dans l'application."}
+                </span>
+              </span>
+              <input
+                type="checkbox"
+                role="switch"
+                className="mt-1 h-5 w-9 shrink-0 cursor-pointer accent-fs-accent"
+                checked={engineUnitsEnabled}
+                disabled={engineUnitsMut.isPending}
+                onChange={(e) => {
+                  void engineUnitsMut.mutateAsync(e.target.checked);
                 }}
               />
             </label>

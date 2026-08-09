@@ -5,13 +5,17 @@ import type {
 import type { Store } from "@/lib/features/stores/types";
 import {
   mobileMoneyProviderLabel,
+  paymentDisplay,
   salePaymentsLabel,
   type MobileMoneyProvider,
 } from "@/lib/features/payments/payment-display";
 import { getActiveCurrency } from "@/lib/utils/currency";
 
-/** `credit` = vente à crédit en caisse rapide (réglage entreprise, cf. `quick-pos-credit.ts`). */
-export type QuickPaymentMethod = "cash" | "mobile_money" | "card" | "credit";
+/**
+ * `credit` = vente à crédit en caisse rapide (réglage entreprise, cf. `quick-pos-credit.ts`).
+ * `mixed` = une part en espèces, le reste en mobile money (cf. `quick-pos-payments.ts`).
+ */
+export type QuickPaymentMethod = "cash" | "mobile_money" | "card" | "credit" | "mixed";
 
 export type PosReceiptSnap = {
   cart: Array<{
@@ -27,6 +31,10 @@ export type PosReceiptSnap = {
   quickPayment: QuickPaymentMethod;
   /** Mobile money : opérateur choisi en caisse — imprimé tel quel sur le ticket. */
   mobileProvider?: MobileMoneyProvider | null;
+  /** Paiement mixte : part réglée en espèces. */
+  splitCash?: number | null;
+  /** Paiement mixte : part réglée en mobile money. */
+  splitMobile?: number | null;
   amountReceivedValue: number;
   change: number;
   /** Client associé à la vente (facultatif au comptant, obligatoire à crédit). */
@@ -46,6 +54,9 @@ function quickPaymentLabel(
   if (m === "cash") return "Espèces";
   if (m === "card") return "Carte";
   if (m === "credit") return "À crédit";
+  // « Mixte » et non « Espèces + … » : `paymentUppercase` prendrait le mot « espèces »
+  // pour un règlement comptant et imprimerait un « Rendu » qui n'existe pas.
+  if (m === "mixed") return "Mixte";
   return provider ? mobileMoneyProviderLabel(provider) : "Mobile money";
 }
 
@@ -86,9 +97,26 @@ type SaleLikeForReceipt = {
     total: number;
     product?: { name: string | null } | null;
   }>;
-  sale_payments: Array<{ method: string; reference?: string | null }>;
+  sale_payments: Array<{ method: string; amount?: number; reference?: string | null }>;
   customer?: { name: string | null; phone: string | null } | null;
 };
+
+/**
+ * Réimpression d'une vente réglée par plusieurs moyens (espèces + mobile money) :
+ * on réimprime le détail, sinon le ticket dirait « Paiement : ESPECES » pour une
+ * vente à moitié encaissée en Orange Money. Les ventes à crédit (ligne `other`)
+ * gardent leur affichage d'origine — leur détail est le bloc crédit, pas celui-ci.
+ */
+function reprintPaymentSplit(
+  payments: SaleLikeForReceipt["sale_payments"],
+): Array<{ label: string; amount: number }> | null {
+  if (payments.length < 2) return null;
+  if (payments.some((p) => p.method === "other")) return null;
+  return payments.map((p) => ({
+    label: paymentDisplay(p).label,
+    amount: Math.round(p.amount ?? 0),
+  }));
+}
 
 /** Réimpression historique — comme `ReceiptTicketData` dans `_reprintReceipt` (Flutter). */
 export function buildReceiptTicketDataFromSale(
@@ -102,6 +130,7 @@ export function buildReceiptTicketDataFromSale(
     unitPrice: it.unit_price,
     total: it.total,
   }));
+  const split = reprintPaymentSplit(sale.sale_payments);
   return {
     // Transmise au serveur avec le ticket : lui n'a aucune devise ambiante.
     currencyCode: getActiveCurrency(),
@@ -116,7 +145,10 @@ export function buildReceiptTicketDataFromSale(
     discount: sale.discount,
     total: sale.total,
     // Réimpression : l'opérateur mobile money est relu depuis la référence du paiement.
-    paymentMethod: salePaymentsLabel(sale.sale_payments, { includeCredit: true }),
+    paymentMethod: split
+      ? "Mixte"
+      : salePaymentsLabel(sale.sale_payments, { includeCredit: true }),
+    paymentSplit: split,
     amountReceived: null,
     change: null,
     date: new Date(sale.created_at),
@@ -143,6 +175,7 @@ export function buildReceiptTicketData(
   const ar = isCash ? snap.amountReceivedValue : 0;
   const showMoney = isCash && ar > 0;
   const isCredit = snap.quickPayment === "credit";
+  const isMixed = snap.quickPayment === "mixed";
 
   return {
     // Transmise au serveur avec le ticket : lui n'a aucune devise ambiante.
@@ -158,6 +191,18 @@ export function buildReceiptTicketData(
     discount: snap.discount,
     total: snap.total,
     paymentMethod: quickPaymentLabel(snap.quickPayment, snap.mobileProvider),
+    // Vente mixte : le client doit lire les deux parts, sinon le ticket ne prouve rien.
+    paymentSplit: isMixed
+      ? [
+          { label: "Espèces", amount: Math.round(snap.splitCash ?? 0) },
+          {
+            label: snap.mobileProvider
+              ? mobileMoneyProviderLabel(snap.mobileProvider)
+              : "Mobile money",
+            amount: Math.round(snap.splitMobile ?? 0),
+          },
+        ]
+      : null,
     amountReceived: showMoney ? ar : null,
     change: showMoney && snap.change >= 0 ? snap.change : null,
     date,
