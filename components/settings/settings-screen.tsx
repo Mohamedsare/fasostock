@@ -1155,6 +1155,37 @@ export function SettingsScreen() {
                   >
                     <span className="min-w-0">
                       <span className="block text-sm font-medium text-fs-text">
+                        Retirer le bouton « CARTE »
+                      </span>
+                      <span className="mt-0.5 block text-xs text-neutral-600">
+                        {quickPayments.hideCard
+                          ? "La carte bancaire n'est plus proposée à la caisse rapide."
+                          : "Désactivé : le bouton CARTE reste proposé. Retirez-le si vous n'avez pas de TPE."}
+                      </span>
+                    </span>
+                    <input
+                      type="checkbox"
+                      role="switch"
+                      className="mt-1 h-5 w-9 shrink-0 cursor-pointer accent-fs-accent"
+                      checked={quickPayments.hideCard}
+                      disabled={quickPaymentsMut.isPending}
+                      onChange={(e) => {
+                        void quickPaymentsMut.mutateAsync({
+                          ...quickPayments,
+                          hideCard: e.target.checked,
+                        });
+                      }}
+                    />
+                  </label>
+
+                  <label
+                    className={cn(
+                      "flex cursor-pointer items-start justify-between gap-3 px-3 py-3 sm:px-4",
+                      quickPaymentsMut.isPending && "pointer-events-none opacity-60",
+                    )}
+                  >
+                    <span className="min-w-0">
+                      <span className="block text-sm font-medium text-fs-text">
                         Masquer le client en caisse rapide
                       </span>
                       <span className="mt-0.5 block text-xs text-neutral-600">

@@ -22,6 +22,9 @@ const KEY = "quick_pos_payments";
  *   saisie qui attend son heure — et un historique faux.
  * - `splitEnabled` : le client règle une partie en espèces, le reste en mobile money.
  *   Sans ça, le caissier devait mentir sur le moyen de paiement.
+ * - `hideCard` : la très grande majorité des boutiques n'a pas de TPE. Un bouton
+ *   « CARTE » qu'on ne peut pas utiliser prend la place des modes réels et finit par
+ *   être touché par erreur.
  * - `hideCustomer` : au comptoir à fort débit, personne n'enregistre le client ; le
  *   sélecteur ne fait que ralentir et encombrer le panier.
  */
@@ -32,6 +35,8 @@ export type QuickPosPaymentsSettings = {
   providers: MobileMoneyProvider[];
   /** Autorise une vente réglée en espèces **et** en mobile money. */
   splitEnabled: boolean;
+  /** Retire le bouton « CARTE » des modes de paiement (boutique sans TPE). */
+  hideCard: boolean;
   /** Masque le sélecteur de client sur les ventes comptant (le crédit l'exige toujours). */
   hideCustomer: boolean;
 };
@@ -42,6 +47,7 @@ export const QUICK_POS_PAYMENTS_DEFAULT: QuickPosPaymentsSettings = {
   enabled: false,
   providers: ALL_PROVIDERS,
   splitEnabled: false,
+  hideCard: false,
   hideCustomer: false,
 };
 
@@ -80,6 +86,7 @@ function parseSettings(raw: unknown): QuickPosPaymentsSettings {
     enabled: parseBool(o.enabled),
     providers: parseProviders(o.providers),
     splitEnabled: parseBool(o.splitEnabled),
+    hideCard: parseBool(o.hideCard),
     hideCustomer: parseBool(o.hideCustomer),
   };
 }
@@ -110,6 +117,7 @@ export async function setQuickPosPayments(
     enabled: settings.enabled,
     providers: parseProviders(settings.providers),
     splitEnabled: settings.splitEnabled,
+    hideCard: settings.hideCard,
     hideCustomer: settings.hideCustomer,
   };
   const supabase = createClient();

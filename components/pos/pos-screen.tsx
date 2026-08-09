@@ -351,6 +351,8 @@ export function PosScreen({
   );
   const quickSplitEnabled =
     mode === "quick" && quickPaymentsSettings.enabled && quickPaymentsSettings.splitEnabled;
+  const hideQuickCard =
+    mode === "quick" && quickPaymentsSettings.enabled && quickPaymentsSettings.hideCard;
   const hideQuickCustomer =
     mode === "quick" && quickPaymentsSettings.enabled && quickPaymentsSettings.hideCustomer;
 
@@ -646,6 +648,14 @@ export function PosScreen({
       setQuickPayment("cash");
     }
   }, [quickSplitEnabled, quickPayment, activeEditSaleId]);
+
+  // Carte retirée par le propriétaire : on repasse en espèces plutôt que d'encaisser
+  // sur un mode qui n'est plus affiché.
+  useEffect(() => {
+    if (hideQuickCard && quickPayment === "card" && !activeEditSaleId) {
+      setQuickPayment("cash");
+    }
+  }, [hideQuickCard, quickPayment, activeEditSaleId]);
 
   /*
    * Un seul opérateur autorisé : le caissier n'a rien à choisir, on le pose d'office.
@@ -1773,6 +1783,9 @@ export function PosScreen({
       customers={customers}
       hideQuickCustomer={hideQuickCustomer}
       allowQuickCredit={quickCreditEnabled || quickPayment === "credit"}
+      // Vente rouverte réglée par carte : le bouton reste, sinon la modification
+      // basculerait silencieusement son paiement en espèces.
+      allowQuickCard={!hideQuickCard || quickPayment === "card"}
       allowQuickSplit={quickSplitEnabled || quickPayment === "mixed"}
       splitCashAmount={splitCashAmount}
       setSplitCashAmount={setSplitCashAmount}
@@ -3086,6 +3099,7 @@ function PosCartPanel({
   customers,
   hideQuickCustomer,
   allowQuickCredit,
+  allowQuickCard,
   allowQuickSplit,
   splitCashAmount,
   setSplitCashAmount,
@@ -3148,6 +3162,8 @@ function PosCartPanel({
   hideQuickCustomer?: boolean;
   /** Caisse rapide : le propriétaire autorise la vente à crédit (réglage entreprise). */
   allowQuickCredit?: boolean;
+  /** Caisse rapide : bouton « CARTE » proposé (le propriétaire peut le retirer). */
+  allowQuickCard?: boolean;
   /** Caisse rapide : le propriétaire autorise le paiement mixte espèces + mobile money. */
   allowQuickSplit?: boolean;
   /** Paiement mixte : part réglée en espèces (saisie libre), le reste en mobile money. */
@@ -3194,7 +3210,11 @@ function PosCartPanel({
    */
   const quickPaymentButtons: Array<[QuickPayment, string]> = [
     ["cash", "CASH"],
-    ["card", "CARTE"],
+    // Boutique sans TPE : le propriétaire retire la carte pour rendre la place aux
+    // modes réellement encaissés.
+    ...(allowQuickCard === false
+      ? []
+      : ([["card", "CARTE"]] as Array<[QuickPayment, string]>)),
     [
       "mobile_money",
       // Un seul opérateur encaissé : le bouton porte son nom (« ORANGE »), le
@@ -3274,7 +3294,9 @@ function PosCartPanel({
               ? "grid-cols-5"
               : quickPaymentButtons.length === 4
                 ? "grid-cols-4"
-                : "grid-cols-3",
+                : quickPaymentButtons.length === 3
+                  ? "grid-cols-3"
+                  : "grid-cols-2",
           )}
         >
           {quickPaymentButtons.map(([key, label]) => (
@@ -3289,6 +3311,7 @@ function PosCartPanel({
                   : quickPaymentButtons.length === 4
                     ? "text-[11px]"
                     : "text-xs",
+                quickPaymentButtons.length <= 2 && "py-2.5",
                 quickPayment === key
                   ? "bg-[#F97316] text-white"
                   : "bg-[#F8F9FA] text-[#1F2937]",
