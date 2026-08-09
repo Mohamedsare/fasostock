@@ -3,6 +3,7 @@
 import { attachReactQueryErrorLogging } from "@/lib/monitoring/react-query-error-logging";
 import {
   createFasoStockQueryPersister,
+  RQ_GC_TIME_MS,
   RQ_MAX_AGE_MS,
   RQ_PERSIST_BUSTER,
 } from "@/lib/offline";
@@ -39,7 +40,8 @@ function makeClient() {
     defaultOptions: {
       queries: {
         staleTime: 60 * 1000,
-        gcTime: RQ_MAX_AGE_MS,
+        /** Mémoire (RAM), à distinguer du `maxAge` de la copie disque plus bas. */
+        gcTime: RQ_GC_TIME_MS,
         refetchOnReconnect: true,
         /** Hors ligne : pas de refetch agressif au focus (données persistées IDB). */
         refetchOnWindowFocus: false,

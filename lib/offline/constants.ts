@@ -1,5 +1,23 @@
-/** Durée de conservation du cache TanStack Query (alignée gcTime). */
+/**
+ * Validité de la copie persistée : au-delà, le cache retrouvé sur disque est jugé trop
+ * vieux et ignoré au démarrage. Large exprès — une caisse rouverte après le week-end
+ * doit retrouver ses écrans remplis immédiatement.
+ */
 export const RQ_MAX_AGE_MS = 1000 * 60 * 60 * 24 * 7;
+
+/**
+ * Durée pendant laquelle une requête inactive reste **en mémoire**.
+ *
+ * À ne pas confondre avec `RQ_MAX_AGE_MS` : celui-ci parle du disque, celui-là de la RAM.
+ * Les deux valaient 7 jours, ce qui revenait à ne jamais rien libérer — une caisse ouverte
+ * du matin au soir accumulait chaque écran visité sans jamais rendre la mémoire, sur des
+ * jeux de données qui pèsent ~1 Mo pièce.
+ *
+ * 24 h borne cette croissance sans rien coûter en pratique : une boutique ouvre son app
+ * tous les jours, donc les données utiles sont toujours revues dans la fenêtre. Ce qui
+ * sort de la mémoire n'est pas perdu, seulement rechargé au prochain affichage.
+ */
+export const RQ_GC_TIME_MS = 1000 * 60 * 60 * 24;
 
 /**
  * Clé + buster : incrémenter le buster si le format persisté change (invalidation anciens caches).

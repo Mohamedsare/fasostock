@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/client";
 import { broadcastOutboxFlushed, subscribeOutboxBroadcast } from "@/lib/offline";
 import { useOnlineStatus } from "@/lib/hooks/use-online-status";
 import { logSyncFlushFailure } from "@/lib/offline";
+import { requestPersistentStorage } from "@/lib/offline/request-persistent-storage";
 import { processOutbox } from "@/lib/sync/sync-manager";
 import { registerOutboxHandlers } from "@/lib/sync/register-handlers";
 import { useQueryClient } from "@tanstack/react-query";
@@ -28,6 +29,12 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     if (!registered.current) {
       registered.current = true;
       registerOutboxHandlers();
+      /*
+       * La file de ventes vit dans IndexedDB, que le navigateur s'autorise à vider sous
+       * pression de stockage. Perdre ce cache, ce n'est pas perdre un cache : c'est
+       * perdre des ventes encaissées. On demande donc la persistance dès le démarrage.
+       */
+      void requestPersistentStorage();
     }
   }, []);
 

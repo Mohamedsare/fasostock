@@ -2150,7 +2150,17 @@ export function PosScreen({
                           <div className="mx-auto flex size-[clamp(3rem,52%,4.5rem)] max-h-[72px] max-w-[72px] shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[#F8F9FA]">
                             {thumb ? (
                               // eslint-disable-next-line @next/next/no-img-element
-                              <img src={thumb} alt="" className="h-full w-full object-cover" />
+                              <img
+                              src={thumb}
+                              alt=""
+                              /* La grille peut afficher un millier de produits : sans
+                                 chargement paresseux, le navigateur télécharge et décode
+                                 TOUTES les vignettes d'un coup, y compris hors écran —
+                                 en concurrence directe avec la requête d'encaissement. */
+                              loading="lazy"
+                              decoding="async"
+                              className="h-full w-full object-cover"
+                            />
                             ) : (
                               <MdInventory2
                                 className="h-8 w-8 text-[#F97316]/70"
@@ -2222,7 +2232,17 @@ export function PosScreen({
                         <div className="mx-auto flex h-[72px] w-[72px] shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[#F8F9FA] sm:h-[76px] sm:w-[76px]">
                           {thumb ? (
                             // eslint-disable-next-line @next/next/no-img-element
-                            <img src={thumb} alt="" className="h-full w-full object-cover" />
+                            <img
+                              src={thumb}
+                              alt=""
+                              /* La grille peut afficher un millier de produits : sans
+                                 chargement paresseux, le navigateur télécharge et décode
+                                 TOUTES les vignettes d'un coup, y compris hors écran —
+                                 en concurrence directe avec la requête d'encaissement. */
+                              loading="lazy"
+                              decoding="async"
+                              className="h-full w-full object-cover"
+                            />
                           ) : (
                             <MdInventory2
                               className="h-9 w-9 text-[#F97316]/70"

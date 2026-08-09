@@ -5,6 +5,7 @@
  * - sync : `lib/sync/sync-manager.ts` + `components/providers/sync-provider.tsx`
  */
 export {
+  RQ_GC_TIME_MS,
   RQ_MAX_AGE_MS,
   RQ_PERSIST_KEY,
   RQ_PERSIST_BUSTER,

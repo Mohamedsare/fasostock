@@ -41,7 +41,19 @@ export function createFasoStockQueryPersister() {
   return createAsyncStoragePersister({
     storage: asyncStorage,
     key: RQ_PERSIST_KEY,
-    throttleTime: 1000,
+    /*
+     * Chaque écriture sérialise le cache ENTIER (`JSON.stringify`) avant de l'envoyer
+     * dans IndexedDB. Sur ce parc, un seul jeu produits + stock + clients pèse déjà ~1 Mo,
+     * et le cache grossit tant que la caisse reste ouverte. À une écriture par seconde,
+     * une tablette d'entrée de gamme passe la journée à réallouer des chaînes de plusieurs
+     * méga-octets : gigue, pression sur le ramasse-miettes, puis onglet qui meurt.
+     *
+     * Espacer les écritures est sans risque : cette copie ne sert qu'à **relire** plus vite
+     * après un rechargement. Les écritures réelles — les ventes encaissées — vivent dans la
+     * file Dexie, pas ici. Au pire on repart avec quelques secondes de cache en moins, et
+     * les requêtes se refont.
+     */
+    throttleTime: 5000,
     /** JSON corrompu : log puis throw — le core TanStack purge le cache et évite un crash silencieux. */
     deserialize: (cachedString: string): PersistedClient => {
       try {
