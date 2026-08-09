@@ -1,4 +1,22 @@
-import ExcelJS from "exceljs";
+/**
+ * Import **de type uniquement** : effacé à la compilation, il ne fait donc entrer
+ * ExcelJS dans aucun bundle.
+ *
+ * La bibliothèque pèse 912 Ko (251 Ko compressés) et treize écrans l'importaient —
+ * Produits, Ventes, Clients, Achats, Fournisseurs, Inventaire, Crédit, Dépenses, RH,
+ * Comptabilité, Rapports… Chacun la téléchargeait **avant de s'afficher**, même pour
+ * un utilisateur qui n'exporte jamais rien. Sur une connexion faible, cela coûtait
+ * plusieurs secondes par écran, pour une fonction utilisée une fois par mois.
+ *
+ * Le chargement réel a lieu dans `loadExcelJs()`, au clic sur « Exporter ».
+ */
+import type ExcelJSTypes from "exceljs";
+
+/** Charge ExcelJS à la demande. Le navigateur garde le morceau en cache ensuite. */
+async function loadExcelJs(): Promise<typeof ExcelJSTypes> {
+  const mod = await import("exceljs");
+  return (mod.default ?? mod) as unknown as typeof ExcelJSTypes;
+}
 
 export type ProSheetCell = string | number | boolean | null | undefined;
 
@@ -35,7 +53,7 @@ function thinBorder(color: string) {
  * `startRow` = numéro de ligne Excel (1-based) de la ligne d’en-têtes.
  */
 export function writeProDataTable(
-  ws: ExcelJS.Worksheet,
+  ws: ExcelJSTypes.Worksheet,
   startRow: number,
   headers: string[],
   rows: ProSheetCell[][],
@@ -129,6 +147,7 @@ export async function downloadProSpreadsheet(
   rows: ProSheetCell[][],
   meta?: { title?: string; subtitle?: string },
 ): Promise<void> {
+  const ExcelJS = await loadExcelJs();
   const wb = new ExcelJS.Workbook();
   wb.creator = "FasoStock";
   wb.created = new Date();
@@ -184,6 +203,7 @@ export async function downloadProWorkbook(
   if (sheets.length === 0) {
     throw new Error("Aucune feuille à exporter.");
   }
+  const ExcelJS = await loadExcelJs();
   const wb = new ExcelJS.Workbook();
   wb.creator = "FasoStock";
   wb.created = new Date();

@@ -1,6 +1,7 @@
 "use client";
 
-import ExcelJS from "exceljs";
+/** Type seulement — voir `spreadsheet-export-pro` : ExcelJS est chargé au clic, pas au rendu. */
+import type ExcelJSTypes from "exceljs";
 import { format, parseISO } from "date-fns";
 import { fr } from "date-fns/locale";
 import { writeProDataTable, safeSheetName, colName } from "@/lib/utils/spreadsheet-export-pro";
@@ -23,7 +24,7 @@ function stamp(iso: string, singleDay: boolean): string {
 
 /** Titre + sous-titre stylés en haut d'une feuille, puis tableau « pro » ; format monétaire sur les nombres. */
 function addTitledSheet(
-  wb: ExcelJS.Workbook,
+  wb: ExcelJSTypes.Workbook,
   sheetName: string,
   title: string,
   subtitle: string,
@@ -85,6 +86,7 @@ export async function exportCreditRangeXlsx(params: {
   const repaidSameDay = repaidTotal - repaidOld;
   const net = grantedTotal - repaidTotal;
 
+  const { default: ExcelJS } = await import("exceljs");
   const wb = new ExcelJS.Workbook();
   wb.creator = "FasoStock";
   wb.created = new Date();
