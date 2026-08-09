@@ -21,3 +21,11 @@ export const SYNC_BROADCAST_CHANNEL = "fasostock-sync";
 
 /** Aligné `sync-manager` / Flutter — au-delà, entrée considérée bloquée. */
 export const MAX_OUTBOX_ATTEMPTS = 25;
+
+/**
+ * Vente encaissée mais pas encore partie : l'identifiant renvoyé au POS n'est pas
+ * encore celui de la base. Les écrans s'en servent pour proposer un ticket provisoire
+ * au lieu d'un numéro définitif (`saleId.startsWith(OFFLINE_SALE_ID_PREFIX)`).
+ */
+export const OFFLINE_SALE_ID_PREFIX = "offline:";
+export const OFFLINE_SALE_NUMBER_LABEL = "Hors ligne — en attente sync";

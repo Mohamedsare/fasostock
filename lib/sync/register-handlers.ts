@@ -8,6 +8,22 @@ function toNum(v: unknown): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+/**
+ * PostgREST résout les fonctions sur la liste exacte des arguments nommés : appeler avec
+ * un paramètre que la base ne connaît pas encore renvoie `PGRST202` (« Could not find the
+ * function … in the schema cache »), et non une erreur métier.
+ *
+ * Sert à rester compatible avec une base où la migration 00177 n'est pas encore appliquée :
+ * on réessaie alors sans le paramètre, au lieu de bloquer la synchronisation des ventes.
+ */
+function isMissingFunctionSignature(error: unknown): boolean {
+  if (error == null || typeof error !== "object") return false;
+  const e = error as { code?: unknown; message?: unknown };
+  if (String(e.code ?? "") === "PGRST202") return true;
+  const msg = String(e.message ?? "").toLowerCase();
+  return msg.includes("could not find the function") || msg.includes("schema cache");
+}
+
 async function requireUserId(supabase: SupabaseClient): Promise<string> {
   const {
     data: { user },
@@ -235,7 +251,7 @@ export function registerOutboxHandlers(): void {
       "@/lib/features/push/company-owners-push-client"
     );
 
-    const { data: newSaleId, error } = await supabase.rpc("create_sale_with_stock", {
+    const args = {
       p_company_id: String(p.companyId ?? ""),
       p_store_id: String(p.storeId ?? ""),
       p_customer_id: (p.customerId as string | null) ?? null,
@@ -255,8 +271,31 @@ export function registerOutboxHandlers(): void {
       p_sale_mode: String(p.saleMode ?? "quick_pos"),
       p_document_type: String(p.documentType ?? "thermal_receipt"),
       p_client_request_id: clientRequestId,
+    };
+
+    /*
+     * Rejeu d'une vente encaissée hors ligne : la marchandise est sortie et l'argent
+     * est dans la caisse depuis des heures. Si le stock enregistré est devenu
+     * insuffisant entre-temps, refuser ne fait pas revenir la marchandise — ça efface
+     * seulement la recette des livres. On demande donc l'enregistrement malgré tout
+     * (migration 00177) : le stock tombe à 0 et l'écart est consigné sur la vente
+     * pour arbitrage. Ce drapeau n'est JAMAIS utilisé par une vente en direct.
+     */
+    let newSaleId: unknown;
+    const withFlag = await supabase.rpc("create_sale_with_stock", {
+      ...args,
+      p_allow_negative_stock: true,
     });
-    if (error) throw error;
+    if (withFlag.error && isMissingFunctionSignature(withFlag.error)) {
+      // Migration 00177 pas encore appliquée : on retombe sur l'ancien comportement
+      // plutôt que d'échouer. La vente repart en file et attendra la migration.
+      const legacy = await supabase.rpc("create_sale_with_stock", args);
+      if (legacy.error) throw legacy.error;
+      newSaleId = legacy.data;
+    } else {
+      if (withFlag.error) throw withFlag.error;
+      newSaleId = withFlag.data;
+    }
 
     // Vente à crédit prise hors ligne : on repose l'échéance saisie en caisse.
     const creditDueAt =

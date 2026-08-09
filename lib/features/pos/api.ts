@@ -1,6 +1,12 @@
 "use client";
 
+import { resolveSaleAuthor } from "@/lib/auth/sale-author";
 import { enqueueOutbox } from "@/lib/db/dexie-db";
+import { isNetworkErrorPublic } from "@/lib/errors/app-error-mapper";
+import {
+  OFFLINE_SALE_ID_PREFIX,
+  OFFLINE_SALE_NUMBER_LABEL,
+} from "@/lib/offline/constants";
 import {
   notifyCompanyOwnersPush,
   reportPushOutcome,
@@ -108,16 +114,15 @@ export async function createPosSale(params: {
   creditDueAt?: string | null;
 }): Promise<{ saleId: string; saleNumber: string }> {
   const supabase = createClient();
-  const {
-    data: { user },
-    error: userErr,
-  } = await supabase.auth.getUser();
-  if (userErr) throw userErr;
-  if (!user) throw new Error("Utilisateur non authentifie.");
+  // Tolère l'absence de réseau : `getUser()` seul faisait échouer la vente hors ligne
+  // avant même d'atteindre la mise en file (voir `resolveSaleAuthor`).
+  const author = await resolveSaleAuthor(supabase);
+  if (!author.ok) throw author.error;
 
   const clientRequestId = crypto.randomUUID();
 
-  if (!navigator.onLine) {
+  /** Met la vente en file locale — elle partira dès que le réseau revient. */
+  const queueSale = async (): Promise<{ saleId: string; saleNumber: string }> => {
     await enqueueOutbox("pos_sale_create", {
       companyId: params.companyId,
       storeId: params.storeId,
@@ -132,33 +137,57 @@ export async function createPosSale(params: {
       p_client_request_id: clientRequestId,
     });
     return {
-      saleId: `offline:${clientRequestId}`,
-      saleNumber: "Hors ligne — en attente sync",
+      saleId: `${OFFLINE_SALE_ID_PREFIX}${clientRequestId}`,
+      saleNumber: OFFLINE_SALE_NUMBER_LABEL,
     };
-  }
+  };
 
-  const { data: saleId, error } = await supabase.rpc("create_sale_with_stock", {
-    p_company_id: params.companyId,
-    p_store_id: params.storeId,
-    p_customer_id: params.customerId,
-    p_created_by: user.id,
-    p_items: params.items.map((i) => ({
-      product_id: i.productId,
-      quantity: Math.trunc(i.quantity),
-      unit_price: i.unitPrice,
-      discount: Math.max(0, Math.round(i.discount ?? 0)),
-    })),
-    p_payments: params.payments.map((p) => ({
-      method: p.method,
-      amount: p.amount,
-      reference: p.reference ?? null,
-    })),
-    p_discount: params.discount,
-    p_sale_mode: params.saleMode,
-    p_document_type: params.documentType,
-    p_client_request_id: clientRequestId,
-  });
-  if (error) throw error;
+  // Identité non confirmée = serveur injoignable : inutile de tenter la vente en direct.
+  if (!navigator.onLine || !author.verified) return queueSale();
+
+  let saleId: unknown;
+  try {
+    const { data, error } = await supabase.rpc("create_sale_with_stock", {
+      p_company_id: params.companyId,
+      p_store_id: params.storeId,
+      p_customer_id: params.customerId,
+      p_created_by: author.userId,
+      p_items: params.items.map((i) => ({
+        product_id: i.productId,
+        quantity: Math.trunc(i.quantity),
+        unit_price: i.unitPrice,
+        discount: Math.max(0, Math.round(i.discount ?? 0)),
+      })),
+      p_payments: params.payments.map((p) => ({
+        method: p.method,
+        amount: p.amount,
+        reference: p.reference ?? null,
+      })),
+      p_discount: params.discount,
+      p_sale_mode: params.saleMode,
+      p_document_type: params.documentType,
+      p_client_request_id: clientRequestId,
+    });
+    if (error) throw error;
+    saleId = data;
+  } catch (e) {
+    /*
+     * `navigator.onLine` ne dit que « une carte réseau est active » : il reste `true`
+     * avec 2 barres de 4G qui ne laissent rien passer — le cas courant ici. Sans ce
+     * repli, la requête expirait et la vente était **perdue**, alors que la
+     * marchandise était déjà sortie et l'argent encaissé.
+     *
+     * Rejouer est sans risque : `p_client_request_id` est inchangé, et
+     * `create_sale_with_stock` renvoie la vente déjà créée si la requête avait en
+     * fait abouti (table `sale_sync_idempotency`) — ni doublon, ni double déstockage.
+     *
+     * Seules les pannes réseau basculent en file. Un refus métier (« stock
+     * insuffisant ») doit rester affiché au caissier : la marchandise est encore là,
+     * il peut corriger tout de suite.
+     */
+    if (isNetworkErrorPublic(e)) return queueSale();
+    throw e;
+  }
 
   const id = String(saleId ?? "");
   if (!id) throw new Error("Vente non creee.");

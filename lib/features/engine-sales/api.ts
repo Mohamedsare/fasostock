@@ -1,7 +1,13 @@
 "use client";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { resolveSaleAuthor } from "@/lib/auth/sale-author";
 import { enqueueOutbox } from "@/lib/db/dexie-db";
+import { isNetworkErrorPublic } from "@/lib/errors/app-error-mapper";
+import {
+  OFFLINE_SALE_ID_PREFIX,
+  OFFLINE_SALE_NUMBER_LABEL,
+} from "@/lib/offline/constants";
 import { createClient } from "@/lib/supabase/client";
 import { notifyCompanyOwnersPush } from "@/lib/features/push/company-owners-push-client";
 import { purgeCancelledSaleAsOwner } from "@/lib/features/sales/api";
@@ -309,29 +315,47 @@ export async function createEngineSale(
   params: CreateEngineSaleInput,
 ): Promise<CreateEngineSaleResult> {
   const supabase = createClient();
-  const {
-    data: { user },
-    error: userErr,
-  } = await supabase.auth.getUser();
-  if (userErr) throw userErr;
-  if (!user) throw new Error("Utilisateur non authentifié.");
+  // Tolère l'absence de réseau : `getUser()` seul faisait échouer la vente hors ligne
+  // avant même d'atteindre la mise en file (voir `resolveSaleAuthor`).
+  const author = await resolveSaleAuthor(supabase);
+  if (!author.ok) throw author.error;
 
   const clientRequestId = crypto.randomUUID();
 
-  if (typeof navigator !== "undefined" && !navigator.onLine) {
+  /** Met la vente en file locale — elle partira dès que le réseau revient. */
+  const queueSale = async (): Promise<CreateEngineSaleResult> => {
     await enqueueOutbox("engine_sale_create", {
       params,
-      createdBy: user.id,
+      // Peut être absent si le jeton local a expiré pendant la coupure : le handler
+      // redemande alors l'utilisateur au serveur au moment de l'envoi.
+      createdBy: author.userId ?? "",
       clientRequestId,
     });
     return {
-      saleId: `offline:${clientRequestId}`,
-      saleNumber: "Hors ligne — en attente sync",
+      saleId: `${OFFLINE_SALE_ID_PREFIX}${clientRequestId}`,
+      saleNumber: OFFLINE_SALE_NUMBER_LABEL,
       verificationToken: "",
     };
+  };
+
+  // Identité non confirmée = serveur injoignable : inutile de tenter la vente en direct.
+  if ((typeof navigator !== "undefined" && !navigator.onLine) || !author.verified) {
+    return queueSale();
   }
 
-  const result = await persistEngineSale(supabase, params, user.id, clientRequestId);
+  let result: CreateEngineSaleResult;
+  try {
+    result = await persistEngineSale(supabase, params, author.userId, clientRequestId);
+  } catch (e) {
+    /*
+     * Même raison qu'au POS : `navigator.onLine` reste `true` sur un réseau qui ne
+     * laisse rien passer. Sans ce repli, un engin vendu et payé disparaissait.
+     * Le `clientRequestId` est conservé, donc rejouer ne duplique pas la vente.
+     * Un refus métier, lui, doit rester visible immédiatement.
+     */
+    if (isNetworkErrorPublic(e)) return queueSale();
+    throw e;
+  }
 
   const total = Math.max(1, Math.trunc(params.quantity)) * Math.max(0, params.unitPrice);
   // Notification propriétaires (best-effort, non bloquant).

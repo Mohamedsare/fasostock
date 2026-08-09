@@ -71,7 +71,9 @@ import {
   type PosReceiptSnap,
 } from "@/lib/features/receipt/build-receipt-ticket-data";
 import { generateReceiptThermalPdfBlob } from "@/lib/features/receipt/generate-receipt-thermal-pdf";
+import { printProvisionalTicket } from "@/lib/features/receipt/print-provisional-ticket";
 import type { ReceiptTicketData } from "@/lib/features/receipt/receipt-ticket-types";
+import { OFFLINE_SALE_ID_PREFIX } from "@/lib/offline/constants";
 import {
   MdAdd,
   MdArrowBack,
@@ -968,7 +970,7 @@ export function PosScreen({
       setPrescriptionNumber("");
       // Vente à crédit soldée : la caisse revient au comptant pour le client suivant.
       if (quickPayment === "credit") setQuickPayment("cash");
-      if (res.saleId.startsWith("offline:")) {
+      if (res.saleId.startsWith(OFFLINE_SALE_ID_PREFIX)) {
         toast.success(
           "Vente enregistrée localement. Synchronisation à la reconnexion.",
         );
@@ -987,7 +989,7 @@ export function PosScreen({
       ]);
 
       if (isA4Like && store && res.invoiceSnap) {
-        if (res.saleId.startsWith("offline:")) {
+        if (res.saleId.startsWith(OFFLINE_SALE_ID_PREFIX)) {
           toast.info("Facture PDF : disponible après synchronisation (vente en file d’attente).");
         } else
         try {
@@ -1037,13 +1039,16 @@ export function PosScreen({
       }
 
       if (mode === "quick" && store && res.receiptSnap) {
+        const queuedOffline = res.saleId.startsWith(OFFLINE_SALE_ID_PREFIX);
         let saleDate = new Date();
-        try {
-          const { getSaleDetail } = await import("@/lib/features/sales/api");
-          const detail = await getSaleDetail(res.saleId);
-          if (detail?.created_at) saleDate = new Date(detail.created_at);
-        } catch {
-          /* date serveur optionnelle */
+        if (!queuedOffline) {
+          try {
+            const { getSaleDetail } = await import("@/lib/features/sales/api");
+            const detail = await getSaleDetail(res.saleId);
+            if (detail?.created_at) saleDate = new Date(detail.created_at);
+          } catch {
+            /* date serveur optionnelle */
+          }
         }
         const ticketData = buildReceiptTicketData(
           store,
@@ -1052,6 +1057,25 @@ export function PosScreen({
           saleDate,
           res.saleId,
         );
+
+        /*
+         * Hors ligne, le ticket habituel est impossible : il est fabriqué par une route
+         * serveur. Le client repartait donc sans justificatif, au moment précis où il
+         * vient de payer. On imprime un ticket provisoire, fabriqué dans le navigateur.
+         */
+        if (queuedOffline) {
+          const printed = printProvisionalTicket(ticketData, {
+            localReference: res.saleId.slice(OFFLINE_SALE_ID_PREFIX.length),
+            paperWidthMm: thermalPaperWidthMm,
+          });
+          if (!printed) {
+            toast.info(
+              "Ticket provisoire bloqué par le navigateur : autorisez les fenêtres surgissantes pour l’imprimer.",
+            );
+          }
+          return;
+        }
+
         let auto = false;
         try {
           auto = localStorage.getItem("pos_quick_auto_print") === "true";
