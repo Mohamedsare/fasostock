@@ -8,17 +8,31 @@ import {
   adminListCompanies,
   adminListLockedLogins,
   adminListUsers,
+  adminLookupLoginStatus,
   adminSetUserActive,
   adminSetUserCompanies,
   adminUnlockLogin,
   adminUpdateProfile,
 } from "@/lib/features/admin/api";
-import type { AdminUser } from "@/lib/features/admin/types";
+import type { AdminUser, LoginLockLookup } from "@/lib/features/admin/types";
 import { createClient } from "@/lib/supabase/client";
 import { messageFromUnknownError, toast } from "@/lib/toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { MdDelete, MdEdit, MdPersonAdd, MdPersonOff } from "react-icons/md";
+import {
+  MdDelete,
+  MdEdit,
+  MdLockOpen,
+  MdPersonAdd,
+  MdPersonOff,
+} from "react-icons/md";
+
+/** Minutes restantes avant le déblocage automatique (0 si déjà passé). */
+function minutesUntil(iso: string | null): number | null {
+  if (!iso) return null;
+  const ms = new Date(iso).getTime() - Date.now();
+  return ms > 0 ? Math.ceil(ms / 60000) : 0;
+}
 
 export function AdminUsersScreen() {
   const qc = useQueryClient();
@@ -27,6 +41,8 @@ export function AdminUsersScreen() {
   const [editName, setEditName] = useState("");
   const [editSuper, setEditSuper] = useState(false);
   const [editCompanyIds, setEditCompanyIds] = useState<string[]>([]);
+  const [unlockEmail, setUnlockEmail] = useState("");
+  const [lookup, setLookup] = useState<LoginLockLookup | null>(null);
 
   const authQ = useQuery({
     queryKey: ["admin-current-user-id"] as const,
@@ -44,6 +60,8 @@ export function AdminUsersScreen() {
   const locksQ = useQuery({
     queryKey: ["admin-locked-logins"] as const,
     queryFn: () => adminListLockedLogins(),
+    // Un client bloqué appelle pendant que la page est ouverte : on rafraîchit seul.
+    refetchInterval: 30_000,
   });
 
   const companiesQ = useQuery({
@@ -122,10 +140,21 @@ export function AdminUsersScreen() {
 
   const unlock = useMutation({
     mutationFn: (email: string) => adminUnlockLogin(email),
-    onSuccess: () => {
-      toast.success("Compte débloqué");
+    onSuccess: (existed, email) => {
+      if (existed) {
+        toast.success(`${email} peut se reconnecter immédiatement`);
+      } else {
+        toast.info(`Aucun blocage en cours pour ${email}`);
+      }
+      setLookup(null);
       void qc.invalidateQueries({ queryKey: ["admin-locked-logins"] });
     },
+    onError: (e) => toast.error(messageFromUnknownError(e)),
+  });
+
+  const checkLock = useMutation({
+    mutationFn: (email: string) => adminLookupLoginStatus(email),
+    onSuccess: (res) => setLookup(res),
     onError: (e) => toast.error(messageFromUnknownError(e)),
   });
 
@@ -141,7 +170,13 @@ export function AdminUsersScreen() {
     );
   }
 
-  const locked = locksQ.data ?? [];
+  const locks = locksQ.data ?? [];
+  /** Verrous actifs indexés par email : pilote le bouton « Débloquer » de chaque ligne. */
+  const lockedByEmail = new Map(
+    locks.filter((l) => l.locked).map((l) => [l.emailLower, l] as const),
+  );
+  const pendingLocks = locks.filter((l) => !l.locked);
+  const typedEmail = unlockEmail.trim().toLowerCase();
 
   return (
     <div className="space-y-6 p-5 md:p-8">
@@ -150,21 +185,76 @@ export function AdminUsersScreen() {
         description="Gestion complète des utilisateurs de la plateforme"
       />
 
-      {locked.length > 0 ? (
-        <AdminCard className="border-red-200 bg-red-50/50">
-          <h3 className="flex items-center gap-2 text-sm font-bold text-red-800">
-            Comptes bloqués (connexion)
-          </h3>
-          <p className="mt-1 text-xs text-red-700">
-            Verrouillés après 5 tentatives. Débloquez pour permettre une nouvelle connexion.
+      <AdminCard className={lockedByEmail.size > 0 ? "border-red-200 bg-red-50/50" : ""}>
+        <h3 className="flex items-center gap-2 text-sm font-bold text-slate-900">
+          <MdLockOpen className="h-5 w-5 text-red-600" />
+          Connexions bloquées
+        </h3>
+        <p className="mt-1 text-xs text-slate-600">
+          Après 5 mots de passe faux, la connexion est verrouillée 30 minutes. Saisissez
+          l’email dicté par le client pour le débloquer tout de suite.
+        </p>
+
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <input
+            type="email"
+            inputMode="email"
+            autoComplete="off"
+            className="min-w-60 flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm"
+            placeholder="email@exemple.com"
+            value={unlockEmail}
+            onChange={(e) => {
+              setUnlockEmail(e.target.value);
+              setLookup(null);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && typedEmail) unlock.mutate(typedEmail);
+            }}
+          />
+          <button
+            type="button"
+            className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 disabled:opacity-50"
+            disabled={!typedEmail || checkLock.isPending}
+            onClick={() => checkLock.mutate(typedEmail)}
+          >
+            Vérifier
+          </button>
+          <button
+            type="button"
+            className="rounded-xl bg-orange-600 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+            disabled={!typedEmail || unlock.isPending}
+            onClick={() => unlock.mutate(typedEmail)}
+          >
+            Débloquer maintenant
+          </button>
+        </div>
+
+        {lookup ? (
+          <p className="mt-2 text-xs font-medium text-slate-700">
+            {lookup.locked
+              ? `${lookup.emailLower} est bloqué (${lookup.failedAttempts} tentatives) — déblocage automatique dans ${minutesUntil(lookup.unlockAt) ?? 0} min.`
+              : lookup.failedAttempts > 0
+                ? `${lookup.emailLower} n’est pas bloqué, mais compte ${lookup.failedAttempts} tentative(s) échouée(s).`
+                : `${lookup.emailLower} n’est pas bloqué.`}
           </p>
-          <ul className="mt-3 space-y-2">
-            {locked.map((l) => (
-              <li key={l.emailLower} className="flex flex-wrap items-center gap-2 text-sm">
-                <code className="text-slate-800">{l.emailLower}</code>
+        ) : null}
+
+        {lockedByEmail.size > 0 ? (
+          <ul className="mt-4 space-y-2 border-t border-red-200 pt-3">
+            {[...lockedByEmail.values()].map((l) => (
+              <li
+                key={l.emailLower}
+                className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm"
+              >
+                <code className="font-semibold text-slate-900">{l.emailLower}</code>
+                <span className="text-xs text-red-700">
+                  {l.failedAttempts} tentatives · déblocage auto dans{" "}
+                  {minutesUntil(l.unlockAt) ?? 0} min
+                </span>
                 <button
                   type="button"
-                  className="rounded-lg bg-red-100 px-3 py-1 text-xs font-semibold text-red-800 hover:bg-red-200"
+                  className="rounded-lg bg-red-100 px-3 py-1 text-xs font-semibold text-red-800 hover:bg-red-200 disabled:opacity-50"
+                  disabled={unlock.isPending}
                   onClick={() => unlock.mutate(l.emailLower)}
                 >
                   Débloquer
@@ -172,8 +262,21 @@ export function AdminUsersScreen() {
               </li>
             ))}
           </ul>
-        </AdminCard>
-      ) : null}
+        ) : (
+          <p className="mt-4 border-t border-slate-100 pt-3 text-xs text-slate-500">
+            Aucun compte bloqué en ce moment.
+          </p>
+        )}
+
+        {pendingLocks.length > 0 ? (
+          <p className="mt-2 text-xs text-slate-500">
+            Tentatives en cours (pas encore bloqués) :{" "}
+            {pendingLocks
+              .map((l) => `${l.emailLower} (${l.failedAttempts}/5)`)
+              .join(", ")}
+          </p>
+        ) : null}
+      </AdminCard>
 
       <input
         className="w-full max-w-xl rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm"
@@ -208,6 +311,11 @@ export function AdminUsersScreen() {
                   <span className={u.isActive ? "text-emerald-600" : "text-slate-500"}>
                     {u.isActive ? "Actif" : "Désactivé"}
                   </span>
+                  {lockedByEmail.has((u.email ?? "").toLowerCase()) ? (
+                    <span className="ml-2 rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700">
+                      Connexion bloquée
+                    </span>
+                  ) : null}
                 </td>
                 <td className="p-3">
                   <div className="flex gap-1">
@@ -219,6 +327,17 @@ export function AdminUsersScreen() {
                     >
                       <MdEdit className="h-5 w-5 text-slate-700" />
                     </button>
+                    {lockedByEmail.has((u.email ?? "").toLowerCase()) ? (
+                      <button
+                        type="button"
+                        className="rounded p-2 hover:bg-red-50 disabled:opacity-50"
+                        title="Débloquer la connexion"
+                        disabled={unlock.isPending}
+                        onClick={() => unlock.mutate((u.email ?? "").toLowerCase())}
+                      >
+                        <MdLockOpen className="h-5 w-5 text-red-600" />
+                      </button>
+                    ) : null}
                     {authReady && myUserId && myUserId !== u.id && u.isActive ? (
                       <button
                         type="button"

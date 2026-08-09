@@ -114,6 +114,20 @@ export type LockedLogin = {
   emailLower: string;
   failedAttempts: number;
   lockedAt: string | null;
+  /** Verrou réellement actif (le blocage expire seul au bout de 30 min). */
+  locked: boolean;
+  /** Heure de déblocage automatique, `null` si le compte n'est pas verrouillé. */
+  unlockAt: string | null;
+  /** Dernière tentative échouée. */
+  updatedAt: string | null;
+};
+
+/** État de connexion d'un email interrogé nommément (super admin). */
+export type LoginLockLookup = {
+  emailLower: string;
+  failedAttempts: number;
+  locked: boolean;
+  unlockAt: string | null;
 };
 
 /** Origine client : FasoStock web (Next.js) vs app Flutter (voir `client_kind` en base). */

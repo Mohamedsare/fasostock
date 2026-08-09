@@ -19,6 +19,7 @@ import type {
   AdminUser,
   AuditLogEntry,
   LockedLogin,
+  LoginLockLookup,
   AdminPublicPartner,
   AdminPublicLandingMedia,
   AdminPublicLandingSetting,
@@ -557,13 +558,37 @@ export async function adminListLockedLogins(): Promise<LockedLogin[]> {
     emailLower: String(row.email_lower ?? ""),
     failedAttempts: toNum(row.failed_attempts),
     lockedAt: row.locked_at != null ? String(row.locked_at) : null,
+    locked: row.locked === true,
+    unlockAt: row.unlock_at != null ? String(row.unlock_at) : null,
+    updatedAt: row.updated_at != null ? String(row.updated_at) : null,
   }));
 }
 
-export async function adminUnlockLogin(email: string): Promise<void> {
+/**
+ * Déblocage immédiat d'un email. Retourne `false` quand aucun compteur/verrou
+ * n'existait (email déjà libre ou mal orthographié) — l'appelant le signale.
+ */
+export async function adminUnlockLogin(email: string): Promise<boolean> {
   const supabase = createClient();
-  const { error } = await supabase.rpc("admin_unlock_login", { p_email: email });
+  const { data, error } = await supabase.rpc("admin_unlock_login", { p_email: email });
   if (error) throw mapSupabaseError(error);
+  return data === true;
+}
+
+/** État de verrouillage d'un email précis (celui dicté par le client au téléphone). */
+export async function adminLookupLoginStatus(email: string): Promise<LoginLockLookup> {
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("admin_lookup_login_status", {
+    p_email: email,
+  });
+  if (error) throw mapSupabaseError(error);
+  const row = (Array.isArray(data) ? data[0] : data) as Record<string, unknown> | null;
+  return {
+    emailLower: String(row?.email_lower ?? email.trim().toLowerCase()),
+    failedAttempts: toNum(row?.failed_attempts),
+    locked: row?.locked === true,
+    unlockAt: row?.unlock_at != null ? String(row.unlock_at) : null,
+  };
 }
 
 export async function adminGetPlatformSettings(): Promise<Record<string, string>> {
