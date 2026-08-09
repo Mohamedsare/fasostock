@@ -545,8 +545,14 @@ export function ProductFormDialog({
                 reste celui affiché partout (tickets, factures, rapports). */}
             {searchAliasesEnabled ? (
               <div className="rounded-md border border-black/[0.08] p-3">
-                <p className="text-sm font-semibold text-fs-text">
-                  Autres noms (recherche)
+                <p className="flex items-center justify-between gap-2 text-sm font-semibold text-fs-text">
+                  <span>Autres noms (recherche)</span>
+                  {/* Compteur : avec 20 places, on ne devine plus « combien il en reste ». */}
+                  {aliases.length > 0 ? (
+                    <span className="shrink-0 text-[11px] font-medium text-neutral-500">
+                      {aliases.length} / {MAX_SEARCH_ALIASES}
+                    </span>
+                  ) : null}
                 </p>
                 <p className="mt-0.5 text-[11px] leading-relaxed text-neutral-500">
                   Les autres appellations du produit ({MAX_SEARCH_ALIASES} au

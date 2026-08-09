@@ -739,7 +739,10 @@ export function ProductsScreen() {
                       {/* Autres noms : discrets, mais visibles — le patron doit
                           voir d'un coup d'œil ce qui rendra l'article trouvable. */}
                       {productAliasesOn && productSearchAliases(p).length > 0 ? (
-                        <p className="mt-1 line-clamp-1 text-[11px] text-neutral-500">
+                        <p
+                          className="mt-1 line-clamp-1 text-[11px] text-neutral-500"
+                          title={productSearchAliases(p).join(" · ")}
+                        >
                           Aussi : {productSearchAliases(p).join(" · ")}
                         </p>
                       ) : null}

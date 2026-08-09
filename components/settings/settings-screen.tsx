@@ -1174,7 +1174,7 @@ export function SettingsScreen() {
           <p className="mt-2 text-xs leading-relaxed text-neutral-600 sm:text-sm">
             Un même article n&apos;a pas le même nom pour tout le monde : « Omo » ou
             « savon en poudre », « cube » ou « Maggi ». Vous pouvez donner jusqu&apos;à
-            4 autres noms à chaque produit : on le retrouve alors en cherchant
+            20 autres noms à chaque produit : on le retrouve alors en cherchant
             n&apos;importe lequel, au catalogue comme à la caisse. Le nom principal
             reste le seul affiché sur les tickets, les factures et les rapports.
           </p>

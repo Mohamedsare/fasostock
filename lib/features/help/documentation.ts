@@ -279,7 +279,7 @@ export const DOC_GROUPS: DocGroup[] = [
             items: [
               "Prix de revient — calcul du coût réel d'un arrivage.",
               "Emplacements des produits — plan de rangement de la boutique.",
-              "Autres noms des produits — alias de recherche (quatre au maximum par produit).",
+              "Autres noms des produits — alias de recherche (vingt au maximum par produit).",
             ],
           },
           {
@@ -410,7 +410,7 @@ export const DOC_GROUPS: DocGroup[] = [
             kind: "bullets",
             title: "Autres noms (alias de recherche)",
             items: [
-              "Jusqu'à quatre noms alternatifs par produit : nom local, marque, abréviation, faute d'orthographe courante.",
+              "Jusqu'à vingt noms alternatifs par produit : nom local, marque, référence, abréviation, faute d'orthographe courante.",
               "Le caissier tape le mot qu'il connaît, l'article sort quand même.",
               "À activer par le propriétaire dans Paramètres.",
             ],

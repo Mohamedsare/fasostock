@@ -12,8 +12,8 @@
 
 import type { ProductItem } from "./types";
 
-/** Nombre d'alias en plus du nom principal (5 noms en tout). Aligné sur la contrainte SQL. */
-export const MAX_SEARCH_ALIASES = 4;
+/** Nombre d'alias en plus du nom principal (21 noms en tout). Aligné sur la contrainte SQL. */
+export const MAX_SEARCH_ALIASES = 20;
 
 /** Longueur d'un alias, alignée sur la troncature du trigger SQL. */
 export const SEARCH_ALIAS_MAX_LENGTH = 120;
