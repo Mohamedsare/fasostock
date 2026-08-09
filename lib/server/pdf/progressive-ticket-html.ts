@@ -100,7 +100,7 @@ export async function renderProgressiveTicketHtml(
     `<div class="amount-label mono">${escapeHtml(
       isRefund ? "MONTANT REMBOURSE" : "MONTANT VERSE",
     )}</div>`,
-    `<div class="amount">${escapeHtml(receiptIntAmount(data.amount))}</div>`,
+    `<div class="amount">${escapeHtml(receiptIntAmount(data.amount, data.currencyCode))}</div>`,
   );
   parts.push(`<div style="height:4px"></div>`);
   if (methodLabel) parts.push(kv("Paiement", methodLabel.toUpperCase()));
@@ -108,11 +108,11 @@ export async function renderProgressiveTicketHtml(
   parts.push(`<div class="sep mono">${escapeHtml(RECEIPT_SEP_LONG)}</div>`);
   parts.push(`<div style="height:4px"></div>`);
 
-  parts.push(kv("Total versé", receiptIntAmount(data.totalDeposited)));
-  parts.push(kv("Épargne disponible", receiptIntAmount(data.balanceAfter)));
+  parts.push(kv("Total versé", receiptIntAmount(data.totalDeposited, data.currencyCode)));
+  parts.push(kv("Épargne disponible", receiptIntAmount(data.balanceAfter, data.currencyCode)));
   if (goal != null) {
-    parts.push(kv("Objectif", receiptIntAmount(goal)));
-    parts.push(kv("Reste à verser", receiptIntAmount(remaining ?? 0)));
+    parts.push(kv("Objectif", receiptIntAmount(goal, data.currencyCode)));
+    parts.push(kv("Reste à verser", receiptIntAmount(remaining ?? 0, data.currencyCode)));
     parts.push(`<div style="height:3px"></div>`);
     parts.push(`<div class="bar mono">${escapeHtml(progressBar(ratio, barCells))}</div>`);
   }

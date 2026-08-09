@@ -15,20 +15,21 @@ const TEXT_MUTED = "#6B7280";
 
 export function renderReportsHtml(
   data: ReportsPageData,
-  meta: { title: string; subtitle: string },
+  /** `currencyCode` fourni par le client : pas de devise ambiante côté serveur. */
+  meta: { title: string; subtitle: string; currencyCode?: string | null },
 ): string {
   const s = data.salesSummary;
 
   const kpiRows = [
-    ["Chiffre d'affaires", formatCurrency(s.totalAmount)],
+    ["Chiffre d'affaires", formatCurrency(s.totalAmount, meta.currencyCode)],
     ["Nombre de ventes", String(s.count)],
     ["Articles vendus", String(s.itemsSold)],
-    ["Marge", formatCurrency(s.margin)],
+    ["Marge", formatCurrency(s.margin, meta.currencyCode)],
     ["Taux de marge", `${data.marginRatePercent.toFixed(1)} %`],
-    ["Panier moyen", formatCurrency(data.ticketAverage)],
-    ["Achats (période)", formatCurrency(data.purchasesSummary.totalAmount)],
+    ["Panier moyen", formatCurrency(data.ticketAverage, meta.currencyCode)],
+    ["Achats (période)", formatCurrency(data.purchasesSummary.totalAmount, meta.currencyCode)],
     ["Commandes achats", String(data.purchasesSummary.count)],
-    ["Valeur stock", formatCurrency(data.stockValue.totalValue)],
+    ["Valeur stock", formatCurrency(data.stockValue.totalValue, meta.currencyCode)],
     ["Produits en stock", String(data.stockValue.productCount)],
     ["Alertes stock", String(data.lowStockCount)],
   ];
@@ -68,8 +69,8 @@ export function renderReportsHtml(
               `<tr class="${idx % 2 === 1 ? "zebra" : ""}">
             <td>${tx(p.productName)}</td>
             <td class="num">${escapeHtml(String(p.quantitySold))}</td>
-            <td class="num">${tx(formatCurrency(p.revenue))}</td>
-            <td class="num">${tx(formatCurrency(p.margin))}</td>
+            <td class="num">${tx(formatCurrency(p.revenue, meta.currencyCode))}</td>
+            <td class="num">${tx(formatCurrency(p.margin, meta.currencyCode))}</td>
           </tr>`,
           )
           .join("")}
@@ -91,7 +92,7 @@ export function renderReportsHtml(
             (c, idx) =>
               `<tr class="${idx % 2 === 1 ? "zebra" : ""}">
             <td>${tx(c.categoryName)}</td>
-            <td class="num">${tx(formatCurrency(c.revenue))}</td>
+            <td class="num">${tx(formatCurrency(c.revenue, meta.currencyCode))}</td>
             <td class="num">${escapeHtml(String(c.quantity))}</td>
           </tr>`,
           )
@@ -114,7 +115,7 @@ export function renderReportsHtml(
             (d, idx) =>
               `<tr class="${idx % 2 === 1 ? "zebra" : ""}">
             <td>${tx(d.date)}</td>
-            <td class="num">${tx(formatCurrency(d.total))}</td>
+            <td class="num">${tx(formatCurrency(d.total, meta.currencyCode))}</td>
             <td class="num">${escapeHtml(String(d.count))}</td>
           </tr>`,
           )

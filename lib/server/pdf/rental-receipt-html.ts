@@ -95,7 +95,7 @@ export async function renderRentalReceiptHtml(
     `<div class="amount-label mono">${escapeHtml(
       isRefund ? "CAUTION RESTITUEE" : "MONTANT RECU",
     )}</div>`,
-    `<div class="amount">${escapeHtml(receiptIntAmount(data.amount))}</div>`,
+    `<div class="amount">${escapeHtml(receiptIntAmount(data.amount, data.currencyCode))}</div>`,
   );
   parts.push(`<div style="height:4px"></div>`);
   if (data.periodsCovered) parts.push(kv("Période(s)", data.periodsCovered));
@@ -104,15 +104,15 @@ export async function renderRentalReceiptHtml(
   parts.push(`<div class="sep mono">${escapeHtml(RECEIPT_SEP_LONG)}</div>`);
   parts.push(`<div style="height:4px"></div>`);
 
-  parts.push(kv("Loyer mensuel", receiptIntAmount(data.rentAmount)));
+  parts.push(kv("Loyer mensuel", receiptIntAmount(data.rentAmount, data.currencyCode)));
   const paidThrough = shortDate(data.paidThrough);
   if (paidThrough) parts.push(kv("À jour jusqu'au", paidThrough));
   if (owes) {
-    parts.push(kv("Reste à payer", receiptIntAmount(data.balanceAfter)));
+    parts.push(kv("Reste à payer", receiptIntAmount(data.balanceAfter, data.currencyCode)));
     const next = shortDate(data.nextDueDate);
     if (next) parts.push(kv("Prochaine échéance", next));
   } else if (advance) {
-    parts.push(kv("Avance en votre faveur", receiptIntAmount(Math.abs(data.balanceAfter))));
+    parts.push(kv("Avance en votre faveur", receiptIntAmount(Math.abs(data.balanceAfter), data.currencyCode)));
   } else {
     parts.push(kv("Situation", "COMPTE A JOUR"));
   }

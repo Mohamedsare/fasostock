@@ -23,11 +23,16 @@ export type CurrencyDef = {
   countries: string;
   /** Toujours 0 ici : voir l'avertissement ci-dessus avant d'ajouter autre chose. */
   decimals: 0;
+  /** Unité en toutes lettres, facture A4 (« Sept cent mille francs CFA »). */
+  wordsSingular: string;
+  wordsPlural: string;
 };
 
 export const SUPPORTED_CURRENCIES: readonly CurrencyDef[] = [
   {
     code: "XOF",
+    wordsSingular: "franc CFA",
+    wordsPlural: "francs CFA",
     symbol: "FCFA",
     label: "Franc CFA (UEMOA)",
     countries: "Burkina Faso, Sénégal, Mali, Côte d'Ivoire, Bénin, Togo, Niger, Guinée-Bissau",
@@ -35,6 +40,8 @@ export const SUPPORTED_CURRENCIES: readonly CurrencyDef[] = [
   },
   {
     code: "XAF",
+    wordsSingular: "franc CFA",
+    wordsPlural: "francs CFA",
     symbol: "FCFA",
     label: "Franc CFA (CEMAC)",
     countries: "Cameroun, Tchad, Gabon, Congo, Centrafrique, Guinée équatoriale",
@@ -42,6 +49,8 @@ export const SUPPORTED_CURRENCIES: readonly CurrencyDef[] = [
   },
   {
     code: "GNF",
+    wordsSingular: "franc guinéen",
+    wordsPlural: "francs guinéens",
     symbol: "GNF",
     label: "Franc guinéen",
     countries: "Guinée",
@@ -54,6 +63,8 @@ export const SUPPORTED_CURRENCIES: readonly CurrencyDef[] = [
      * On le traite donc comme une devise sans décimales, cohérent avec l'usage réel.
      */
     code: "CDF",
+    wordsSingular: "franc congolais",
+    wordsPlural: "francs congolais",
     symbol: "FC",
     label: "Franc congolais",
     countries: "République démocratique du Congo",
@@ -61,6 +72,8 @@ export const SUPPORTED_CURRENCIES: readonly CurrencyDef[] = [
   },
   {
     code: "RWF",
+    wordsSingular: "franc rwandais",
+    wordsPlural: "francs rwandais",
     symbol: "FRw",
     label: "Franc rwandais",
     countries: "Rwanda",
@@ -68,6 +81,8 @@ export const SUPPORTED_CURRENCIES: readonly CurrencyDef[] = [
   },
   {
     code: "BIF",
+    wordsSingular: "franc burundais",
+    wordsPlural: "francs burundais",
     symbol: "FBu",
     label: "Franc burundais",
     countries: "Burundi",
@@ -75,6 +90,8 @@ export const SUPPORTED_CURRENCIES: readonly CurrencyDef[] = [
   },
   {
     code: "KMF",
+    wordsSingular: "franc comorien",
+    wordsPlural: "francs comoriens",
     symbol: "FC",
     label: "Franc comorien",
     countries: "Comores",
@@ -82,6 +99,8 @@ export const SUPPORTED_CURRENCIES: readonly CurrencyDef[] = [
   },
   {
     code: "DJF",
+    wordsSingular: "franc djiboutien",
+    wordsPlural: "francs djiboutiens",
     symbol: "Fdj",
     label: "Franc djiboutien",
     countries: "Djibouti",

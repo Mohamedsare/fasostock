@@ -1,3 +1,6 @@
+import { currencyOf } from "@/lib/config/currencies";
+import { getActiveCurrency } from "@/lib/utils/currency";
+
 /**
  * Conversion d'un entier positif en toutes lettres (français), pour le
  * « montant en lettres » des factures. Gère les accords : cent(s),
@@ -100,9 +103,28 @@ export function integerToFrenchWords(value: number): string {
   return parts.join(" ").trim();
 }
 
-/** Montant en francs CFA en toutes lettres, capitalisé. Ex. « Sept cent mille francs CFA ». */
-export function amountToFrenchWordsCFA(value: number): string {
+/**
+ * Montant en toutes lettres, capitalisé. Ex. « Sept cent mille francs CFA ».
+ *
+ * Figure sur la facture A4, où elle engage juridiquement le commerçant : l'unité doit
+ * donc suivre la devise de l'entreprise, pas rester figée sur le franc CFA. Toutes les
+ * devises prises en charge sont des francs — seul le qualificatif change, avec son accord
+ * (« un franc guinéen », « deux mille francs guinéens »).
+ *
+ * `currencyCode` omis : devise active du navigateur. Ces montants sont composés côté
+ * client, jamais pendant un rendu serveur partagé.
+ */
+export function amountToFrenchWords(value: number, currencyCode?: string | null): string {
   const words = integerToFrenchWords(value);
   const capitalized = words.charAt(0).toUpperCase() + words.slice(1);
-  return `${capitalized} franc${value >= 2 ? "s" : ""} CFA`;
+  const def = currencyOf(currencyCode ?? getActiveCurrency());
+  return `${capitalized} ${value >= 2 ? def.wordsPlural : def.wordsSingular}`;
+}
+
+/**
+ * @deprecated Nom hérité de l'époque « franc CFA uniquement ». Utiliser
+ * {@link amountToFrenchWords}, qui suit la devise choisie par le propriétaire.
+ */
+export function amountToFrenchWordsCFA(value: number): string {
+  return amountToFrenchWords(value);
 }

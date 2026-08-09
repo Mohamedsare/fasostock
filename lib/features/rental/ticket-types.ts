@@ -1,3 +1,4 @@
+import { getActiveCurrency } from "@/lib/utils/currency";
 import { RENTAL_RECEIPT_TITLES, type RentalPaymentKind, type RentalPaymentMethod } from "./types";
 
 /**
@@ -7,6 +8,12 @@ import { RENTAL_RECEIPT_TITLES, type RentalPaymentKind, type RentalPaymentMethod
  * peut être falsifié depuis le client.
  */
 export type RentalReceiptData = {
+  /**
+   * Devise de l'entreprise (code ISO), renseignée par le client : la génération PDF est
+   * partagée entre requêtes et ne peut pas avoir de devise ambiante. Absente, la
+   * quittance s'imprime en francs CFA — comportement d'origine.
+   */
+  currencyCode?: string | null;
   paymentId: string;
   kind: RentalPaymentKind;
   amount: number;
@@ -57,6 +64,8 @@ export function mapRentalReceiptRow(row: Record<string, unknown>): RentalReceipt
   const width = Number(row.paper_width_mm ?? 0);
   const paid = new Date(String(row.paid_at ?? ""));
   return {
+    // Transmise au serveur avec la quittance : lui n'a aucune devise ambiante.
+    currencyCode: getActiveCurrency(),
     paymentId: String(row.payment_id ?? ""),
     kind: (String(row.kind ?? "rent") as RentalPaymentKind),
     amount: num(row.amount),

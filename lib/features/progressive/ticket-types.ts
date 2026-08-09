@@ -1,3 +1,4 @@
+import { getActiveCurrency } from "@/lib/utils/currency";
 import type { ProgressiveLedgerKind, ProgressivePaymentMethod } from "./types";
 
 /**
@@ -7,6 +8,12 @@ import type { ProgressiveLedgerKind, ProgressivePaymentMethod } from "./types";
  * aucun montant ne peut être falsifié depuis le navigateur.
  */
 export type ProgressiveTicketData = {
+  /**
+   * Devise de l'entreprise (code ISO), renseignée par le client : la génération PDF est
+   * partagée entre requêtes et ne peut pas avoir de devise ambiante. Absente, le ticket
+   * s'imprime en francs CFA — comportement d'origine.
+   */
+  currencyCode?: string | null;
   ledgerId: string;
   kind: ProgressiveLedgerKind;
   amount: number;
@@ -56,6 +63,8 @@ export function mapProgressiveTicketRow(
   const width = Number(row.paper_width_mm ?? 0);
   const created = new Date(String(row.created_at ?? ""));
   return {
+    // Transmise au serveur avec le ticket : lui n'a aucune devise ambiante.
+    currencyCode: getActiveCurrency(),
     ledgerId: String(row.ledger_id ?? ""),
     kind: String(row.kind ?? "deposit") as ProgressiveLedgerKind,
     amount: num(row.amount),

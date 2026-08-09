@@ -11,7 +11,7 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { notifyCompanyOwnersPush } from "@/lib/features/push/company-owners-push-client";
 import { purgeCancelledSaleAsOwner } from "@/lib/features/sales/api";
-import { amountToFrenchWordsCFA } from "@/lib/utils/number-to-french-words";
+import { amountToFrenchWords } from "@/lib/utils/number-to-french-words";
 import type {
   CreateEngineSaleInput,
   CreateEngineSaleResult,
@@ -238,7 +238,7 @@ export async function persistEngineSale(
       engine_motor: nn(params.engine.motor),
       engine_color: nn(params.engine.color),
       engine_condition: params.engine.condition,
-      amount_in_words: amountToFrenchWordsCFA(total),
+      amount_in_words: amountToFrenchWords(total),
       warranty: params.warranty.enabled,
       warranty_duration: nn(params.warranty.duration),
       warranty_km_limit: nn(params.warranty.kmLimit),

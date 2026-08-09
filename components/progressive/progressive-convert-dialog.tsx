@@ -13,7 +13,7 @@ import type {
   ProgressiveEligibleItem,
   ProgressivePlan,
 } from "@/lib/features/progressive/types";
-import { amountToFrenchWordsCFA } from "@/lib/utils/number-to-french-words";
+import { amountToFrenchWords } from "@/lib/utils/number-to-french-words";
 import { formatCurrency } from "@/lib/utils/currency";
 import { messageFromUnknownError, toast } from "@/lib/toast";
 
@@ -58,7 +58,7 @@ export function ProgressiveConvertDialog({
         try {
           await completeConvertedEngineDetails({
             saleId: res.saleId,
-            amountInWords: amountToFrenchWordsCFA(res.total),
+            amountInWords: amountToFrenchWords(res.total),
             chassis,
             motor,
             color,

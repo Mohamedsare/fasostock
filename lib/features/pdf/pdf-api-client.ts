@@ -2,6 +2,7 @@ import type { ReportsPageData } from "@/lib/features/dashboard/types";
 import type { InvoiceA4Data } from "@/lib/features/invoices/invoice-a4-types";
 import type { ReceiptTicketData } from "@/lib/features/receipt/receipt-ticket-types";
 import type { CreditRepaymentReceiptData } from "@/lib/features/credit/credit-repayment-receipt-types";
+import { getActiveCurrency } from "@/lib/utils/currency";
 
 export function uint8ToBase64(bytes: Uint8Array): string {
   let binary = "";
@@ -97,10 +98,17 @@ export async function fetchReportsPdfBlob(
   meta: { title: string; subtitle: string },
   scope: { companyId: string } | { asPlatformAdmin: true },
 ): Promise<Blob> {
+  // Le serveur n'a pas de devise ambiante : on la joint au document.
+  const metaWithCurrency = { ...meta, currencyCode: getActiveCurrency() };
   const payload =
     "asPlatformAdmin" in scope
-      ? { data, meta, companyId: null, asPlatformAdmin: true as const }
-      : { data, meta, companyId: scope.companyId, asPlatformAdmin: false as const };
+      ? { data, meta: metaWithCurrency, companyId: null, asPlatformAdmin: true as const }
+      : {
+          data,
+          meta: metaWithCurrency,
+          companyId: scope.companyId,
+          asPlatformAdmin: false as const,
+        };
   return postPdf("/api/pdf/reports", JSON.stringify(payload));
 }
 

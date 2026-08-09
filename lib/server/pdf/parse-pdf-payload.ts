@@ -39,18 +39,24 @@ export function parseReceiptThermalPaperWidth(json: unknown): 58 | 80 {
 
 export function parseReportsPayload(json: unknown): {
   data: ReportsPageData;
-  meta: { title: string; subtitle: string };
+  meta: { title: string; subtitle: string; currencyCode: string | null };
 } {
   if (!json || typeof json !== "object") throw new Error("Corps JSON invalide");
   const o = json as Record<string, unknown>;
   if (!o.data || typeof o.data !== "object") throw new Error("data manquant");
   if (!o.meta || typeof o.meta !== "object") throw new Error("meta manquant");
-  const meta = o.meta as { title?: unknown; subtitle?: unknown };
+  const meta = o.meta as { title?: unknown; subtitle?: unknown; currencyCode?: unknown };
   return {
     data: o.data as ReportsPageData,
     meta: {
       title: String(meta.title ?? ""),
       subtitle: String(meta.subtitle ?? ""),
+      /*
+       * Devise fournie par le client : le rendu serveur est partagé entre requêtes et
+       * ne peut pas avoir de devise ambiante. Absente, le PDF sort en francs CFA —
+       * comportement d'origine, donc les rapports déjà générés restent identiques.
+       */
+      currencyCode: typeof meta.currencyCode === "string" ? meta.currencyCode : null,
     },
   };
 }
