@@ -2,6 +2,7 @@
 
 import { AppPresenceReporter } from "@/components/presence/app-presence-reporter";
 import { OfflineStrip } from "@/components/offline/offline-strip";
+import { CompanyCurrencyLoader } from "@/components/providers/company-currency-loader";
 import { AppShellSkeleton } from "@/components/layout/app-shell-skeleton";
 import { LoadingExperience } from "@/components/loading/loading-experience";
 import { AppSidebar } from "@/components/layout/app-sidebar";
@@ -289,6 +290,8 @@ export function AppShell({ children, userEmail }: AppShellProps) {
         />
       ) : null}
       <OfflineStrip />
+      {/* Rend active la devise de l'entreprise pour tous les montants affichés. */}
+      <CompanyCurrencyLoader />
       <div className="flex min-h-0 flex-1 overflow-hidden">
         {isDesktop ? (
           <AppSidebar

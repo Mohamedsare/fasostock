@@ -7,6 +7,13 @@ export type ReceiptTicketItem = {
 };
 
 export type ReceiptTicketData = {
+  /**
+   * Devise de l'entreprise (code ISO). Renseignée par le client, qui seul la connaît :
+   * la génération du ticket côté serveur est partagée entre requêtes et ne peut pas
+   * avoir de devise ambiante. Absente, le ticket s'imprime en francs CFA — comportement
+   * d'origine, donc les tickets déjà en circulation restent identiques.
+   */
+  currencyCode?: string | null;
   storeName: string;
   /** `stores.logo_url` — centré en tête (Flutter `ReceiptTicketData.storeLogoUrl`). */
   storeLogoUrl?: string | null;

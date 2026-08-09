@@ -8,6 +8,7 @@ import {
   salePaymentsLabel,
   type MobileMoneyProvider,
 } from "@/lib/features/payments/payment-display";
+import { getActiveCurrency } from "@/lib/utils/currency";
 
 /** `credit` = vente à crédit en caisse rapide (réglage entreprise, cf. `quick-pos-credit.ts`). */
 export type QuickPaymentMethod = "cash" | "mobile_money" | "card" | "credit";
@@ -102,6 +103,8 @@ export function buildReceiptTicketDataFromSale(
     total: it.total,
   }));
   return {
+    // Transmise au serveur avec le ticket : lui n'a aucune devise ambiante.
+    currencyCode: getActiveCurrency(),
     storeName: store.name,
     storeLogoUrl: store.logo_url ?? null,
     storeAddress: store.address ?? null,
@@ -142,6 +145,8 @@ export function buildReceiptTicketData(
   const isCredit = snap.quickPayment === "credit";
 
   return {
+    // Transmise au serveur avec le ticket : lui n'a aucune devise ambiante.
+    currencyCode: getActiveCurrency(),
     storeName: store.name,
     storeLogoUrl: store.logo_url ?? null,
     storeAddress: store.address ?? null,

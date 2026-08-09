@@ -18,6 +18,10 @@ export type InvoicePaymentLineData = {
 
 /** Données pour générer une facture A4 (équivalent `InvoiceA4Data` Flutter). */
 export type InvoiceA4Data = {
+  /**
+   * La devise voyage déjà via `store.currency` — inutile de la dupliquer ici.
+   * `set_company_currency` maintient ce champ aligné sur le choix du propriétaire.
+   */
   store: Store;
   saleNumber: string;
   date: Date;

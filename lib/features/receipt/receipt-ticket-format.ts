@@ -1,4 +1,5 @@
-import { formatCurrencyFlutter } from "@/lib/utils/currency";
+import { currencySymbolOf } from "@/lib/config/currencies";
+import { formatCurrencyFlutter, getActiveCurrency } from "@/lib/utils/currency";
 import type { ReceiptTicketData } from "./receipt-ticket-types";
 
 /** Aligné sur `ReceiptTicketLayout` Flutter (`receipt_ticket_layout.dart`). */
@@ -59,9 +60,16 @@ export function formatReceiptDateTime(d: Date): {
   return { dateStr: formatDateStrFr(d), timeStr: formatTimeStrFr(d) };
 }
 
-/** Équivalent `ReceiptTicketLayout.intAmount` (Flutter). */
-export function receiptIntAmount(n: number): string {
-  return `${Math.round(Number.isFinite(n) ? n : 0)} CFA`;
+/**
+ * Équivalent `ReceiptTicketLayout.intAmount` (Flutter).
+ *
+ * `currencyCode` doit être fourni côté serveur (génération du ticket PDF) : il n'y a
+ * pas de devise ambiante hors navigateur. Absent, on retombe sur la devise par défaut,
+ * donc un ticket existant est imprimé à l'identique.
+ */
+export function receiptIntAmount(n: number, currencyCode?: string | null): string {
+  const amount = Math.round(Number.isFinite(n) ? n : 0);
+  return `${amount} ${currencySymbolOf(currencyCode ?? getActiveCurrency())}`;
 }
 
 export function paymentUppercase(method: string): string {

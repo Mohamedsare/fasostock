@@ -121,6 +121,12 @@ export function isModel3Template(invoiceTemplate: string | null | undefined): bo
  * Montants facture A4 : alignés sur `format_currency.dart` / `InvoiceA4PdfService`
  * (symbol FCFA, pas le code devise ISO dans le PDF Flutter).
  */
-export function formatCurrencyInvoice(value: number, _currencyCode?: string): string {
-  return formatCurrencyFlutter(value);
+export function formatCurrencyInvoice(value: number, currencyCode?: string | null): string {
+  /*
+   * Le paramètre existait mais était ignoré : la facture imprimait FCFA quelle que soit
+   * la devise de l'entreprise. Côté serveur (génération PDF) il n'y a **pas** de devise
+   * ambiante — le rendu est partagé entre requêtes — donc l'appelant doit la fournir.
+   * Absente, on retombe sur la devise par défaut : une facture existante ne change pas.
+   */
+  return formatCurrencyFlutter(value, currencyCode);
 }

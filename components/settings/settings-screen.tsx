@@ -40,6 +40,13 @@ import {
   setProductLocationsPosEnabled,
 } from "@/lib/features/settings/product-locations-pos";
 import { queryKeys } from "@/lib/query/query-keys";
+import { currencyOf, SUPPORTED_CURRENCIES } from "@/lib/config/currencies";
+import {
+  fetchCompanyCurrency,
+  fetchCompanyCurrencyLocked,
+  peekCompanyCurrency,
+  setCompanyCurrency,
+} from "@/lib/features/settings/company-currency";
 import { messageFromUnknownError, toast, toastMutationError } from "@/lib/toast";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -86,6 +93,7 @@ import {
   MdSell,
   MdSecurity,
   MdCreditCard,
+  MdPayments,
   MdPriceChange,
   MdShoppingCart,
   MdStore,
@@ -435,6 +443,38 @@ export function SettingsScreen() {
     onError: (e) => toastMutationError("settings", e),
   });
 
+  /* Devise de l'entreprise — owner uniquement, verrouillée dès la première vente. */
+  const peekCurrency =
+    companyId.length > 0 && isOwner ? peekCompanyCurrency(companyId) : undefined;
+  const currencyQ = useQuery({
+    queryKey: ["company-currency", companyId],
+    queryFn: () => fetchCompanyCurrency(companyId),
+    enabled: Boolean(companyId && isOwner),
+    staleTime: 30_000,
+    ...(peekCurrency !== undefined ? { initialData: peekCurrency } : {}),
+  });
+
+  const currencyLockedQ = useQuery({
+    queryKey: ["company-currency-locked", companyId],
+    queryFn: () => fetchCompanyCurrencyLocked(companyId),
+    enabled: Boolean(companyId && isOwner),
+    staleTime: 60_000,
+  });
+
+  const currencyMut = useMutation({
+    mutationFn: async (code: string) => {
+      if (!companyId) throw new Error("Entreprise introuvable.");
+      await setCompanyCurrency(companyId, code);
+    },
+    onSuccess: async (_, code) => {
+      toast.success(`Devise enregistrée : ${currencyOf(code).label}.`);
+      await qc.invalidateQueries({ queryKey: ["company-currency", companyId] });
+      // Tous les écrans affichent des montants : les rafraîchir d'un bloc.
+      await qc.invalidateQueries();
+    },
+    onError: (e) => toastMutationError("settings", e),
+  });
+
   const productLocationsEnabled = ctxQ.data?.productLocationsEnabled === true;
   const productLocationsMut = useMutation({
     mutationFn: async (enabled: boolean) => {
@@ -778,6 +818,73 @@ export function SettingsScreen() {
                   }}
                 />
               </label>
+            </div>
+          )}
+        </FsCard>
+      ) : null}
+
+      {/* Devise de l'entreprise — owner uniquement */}
+      {isOwner && companyId ? (
+        <FsCard className="mt-5" padding="p-5">
+          <SettingsCardTitle icon={MdPayments} title="Devise" />
+          <p className="mt-2 text-xs leading-relaxed text-neutral-600 sm:text-sm">
+            La monnaie utilisée dans toute l&apos;application : caisse, factures, reçus,
+            rapports. Choisissez celle de votre pays.
+          </p>
+
+          {currencyQ.isPending || currencyLockedQ.isPending ? (
+            <div className="mt-4 flex justify-center py-4" role="status" aria-label="Chargement">
+              <div className="h-8 w-8 animate-spin rounded-full border-2 border-fs-accent border-t-transparent" />
+            </div>
+          ) : currencyLockedQ.data ? (
+            <div className="mt-4 rounded-[10px] border border-black/[0.08] px-3 py-3 sm:px-4">
+              <p className="text-sm font-medium text-fs-text">
+                Devise actuelle : {currencyOf(currencyQ.data).label} (
+                {currencyOf(currencyQ.data).symbol})
+              </p>
+              {/*
+                Le verrou n'est pas une contrainte technique mais une protection comptable :
+                changer la devise ne convertit aucun montant. Une boutique avec 500 000 FCFA
+                d'historique qui basculerait afficherait « 500 000 » dans la nouvelle monnaie,
+                sans le moindre avertissement dans ses livres.
+              */}
+              <p className="mt-2 text-xs leading-relaxed text-neutral-600">
+                Vous avez déjà enregistré des ventes : la devise ne peut plus être modifiée.
+                Les montants déjà saisis ne seraient pas convertis, et votre historique
+                deviendrait faux. Contactez le support si un changement est réellement
+                nécessaire.
+              </p>
+            </div>
+          ) : (
+            <div className="mt-4 rounded-[10px] border border-black/[0.08] px-3 py-3 sm:px-4">
+              <label
+                className="block text-sm font-medium text-fs-text"
+                htmlFor="company-currency"
+              >
+                Monnaie de votre pays
+              </label>
+              <select
+                id="company-currency"
+                className="mt-2 w-full rounded-[10px] border border-black/[0.12] bg-white px-3 py-2 text-sm text-fs-text disabled:opacity-60"
+                value={currencyQ.data ?? "XOF"}
+                disabled={currencyMut.isPending}
+                onChange={(e) => {
+                  void currencyMut.mutateAsync(e.target.value);
+                }}
+              >
+                {SUPPORTED_CURRENCIES.map((c) => (
+                  <option key={c.code} value={c.code}>
+                    {c.label} — {c.symbol} ({c.code})
+                  </option>
+                ))}
+              </select>
+              <p className="mt-2 text-xs leading-relaxed text-neutral-600">
+                {currencyOf(currencyQ.data).countries}
+              </p>
+              <p className="mt-2 text-xs leading-relaxed text-amber-700">
+                Choisissez avec soin : dès votre première vente, la devise sera figée pour
+                préserver la cohérence de votre comptabilité.
+              </p>
             </div>
           )}
         </FsCard>

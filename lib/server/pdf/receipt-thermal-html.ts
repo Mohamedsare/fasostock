@@ -102,18 +102,18 @@ export async function renderReceiptThermalHtml(
   parts.push(`<div class="sep mono">${escapeHtml(RECEIPT_SEP_LONG)}</div>`);
   parts.push(`<div style="height:4px"></div>`);
   parts.push(
-    `<div class="row mono"><span>Sous-total</span><span>${escapeHtml(receiptIntAmount(data.subtotal))}</span></div>`,
+    `<div class="row mono"><span>Sous-total</span><span>${escapeHtml(receiptIntAmount(data.subtotal, data.currencyCode))}</span></div>`,
   );
   if (data.discount > 0) {
     parts.push(
-      `<div class="row mono"><span>Remise</span><span>${escapeHtml(receiptIntAmount(data.discount))}</span></div>`,
+      `<div class="row mono"><span>Remise</span><span>${escapeHtml(receiptIntAmount(data.discount, data.currencyCode))}</span></div>`,
     );
   }
   parts.push(`<div style="height:4px"></div>`);
   parts.push(`<div class="sep mono">${escapeHtml(RECEIPT_SEP_TOTAL)}</div>`);
   parts.push(`<div style="height:4px"></div>`);
   parts.push(
-    `<div class="row total"><span>TOTAL</span><span>${escapeHtml(receiptIntAmount(data.total))}</span></div>`,
+    `<div class="row total"><span>TOTAL</span><span>${escapeHtml(receiptIntAmount(data.total, data.currencyCode))}</span></div>`,
   );
   parts.push(`<div style="height:6px"></div>`);
   parts.push(
@@ -121,8 +121,8 @@ export async function renderReceiptThermalHtml(
   );
   if (isCash) {
     parts.push(
-      `<div class="mono">Reçu     : ${escapeHtml(receiptIntAmount(Math.round(data.amountReceived ?? data.total)))}</div>`,
-      `<div class="mono">Rendu    : ${escapeHtml(receiptIntAmount(Math.round(data.change ?? 0)))}</div>`,
+      `<div class="mono">Reçu     : ${escapeHtml(receiptIntAmount(Math.round(data.amountReceived ?? data.total), data.currencyCode))}</div>`,
+      `<div class="mono">Rendu    : ${escapeHtml(receiptIntAmount(Math.round(data.change ?? 0), data.currencyCode))}</div>`,
     );
   }
   // Client associé à la vente (facultatif au comptant, obligatoire à crédit).
@@ -135,8 +135,8 @@ export async function renderReceiptThermalHtml(
   const creditRemaining = Math.max(0, data.creditRemaining ?? 0);
   if (creditRemaining > 0) {
     parts.push(
-      `<div class="mono">Acompte  : ${escapeHtml(receiptIntAmount(Math.round(data.creditPaid ?? 0)))}</div>`,
-      `<div class="row total"><span>RESTE A PAYER</span><span>${escapeHtml(receiptIntAmount(Math.round(creditRemaining)))}</span></div>`,
+      `<div class="mono">Acompte  : ${escapeHtml(receiptIntAmount(Math.round(data.creditPaid ?? 0), data.currencyCode))}</div>`,
+      `<div class="row total"><span>RESTE A PAYER</span><span>${escapeHtml(receiptIntAmount(Math.round(creditRemaining), data.currencyCode))}</span></div>`,
     );
     if (data.creditDueLabel?.trim()) {
       parts.push(
