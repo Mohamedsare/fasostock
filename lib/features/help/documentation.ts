@@ -830,7 +830,7 @@ export const DOC_GROUPS: DocGroup[] = [
         tagline: "Le châssis, le moteur et la couleur de chaque moto, enregistrés une seule fois.",
         access: "Propriétaire, et employés qui gèrent déjà les produits.",
         activation:
-          "Activé par le propriétaire dans Paramètres › Motos identifiées. Proposé aux entreprises dont l'activité est « Ventes d'engins ».",
+          "Aucun réglage : la fonction s'active automatiquement avec le module Vente Engins, pour les boutiques qui en disposent.",
         blocks: [
           {
             kind: "p",

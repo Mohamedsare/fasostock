@@ -45,8 +45,6 @@ import {
 import { setProductLocationsEnabled } from "@/lib/features/product-locations/api";
 import { setLandedCostEnabled } from "@/lib/features/landed-cost/api";
 import { setProductAliasesEnabled } from "@/lib/features/products/api";
-import { setEngineUnitsEnabled } from "@/lib/features/engine-units/api";
-import { engineUnitsAvailableForActivity } from "@/lib/features/permissions/access";
 import {
   fetchProductLocationsPosEnabled,
   peekProductLocationsPosEnabled,
@@ -112,7 +110,6 @@ import {
   MdShoppingCart,
   MdStore,
   MdTableChart,
-  MdTwoWheeler,
   MdWarningAmber,
 } from "react-icons/md";
 
@@ -617,31 +614,6 @@ export function SettingsScreen() {
         enabled
           ? "Autres noms activés. Ajoutez-les dans la fiche produit."
           : "Autres noms désactivés. Ceux déjà saisis sont conservés.",
-      );
-      await qc.invalidateQueries({ queryKey: queryKeys.appContext });
-    },
-    onError: (e) => toastMutationError("settings", e),
-  });
-
-  /**
-   * « Motos identifiées » : châssis / moteur / couleur de CHAQUE engin, saisis dans la
-   * fiche produit puis repris tels quels sur la facture. Réglage entreprise écrit par le
-   * propriétaire ; la carte n'est proposée qu'à l'activité « Ventes d'engins ».
-   */
-  const engineUnitsEnabled = ctxQ.data?.engineUnitsEnabled === true;
-  const engineUnitsAvailable = engineUnitsAvailableForActivity(
-    ctxQ.data?.businessTypeSlug,
-  );
-  const engineUnitsMut = useMutation({
-    mutationFn: async (enabled: boolean) => {
-      if (!companyId) throw new Error("Entreprise introuvable.");
-      await setEngineUnitsEnabled(companyId, enabled);
-    },
-    onSuccess: async (_, enabled) => {
-      toast.success(
-        enabled
-          ? "Motos identifiées activées. Saisissez les châssis dans la fiche de chaque engin."
-          : "Motos identifiées désactivées. Les châssis déjà saisis sont conservés.",
       );
       await qc.invalidateQueries({ queryKey: queryKeys.appContext });
     },
@@ -1480,49 +1452,6 @@ export function SettingsScreen() {
                 disabled={productAliasesMut.isPending}
                 onChange={(e) => {
                   void productAliasesMut.mutateAsync(e.target.checked);
-                }}
-              />
-            </label>
-          </div>
-        </FsCard>
-      ) : null}
-
-      {/* Motos identifiées (châssis / moteur / couleur) — owner, activité « Ventes d'engins » */}
-      {isOwner && companyId && engineUnitsAvailable ? (
-        <FsCard className="mt-5" padding="p-5">
-          <SettingsCardTitle icon={MdTwoWheeler} title="Motos identifiées" />
-          <p className="mt-2 text-xs leading-relaxed text-neutral-600 sm:text-sm">
-            Dix motos du même modèle dans la cour, ce sont dix engins différents : chacun a
-            son numéro de châssis, son numéro de moteur et sa couleur. Enregistrez-les une
-            seule fois dans la fiche de l&apos;engin. À la vente, vous choisissez la moto
-            dans la liste : le châssis part sur la facture sans être retapé, et vous savez à
-            tout moment quelle moto est vendue et laquelle reste en stock.
-          </p>
-          <div className="mt-4 space-y-0 rounded-[10px] border border-black/[0.08]">
-            <label
-              className={cn(
-                "flex cursor-pointer items-start justify-between gap-3 px-3 py-3 sm:px-4",
-                engineUnitsMut.isPending && "pointer-events-none opacity-60",
-              )}
-            >
-              <span className="min-w-0">
-                <span className="block text-sm font-medium text-fs-text">
-                  Activer les motos identifiées
-                </span>
-                <span className="mt-0.5 block text-xs text-neutral-600">
-                  {engineUnitsEnabled
-                    ? "La fiche de l'engin propose « Motos enregistrées », et la vente permet de choisir la moto."
-                    : "Désactivé : rien ne change dans l'application."}
-                </span>
-              </span>
-              <input
-                type="checkbox"
-                role="switch"
-                className="mt-1 h-5 w-9 shrink-0 cursor-pointer accent-fs-accent"
-                checked={engineUnitsEnabled}
-                disabled={engineUnitsMut.isPending}
-                onChange={(e) => {
-                  void engineUnitsMut.mutateAsync(e.target.checked);
                 }}
               />
             </label>

@@ -93,12 +93,6 @@ export type AppContextData = {
    */
   productAliasesEnabled: boolean;
   /**
-   * « Motos identifiées » (châssis / moteur / couleur par engin) — désactivé par défaut,
-   * ouvert par le PROPRIÉTAIRE dans Paramètres (`companies.engine_units_enabled`).
-   * Proposé uniquement à l'activité « Ventes d'engins » (cf. `engineUnitsAvailableForActivity`).
-   */
-  engineUnitsEnabled: boolean;
-  /**
    * Module Prix de revient (frais d'approche répartis sur un arrivage) — désactivé par
    * défaut, ouvert par le PROPRIÉTAIRE dans Paramètres (`companies.landed_cost_enabled`).
    */
@@ -159,36 +153,22 @@ export function restockModuleActive(
 }
 
 /**
- * Activités auxquelles « Motos identifiées » est proposé.
+ * Le module Vente Engins est-il actif ici ? Boutique COURANTE autorisée, ou — en vue
+ * « toutes boutiques » — au moins une qui l'est.
  *
- * Saisir un châssis et un numéro de moteur n'a de sens que là où on vend l'engin
- * lui-même : ailleurs, la carte n'apparaît même pas dans Paramètres.
+ * Sert de porte unique à tout ce qui touche aux engins : la page /engins, mais aussi
+ * les motos identifiées (châssis / moteur / couleur), qui n'ont pas de réglage propre.
  */
-export const ENGINE_UNITS_BUSINESS_TYPES: readonly string[] = ["vente-engins"];
-
-/** L'activité de l'entreprise permet-elle de proposer les motos identifiées ? */
-export function engineUnitsAvailableForActivity(
-  businessTypeSlug: string | null | undefined,
-): boolean {
-  return (
-    businessTypeSlug != null &&
-    ENGINE_UNITS_BUSINESS_TYPES.includes(businessTypeSlug)
-  );
-}
-
-/**
- * Les motos identifiées sont-elles actives ici ? Il faut les DEUX : la bonne activité
- * et le drapeau ouvert par le propriétaire. Une entreprise qui change d'activité perd
- * l'affichage sans rien perdre en base.
- */
-export function engineUnitsActive(
+export function engineSalesModuleActive(
   data: AppContextData | null | undefined,
 ): boolean {
   if (!data) return false;
-  return (
-    data.engineUnitsEnabled === true &&
-    engineUnitsAvailableForActivity(data.businessTypeSlug)
-  );
+  if (data.storeId) {
+    return (
+      data.stores.find((s) => s.id === data.storeId)?.engineSalesEnabled === true
+    );
+  }
+  return data.stores.some((s) => s.engineSalesEnabled === true);
 }
 
 /**
@@ -283,8 +263,8 @@ export type AccessHelpers = {
   /** « Autres noms » de produits activés par le propriétaire (saisie + recherche). */
   productAliasesOn: boolean;
   /**
-   * Motos identifiées : activité « Ventes d'engins » ET drapeau ouvert par le
-   * propriétaire. Saisie du châssis dans la fiche produit + choix de l'engin à la vente.
+   * Motos identifiées (châssis / moteur / couleur) : suit le module Vente Engins,
+   * sans réglage propre. Saisie dans la fiche produit + choix de l'engin à la vente.
    */
   engineUnitsOn: boolean;
   /** Module Prix de revient ouvert par le propriétaire pour l'entreprise. */
@@ -355,9 +335,7 @@ export function buildAccessHelpers(
   // Vente Engins : visible si la boutique COURANTE est autorisée (ou, en vue
   // « toutes boutiques », si au moins une l'est) ET l'utilisateur peut vendre.
   const activeStore = data.stores.find((s) => s.id === data.storeId);
-  const engineStoreOn = data.storeId
-    ? activeStore?.engineSalesEnabled === true
-    : data.stores.some((s) => s.engineSalesEnabled === true);
+  const engineStoreOn = engineSalesModuleActive(data);
   const canEngineSales =
     engineStoreOn &&
     (hasPermission(P.salesInvoiceA4) ||
@@ -424,9 +402,11 @@ export function buildAccessHelpers(
   // Autres noms : simple aide à la saisie et à la recherche — aucune permission
   // dédiée, quiconque gère déjà les produits en profite dès que le patron l'active.
   const productAliasesOn = data.productAliasesEnabled === true;
-  // Motos identifiées : même esprit — pas de permission dédiée, celui qui saisit déjà
-  // les produits saisit les châssis. Réservé à l'activité « Ventes d'engins ».
-  const engineUnitsOn = engineUnitsActive(data);
+  // Motos identifiées : AUCUN réglage propre — la fonction s'ouvre et se ferme avec
+  // le module Vente Engins. Là où on vend des engins, on enregistre leur châssis ;
+  // ailleurs, la section n'existe pas. Pas de permission dédiée non plus : celui qui
+  // saisit déjà les produits saisit les châssis.
+  const engineUnitsOn = engineStoreOn;
   // Prix de revient : additif, ouvert par le PROPRIÉTAIRE (Paramètres). Le module touche
   // aux prix d'achat et de vente : le droit est donc distinct de celui des achats.
   const landedCostOn = data.landedCostEnabled === true;

@@ -136,9 +136,9 @@ type Props = {
    */
   searchAliasesEnabled?: boolean;
   /**
-   * « Motos identifiées » activées par le propriétaire (Paramètres) et activité
-   * « Ventes d'engins ». À false, la section n'est pas affichée et aucun engin n'est
-   * touché : ceux déjà saisis restent en base.
+   * « Motos identifiées » : suit le module Vente Engins de la boutique (aucun réglage
+   * propre). À false, la section n'est pas affichée et aucun engin n'est touché :
+   * ceux déjà saisis restent en base.
    */
   engineUnitsEnabled?: boolean;
   onClose: () => void;

@@ -157,20 +157,3 @@ export async function markEngineUnitSold(
   });
   if (error) throw error;
 }
-
-/**
- * Réglage entreprise « Motos identifiées » — écrit par le propriétaire depuis
- * Paramètres (RPC dédiée : la policy d'update sur `companies` est ouverte à tous
- * les membres, le drapeau ne l'est pas).
- */
-export async function setEngineUnitsEnabled(
-  companyId: string,
-  enabled: boolean,
-): Promise<void> {
-  const supabase = createClient();
-  const { error } = await supabase.rpc("company_set_engine_units_enabled", {
-    p_company_id: companyId,
-    p_enabled: enabled,
-  });
-  if (error) throw error;
-}

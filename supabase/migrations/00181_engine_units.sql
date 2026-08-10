@@ -17,95 +17,16 @@
 --     partent tels quels sur la facture A4, sans ressaisie ;
 --   • après : on sait quelle moto précise a été vendue, à qui, et laquelle reste en cour.
 --
--- Activation : DÉSACTIVÉ PAR DÉFAUT, ouvert par le PROPRIÉTAIRE dans Paramètres
--- (`companies.engine_units_enabled`) — comme les Emplacements et les Autres noms, pas besoin
--- du super admin. La carte n'apparaît que pour l'activité « Ventes d'engins »
--- (`companies.business_type_slug = 'vente-engins'`) : ailleurs, elle n'aurait aucun sens.
--- Drapeau à false ⇒ la section est masquée dans la fiche produit ET le choix de l'engin
--- disparaît de la vente : rien ne change nulle part. Le désactiver ne détruit rien — les
--- engins déjà saisis dorment et reviennent tels quels à la réactivation.
+-- Activation : AUCUN drapeau propre. La fonction s'ouvre et se ferme AVEC le module
+-- « Vente Engins » (`stores.engine_sales_enabled`, 00140) : là où on vend des engins,
+-- on enregistre leur châssis ; ailleurs, la section n'existe pas. Un réglage de plus
+-- n'aurait rien décidé de plus — personne n'active Vente Engins sans vouloir suivre
+-- ses châssis. Module coupé ⇒ la section disparaît de la fiche produit et le choix de
+-- l'engin disparaît de la vente, sans que rien ne soit détruit : les engins déjà saisis
+-- dorment et reviennent tels quels à la réactivation.
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- 1. Drapeau d'activation (entreprise, réglé par le propriétaire)
--- ─────────────────────────────────────────────────────────────────────────────
-ALTER TABLE public.companies
-  ADD COLUMN IF NOT EXISTS engine_units_enabled boolean NOT NULL DEFAULT false;
-
-COMMENT ON COLUMN public.companies.engine_units_enabled IS
-  'Fonction « Motos identifiées » (châssis / moteur / couleur par engin). Désactivée par '
-  'défaut, activée par le PROPRIÉTAIRE dans Paramètres (RPC company_set_engine_units_enabled). '
-  'Proposée uniquement aux entreprises dont business_type_slug = ''vente-engins''.';
-
--- Garde des drapeaux propriétaire : la policy `companies_update` laisse tout membre écrire
--- sur la ligne entreprise. On complète le garde posé en 00167 (Emplacements) puis 00173
--- (Autres noms) avec ce troisième drapeau — même règle, même endroit.
-CREATE OR REPLACE FUNCTION public.companies_enforce_owner_flags()
-RETURNS trigger
-LANGUAGE plpgsql
-SET search_path = public
-AS $$
-BEGIN
-  IF TG_OP <> 'UPDATE' THEN
-    RETURN NEW;
-  END IF;
-
-  IF NEW.product_locations_enabled IS DISTINCT FROM OLD.product_locations_enabled
-     AND NOT public.is_super_admin()
-     AND NOT public.user_is_company_owner(NEW.id)
-  THEN
-    RAISE EXCEPTION 'Seul le propriétaire peut activer ou désactiver le module Emplacements.';
-  END IF;
-
-  IF NEW.product_aliases_enabled IS DISTINCT FROM OLD.product_aliases_enabled
-     AND NOT public.is_super_admin()
-     AND NOT public.user_is_company_owner(NEW.id)
-  THEN
-    RAISE EXCEPTION 'Seul le propriétaire peut activer ou désactiver les autres noms de produits.';
-  END IF;
-
-  IF NEW.engine_units_enabled IS DISTINCT FROM OLD.engine_units_enabled
-     AND NOT public.is_super_admin()
-     AND NOT public.user_is_company_owner(NEW.id)
-  THEN
-    RAISE EXCEPTION 'Seul le propriétaire peut activer ou désactiver les motos identifiées.';
-  END IF;
-
-  RETURN NEW;
-END;
-$$;
-
--- Le trigger existe déjà (00167) ; on le (re)pose pour que la migration soit rejouable
--- sur une base où une migration antérieure n'aurait été appliquée que partiellement.
-DROP TRIGGER IF EXISTS companies_enforce_owner_flags_trigger ON public.companies;
-CREATE TRIGGER companies_enforce_owner_flags_trigger
-  BEFORE UPDATE ON public.companies
-  FOR EACH ROW
-  EXECUTE PROCEDURE public.companies_enforce_owner_flags();
-
--- RPC d'écriture du drapeau (chemin normal de l'écran Paramètres).
-CREATE OR REPLACE FUNCTION public.company_set_engine_units_enabled(
-  p_company_id uuid,
-  p_enabled boolean
-)
-RETURNS void
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-BEGIN
-  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Non authentifié'; END IF;
-  IF NOT (public.is_super_admin() OR public.user_is_company_owner(p_company_id)) THEN
-    RAISE EXCEPTION 'Seul le propriétaire peut activer ou désactiver les motos identifiées.';
-  END IF;
-  UPDATE public.companies
-  SET engine_units_enabled = COALESCE(p_enabled, false)
-  WHERE id = p_company_id;
-END;
-$$;
-GRANT EXECUTE ON FUNCTION public.company_set_engine_units_enabled(uuid, boolean) TO authenticated;
-
--- ─────────────────────────────────────────────────────────────────────────────
--- 2. Les engins physiques
+-- 1. Les engins physiques
 -- ─────────────────────────────────────────────────────────────────────────────
 -- Une table (et non un tableau sur `products` comme les alias) : ici la donnée VIT.
 -- Chaque ligne a un état qui change (en stock → vendue), se rattache à une vente, se
@@ -232,7 +153,7 @@ CREATE POLICY "engine_units_all" ON public.engine_units
   );
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- 3. Sortie de stock d'un engin (appelée juste après la vente)
+-- 2. Sortie de stock d'un engin (appelée juste après la vente)
 -- ─────────────────────────────────────────────────────────────────────────────
 -- Idempotente : la vente d'engin peut être rejouée (file d'attente hors ligne, reprise
 -- après coupure). Rejouer avec la MÊME vente ne fait rien ; réserver un engin déjà vendu
