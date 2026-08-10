@@ -152,6 +152,9 @@ export const queryKeys = {
   /** Dépenses sur une plage de dates (filtres catégorie/recherche côté client). */
   expenses: (params: { companyId: string; from: string; to: string }) =>
     ["expenses", params] as const,
+  /** Postes de dépense propres à l'entreprise (« Personnaliser mes dépenses »). */
+  expenseCategories: (companyId: string, includeArchived = false) =>
+    ["expense-categories", companyId, includeArchived] as const,
   aiInsights: (params: {
     companyId: string;
     storeId: string | null;

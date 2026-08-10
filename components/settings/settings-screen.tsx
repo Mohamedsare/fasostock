@@ -45,6 +45,7 @@ import {
 import { setProductLocationsEnabled } from "@/lib/features/product-locations/api";
 import { setLandedCostEnabled } from "@/lib/features/landed-cost/api";
 import { setProductAliasesEnabled } from "@/lib/features/products/api";
+import { setCustomExpensesEnabled } from "@/lib/features/expenses/api";
 import {
   fetchProductLocationsPosEnabled,
   peekProductLocationsPosEnabled,
@@ -107,6 +108,7 @@ import {
   MdCreditCard,
   MdPayments,
   MdPriceChange,
+  MdReceiptLong,
   MdShoppingCart,
   MdStore,
   MdTableChart,
@@ -614,6 +616,28 @@ export function SettingsScreen() {
         enabled
           ? "Autres noms activés. Ajoutez-les dans la fiche produit."
           : "Autres noms désactivés. Ceux déjà saisis sont conservés.",
+      );
+      await qc.invalidateQueries({ queryKey: queryKeys.appContext });
+    },
+    onError: (e) => toastMutationError("settings", e),
+  });
+
+  /**
+   * « Personnaliser mes dépenses » : les postes du commerçant remplacent nos onze
+   * catégories d'usine, et la saisie tombe à cinq champs. Réglage entreprise,
+   * écrit par le propriétaire.
+   */
+  const customExpensesEnabled = ctxQ.data?.customExpensesEnabled === true;
+  const customExpensesMut = useMutation({
+    mutationFn: async (enabled: boolean) => {
+      if (!companyId) throw new Error("Entreprise introuvable.");
+      await setCustomExpensesEnabled(companyId, enabled);
+    },
+    onSuccess: async (_, enabled) => {
+      toast.success(
+        enabled
+          ? "Dépenses personnalisées activées. Créez vos catégories depuis Dépenses › Mes catégories."
+          : "Dépenses personnalisées désactivées. Vos postes et vos dépenses sont conservés.",
       );
       await qc.invalidateQueries({ queryKey: queryKeys.appContext });
     },
@@ -1456,6 +1480,64 @@ export function SettingsScreen() {
               />
             </label>
           </div>
+        </FsCard>
+      ) : null}
+
+      {/* Personnaliser mes dépenses — owner uniquement */}
+      {isOwner && companyId ? (
+        <FsCard className="mt-5" padding="p-5">
+          <SettingsCardTitle icon={MdReceiptLong} title="Personnaliser mes dépenses" />
+          <p className="mt-2 text-xs leading-relaxed text-neutral-600 sm:text-sm">
+            Nos onze catégories d&apos;usine (Loyer, Marketing, Télécom…) ne sont pas les
+            vôtres : vous, vous payez le carburant des livreurs, le gardien de nuit, la
+            douane. Activez ce mode et la page Dépenses ne proposera plus QUE les postes
+            que vous aurez créés — et la saisie se réduit à cinq champs : montant,
+            catégorie, date, règlement (espèces ou mobile money) et une note facultative.
+          </p>
+          <div className="mt-4 space-y-0 rounded-[10px] border border-black/[0.08]">
+            <label
+              className={cn(
+                "flex cursor-pointer items-start justify-between gap-3 px-3 py-3 sm:px-4",
+                customExpensesMut.isPending && "pointer-events-none opacity-60",
+              )}
+            >
+              <span className="min-w-0">
+                <span className="block text-sm font-medium text-fs-text">
+                  Activer mes propres catégories
+                </span>
+                <span className="mt-0.5 block text-xs text-neutral-600">
+                  {customExpensesEnabled
+                    ? "La page Dépenses affiche vos postes et le formulaire court. Chaque dépense garde le nom de qui l'a saisie."
+                    : "Désactivé : la page Dépenses garde les catégories standard et le formulaire complet."}
+                </span>
+              </span>
+              <input
+                type="checkbox"
+                role="switch"
+                className="mt-1 h-5 w-9 shrink-0 cursor-pointer accent-fs-accent"
+                checked={customExpensesEnabled}
+                disabled={customExpensesMut.isPending}
+                onChange={(e) => {
+                  void customExpensesMut.mutateAsync(e.target.checked);
+                }}
+              />
+            </label>
+          </div>
+          <p className="mt-2.5 text-xs leading-relaxed text-neutral-600">
+            Vos dépenses déjà enregistrées ne bougent pas : elles restent dans la liste
+            avec leur ancienne catégorie. Pour qu&apos;un caissier puisse enregistrer une
+            dépense, accordez-lui « Gérer les dépenses » dans Employés — il ne pourra
+            corriger que ses propres lignes.
+          </p>
+          {customExpensesEnabled ? (
+            <Link
+              href={ROUTES.expenses}
+              className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-fs-accent hover:underline hover:underline-offset-2"
+            >
+              Ouvrir les dépenses
+              <ChevronRight className="h-4 w-4" aria-hidden />
+            </Link>
+          ) : null}
         </FsCard>
       ) : null}
 

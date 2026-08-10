@@ -1,27 +1,18 @@
 "use client";
 
-import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import { useDeferredValue, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  MdAccountBalance,
   MdAccountBalanceWallet,
   MdAdd,
-  MdBolt,
-  MdBuild,
-  MdCampaign,
   MdDeleteOutline,
-  MdDirectionsCar,
   MdDownload,
   MdEdit,
-  MdGroups,
-  MdHome,
-  MdInventory2,
   MdLock,
   MdPerson,
   MdReceiptLong,
   MdSearch,
-  MdStorefront,
-  MdWifi,
+  MdTune,
 } from "react-icons/md";
 import {
   FsCard,
@@ -38,46 +29,48 @@ import { usePermissions } from "@/lib/features/permissions/use-permissions";
 import { createClient } from "@/lib/supabase/client";
 import {
   createExpense,
+  createExpenseCategory,
   deleteExpense,
   listExpenseCategories,
   listExpenses,
+  renameExpenseCategory,
+  setExpenseCategoryActive,
   updateExpense,
 } from "@/lib/features/expenses/api";
 import {
-  EXPENSE_CATEGORIES,
   expenseCategoryDisplay,
-  expensePaymentLabel,
   type Expense,
   type ExpenseFormInput,
 } from "@/lib/features/expenses/types";
-import { expensesToSpreadsheetMatrix } from "@/lib/features/expenses/csv";
-import { ExpenseFormDialog } from "@/components/expenses/expense-form-dialog";
-import { CustomExpensesScreen } from "@/components/expenses/custom-expenses-screen";
+import { paymentDisplay } from "@/lib/features/payments/payment-display";
+import { SimpleExpenseFormDialog } from "@/components/expenses/simple-expense-form-dialog";
+import { ExpenseCategoriesDialog } from "@/components/expenses/expense-categories-dialog";
+import { queryKeys } from "@/lib/query/query-keys";
+import { formatCurrency } from "@/lib/utils/currency";
+import { cn } from "@/lib/utils/cn";
+import { messageFromUnknownError, toast, toastMutationError } from "@/lib/toast";
+import { downloadProSpreadsheet } from "@/lib/utils/spreadsheet-export-pro";
 import {
   PERIODS,
   formatDmy,
   periodRange,
   type ExpensePeriod,
 } from "@/components/expenses/expenses-period";
-import { queryKeys } from "@/lib/query/query-keys";
-import { formatCurrency } from "@/lib/utils/currency";
-import { messageFromUnknownError, toast, toastMutationError } from "@/lib/toast";
-import { downloadProSpreadsheet } from "@/lib/utils/spreadsheet-export-pro";
-import type { ComponentType } from "react";
 
-const CATEGORY_ICON: Record<string, ComponentType<{ className?: string }>> = {
-  loyer: MdHome,
-  salaires: MdGroups,
-  electricite_eau: MdBolt,
-  transport: MdDirectionsCar,
-  fournitures: MdInventory2,
-  marketing: MdCampaign,
-  maintenance: MdBuild,
-  telecom: MdWifi,
-  taxes: MdAccountBalance,
-  banque: MdAccountBalanceWallet,
-  autre: MdReceiptLong,
-};
+/**
+ * Page Dépenses en mode « Personnaliser mes dépenses ».
+ *
+ * Ce que ce mode change, et pourquoi :
+ *   • les onze catégories livrées d'usine disparaissent — seuls les postes créés
+ *     par le propriétaire sont proposés. Sans quoi tout finit dans « Autre » et la
+ *     question « où part mon argent ? » n'a plus de réponse ;
+ *   • la saisie tombe à cinq champs (montant, catégorie, date, règlement, note) ;
+ *   • chaque ligne affiche QUI l'a enregistrée : le droit de noter une sortie
+ *     d'argent peut être accordé à un caissier, la trace suit.
+ *
+ * Rien n'est perdu à la bascule : les dépenses saisies en mode standard restent
+ * dans la liste avec leur ancienne catégorie.
+ */
 
 function expenseToFormInput(e: Expense): ExpenseFormInput {
   return {
@@ -142,50 +135,12 @@ function DeleteExpenseDialog({
   );
 }
 
-/**
- * Page Dépenses. Deux présentations d'une même donnée :
- *
- *  • par défaut — les onze catégories livrées d'usine et le formulaire complet ;
- *  • « Personnaliser mes dépenses » activé par le propriétaire (Paramètres) — ses
- *    propres postes et une saisie réduite à cinq champs ([CustomExpensesScreen]).
- *
- * La bascule ne touche à aucune donnée : on change d'écran, pas de base.
- */
-export function ExpensesScreen() {
-  const { isLoading, helpers } = usePermissions();
-
-  // Tant que les droits ne sont pas connus, on n'affiche NI l'un NI l'autre : afficher
-  // le mode standard puis basculer donnerait un clignotement à chaque ouverture.
-  if (isLoading) {
-    return (
-      <FsPage>
-        <FsScreenHeader title="Dépenses" subtitle="Gestion des charges" />
-        <FsCard className="rounded-md sm:rounded-lg" padding="p-8">
-          <p className="text-center text-sm text-neutral-500">Chargement…</p>
-        </FsCard>
-      </FsPage>
-    );
-  }
-
-  if (helpers?.customExpensesOn) return <CustomExpensesScreen />;
-  return <StandardExpensesScreen />;
-}
-
-function StandardExpensesScreen() {
+export function CustomExpensesScreen() {
   const qc = useQueryClient();
   const ctx = useAppContext();
   const { isLoading: permLoading, helpers: h } = usePermissions();
   const companyId = ctx.data?.companyId ?? "";
   const ctxStoreId = ctx.data?.storeId ?? null;
-  const stores = ctx.data?.stores;
-  const storeList = useMemo(
-    () => (stores ?? []).map((s) => ({ id: s.id, name: s.name })),
-    [stores],
-  );
-  const storeName = useMemo(() => {
-    const map = new Map((stores ?? []).map((s) => [s.id, s.name] as const));
-    return (id: string | null) => (id ? (map.get(id) ?? null) : null);
-  }, [stores]);
 
   const canView = h?.canExpenses ?? false;
   const canManage = h?.canManageExpenses ?? false;
@@ -203,32 +158,10 @@ function StandardExpensesScreen() {
   });
   const myUserId = meQ.data ?? null;
 
-  /**
-   * Modifier / supprimer : le propriétaire partout, l'employé sur SES lignes.
-   * Miroir exact des policies RLS (00182) — inutile d'offrir un bouton qui échouera.
-   * `created_by` nul = ligne d'avant la trace : on ne la verrouille pas davantage.
-   */
-  function canEditRow(e: Expense): boolean {
-    if (!canManage) return false;
-    if (isOwner) return true;
-    return e.created_by == null || e.created_by === myUserId;
-  }
-
   const [period, setPeriod] = useState<ExpensePeriod>("this_month");
-  const [category, setCategory] = useState<string>("all");
-  const [storeFilter, setStoreFilter] = useState<string>("all");
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
   const deferredSearch = useDeferredValue(search);
-
-  // Positionne le filtre sur la boutique courante au premier chargement
-  // (l'utilisateur reste libre de choisir « Toutes » ensuite).
-  const storeFilterInitedRef = useRef(false);
-  useEffect(() => {
-    if (storeFilterInitedRef.current) return;
-    if (!companyId) return;
-    storeFilterInitedRef.current = true;
-    if (ctxStoreId) setStoreFilter(ctxStoreId);
-  }, [companyId, ctxStoreId]);
 
   const { from, to } = useMemo(() => periodRange(period), [period]);
 
@@ -239,41 +172,42 @@ function StandardExpensesScreen() {
     staleTime: 20_000,
   });
 
-  const rows = useMemo(() => listQ.data ?? [], [listQ.data]);
-
-  /**
-   * Postes personnalisés (archivés compris) : une entreprise peut avoir saisi des
-   * dépenses en mode personnalisé puis coupé le mode. Leur poste doit rester lisible
-   * ici, sinon toute cette période retomberait sur « Autre ».
-   */
+  /** Tous les postes, archivés compris : l'historique doit rester lisible. */
   const categoriesQ = useQuery({
     queryKey: queryKeys.expenseCategories(companyId, true),
     queryFn: () => listExpenseCategories(companyId, { includeArchived: true }),
     enabled: !!companyId && canView && !permLoading,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 60_000,
   });
-  const nameById = useMemo(
-    () => new Map((categoriesQ.data ?? []).map((c) => [c.id, c.name] as const)),
-    [categoriesQ.data],
+
+  const allCategories = useMemo(() => categoriesQ.data ?? [], [categoriesQ.data]);
+  const activeCategories = useMemo(
+    () => allCategories.filter((c) => c.isActive),
+    [allCategories],
   );
+  const nameById = useMemo(
+    () => new Map(allCategories.map((c) => [c.id, c.name] as const)),
+    [allCategories],
+  );
+
+  const rows = useMemo(() => listQ.data ?? [], [listQ.data]);
 
   const filtered = useMemo(() => {
     const q = deferredSearch.trim().toLowerCase();
     return rows.filter((e) => {
-      if (category !== "all" && e.category !== category) return false;
-      if (storeFilter === "__none__") {
-        if (e.store_id) return false;
-      } else if (storeFilter !== "all" && e.store_id !== storeFilter) {
+      if (categoryFilter === "__legacy__") {
+        if (e.category_id) return false;
+      } else if (categoryFilter !== "all" && e.category_id !== categoryFilter) {
         return false;
       }
       if (!q) return true;
       return (
-        (e.label ?? "").toLowerCase().includes(q) ||
-        (e.payee ?? "").toLowerCase().includes(q) ||
-        expenseCategoryDisplay(e, nameById).toLowerCase().includes(q)
+        expenseCategoryDisplay(e, nameById).toLowerCase().includes(q) ||
+        (e.notes ?? "").toLowerCase().includes(q) ||
+        (e.created_by_label ?? "").toLowerCase().includes(q)
       );
     });
-  }, [rows, category, storeFilter, deferredSearch, nameById]);
+  }, [rows, categoryFilter, deferredSearch, nameById]);
 
   const stats = useMemo(() => {
     const total = filtered.reduce((s, e) => s + e.amount, 0);
@@ -293,12 +227,18 @@ function StandardExpensesScreen() {
     return { total, count: filtered.length, topCat, topAmount };
   }, [filtered, nameById]);
 
+  /** Des dépenses d'avant la bascule (catégorie standard) sont-elles présentes ? */
+  const hasLegacyRows = useMemo(() => rows.some((e) => !e.category_id), [rows]);
+
   const [formOpen, setFormOpen] = useState(false);
+  const [categoriesOpen, setCategoriesOpen] = useState(false);
   const [editing, setEditing] = useState<Expense | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Expense | null>(null);
 
   const invalidate = () =>
     qc.invalidateQueries({ queryKey: ["expenses"], exact: false });
+  const invalidateCategories = () =>
+    qc.invalidateQueries({ queryKey: ["expense-categories"], exact: false });
 
   const createMut = useMutation({
     mutationFn: (input: ExpenseFormInput) => createExpense(companyId, input),
@@ -328,26 +268,71 @@ function StandardExpensesScreen() {
     onError: (e) => toastMutationError("expenses", e),
   });
 
+  const categoryMut = useMutation({
+    mutationFn: async (
+      action:
+        | { kind: "create"; name: string }
+        | { kind: "rename"; id: string; name: string }
+        | { kind: "active"; id: string; isActive: boolean },
+    ) => {
+      if (action.kind === "create") {
+        const nextPosition =
+          allCategories.reduce((max, c) => Math.max(max, c.position), 0) + 1;
+        await createExpenseCategory({
+          companyId,
+          name: action.name,
+          position: nextPosition,
+        });
+        return;
+      }
+      if (action.kind === "rename") {
+        await renameExpenseCategory(action.id, action.name);
+        return;
+      }
+      await setExpenseCategoryActive(action.id, action.isActive);
+    },
+    onSuccess: async (_d, action) => {
+      await invalidateCategories();
+      // Le nom d'un poste s'affiche sur les lignes : la liste doit suivre.
+      await invalidate();
+      toast.success(
+        action.kind === "create"
+          ? "Catégorie ajoutée"
+          : action.kind === "rename"
+            ? "Catégorie renommée"
+            : action.isActive
+              ? "Catégorie remise dans la liste"
+              : "Catégorie retirée de la liste",
+      );
+    },
+    onError: (e) => toastMutationError("expenses", e),
+  });
+
+  /** Modifier / supprimer : le propriétaire partout, l'employé sur SES lignes (miroir RLS). */
+  function canEditRow(e: Expense): boolean {
+    if (!canManage) return false;
+    if (isOwner) return true;
+    return e.created_by == null || e.created_by === myUserId;
+  }
+
   function exportExcel() {
     if (filtered.length === 0) return;
     void (async () => {
       try {
         const d = new Date().toISOString().slice(0, 10);
-        const { headers, rows: matrix } = expensesToSpreadsheetMatrix(
-          filtered,
-          storeName,
-          nameById,
-        );
-        await downloadProSpreadsheet(
-          `depenses-${d}.xlsx`,
-          "Dépenses",
-          headers,
-          matrix,
-          {
-            title: "FasoStock — Dépenses",
-            subtitle: `${filtered.length} dépense(s) · total ${formatCurrency(stats.total)} · ${d}`,
-          },
-        );
+        const headers = ["Date", "Catégorie", "Règlement", "Note", "Par qui", "Montant"];
+        const matrix = filtered.map((e) => [
+          e.expense_date,
+          expenseCategoryDisplay(e, nameById),
+          paymentDisplay({ method: e.payment_method, reference: e.reference }).label,
+          e.notes ?? "",
+          e.created_by_label ?? "",
+          e.amount,
+        ]);
+        await downloadProSpreadsheet(`depenses-${d}.xlsx`, "Dépenses", headers, matrix, {
+          title: "FasoStock — Dépenses",
+          subtitle: `${filtered.length} dépense(s) · total ${formatCurrency(stats.total)} · ${d}`,
+        });
         toast.success("Excel enregistré");
       } catch (e) {
         toast.error(messageFromUnknownError(e, "Export Excel impossible."));
@@ -372,13 +357,15 @@ function StandardExpensesScreen() {
     );
   }
 
+  const noCategoriesYet = !categoriesQ.isLoading && activeCategories.length === 0;
+
   return (
     <FsPage>
       <div className="mb-3 flex flex-wrap items-start justify-between gap-3 sm:mb-4">
         <FsScreenHeader
           className="mb-0"
           title="Dépenses"
-          subtitle="Suivez et maîtrisez toutes vos charges (loyer, salaires, transport…)."
+          subtitle="Vos propres postes de dépense, et rien d'autre."
           titleClassName="min-[900px]:text-2xl min-[900px]:font-bold min-[900px]:tracking-tight"
         />
         <div className="flex shrink-0 items-center gap-2">
@@ -392,6 +379,16 @@ function StandardExpensesScreen() {
               Excel
             </button>
           ) : null}
+          {isOwner ? (
+            <button
+              type="button"
+              onClick={() => setCategoriesOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-md border border-black/[0.12] bg-fs-card px-3 py-2 text-xs font-semibold text-neutral-800 shadow-sm active:scale-[0.99] sm:text-sm"
+            >
+              <MdTune className="h-4 w-4 shrink-0" aria-hidden />
+              Mes catégories
+            </button>
+          ) : null}
           {canManage ? (
             <button
               type="button"
@@ -399,7 +396,8 @@ function StandardExpensesScreen() {
                 setEditing(null);
                 setFormOpen(true);
               }}
-              className="inline-flex items-center gap-1.5 rounded-md bg-fs-accent px-3 py-2 text-xs font-semibold text-white shadow-sm active:scale-[0.99] sm:text-sm"
+              disabled={noCategoriesYet}
+              className="inline-flex items-center gap-1.5 rounded-md bg-fs-accent px-3 py-2 text-xs font-semibold text-white shadow-sm active:scale-[0.99] disabled:opacity-50 sm:text-sm"
             >
               <MdAdd className="h-4 w-4" aria-hidden />
               Nouvelle dépense
@@ -407,6 +405,30 @@ function StandardExpensesScreen() {
           ) : null}
         </div>
       </div>
+
+      {/* Aucune catégorie : la saisie n'a pas de sens tant que les postes n'existent pas. */}
+      {noCategoriesYet ? (
+        <FsCard className="mb-4 rounded-md border-fs-accent/30 bg-fs-accent/[0.06] sm:rounded-lg" padding="p-4">
+          <p className="text-sm font-semibold text-fs-text">
+            Commencez par créer vos catégories
+          </p>
+          <p className="mt-1 text-xs leading-relaxed text-neutral-600">
+            {isOwner
+              ? "Aucun poste de dépense n'existe encore. Ouvrez « Mes catégories » et ajoutez ceux qui correspondent vraiment à vos sorties d'argent (carburant, gardien, douane…)."
+              : "Aucun poste de dépense n'a encore été créé. Demandez au propriétaire de les définir dans Dépenses › Mes catégories."}
+          </p>
+          {isOwner ? (
+            <button
+              type="button"
+              onClick={() => setCategoriesOpen(true)}
+              className="mt-3 inline-flex items-center gap-1.5 rounded-md bg-fs-accent px-3 py-2 text-xs font-semibold text-white sm:text-sm"
+            >
+              <MdTune className="h-4 w-4" aria-hidden />
+              Ouvrir mes catégories
+            </button>
+          ) : null}
+        </FsCard>
+      ) : null}
 
       {/* KPI */}
       <div className="mb-4 grid grid-cols-2 gap-2 sm:gap-3 min-[900px]:grid-cols-3">
@@ -464,41 +486,27 @@ function StandardExpensesScreen() {
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Rechercher (libellé, bénéficiaire…)"
+                placeholder="Rechercher (catégorie, note, auteur…)"
                 className={fsInputClass("rounded-md pl-9")}
               />
             </div>
-            <div className="grid grid-cols-1 gap-2 min-[420px]:grid-cols-2 sm:flex sm:flex-none">
-              {storeList.length > 0 ? (
-                <select
-                  value={storeFilter}
-                  onChange={(e) => setStoreFilter(e.target.value)}
-                  className={fsInputClass("rounded-md sm:w-48")}
-                  aria-label="Filtrer par boutique"
-                >
-                  <option value="all">Toutes les boutiques</option>
-                  {storeList.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
-                    </option>
-                  ))}
-                  <option value="__none__">Sans boutique</option>
-                </select>
+            <select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              className={fsInputClass("rounded-md sm:w-56")}
+              aria-label="Filtrer par catégorie"
+            >
+              <option value="all">Toutes les catégories</option>
+              {allCategories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                  {c.isActive ? "" : " (retiré)"}
+                </option>
+              ))}
+              {hasLegacyRows ? (
+                <option value="__legacy__">Avant personnalisation</option>
               ) : null}
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className={fsInputClass("rounded-md sm:w-56")}
-                aria-label="Filtrer par catégorie"
-              >
-                <option value="all">Toutes les catégories</option>
-                {EXPENSE_CATEGORIES.map((c) => (
-                  <option key={c.key} value={c.key}>
-                    {c.label}
-                  </option>
-                ))}
-              </select>
-            </div>
+            </select>
           </div>
         </div>
       </FsStickyMobileActions>
@@ -521,7 +529,7 @@ function StandardExpensesScreen() {
                 ? "Aucune dépense sur cette période."
                 : "Aucune dépense ne correspond à ce filtre."}
             </p>
-            {canManage && rows.length === 0 ? (
+            {canManage && rows.length === 0 && !noCategoriesYet ? (
               <button
                 type="button"
                 onClick={() => {
@@ -541,47 +549,48 @@ function StandardExpensesScreen() {
           <FsHorizontalScroll>
             <ul className="min-w-0 divide-y divide-black/[0.05]">
               {filtered.map((e) => {
-                const Icon = CATEGORY_ICON[e.category] ?? MdReceiptLong;
-                const store = storeName(e.store_id);
-                const categoryText = expenseCategoryDisplay(e, nameById);
-                const title = e.label?.trim() || categoryText;
+                const pay = paymentDisplay({
+                  method: e.payment_method,
+                  reference: e.reference,
+                });
+                const editable = canEditRow(e);
                 return (
                   <li
                     key={e.id}
                     className="flex items-center gap-3 px-3 py-2.5 sm:px-4 sm:py-3"
                   >
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-[color-mix(in_srgb,var(--fs-accent)_14%,transparent)]">
-                      <Icon className="h-5 w-5 text-fs-accent" />
-                    </div>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-semibold text-fs-text">
-                        {title}
+                        {expenseCategoryDisplay(e, nameById)}
                       </p>
-                      <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-neutral-500">
-                        <span>{categoryText}</span>
-                        <span>· {formatDmy(e.expense_date)}</span>
-                        <span>· {expensePaymentLabel(e.payment_method)}</span>
-                        {e.payee ? <span>· {e.payee}</span> : null}
-                        {store ? (
-                          <span className="inline-flex items-center gap-1">
-                            · <MdStorefront className="h-3 w-3" aria-hidden />
-                            {store}
-                          </span>
-                        ) : null}
-                        {/* Qui a enregistré la sortie d'argent (trace, migration 00182). */}
+                      <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-neutral-500">
+                        <span>{formatDmy(e.expense_date)}</span>
+                        <span
+                          className={cn(
+                            "inline-flex items-center rounded px-1.5 py-0.5 font-semibold",
+                            pay.pillClass,
+                          )}
+                        >
+                          {pay.label}
+                        </span>
                         {e.created_by_label ? (
                           <span className="inline-flex items-center gap-1">
-                            · <MdPerson className="h-3 w-3" aria-hidden />
+                            <MdPerson className="h-3 w-3" aria-hidden />
                             {e.created_by_label}
                           </span>
                         ) : null}
                       </p>
+                      {e.notes ? (
+                        <p className="mt-0.5 truncate text-[11px] italic text-neutral-500">
+                          {e.notes}
+                        </p>
+                      ) : null}
                     </div>
                     <div className="flex shrink-0 items-center gap-1">
                       <span className="mr-1 text-sm font-bold text-fs-text">
                         {formatCurrency(e.amount)}
                       </span>
-                      {canEditRow(e) ? (
+                      {editable ? (
                         <>
                           <button
                             type="button"
@@ -619,15 +628,19 @@ function StandardExpensesScreen() {
         </p>
       ) : null}
 
-      <ExpenseFormDialog
+      <SimpleExpenseFormDialog
         open={formOpen}
         onClose={() => {
           setFormOpen(false);
           setEditing(null);
         }}
         variant={editing ? "edit" : "create"}
-        stores={storeList}
-        initialValue={editing ? expenseToFormInput(editing) : null}
+        categories={activeCategories}
+        initialValue={
+          editing
+            ? expenseToFormInput(editing)
+            : { storeId: ctxStoreId, categoryId: null }
+        }
         onSubmit={async (value) => {
           if (!companyId) throw new Error("Entreprise manquante.");
           if (editing) {
@@ -638,12 +651,24 @@ function StandardExpensesScreen() {
         }}
       />
 
+      {/* Monté seulement à l'ouverture : la fermeture emporte l'état de saisie. */}
+      {categoriesOpen ? (
+        <ExpenseCategoriesDialog
+          open
+          onClose={() => setCategoriesOpen(false)}
+          categories={allCategories}
+          busy={categoryMut.isPending}
+          onCreate={(name) => categoryMut.mutateAsync({ kind: "create", name })}
+          onRename={(id, name) => categoryMut.mutateAsync({ kind: "rename", id, name })}
+          onSetActive={async (id, isActive) => {
+            await categoryMut.mutateAsync({ kind: "active", id, isActive });
+          }}
+        />
+      ) : null}
+
       <DeleteExpenseDialog
         open={deleteTarget != null}
-        label={
-          deleteTarget?.label?.trim() ||
-          (deleteTarget ? expenseCategoryDisplay(deleteTarget, nameById) : "")
-        }
+        label={deleteTarget ? expenseCategoryDisplay(deleteTarget, nameById) : ""}
         busy={deleteMut.isPending}
         onCancel={() => {
           if (!deleteMut.isPending) setDeleteTarget(null);

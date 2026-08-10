@@ -63,6 +63,15 @@ function roleLabelFr(
   return overrides[slug] ?? m[slug] ?? fallback;
 }
 
+/** Minuscules sans accent : « Dépenses », « depenses » et « Depenses » se rejoignent. */
+function normalizeForSearch(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
 function nameInitial(name: string | null): string {
   const t = (name ?? "").trim();
   return t ? t[0]!.toUpperCase() : "?";
@@ -97,6 +106,7 @@ export function UsersScreen() {
   const [q, setQ] = useState("");
   const [openCreate, setOpenCreate] = useState(false);
   const [rightsUserId, setRightsUserId] = useState<string | null>(null);
+  const [rightsFilter, setRightsFilter] = useState("");
   const [passwordUser, setPasswordUser] = useState<CompanyUser | null>(null);
 
   const meQ = useQuery({
@@ -152,6 +162,23 @@ export function UsersScreen() {
       ),
     [],
   );
+
+  /**
+   * Filtre de la liste des droits. Les libellés sont saisis sans accent
+   * (« Depenses ») : on compare donc sans accent des deux côtés, sinon chercher
+   * « dépense » ne trouverait rien.
+   */
+  const visiblePermissionKeys = useMemo(() => {
+    const needle = normalizeForSearch(rightsFilter);
+    if (!needle) return permissionKeysSorted;
+    return permissionKeysSorted.filter((key) => {
+      const label = PERMISSION_LABELS_FR[key] ?? key;
+      return (
+        normalizeForSearch(label).includes(needle) ||
+        normalizeForSearch(key).includes(needle)
+      );
+    });
+  }, [permissionKeysSorted, rightsFilter]);
 
   const invalidateUserRights = () =>
     qc.invalidateQueries({ queryKey: ["user-rights", companyId] });
@@ -465,8 +492,14 @@ export function UsersScreen() {
           </div>
           <p className="mt-2 text-xs text-neutral-600">
             Propriétaire ou utilisateur avec « Gérer les utilisateurs » : vous pouvez affiner chaque
-            permission (magasin, stock, produits, achats…). Décocher retire une permission même si
-            le rôle la donne par défaut. Seul le propriétaire peut modifier un autre propriétaire.
+            permission (magasin, stock, produits, achats, dépenses…). Décocher retire une permission
+            même si le rôle la donne par défaut. Seul le propriétaire peut modifier un autre
+            propriétaire.
+          </p>
+          <p className="mt-1.5 text-xs text-neutral-600">
+            Exemple : cochez « Gérer les dépenses » pour qu&apos;un caissier puisse enregistrer une
+            sortie d&apos;argent. Son nom reste attaché à chaque ligne, et il ne peut corriger que
+            les siennes.
           </p>
           <div className="mt-3">
             <select
@@ -496,7 +529,26 @@ export function UsersScreen() {
                 </p>
               ) : (
                 <div className="space-y-1">
-                  {permissionKeysSorted.map((key) => {
+                  {/* Soixante permissions à l'écran : sans filtre, « dépenses » est introuvable. */}
+                  <div className="relative mb-2">
+                    <MdSearch
+                      className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400"
+                      aria-hidden
+                    />
+                    <input
+                      className={fsInputClass("pl-10")}
+                      value={rightsFilter}
+                      onChange={(e) => setRightsFilter(e.target.value)}
+                      placeholder="Filtrer les droits (ex. dépense, stock, vente…)"
+                      aria-label="Filtrer les droits"
+                    />
+                  </div>
+                  {visiblePermissionKeys.length === 0 ? (
+                    <p className="px-1 py-3 text-xs text-neutral-500">
+                      Aucun droit ne correspond à « {rightsFilter.trim()} ».
+                    </p>
+                  ) : null}
+                  {visiblePermissionKeys.map((key) => {
                     const checked = (rightsQ.data ?? []).includes(key);
                     const label = PERMISSION_LABELS_FR[key] ?? key;
                     const busy = rightsMut.isPending || rightsQ.isFetching;

@@ -13,7 +13,7 @@ import {
 const fieldLabelClass =
   "mb-1.5 block text-[13px] font-medium leading-tight text-neutral-700";
 const inputOutline =
-  "min-h-12 rounded-[10px] border border-black/8 px-3 text-base touch-manipulation sm:min-h-0 sm:text-sm";
+  "min-h-12 rounded-lg border border-black/8 px-3 text-base touch-manipulation sm:min-h-0 sm:text-sm";
 
 function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
@@ -39,6 +39,7 @@ export function ExpenseFormDialog({
 
   const [v, setV] = useState<ExpenseFormInput>({
     category: "loyer",
+    categoryId: null,
     label: "",
     amount: 0,
     paymentMethod: "cash",
@@ -57,6 +58,7 @@ export function ExpenseFormDialog({
     if (!open) return;
     setV({
       category: initialValue?.category ?? "loyer",
+      categoryId: initialValue?.categoryId ?? null,
       label: initialValue?.label ?? "",
       amount: initialValue?.amount ?? 0,
       paymentMethod: initialValue?.paymentMethod ?? "cash",
@@ -90,7 +92,7 @@ export function ExpenseFormDialog({
       <FsCard
         className={cn(
           "max-h-[min(94dvh,800px)] w-full max-w-[460px] shadow-xl",
-          "rounded-t-2xl rounded-b-none border-x-0 border-b-0 sm:rounded-2xl sm:border-x sm:border-b",
+          "rounded-t-xl rounded-b-none border-x-0 border-b-0 sm:rounded-xl sm:border-x sm:border-b",
         )}
         padding="p-0"
       >
@@ -109,7 +111,7 @@ export function ExpenseFormDialog({
             <button
               type="button"
               onClick={onClose}
-              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-black/8 bg-fs-card text-neutral-700 active:bg-fs-surface-container sm:h-10 sm:w-10"
+              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-black/8 bg-fs-card text-neutral-700 active:bg-fs-surface-container sm:h-10 sm:w-10"
               aria-label="Fermer"
             >
               <MdClose className="h-5 w-5" aria-hidden />
@@ -161,7 +163,11 @@ export function ExpenseFormDialog({
                   id="exp-category"
                   className={fsInputClass(inputOutline)}
                   value={v.category}
-                  onChange={(e) => setV((p) => ({ ...p, category: e.target.value }))}
+                  onChange={(e) =>
+                    // Choisir une catégorie standard détache la dépense d'un éventuel
+                    // poste personnalisé, sinon le poste primerait sur ce choix.
+                    setV((p) => ({ ...p, category: e.target.value, categoryId: null }))
+                  }
                 >
                   {EXPENSE_CATEGORIES.map((c) => (
                     <option key={c.key} value={c.key}>
@@ -323,7 +329,7 @@ export function ExpenseFormDialog({
                     setBusy(false);
                   }
                 }}
-                className="inline-flex min-h-12 w-full items-center justify-center rounded-[10px] bg-fs-accent px-4 py-3 text-base font-bold text-white shadow-sm active:scale-[0.99] disabled:opacity-60 sm:min-w-[120px] sm:text-sm sm:font-semibold"
+                className="inline-flex min-h-12 w-full items-center justify-center rounded-lg bg-fs-accent px-4 py-3 text-base font-bold text-white shadow-sm active:scale-[0.99] disabled:opacity-60 sm:min-w-[120px] sm:text-sm sm:font-semibold"
               >
                 {busy ? (
                   <span

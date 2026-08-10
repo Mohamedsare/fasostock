@@ -98,6 +98,12 @@ export type AppContextData = {
    */
   landedCostEnabled: boolean;
   /**
+   * Mode « Personnaliser mes dépenses » — désactivé par défaut, ouvert par le
+   * PROPRIÉTAIRE dans Paramètres (`companies.custom_expenses_enabled`). Actif, il
+   * REMPLACE le contenu de la page Dépenses : postes maison + saisie réduite.
+   */
+  customExpensesEnabled: boolean;
+  /**
    * Boutique en ligne ouverte pour TOUTE l'entreprise par la plateforme
    * (`companies.online_store_enabled`). S'ajoute aux drapeaux boutique.
    */
@@ -286,6 +292,8 @@ export type AccessHelpers = {
   canExpenses: boolean;
   /** Propriétaire ou permission de gestion (CRUD) des dépenses. */
   canManageExpenses: boolean;
+  /** Mode « Personnaliser mes dépenses » activé par le propriétaire. */
+  customExpensesOn: boolean;
   /** Module Comptabilité activé par la plateforme ET droit de consultation. */
   canAccounting: boolean;
   /** Comptabilité : droit de gestion (saisie / modification des écritures). */
@@ -422,6 +430,9 @@ export function buildAccessHelpers(
   const canManageExpenses = isOwner || hasPermission(P.expensesManage);
   const canExpenses =
     isOwner || hasPermission(P.expensesView) || canManageExpenses;
+  // Dépenses personnalisées : aucun droit dédié — c'est la MÊME page, présentée
+  // autrement. Qui pouvait déjà saisir une dépense saisit dans les postes maison.
+  const customExpensesOn = data.customExpensesEnabled === true;
 
   // Modules plateforme : visibles seulement si le super admin les a activés pour l'entreprise.
   const accountingOn = data.accountingModuleEnabled === true;
@@ -476,6 +487,7 @@ export function buildAccessHelpers(
     canExpiry,
     canExpenses,
     canManageExpenses,
+    customExpensesOn,
     canAccounting,
     canManageAccounting,
     canHr,
