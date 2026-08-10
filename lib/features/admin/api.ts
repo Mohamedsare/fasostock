@@ -122,6 +122,49 @@ export async function adminCreateCompanyAccount(params: {
   };
 }
 
+/** Email du compte super admin connecté (affiché dans « Mon compte »). */
+export async function adminGetMyAccountEmail(): Promise<string> {
+  const supabase = createClient();
+  const { data, error } = await supabase.auth.getUser();
+  if (error) throw error;
+  return String(data.user?.email ?? "");
+}
+
+/**
+ * Change l'email et/ou le mot de passe du super admin connecté.
+ * Le mot de passe actuel est exigé et vérifié par la route API.
+ */
+export async function adminUpdateMyAccount(params: {
+  currentPassword: string;
+  newEmail?: string;
+  newPassword?: string;
+}): Promise<{ email: string; emailChanged: boolean; passwordChanged: boolean }> {
+  const res = await fetch("/api/admin/account", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
+    body: JSON.stringify(params),
+  });
+  const raw = await res.text();
+  let parsed: {
+    error?: string;
+    email?: string;
+    emailChanged?: boolean;
+    passwordChanged?: boolean;
+  } = {};
+  try {
+    parsed = JSON.parse(raw) as typeof parsed;
+  } catch {
+    /* ignore */
+  }
+  if (!res.ok) throw new Error(parsed.error || raw || `Erreur API ${res.status}`);
+  return {
+    email: String(parsed.email ?? ""),
+    emailChanged: parsed.emailChanged === true,
+    passwordChanged: parsed.passwordChanged === true,
+  };
+}
+
 export async function adminListStores(companyId?: string | null): Promise<AdminStore[]> {
   const supabase = createClient();
   let q = supabase

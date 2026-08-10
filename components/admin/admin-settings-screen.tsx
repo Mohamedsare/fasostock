@@ -1,5 +1,6 @@
 "use client";
 
+import { AdminAccountCard } from "@/components/admin/admin-account-card";
 import { AdminCard, AdminPageHeader } from "@/components/admin/admin-page-header";
 import { AdminRentalModuleCard } from "@/components/admin/admin-rental-module-card";
 import { adminGetPlatformSettings, adminSetPlatformSettings } from "@/lib/features/admin/api";
@@ -47,8 +48,11 @@ export function AdminSettingsScreen() {
     <div className="space-y-6 p-5 md:p-8">
       <AdminPageHeader
         title="Paramètres"
-        description="Configuration de la plateforme (nom, contact, options)"
+        description="Mon compte et configuration de la plateforme (nom, contact, options)"
       />
+
+      {/* Identifiants du super admin : email de connexion et mot de passe. */}
+      <AdminAccountCard />
 
       <AdminCard>
         <h3 className="text-base font-bold text-slate-900">Informations plateforme</h3>
