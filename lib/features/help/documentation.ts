@@ -210,7 +210,7 @@ export const DOC_GROUPS: DocGroup[] = [
               "Cliquez sur « Nouvel employé ».",
               "Saisissez le nom, l'e-mail (son identifiant) et un mot de passe provisoire.",
               "Choisissez son rôle — c'est lui qui détermine les pages visibles.",
-              "Affectez-le à une boutique si son travail se limite à un point de vente.",
+              "Cochez la ou les boutiques où il travaillera — plusieurs sont possibles.",
               "Transmettez-lui ses identifiants et demandez-lui de changer le mot de passe.",
             ],
           },
@@ -226,6 +226,17 @@ export const DOC_GROUPS: DocGroup[] = [
               ["Magasinier", "Gère le dépôt central, les entrées, les transferts et les inventaires. Ne vend pas."],
               ["Comptable", "Accède à la comptabilité et aux états financiers."],
               ["Lecture seule", "Consulte sans jamais rien modifier."],
+            ],
+          },
+          {
+            kind: "bullets",
+            title: "Affecter un employé à plusieurs boutiques",
+            items: [
+              "Le bouton en forme de boutique, sur la ligne de l'employé, ouvre la liste de vos boutiques : cochez toutes celles où cette personne travaille.",
+              "Un caissier coché sur deux boutiques vend dans les deux depuis son espace, même si elles n'ont pas le même catalogue : chaque boutique garde ses produits, son stock et ses prix.",
+              "Il bascule de l'une à l'autre par le sélecteur de boutique en haut de l'écran. La caisse s'ouvre toujours dans la boutique affichée.",
+              "Les puces sous son nom rappellent où il est affecté. Réaffectez quand vous voulez : le changement s'applique à sa prochaine actualisation, sans le déconnecter.",
+              "Au moins une boutique est exigée. Pour couper l'accès, désactivez le compte — c'est explicite et réversible.",
             ],
           },
           {

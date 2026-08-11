@@ -100,7 +100,13 @@ export function AppShell({ children, userEmail }: AppShellProps) {
 
   const switchStore = (storeId: string) => {
     try { localStorage.setItem("fs_active_store_id", storeId); } catch { /* */ }
-    void queryClient.invalidateQueries({ queryKey: ["app-context"] });
+    /*
+     * Changement de boutique = changement de catalogue, de stock, de prix et de
+     * promotions. La plupart des clés portent déjà le `storeId`, mais pas toutes :
+     * on invalide tout pour qu'aucun écran ne garde à l'affichage les chiffres de
+     * la boutique précédente. Seules les requêtes montées sont réellement rejouées.
+     */
+    void queryClient.invalidateQueries();
     setStoreSwitcherOpen(false);
   };
 
@@ -337,7 +343,8 @@ export function AppShell({ children, userEmail }: AppShellProps) {
                 </div>
               </div>
               <div className="ml-auto flex items-center gap-1.5">
-                {isOwner && stores.length > 1 ? (
+                {/* Ouvert à tous les rôles — cf. le sélecteur mobile plus bas. */}
+                {stores.length > 1 ? (
                   <div className="relative">
                     <button
                       type="button"
@@ -453,7 +460,12 @@ export function AppShell({ children, userEmail }: AppShellProps) {
                   </button>
                 ) : null}
               </div>
-              {isOwner && stores.length > 1 ? (
+              {/*
+                * Ouvert à tous les rôles : un caissier affecté à deux boutiques doit
+                * pouvoir basculer de l'une à l'autre. `stores` ne contient déjà que
+                * ses boutiques (RLS `current_user_store_ids`).
+                */}
+              {stores.length > 1 ? (
                 <>
                   <button
                     type="button"

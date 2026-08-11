@@ -433,6 +433,16 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
 
   const effectiveStoreId = storeFilter || null;
 
+  /**
+   * Boutique dans laquelle la caisse va s'ouvrir. Un employé affecté à plusieurs
+   * boutiques choisit ici : le filtre de la liste et le bouton de vente doivent
+   * désigner la MÊME boutique, sinon on encaisse dans celle qu'on ne regarde pas.
+   */
+  const posStoreId = effectiveStoreId ?? currentStoreId;
+  const posStoreName = posStoreId
+    ? (stores.find((s) => s.id === posStoreId)?.name ?? null)
+    : null;
+
   const salesParams = useMemo(
     () => ({
       companyId,
@@ -704,38 +714,44 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
     <>
       <ActionCard
         title="Caisse rapide"
-        subtitle="Ticket thermique"
+        subtitle={
+          stores.length > 1 && posStoreName ? posStoreName : "Ticket thermique"
+        }
         icon={MdPointOfSale}
         accent
-        enabled={!!(currentStoreId && canCreateSale)}
+        enabled={!!(posStoreId && canCreateSale)}
         href={
-          currentStoreId && canCreateSale
-            ? `${ROUTES.stores}/${currentStoreId}/pos-quick`
+          posStoreId && canCreateSale
+            ? `${ROUTES.stores}/${posStoreId}/pos-quick`
             : null
         }
       />
       {canInvoiceA4 ? (
         <ActionCard
           title="Facture A4"
-          subtitle={isRestaurant ? "Commande détaillée" : "Vente détaillée"}
+          subtitle={
+            stores.length > 1 && posStoreName
+              ? posStoreName
+              : isRestaurant
+                ? "Commande détaillée"
+                : "Vente détaillée"
+          }
           icon={MdDescription}
           accent
-          enabled={!!currentStoreId}
-          href={
-            currentStoreId ? `${ROUTES.stores}/${currentStoreId}/pos` : null
-          }
+          enabled={!!posStoreId}
+          href={posStoreId ? `${ROUTES.stores}/${posStoreId}/pos` : null}
         />
       ) : null}
       {canFactureTab ? (
         <ActionCard
           title="Facture A4 (tableau)"
-          subtitle="Bandeau + tableau"
+          subtitle={
+            stores.length > 1 && posStoreName ? posStoreName : "Bandeau + tableau"
+          }
           icon={MdTableChart}
           accent
-          enabled={!!currentStoreId}
-          href={
-            currentStoreId ? storeFactureTabPath(currentStoreId) : null
-          }
+          enabled={!!posStoreId}
+          href={posStoreId ? storeFactureTabPath(posStoreId) : null}
         />
       ) : null}
       <ActionCard
@@ -796,8 +812,8 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
               <MdDownload className="h-[18px] w-[18px] shrink-0" aria-hidden />
               Exporter Excel
             </button>
-            {canCreateSale && currentStoreId ? (
-              <Link href={`${ROUTES.stores}/${currentStoreId}/pos-quick`} className={btnPrimary}>
+            {canCreateSale && posStoreId ? (
+              <Link href={`${ROUTES.stores}/${posStoreId}/pos-quick`} className={btnPrimary}>
                 <MdAdd className="h-5 w-5 shrink-0" aria-hidden />
                 {isRestaurant ? "Nouvelle commande" : "Nouvelle vente"}
               </Link>
@@ -859,6 +875,14 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
       >
         {actionCards}
       </section>
+
+      {/* Sans boutique désignée, les raccourcis de caisse sont inertes : on dit pourquoi. */}
+      {!posStoreId && stores.length > 0 && canCreateSale ? (
+        <p className="-mt-3 text-sm text-neutral-600">
+          Choisissez une {uiTerms.storeSingular.toLowerCase()} dans les filtres ci-dessous pour
+          ouvrir la caisse : la vente y sera enregistrée.
+        </p>
+      ) : null}
 
       <FsCard padding="p-3 min-[500px]:p-4">
         <div className="flex items-center justify-between gap-2">

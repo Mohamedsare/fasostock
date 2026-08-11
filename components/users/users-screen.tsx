@@ -2,6 +2,7 @@
 
 import { CreateUserDialog } from "@/components/users/create-user-dialog";
 import { ResetPasswordDialog } from "@/components/users/reset-password-dialog";
+import { StoreAssignmentsDialog } from "@/components/users/store-assignments-dialog";
 import {
   FsCard,
   FsFab,
@@ -16,11 +17,13 @@ import {
   createCompanyUser,
   getUserPermissionKeys,
   listAssignableRoles,
+  listCompanyStoreAssignments,
   listCompanyUsers,
   removeCompanyMember,
   resetCompanyUserPassword,
   setCompanyUserActive,
   setUserPermissionOverride,
+  setUserStoreAssignments,
   updateCompanyUserRole,
 } from "@/lib/features/users/api";
 import type { CompanyUser } from "@/lib/features/users/types";
@@ -41,6 +44,7 @@ import {
   MdPerson,
   MdRefresh,
   MdSearch,
+  MdStorefront,
   MdToggleOff,
   MdToggleOn,
 } from "react-icons/md";
@@ -82,7 +86,11 @@ export function UsersScreen() {
   const { data: ctx, isLoading, hasPermission } = usePermissions();
   const companyId = ctx?.companyId ?? "";
   const roleSlug = ctx?.roleSlug ?? null;
-  const stores = ctx?.stores ?? [];
+  /**
+   * Référence stable : `storesUserInitialIds` en dépend, et le dialogue
+   * d'affectation réinitialise sa sélection dès que cette liste change.
+   */
+  const stores = useMemo(() => ctx?.stores ?? [], [ctx?.stores]);
   const roleOverrides = activityRoleLabels(ctx?.businessTypeSlug);
 
   const canManage = hasPermission(P.usersManage) || roleSlug === "owner";
@@ -103,11 +111,24 @@ export function UsersScreen() {
     staleTime: 60_000,
   });
 
+  /**
+   * Affectations boutique de tous les membres. Un employé peut travailler dans
+   * plusieurs boutiques à la fois : on lit la liste complète et on la ventile
+   * par utilisateur pour afficher les puces sans une requête par ligne.
+   */
+  const assignmentsQ = useQuery({
+    queryKey: queryKeys.companyStoreAssignments(companyId),
+    queryFn: () => listCompanyStoreAssignments(companyId),
+    enabled: Boolean(companyId) && canManage && stores.length > 0,
+    staleTime: 20_000,
+  });
+
   const [q, setQ] = useState("");
   const [openCreate, setOpenCreate] = useState(false);
   const [rightsUserId, setRightsUserId] = useState<string | null>(null);
   const [rightsFilter, setRightsFilter] = useState("");
   const [passwordUser, setPasswordUser] = useState<CompanyUser | null>(null);
+  const [storesUser, setStoresUser] = useState<CompanyUser | null>(null);
 
   const meQ = useQuery({
     queryKey: ["me-user-id"] as const,
@@ -180,6 +201,40 @@ export function UsersScreen() {
     });
   }, [permissionKeysSorted, rightsFilter]);
 
+  const storeNameById = useMemo(
+    () => new Map(stores.map((s) => [s.id, s.name])),
+    [stores],
+  );
+
+  /** Boutiques d'un membre, prêtes à afficher. Le propriétaire les a toutes, par nature. */
+  const storeIdsOf = (u: CompanyUser): string[] =>
+    u.roleSlug === "owner"
+      ? stores.map((s) => s.id)
+      : (assignmentsQ.data?.[u.userId] ?? []);
+
+  /** Puces « où travaille cette personne ». Au-delà de 3 boutiques on résume. */
+  const storeBadges = (u: CompanyUser): string[] => {
+    if (stores.length === 0) return [];
+    if (u.roleSlug === "owner") return ["Toutes les boutiques"];
+    if (!assignmentsQ.data) return [];
+    const ids = assignmentsQ.data[u.userId] ?? [];
+    if (ids.length === 0) return ["Aucune boutique"];
+    if (ids.length === stores.length) return ["Toutes les boutiques"];
+    const names = ids.map((id) => storeNameById.get(id) ?? "Boutique retirée");
+    if (names.length <= 3) return names;
+    return [...names.slice(0, 3), `+${names.length - 3}`];
+  };
+
+  /**
+   * Référence stable : le dialogue réinitialise sa sélection quand cette liste
+   * change. Recréer le tableau à chaque rendu décocherait les cases aussitôt.
+   */
+  const storesUserInitialIds = useMemo(
+    () => (storesUser ? storeIdsOf(storesUser) : []),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [storesUser, assignmentsQ.data, stores],
+  );
+
   const invalidateUserRights = () =>
     qc.invalidateQueries({ queryKey: ["user-rights", companyId] });
 
@@ -250,6 +305,18 @@ export function UsersScreen() {
       }),
     onSuccess: () => toast.success("Mot de passe modifié"),
     onError: (e) => toastMutationError("users", e),
+  });
+
+  const storeAssignMut = useMutation({
+    mutationFn: (vars: { userId: string; storeIds: string[] }) =>
+      setUserStoreAssignments({ companyId, userId: vars.userId, storeIds: vars.storeIds }),
+    onSuccess: async () => {
+      await qc.invalidateQueries({
+        queryKey: queryKeys.companyStoreAssignments(companyId),
+      });
+      toast.success("Boutiques mises à jour");
+    },
+    // Le dialogue affiche déjà le motif du refus : pas de toast en double.
   });
 
   const rightsQ = useQuery({
@@ -389,16 +456,27 @@ export function UsersScreen() {
                 <p className="mt-0.5 text-[11px] text-neutral-600">
                   {roleLabelFr(u.roleSlug, u.roleName, roleOverrides)}
                 </p>
-                <span
-                  className={cn(
-                    "mt-2 inline-flex rounded-md px-2 py-0.5 text-[11px] font-semibold",
-                    u.isActive
-                      ? "bg-[color-mix(in_srgb,var(--fs-accent)_16%,transparent)] text-fs-accent"
-                      : "bg-fs-surface-container text-neutral-600",
-                  )}
-                >
-                  {u.isActive ? "Actif" : "Inactif"}
-                </span>
+                <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                  <span
+                    className={cn(
+                      "inline-flex rounded-md px-2 py-0.5 text-[11px] font-semibold",
+                      u.isActive
+                        ? "bg-[color-mix(in_srgb,var(--fs-accent)_16%,transparent)] text-fs-accent"
+                        : "bg-fs-surface-container text-neutral-600",
+                    )}
+                  >
+                    {u.isActive ? "Actif" : "Inactif"}
+                  </span>
+                  {storeBadges(u).map((label, i) => (
+                    <span
+                      key={`${label}-${i}`}
+                      className="inline-flex items-center gap-1 rounded-md bg-fs-surface-container px-2 py-0.5 text-[11px] font-semibold text-neutral-700"
+                    >
+                      <MdStorefront className="h-3 w-3 shrink-0" aria-hidden />
+                      {label}
+                    </span>
+                  ))}
+                </div>
               </div>
             </div>
 
@@ -450,6 +528,18 @@ export function UsersScreen() {
                       <MdToggleOff className="h-6 w-6 text-neutral-500" aria-hidden />
                     )}
                   </button>
+                  {stores.length > 0 && u.roleSlug !== "owner" ? (
+                    <button
+                      type="button"
+                      onClick={() => setStoresUser(u)}
+                      className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-black/8 bg-fs-card text-fs-accent"
+                      aria-label="Affecter aux boutiques"
+                      title="Affecter aux boutiques"
+                      disabled={storeAssignMut.isPending}
+                    >
+                      <MdStorefront className="h-5 w-5" aria-hidden />
+                    </button>
+                  ) : null}
                   {isOwner ? (
                     <button
                       type="button"
@@ -592,6 +682,23 @@ export function UsersScreen() {
         stores={stores}
         roleOverrides={roleOverrides}
         onCreate={(payload) => createMut.mutateAsync(payload)}
+      />
+
+      <StoreAssignmentsDialog
+        open={Boolean(storesUser)}
+        userLabel={
+          storesUser
+            ? (storesUser.fullName?.trim() || "Sans nom") +
+              ` — ${roleLabelFr(storesUser.roleSlug, storesUser.roleName, roleOverrides)}`
+            : ""
+        }
+        stores={stores}
+        initialStoreIds={storesUserInitialIds}
+        onClose={() => setStoresUser(null)}
+        onSubmit={async (storeIds) => {
+          if (!storesUser) return;
+          await storeAssignMut.mutateAsync({ userId: storesUser.userId, storeIds });
+        }}
       />
 
       <ResetPasswordDialog

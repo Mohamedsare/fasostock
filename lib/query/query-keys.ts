@@ -161,6 +161,9 @@ export const queryKeys = {
     days: number;
   }) => ["ai-insights", params] as const,
   companyUsers: (companyId: string) => ["company-users", companyId] as const,
+  /** Affectations employé <-> boutique de l'entreprise (un employé peut en avoir plusieurs). */
+  companyStoreAssignments: (companyId: string) =>
+    ["company-store-assignments", companyId] as const,
   /** Droits effectifs (owner) — préfixe `['user-rights', companyId]` pour invalider toutes les cibles. */
   userRights: (companyId: string, userId: string) =>
     ["user-rights", companyId, userId] as const,

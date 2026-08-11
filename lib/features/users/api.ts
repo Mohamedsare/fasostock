@@ -161,6 +161,57 @@ export async function removeCompanyMember(roleRowId: string): Promise<void> {
   if (error) throw error;
 }
 
+/**
+ * Affectations employé <-> boutique de toute l'entreprise, en une requête.
+ * Un employé peut figurer dans plusieurs boutiques : la clé est le `userId`,
+ * la valeur la liste de ses boutiques.
+ */
+export async function listCompanyStoreAssignments(
+  companyId: string,
+): Promise<Record<string, string[]>> {
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("list_company_store_assignments", {
+    p_company_id: companyId,
+  });
+  if (error) throw error;
+  const byUser: Record<string, string[]> = {};
+  for (const row of (data ?? []) as { user_id: string; store_id: string }[]) {
+    const uid = String(row.user_id);
+    (byUser[uid] ??= []).push(String(row.store_id));
+  }
+  return byUser;
+}
+
+/**
+ * Les refus de `set_user_store_assignments` sont des `RAISE EXCEPTION` (P0001)
+ * déjà rédigés en français pour le propriétaire (« Affectez au moins une
+ * boutique… »). Sans ce marquage, le mapper générique les remplacerait par un
+ * « Une erreur s'est produite » qui ne dit pas quoi corriger.
+ */
+function asBusinessRuleError(error: unknown): unknown {
+  const code = (error as { code?: string } | null)?.code;
+  const message = (error as { message?: string } | null)?.message;
+  if (code === "P0001" && typeof message === "string" && message.trim()) {
+    return new UserFriendlyError(message.trim());
+  }
+  return error;
+}
+
+/** Remplace la liste des boutiques d'un employé (au moins une, sinon la base refuse). */
+export async function setUserStoreAssignments(params: {
+  companyId: string;
+  userId: string;
+  storeIds: string[];
+}): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase.rpc("set_user_store_assignments", {
+    p_company_id: params.companyId,
+    p_user_id: params.userId,
+    p_store_ids: params.storeIds,
+  });
+  if (error) throw asBusinessRuleError(error);
+}
+
 export async function getUserPermissionKeys(params: {
   companyId: string;
   userId: string;
