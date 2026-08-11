@@ -2,18 +2,29 @@
 
 import { enqueueOutbox } from "@/lib/db/dexie-db";
 import { createClient } from "@/lib/supabase/client";
+import { fetchAllPages } from "@/lib/supabase/fetch-all-pages";
 import type { Customer, CustomerFormInput } from "./types";
 
 const FIELDS =
   "id, company_id, name, type, phone, email, address, notes, created_at, updated_at";
 
+/**
+ * Tous les clients de l'entreprise. Paginé : tronquée, cette liste rendait introuvables
+ * en caisse et en crédit les clients situés après la 1000ᵉ ligne alphabétique — avec, à
+ * la clé, des doublons créés parce que le vendeur ne retrouvait pas la fiche existante.
+ */
 export async function listCustomers(companyId: string): Promise<Customer[]> {
   const supabase = createClient();
-  const { data, error } = await supabase
-    .from("customers")
-    .select(FIELDS)
-    .eq("company_id", companyId)
-    .order("name", { ascending: true });
+  const { data, error } = await fetchAllPages((from, to) =>
+    supabase
+      .from("customers")
+      .select(FIELDS)
+      .eq("company_id", companyId)
+      .order("name", { ascending: true })
+      // Les homonymes sont fréquents sur un fichier client : clé unique obligatoire.
+      .order("id", { ascending: true })
+      .range(from, to),
+  );
   if (error) throw error;
   return (data ?? []) as Customer[];
 }

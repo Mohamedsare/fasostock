@@ -1,6 +1,7 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
+import { fetchAllPages } from "@/lib/supabase/fetch-all-pages";
 
 /**
  * Catalogue produits d'une boutique.
@@ -33,10 +34,16 @@ export async function fetchStoreCatalog(
   if (!store || (store as { shares_company_catalog?: boolean }).shares_company_catalog !== false) {
     return null;
   }
-  const { data, error } = await supabase
-    .from("store_products")
-    .select("product_id")
-    .eq("store_id", storeId);
+  // Paginé : cette liste **autorise** la vente. Tronquée, elle interdisait en caisse des
+  // produits pourtant au catalogue de la boutique — une panne invisible côté commerçant.
+  const { data, error } = await fetchAllPages((from, to) =>
+    supabase
+      .from("store_products")
+      .select("product_id")
+      .eq("store_id", storeId)
+      .order("product_id", { ascending: true })
+      .range(from, to),
+  );
   if (error) throw error;
   return (data ?? []).map((r) => String((r as { product_id: unknown }).product_id));
 }
@@ -79,10 +86,16 @@ export function filterTaxonomyByStoreCatalog<TTax extends { id: string }, TProd>
 /** IDs des produits explicitement rattachés à une boutique (gestionnaire de catalogue). */
 export async function listStoreProductIds(storeId: string): Promise<Set<string>> {
   const supabase = createClient();
-  const { data, error } = await supabase
-    .from("store_products")
-    .select("product_id")
-    .eq("store_id", storeId);
+  // Paginé : cette table a autant de lignes que le catalogue. Tronquée, elle excluait
+  // silencieusement du catalogue de la boutique des produits qui y sont bien rattachés.
+  const { data, error } = await fetchAllPages((from, to) =>
+    supabase
+      .from("store_products")
+      .select("product_id")
+      .eq("store_id", storeId)
+      .order("product_id", { ascending: true })
+      .range(from, to),
+  );
   if (error) throw error;
   return new Set((data ?? []).map((r) => String((r as { product_id: unknown }).product_id)));
 }

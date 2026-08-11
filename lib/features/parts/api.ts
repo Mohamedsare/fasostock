@@ -1,6 +1,7 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
+import { fetchAllPages } from "@/lib/supabase/fetch-all-pages";
 import { mapSupabaseError } from "@/lib/supabase/map-error";
 import type {
   CompatiblePart,
@@ -155,10 +156,17 @@ export async function listCompanyPartCompatibilities(
   companyId: string,
 ): Promise<{ productId: string; label: string }[]> {
   const supabase = createClient();
-  const { data, error } = await supabase
-    .from("product_part_models")
-    .select("product_id, model:part_models(name, maker)")
-    .eq("company_id", companyId);
+  // Paginé : plusieurs modèles compatibles par produit — cette table pèse un multiple
+  // du catalogue. Tronquée, les puces « Va sur : … » disparaissaient en caisse.
+  const { data, error } = await fetchAllPages((from, to) =>
+    supabase
+      .from("product_part_models")
+      .select("product_id, model:part_models(name, maker)")
+      .eq("company_id", companyId)
+      .order("product_id", { ascending: true })
+      .order("id", { ascending: true })
+      .range(from, to),
+  );
   if (error) throw mapSupabaseError(error);
 
   return ((data ?? []) as Record<string, unknown>[])

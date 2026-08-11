@@ -1,6 +1,7 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
+import { fetchAllPages } from "@/lib/supabase/fetch-all-pages";
 import { mapSupabaseError } from "@/lib/supabase/map-error";
 import type {
   InventorySession,
@@ -67,13 +68,20 @@ export async function listInventorySessionItems(
   sessionId: string,
 ): Promise<InventorySessionItem[]> {
   const supabase = createClient();
-  const { data, error } = await supabase
-    .from("inventory_session_items")
-    .select(
-      "id, product_id, product_name, expected_qty, counted_qty, variance, unit_purchase_price, unit_sale_price, counted_at",
-    )
-    .eq("session_id", sessionId)
-    .order("product_name", { ascending: true });
+  // Paginé : une session de comptage a UNE LIGNE PAR PRODUIT du catalogue. Tronquée,
+  // elle validait un inventaire amputé — les produits manquants gardaient leur stock
+  // théorique alors que l'écart réel n'avait jamais été compté.
+  const { data, error } = await fetchAllPages((from, to) =>
+    supabase
+      .from("inventory_session_items")
+      .select(
+        "id, product_id, product_name, expected_qty, counted_qty, variance, unit_purchase_price, unit_sale_price, counted_at",
+      )
+      .eq("session_id", sessionId)
+      .order("product_name", { ascending: true })
+      .order("id", { ascending: true })
+      .range(from, to),
+  );
   if (error) throw mapSupabaseError(error);
   return ((data ?? []) as Record<string, unknown>[]).map((r) => ({
     id: String(r.id ?? ""),

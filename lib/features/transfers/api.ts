@@ -1,6 +1,7 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
+import { fetchAllPages } from "@/lib/supabase/fetch-all-pages";
 import { mapSupabaseError } from "@/lib/supabase/map-error";
 import { localDayEndIso, localDayStartIso } from "@/lib/utils/local-day";
 import type {
@@ -69,35 +70,44 @@ export async function listStockTransfers(params: {
   fromWarehouseOnly?: boolean;
 }): Promise<StockTransferListItem[]> {
   const supabase = createClient();
-  let q = supabase
-    .from("stock_transfers")
-    .select(transferListSelect)
-    .eq("company_id", params.companyId)
-    .order("created_at", { ascending: false });
-  if (params.fromWarehouseOnly) {
-    q = q.eq("from_warehouse", true);
-  }
-  if (params.boutiqueToBoutiqueOnly) {
-    q = q.eq("from_warehouse", false).not("from_store_id", "is", null);
-  }
-  if (params.status) q = q.eq("status", params.status);
-  if (params.fromStoreId) q = q.eq("from_store_id", params.fromStoreId);
-  if (params.toStoreId) q = q.eq("to_store_id", params.toStoreId);
-  if (params.fromDate) q = q.gte("created_at", localDayStartIso(params.fromDate));
-  if (params.toDate) q = q.lte("created_at", localDayEndIso(params.toDate));
-  const { data, error } = await q;
+  const { data, error } = await fetchAllPages((from, to) => {
+    let q = supabase
+      .from("stock_transfers")
+      .select(transferListSelect)
+      .eq("company_id", params.companyId)
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: true });
+    if (params.fromWarehouseOnly) {
+      q = q.eq("from_warehouse", true);
+    }
+    if (params.boutiqueToBoutiqueOnly) {
+      q = q.eq("from_warehouse", false).not("from_store_id", "is", null);
+    }
+    if (params.status) q = q.eq("status", params.status);
+    if (params.fromStoreId) q = q.eq("from_store_id", params.fromStoreId);
+    if (params.toStoreId) q = q.eq("to_store_id", params.toStoreId);
+    if (params.fromDate) q = q.gte("created_at", localDayStartIso(params.fromDate));
+    if (params.toDate) q = q.lte("created_at", localDayEndIso(params.toDate));
+    return q.range(from, to);
+  });
   if (error) throw mapSupabaseError(error);
   return (data ?? []).map((r) => mapListRow(r as Record<string, unknown>));
 }
 
 async function fetchTransferItems(transferId: string): Promise<StockTransferItemRow[]> {
   const supabase = createClient();
-  const { data, error } = await supabase
-    .from("stock_transfer_items")
-    .select(
-      "id, transfer_id, product_id, quantity_requested, quantity_shipped, quantity_received, product:products(name)",
-    )
-    .eq("transfer_id", transferId);
+  // Paginé : un réapprovisionnement de boutique depuis le dépôt peut aligner plus de
+  // 1000 lignes. Tronquées, les quantités manquantes disparaissaient du bon de transfert.
+  const { data, error } = await fetchAllPages((from, to) =>
+    supabase
+      .from("stock_transfer_items")
+      .select(
+        "id, transfer_id, product_id, quantity_requested, quantity_shipped, quantity_received, product:products(name)",
+      )
+      .eq("transfer_id", transferId)
+      .order("id", { ascending: true })
+      .range(from, to),
+  );
   if (error) throw mapSupabaseError(error);
   return (data ?? []).map((raw) => {
     const row = raw as Record<string, unknown>;

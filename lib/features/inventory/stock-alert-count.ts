@@ -1,4 +1,5 @@
 import { listProducts, listStoreInventory } from "@/lib/features/products/api";
+import { fetchAllPages } from "@/lib/supabase/fetch-all-pages";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   effectiveStockAlertThreshold,
@@ -34,10 +35,15 @@ async function fetchStockMinOverrides(
   supabase: SupabaseClient,
   storeId: string,
 ): Promise<Map<string, number | null>> {
-  const { data, error } = await supabase
-    .from("product_store_settings")
-    .select("product_id, stock_min_override")
-    .eq("store_id", storeId);
+  // Paginé — voir `inventory/api.ts` : une troncature fausse le compteur d'alertes.
+  const { data, error } = await fetchAllPages((from, to) =>
+    supabase
+      .from("product_store_settings")
+      .select("product_id, stock_min_override")
+      .eq("store_id", storeId)
+      .order("product_id", { ascending: true })
+      .range(from, to),
+  );
   if (error) throw error;
   const m = new Map<string, number | null>();
   for (const row of data ?? []) {

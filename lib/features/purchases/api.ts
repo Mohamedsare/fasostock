@@ -4,6 +4,7 @@ import { enqueueOutbox } from "@/lib/db/dexie-db";
 import { listProducts } from "@/lib/features/products/api";
 import { firstProductImageUrl } from "@/lib/features/products/product-images";
 import { createClient } from "@/lib/supabase/client";
+import { fetchAllPages } from "@/lib/supabase/fetch-all-pages";
 import { localDayEndIso, localDayStartIso } from "@/lib/utils/local-day";
 import type {
   PurchaseDetail,
@@ -43,25 +44,30 @@ export async function listPurchases(params: {
 }): Promise<PurchaseListItem[]> {
   const supabase = createClient();
 
-  let q = supabase
-    .from("purchases")
-    .select(
-      "id, company_id, store_id, supplier_id, reference, status, total, created_at, updated_at, store:stores(name), supplier:suppliers(name)",
-    )
-    .eq("company_id", params.companyId)
-    .order("created_at", { ascending: false });
+  // Paginé : la requête est rebâtie à chaque page pour que les filtres optionnels
+  // s'appliquent identiquement d'une page à l'autre.
+  const { data, error } = await fetchAllPages((from, to) => {
+    let q = supabase
+      .from("purchases")
+      .select(
+        "id, company_id, store_id, supplier_id, reference, status, total, created_at, updated_at, store:stores(name), supplier:suppliers(name)",
+      )
+      .eq("company_id", params.companyId)
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: true });
 
-  if (params.from && params.to) {
-    const fromIso = localDayStartIso(params.from);
-    const toIso = localDayEndIso(params.to);
-    q = q.gte("created_at", fromIso).lte("created_at", toIso);
-  }
+    if (params.from && params.to) {
+      const fromIso = localDayStartIso(params.from);
+      const toIso = localDayEndIso(params.to);
+      q = q.gte("created_at", fromIso).lte("created_at", toIso);
+    }
 
-  if (params.storeId) q = q.eq("store_id", params.storeId);
-  if (params.supplierId) q = q.eq("supplier_id", params.supplierId);
-  if (params.status) q = q.eq("status", params.status);
+    if (params.storeId) q = q.eq("store_id", params.storeId);
+    if (params.supplierId) q = q.eq("supplier_id", params.supplierId);
+    if (params.status) q = q.eq("status", params.status);
 
-  const { data, error } = await q;
+    return q.range(from, to);
+  });
   if (error) throw error;
 
   return (data ?? []).map((row) => {
@@ -116,11 +122,17 @@ export async function getPurchaseDetail(purchaseId: string): Promise<PurchaseDet
     ? String(supplierRaw[0]?.name ?? "")
     : String(supplierRaw?.name ?? "");
 
-  const { data: iRows, error: iErr } = await supabase
-    .from("purchase_items")
-    .select("id, product_id, quantity, unit_price, total, product:products(name)")
-    .eq("purchase_id", purchaseId)
-    .order("created_at", { ascending: true });
+  // Paginé : un arrivage peut compter plus de 1000 lignes ; les lignes perdues
+  // auraient minoré le total de la commande et faussé la réception en stock.
+  const { data: iRows, error: iErr } = await fetchAllPages((from, to) =>
+    supabase
+      .from("purchase_items")
+      .select("id, product_id, quantity, unit_price, total, product:products(name)")
+      .eq("purchase_id", purchaseId)
+      .order("created_at", { ascending: true })
+      .order("id", { ascending: true })
+      .range(from, to),
+  );
   if (iErr) throw iErr;
 
   const items = (iRows ?? []).map((r) => {

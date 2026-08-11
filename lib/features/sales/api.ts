@@ -3,6 +3,8 @@
 import { enqueueOutbox } from "@/lib/db/dexie-db";
 import { notifyCompanyOwnersPush } from "@/lib/features/push/company-owners-push-client";
 import { createClient } from "@/lib/supabase/client";
+import { fetchAllPages } from "@/lib/supabase/fetch-all-pages";
+import { fetchByChunks } from "@/lib/supabase/fetch-by-chunks";
 import { fallbackCreatorLabel, fetchCreatorLabels } from "@/lib/features/users/creator-labels";
 import { localDayEndIso, localDayStartIso } from "@/lib/utils/local-day";
 import type { SaleItem, SaleStatus } from "./types";
@@ -19,19 +21,26 @@ export async function listSales(params: {
   to: string;
 }): Promise<SaleItem[]> {
   const supabase = createClient();
-  let q = supabase
-    .from("sales")
-    // `sale_payments` : nécessaire à la colonne Acompte / au statut de règlement de la liste.
-    .select(`${saleSelect},sale_payments(id, method, amount, reference, created_at)`)
-    .eq("company_id", params.companyId)
-    // Les ventes d'engins ont leur propre page (module Vente Engins).
-    .eq("sale_kind", "standard")
-    .order("created_at", { ascending: false });
-  if (params.storeId) q = q.eq("store_id", params.storeId);
-  if (params.status) q = q.eq("status", params.status);
-  if (params.from) q = q.gte("created_at", localDayStartIso(params.from));
-  if (params.to) q = q.lte("created_at", localDayEndIso(params.to));
-  const { data, error } = await q;
+  // Paginé : la synthèse de période (« montants = facturé ») est calculée sur ces lignes.
+  // Tronquée à 1000, elle sous-évaluait le chiffre d'affaires d'une boutique active sans
+  // rien afficher d'anormal — l'écran restait crédible, les chiffres étaient faux.
+  const { data, error } = await fetchAllPages((from, to) => {
+    let q = supabase
+      .from("sales")
+      // `sale_payments` : nécessaire à la colonne Acompte / au statut de règlement de la liste.
+      .select(`${saleSelect},sale_payments(id, method, amount, reference, created_at)`)
+      .eq("company_id", params.companyId)
+      // Les ventes d'engins ont leur propre page (module Vente Engins).
+      .eq("sale_kind", "standard")
+      .order("created_at", { ascending: false })
+      // Deux ventes peuvent partager la même milliseconde (import, caisse rapide).
+      .order("id", { ascending: true });
+    if (params.storeId) q = q.eq("store_id", params.storeId);
+    if (params.status) q = q.eq("status", params.status);
+    if (params.from) q = q.gte("created_at", localDayStartIso(params.from));
+    if (params.to) q = q.lte("created_at", localDayEndIso(params.to));
+    return q.range(from, to);
+  });
   if (error) throw error;
   const rows = ((data ?? []) as Array<Record<string, unknown>>).map((row) => {
     const storeRaw = row.store;
@@ -66,9 +75,6 @@ export async function listSales(params: {
   }));
 }
 
-/** Taille de lot `in(...)` : au-delà, l'URL PostgREST devient trop longue. */
-const COST_CHUNK = 120;
-
 /**
  * Coût d'achat agrégé des ventes demandées — alimente la colonne « Bénéfice » de
  * l'historique. Volontairement appelé sur les seules ventes **affichées** (une page)
@@ -89,35 +95,41 @@ export async function fetchSalesCost(
   if (ids.length === 0) return out;
 
   const supabase = createClient();
-  for (let i = 0; i < ids.length; i += COST_CHUNK) {
-    const chunk = ids.slice(i, i + COST_CHUNK);
+  // `fetchByChunks` traite les deux plafonds : URL d'entrée (lots de 120 ventes) et
+  // lignes en sortie (un lot de 120 ventes dépasse 1000 `sale_items` dès ~9 articles
+  // par ticket — les lignes perdues gonflaient le bénéfice affiché).
+  const rows = await fetchByChunks(ids, async (chunk, from, to) => {
     const { data, error } = await supabase
       .from("sale_items")
       .select("sale_id, quantity, total, product:products(purchase_price)")
-      .in("sale_id", chunk);
+      .in("sale_id", chunk)
+      .order("id", { ascending: true })
+      .range(from, to);
     if (error) throw error;
-    for (const raw of (data ?? []) as Array<Record<string, unknown>>) {
-      const saleId = String(raw.sale_id ?? "");
-      if (!saleId) continue;
-      const productRaw = raw.product;
-      const product = (
-        Array.isArray(productRaw) ? productRaw[0] : productRaw
-      ) as { purchase_price?: number | null } | null | undefined;
-      const purchasePrice = Number(product?.purchase_price ?? 0);
-      const quantity = Number(raw.quantity ?? 0);
-      const cur = out[saleId] ?? {
-        itemsTotal: 0,
-        cost: 0,
-        lineCount: 0,
-        linesWithoutCost: 0,
-      };
-      cur.itemsTotal += Number(raw.total ?? 0);
-      cur.cost += purchasePrice * quantity;
-      cur.lineCount += 1;
-      // Prix d'achat à 0 = non renseigné : compté à part pour signaler la surestimation.
-      if (!(purchasePrice > 0)) cur.linesWithoutCost += 1;
-      out[saleId] = cur;
-    }
+    return (data ?? []) as Array<Record<string, unknown>>;
+  });
+
+  for (const raw of rows) {
+    const saleId = String(raw.sale_id ?? "");
+    if (!saleId) continue;
+    const productRaw = raw.product;
+    const product = (
+      Array.isArray(productRaw) ? productRaw[0] : productRaw
+    ) as { purchase_price?: number | null } | null | undefined;
+    const purchasePrice = Number(product?.purchase_price ?? 0);
+    const quantity = Number(raw.quantity ?? 0);
+    const cur = out[saleId] ?? {
+      itemsTotal: 0,
+      cost: 0,
+      lineCount: 0,
+      linesWithoutCost: 0,
+    };
+    cur.itemsTotal += Number(raw.total ?? 0);
+    cur.cost += purchasePrice * quantity;
+    cur.lineCount += 1;
+    // Prix d'achat à 0 = non renseigné : compté à part pour signaler la surestimation.
+    if (!(purchasePrice > 0)) cur.linesWithoutCost += 1;
+    out[saleId] = cur;
   }
   return out;
 }

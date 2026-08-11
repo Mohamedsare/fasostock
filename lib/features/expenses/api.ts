@@ -1,6 +1,7 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
+import { fetchAllPages } from "@/lib/supabase/fetch-all-pages";
 import { mapSupabaseError } from "@/lib/supabase/map-error";
 import { fetchCreatorLabels } from "@/lib/features/users/creator-labels";
 import type { CustomExpenseCategory, Expense, ExpenseFormInput } from "./types";
@@ -40,14 +41,20 @@ export async function listExpenses(
   toDate: string,
 ): Promise<Expense[]> {
   const supabase = createClient();
-  const { data, error } = await supabase
-    .from("expenses")
-    .select(FIELDS)
-    .eq("company_id", companyId)
-    .gte("expense_date", fromDate)
-    .lte("expense_date", toDate)
-    .order("expense_date", { ascending: false })
-    .order("created_at", { ascending: false });
+  // Paginé : tronquée, la liste amputait le total des charges de la période — un
+  // bénéfice surévalué, sans le moindre signal à l'écran.
+  const { data, error } = await fetchAllPages((from, to) =>
+    supabase
+      .from("expenses")
+      .select(FIELDS)
+      .eq("company_id", companyId)
+      .gte("expense_date", fromDate)
+      .lte("expense_date", toDate)
+      .order("expense_date", { ascending: false })
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: true })
+      .range(from, to),
+  );
   if (error) throw mapSupabaseError(error);
 
   // « Qui a enregistré quoi » : une seule requête `profiles` pour toute la liste.

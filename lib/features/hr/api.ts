@@ -1,6 +1,7 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
+import { fetchAllPages } from "@/lib/supabase/fetch-all-pages";
 import { mapSupabaseError } from "@/lib/supabase/map-error";
 import { computePayslip, type PayrollRubrique } from "@/lib/features/hr/payroll/compute";
 import type {
@@ -25,11 +26,15 @@ const empName = (r: Record<string, unknown>) =>
 // ---------------------------------------------------------------- Employés ---
 export async function listEmployees(companyId: string): Promise<HrEmployee[]> {
   const supabase = createClient();
-  const { data, error } = await supabase
-    .from("hr_employees")
-    .select("*")
-    .eq("company_id", companyId)
-    .order("last_name", { ascending: true });
+  const { data, error } = await fetchAllPages((from, to) =>
+    supabase
+      .from("hr_employees")
+      .select("*")
+      .eq("company_id", companyId)
+      .order("last_name", { ascending: true })
+      .order("id", { ascending: true })
+      .range(from, to),
+  );
   if (error) throw mapSupabaseError(error);
   return (data ?? []).map((row) => {
     const r = row as Record<string, unknown>;
@@ -103,11 +108,15 @@ export async function setEmployeeActive(id: string, active: boolean): Promise<vo
 // ------------------------------------------------------------------ Congés ---
 export async function listLeaves(companyId: string): Promise<HrLeave[]> {
   const supabase = createClient();
-  const { data, error } = await supabase
-    .from("hr_leaves")
-    .select("id, employee_id, leave_type, start_date, end_date, days, status, reason, employee:hr_employees(first_name, last_name)")
-    .eq("company_id", companyId)
-    .order("start_date", { ascending: false });
+  const { data, error } = await fetchAllPages((from, to) =>
+    supabase
+      .from("hr_leaves")
+      .select("id, employee_id, leave_type, start_date, end_date, days, status, reason, employee:hr_employees(first_name, last_name)")
+      .eq("company_id", companyId)
+      .order("start_date", { ascending: false })
+      .order("id", { ascending: true })
+      .range(from, to),
+  );
   if (error) throw mapSupabaseError(error);
   return ((data ?? []) as unknown as Record<string, unknown>[]).map((r) => {
     const e = Array.isArray(r.employee) ? (r.employee[0] as Record<string, unknown>) : (r.employee as Record<string, unknown> | null);
@@ -218,13 +227,17 @@ export async function listPayslips(params: {
   month: number;
 }): Promise<Payslip[]> {
   const supabase = createClient();
-  const { data, error } = await supabase
-    .from("hr_payslips")
-    .select("id, employee_id, period_year, period_month, base_salary, gross, taxable_base, cnss_employee, cnss_employer, iuts, other_deductions, net_pay, status, employee:hr_employees(first_name, last_name)")
-    .eq("company_id", params.companyId)
-    .eq("period_year", params.year)
-    .eq("period_month", params.month)
-    .order("created_at", { ascending: true });
+  const { data, error } = await fetchAllPages((from, to) =>
+    supabase
+      .from("hr_payslips")
+      .select("id, employee_id, period_year, period_month, base_salary, gross, taxable_base, cnss_employee, cnss_employer, iuts, other_deductions, net_pay, status, employee:hr_employees(first_name, last_name)")
+      .eq("company_id", params.companyId)
+      .eq("period_year", params.year)
+      .eq("period_month", params.month)
+      .order("created_at", { ascending: true })
+      .order("id", { ascending: true })
+      .range(from, to),
+  );
   if (error) throw mapSupabaseError(error);
   return ((data ?? []) as unknown as Record<string, unknown>[]).map((r) => {
     const e = Array.isArray(r.employee) ? (r.employee[0] as Record<string, unknown>) : (r.employee as Record<string, unknown> | null);

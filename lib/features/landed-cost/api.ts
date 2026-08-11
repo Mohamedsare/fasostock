@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/client";
 import { mapSupabaseError } from "@/lib/supabase/map-error";
+import { fetchAllPages } from "@/lib/supabase/fetch-all-pages";
 import type {
   AllocationMethod,
   BatchTotals,
@@ -84,13 +85,19 @@ export async function listCostBatches(params: {
 
 export async function fetchBatchItems(batchId: string): Promise<CostBatchItem[]> {
   const supabase = createClient();
-  const { data, error } = await supabase
-    .from("cost_batch_items")
-    .select(
-      "id, product_id, quantity, unit_price, weight_kg, volume_m3, manual_share, margin_mode, margin_value, apply_sale_price, sort_order, prev_purchase_price, prev_sale_price, applied_purchase_price, applied_sale_price, product:products(name)",
-    )
-    .eq("batch_id", batchId)
-    .order("sort_order", { ascending: true });
+  // Paginé : un arrivage conteneur aligne facilement plus de 1000 références, et les
+  // lignes manquantes fausseraient la répartition des frais d'approche sur tout le lot.
+  const { data, error } = await fetchAllPages((from, to) =>
+    supabase
+      .from("cost_batch_items")
+      .select(
+        "id, product_id, quantity, unit_price, weight_kg, volume_m3, manual_share, margin_mode, margin_value, apply_sale_price, sort_order, prev_purchase_price, prev_sale_price, applied_purchase_price, applied_sale_price, product:products(name)",
+      )
+      .eq("batch_id", batchId)
+      .order("sort_order", { ascending: true })
+      .order("id", { ascending: true })
+      .range(from, to),
+  );
   if (error) throw mapSupabaseError(error);
   return ((data ?? []) as Record<string, unknown>[]).map((r) => {
     const raw = r.product as { name?: string } | { name?: string }[] | null;

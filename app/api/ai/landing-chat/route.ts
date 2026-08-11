@@ -1,9 +1,36 @@
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
 
+import { consumePublicRateLimit } from "@/lib/server/public-rate-limit";
+
 export const runtime = "nodejs";
+/**
+ * Plafond explicite : sans lui, la durée maximale dépend du réglage de l'hébergeur, qui
+ * peut être bien plus généreux que ce que cette route mérite. 40 s couvre le délai LLM
+ * (30 s) et la réponse, sans laisser un slot de concurrence occupé plus longtemps.
+ */
+export const maxDuration = 40;
 
 type Msg = { role: "user" | "assistant"; content: string };
+
+/**
+ * Plafonds de taille — la route est publique et le corps de requête n'est borné par rien
+ * côté Next. Sans eux, une seule requête pouvait pousser plusieurs mégaoctets de texte
+ * vers le fournisseur LLM : facturé à l'entrée, et surtout un slot de concurrence retenu
+ * le temps de tout transférer et tokeniser.
+ *
+ * 2000 caractères pour une question, 1000 par tour d'historique : très large pour un chat
+ * de site vitrine où les réponses font 2 à 4 phrases.
+ */
+const MAX_MESSAGE_CHARS = 2000;
+const MAX_HISTORY_MESSAGE_CHARS = 1000;
+const MAX_HISTORY_MESSAGES = 8;
+/** Au-delà, le corps est rejeté sans même être analysé (garde grossière, avant parsing). */
+const MAX_BODY_BYTES = 64 * 1024;
+
+/** Quota par adresse IP : 15 questions par tranche de 5 minutes. */
+const RATE_LIMIT_MAX = 15;
+const RATE_LIMIT_WINDOW_SECONDS = 300;
 
 function asString(v: unknown): string {
   return typeof v === "string" ? v : "";
@@ -12,15 +39,17 @@ function asString(v: unknown): string {
 function toSafeHistory(v: unknown): Msg[] {
   if (!Array.isArray(v)) return [];
   return v
+    // On coupe AVANT de traiter : inutile de parcourir un tableau de 100 000 entrées
+    // pour n'en garder que les 8 dernières.
+    .slice(-MAX_HISTORY_MESSAGES)
     .map((e) => {
       const o = e as Record<string, unknown>;
       const role = o.role === "assistant" ? "assistant" : o.role === "user" ? "user" : null;
-      const content = asString(o.content).trim();
+      const content = asString(o.content).trim().slice(0, MAX_HISTORY_MESSAGE_CHARS);
       if (!role || !content) return null;
       return { role, content } as Msg;
     })
-    .filter((e): e is Msg => e != null)
-    .slice(-8);
+    .filter((e): e is Msg => e != null);
 }
 
 const SYSTEM_PROMPT = `Tu es l'Assistant FasoStock, l'assistant commercial et guide de FasoStock — un logiciel de gestion de stock et de point de vente (POS) conçu pour les commerçants et entreprises du Burkina Faso et de l'Afrique de l'Ouest.
@@ -68,14 +97,47 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Agent non disponible pour le moment." }, { status: 503 });
   }
 
+  // Refus immédiat des corps manifestement hors norme, avant tout travail — y compris
+  // avant de consommer un jeton de quota.
+  const declaredLength = Number(req.headers.get("content-length") ?? "0");
+  if (Number.isFinite(declaredLength) && declaredLength > MAX_BODY_BYTES) {
+    return NextResponse.json({ error: "Message trop long." }, { status: 413 });
+  }
+
+  // Limite de débit AVANT l'appel au LLM : c'est l'appel coûteux qu'il s'agit de
+  // protéger, pas seulement la base.
+  const limit = await consumePublicRateLimit({
+    req,
+    scope: "landing-chat",
+    max: RATE_LIMIT_MAX,
+    windowSeconds: RATE_LIMIT_WINDOW_SECONDS,
+  });
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { error: "Vous avez envoyé beaucoup de messages. Réessayez dans quelques minutes." },
+      { status: 429, headers: { "Retry-After": String(limit.retryAfterSeconds) } },
+    );
+  }
+
+  let raw: string;
+  try {
+    raw = await req.text();
+  } catch {
+    return NextResponse.json({ error: "Corps de requête illisible" }, { status: 400 });
+  }
+  // `content-length` est déclaratif : on revérifie sur la taille réellement reçue.
+  if (raw.length > MAX_BODY_BYTES) {
+    return NextResponse.json({ error: "Message trop long." }, { status: 413 });
+  }
+
   let body: { message?: string; history?: unknown };
   try {
-    body = (await req.json()) as { message?: string; history?: unknown };
+    body = JSON.parse(raw) as { message?: string; history?: unknown };
   } catch {
     return NextResponse.json({ error: "Corps JSON invalide" }, { status: 400 });
   }
 
-  const message = asString(body.message).trim();
+  const message = asString(body.message).trim().slice(0, MAX_MESSAGE_CHARS);
   if (!message) {
     return NextResponse.json({ error: "message requis" }, { status: 400 });
   }

@@ -1,6 +1,8 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
+import { fetchAllPages } from "@/lib/supabase/fetch-all-pages";
+import { fetchByChunks } from "@/lib/supabase/fetch-by-chunks";
 import {
   getPreviousComparableRange,
   resolveDashboardRange,
@@ -39,6 +41,15 @@ function emptySummary(): SalesSummary {
   return { totalAmount: 0, count: 0, itemsSold: 0, margin: 0 };
 }
 
+/**
+ * Identifiants des ventes complétées de la plage — socle de tous les agrégats du
+ * tableau de bord et des rapports.
+ *
+ * Paginé : sans cela, PostgREST s'arrêtait à 1000 ventes **sans le dire**. Toutes les
+ * mesures bâties dessus (CA, marge, panier moyen, top produits) étaient alors amputées
+ * de la même manière — un écran parfaitement crédible avec des chiffres faux, ce qui est
+ * plus grave qu'une page en erreur.
+ */
 async function fetchSalesIdsInRange(
   supabase: ReturnType<typeof createClient>,
   companyId: string,
@@ -47,16 +58,19 @@ async function fetchSalesIdsInRange(
   toDate: string,
   createdBy?: string | null,
 ): Promise<string[]> {
-  let q = supabase
-    .from("sales")
-    .select("id")
-    .eq("company_id", companyId)
-    .eq("status", "completed")
-    .gte("created_at", localDayStartIso(fromDate))
-    .lte("created_at", localDayEndIso(toDate));
-  if (storeId) q = q.eq("store_id", storeId);
-  if (createdBy) q = q.eq("created_by", createdBy);
-  const { data, error } = await q;
+  const { data, error } = await fetchAllPages((from, to) => {
+    let q = supabase
+      .from("sales")
+      .select("id")
+      .eq("company_id", companyId)
+      .eq("status", "completed")
+      .gte("created_at", localDayStartIso(fromDate))
+      .lte("created_at", localDayEndIso(toDate))
+      .order("id", { ascending: true });
+    if (storeId) q = q.eq("store_id", storeId);
+    if (createdBy) q = q.eq("created_by", createdBy);
+    return q.range(from, to);
+  });
   if (error) throw error;
   return (data ?? []).map((r) => r.id as string);
 }
@@ -67,32 +81,43 @@ async function computeSalesSummaryFromIds(
   ratioById: Map<string, number>,
 ): Promise<SalesSummary> {
   if (saleIds.length === 0) return emptySummary();
-  const { data: sales, error: sErr } = await supabase
-    .from("sales")
-    .select("id, total")
-    .in("id", saleIds);
-  if (sErr) throw sErr;
+
+  // `fetchByChunks` et non `.in(…, saleIds)` : la liste complète faisait exploser la
+  // longueur de l'URL (~29 ko à 800 ventes) et le tableau de bord tombait en erreur
+  // chez les entreprises qui marchent bien. Voir `lib/supabase/fetch-by-chunks.ts`.
+  const sales = await fetchByChunks(saleIds, async (chunk, from, to) => {
+    const { data, error } = await supabase
+      .from("sales")
+      .select("id, total")
+      .in("id", chunk)
+      .order("id", { ascending: true })
+      .range(from, to);
+    if (error) throw error;
+    return (data ?? []) as Array<{ id?: string; total?: number }>;
+  });
   let totalAmount = 0;
-  for (const s of sales ?? []) {
-    const row = s as { id?: string; total?: number };
+  for (const row of sales) {
     totalAmount += Number(row.total ?? 0) * ratioFor(ratioById, row.id);
   }
-  const { data: items, error: iErr } = await supabase
-    .from("sale_items")
-    .select(
-      "sale_id, quantity, total, product:products(id, purchase_price)",
-    )
-    .in("sale_id", saleIds);
-  if (iErr) throw iErr;
-  let itemsSold = 0;
-  let margin = 0;
-  for (const row of items ?? []) {
-    const m = row as {
+
+  const items = await fetchByChunks(saleIds, async (chunk, from, to) => {
+    const { data, error } = await supabase
+      .from("sale_items")
+      .select("sale_id, quantity, total, product:products(id, purchase_price)")
+      .in("sale_id", chunk)
+      .order("id", { ascending: true })
+      .range(from, to);
+    if (error) throw error;
+    return (data ?? []) as Array<{
       sale_id?: string;
       quantity?: number;
       total?: number;
       product?: { purchase_price?: number } | null;
-    };
+    }>;
+  });
+  let itemsSold = 0;
+  let margin = 0;
+  for (const m of items) {
     const qty = Number(m.quantity ?? 0);
     const lineTotal = Number(m.total ?? 0);
     const purchasePrice = Number(m.product?.purchase_price ?? 0);
@@ -152,25 +177,29 @@ async function aggregateProductsFromSales(
   ratioById: Map<string, number>,
 ): Promise<TopProduct[]> {
   if (saleIds.length === 0) return [];
-  const { data: items, error } = await supabase
-    .from("sale_items")
-    .select(
-      "sale_id, product_id, quantity, total, product:products(id, name, purchase_price)",
-    )
-    .in("sale_id", saleIds);
-  if (error) throw error;
-  const agg = new Map<
-    string,
-    { name: string; qty: number; revenue: number; cost: number }
-  >();
-  for (const row of items ?? []) {
-    const m = row as {
+  const items = await fetchByChunks(saleIds, async (chunk, from, to) => {
+    const { data, error } = await supabase
+      .from("sale_items")
+      .select(
+        "sale_id, product_id, quantity, total, product:products(id, name, purchase_price)",
+      )
+      .in("sale_id", chunk)
+      .order("id", { ascending: true })
+      .range(from, to);
+    if (error) throw error;
+    return (data ?? []) as Array<{
       sale_id?: string;
       product_id?: string;
       quantity?: number;
       total?: number;
       product?: { id?: string; name?: string; purchase_price?: number } | null;
-    };
+    }>;
+  });
+  const agg = new Map<
+    string,
+    { name: string; qty: number; revenue: number; cost: number }
+  >();
+  for (const m of items) {
     const pid = m.product_id;
     if (!pid) continue;
     const name = m.product?.name ?? "—";
@@ -201,16 +230,17 @@ async function getSalesByCategory(
   ratioById: Map<string, number>,
 ): Promise<CategorySales[]> {
   if (saleIds.length === 0) return [];
-  const { data: items, error } = await supabase
-    .from("sale_items")
-    .select(
-      "sale_id, quantity, total, product:products(id, name, category_id, category:categories(id, name))",
-    )
-    .in("sale_id", saleIds);
-  if (error) throw error;
-  const agg = new Map<string, { name: string; revenue: number; qty: number }>();
-  for (const row of items ?? []) {
-    const m = row as {
+  const items = await fetchByChunks(saleIds, async (chunk, from, to) => {
+    const { data, error } = await supabase
+      .from("sale_items")
+      .select(
+        "sale_id, quantity, total, product:products(id, name, category_id, category:categories(id, name))",
+      )
+      .in("sale_id", chunk)
+      .order("id", { ascending: true })
+      .range(from, to);
+    if (error) throw error;
+    return (data ?? []) as Array<{
       sale_id?: string;
       quantity?: number;
       total?: number;
@@ -218,7 +248,10 @@ async function getSalesByCategory(
         category_id?: string | null;
         category?: { id?: string; name?: string } | null;
       } | null;
-    };
+    }>;
+  });
+  const agg = new Map<string, { name: string; revenue: number; qty: number }>();
+  for (const m of items) {
     const p = m.product;
     const cid = p?.category?.id ?? p?.category_id ?? null;
     const name =
@@ -247,15 +280,18 @@ async function getPurchasesSummary(
   fromDate: string,
   toDate: string,
 ): Promise<PurchasesSummary> {
-  let q = supabase
-    .from("purchases")
-    .select("id, total")
-    .eq("company_id", companyId)
-    .in("status", ["confirmed", "received", "partially_received"])
-    .gte("created_at", localDayStartIso(fromDate))
-    .lte("created_at", localDayEndIso(toDate));
-  if (storeId) q = q.eq("store_id", storeId);
-  const { data, error } = await q;
+  const { data, error } = await fetchAllPages((from, to) => {
+    let q = supabase
+      .from("purchases")
+      .select("id, total")
+      .eq("company_id", companyId)
+      .in("status", ["confirmed", "received", "partially_received"])
+      .gte("created_at", localDayStartIso(fromDate))
+      .lte("created_at", localDayEndIso(toDate))
+      .order("id", { ascending: true });
+    if (storeId) q = q.eq("store_id", storeId);
+    return q.range(from, to);
+  });
   if (error) throw error;
   let totalAmount = 0;
   for (const p of data ?? []) {
@@ -276,14 +312,17 @@ async function getExpensesSummary(
   fromDate: string,
   toDate: string,
 ): Promise<ExpensesSummary> {
-  let q = supabase
-    .from("expenses")
-    .select("id, amount")
-    .eq("company_id", companyId)
-    .gte("expense_date", fromDate)
-    .lte("expense_date", toDate);
-  if (storeId) q = q.eq("store_id", storeId);
-  const { data, error } = await q;
+  const { data, error } = await fetchAllPages((from, to) => {
+    let q = supabase
+      .from("expenses")
+      .select("id, amount")
+      .eq("company_id", companyId)
+      .gte("expense_date", fromDate)
+      .lte("expense_date", toDate)
+      .order("id", { ascending: true });
+    if (storeId) q = q.eq("store_id", storeId);
+    return q.range(from, to);
+  });
   if (error) throw error;
   let totalAmount = 0;
   for (const e of data ?? []) {
@@ -298,10 +337,16 @@ async function getStockValue(
   storeId: string | null,
 ): Promise<StockValue> {
   if (storeId) {
-    const { data: inv, error } = await supabase
-      .from("store_inventory")
-      .select("product_id, quantity, product:products(id, sale_price)")
-      .eq("store_id", storeId);
+    // Paginé : la valeur du stock se calcule sur TOUTES les lignes d'inventaire.
+    // Tronquée, elle sous-évaluait le patrimoine affiché au propriétaire.
+    const { data: inv, error } = await fetchAllPages((from, to) =>
+      supabase
+        .from("store_inventory")
+        .select("product_id, quantity, product:products(id, sale_price)")
+        .eq("store_id", storeId)
+        .order("product_id", { ascending: true })
+        .range(from, to),
+    );
     if (error) throw error;
     let totalValue = 0;
     for (const row of inv ?? []) {
@@ -323,11 +368,20 @@ async function getStockValue(
   if (e1) throw e1;
   const storeIds = (stores ?? []).map((s) => s.id as string);
   if (storeIds.length === 0) return { totalValue: 0, productCount: 0 };
-  const { data: inv, error } = await supabase
-    .from("store_inventory")
-    .select("store_id, product_id, quantity, product:products(id, sale_price)")
-    .in("store_id", storeIds);
-  if (error) throw error;
+  // Vue entreprise : autant de lignes que (boutiques × catalogue). C'est la lecture la
+  // plus volumineuse du tableau de bord — elle dépassait 1000 lignes dès deux boutiques
+  // au catalogue fourni. Chunké par boutique ET paginé.
+  const inv = await fetchByChunks(storeIds, async (chunk, from, to) => {
+    const { data, error } = await supabase
+      .from("store_inventory")
+      .select("store_id, product_id, quantity, product:products(id, sale_price)")
+      .in("store_id", chunk)
+      .order("store_id", { ascending: true })
+      .order("product_id", { ascending: true })
+      .range(from, to);
+    if (error) throw error;
+    return (data ?? []) as Array<Record<string, unknown>>;
+  });
   const seen = new Set<string>();
   let totalValue = 0;
   for (const row of inv ?? []) {
@@ -364,65 +418,6 @@ async function fetchDashboardLowStock(
       storeName: l.storeName,
     })),
   };
-}
-
-/**
- * Taille de lot `in(...)` : le filtre voyage dans l'URL, et PostgREST refuse au-delà de
- * quelques kilo-octets. À 800 identifiants l'URL dépassait 29 ko — le tableau de bord
- * tombait donc en erreur dès qu'une entreprise passait 800 ventes sur la période, c'est
- * à dire précisément chez les clients qui marchent bien. 120 (valeur déjà retenue dans
- * `sales/api.ts` et `pos/api.ts`) tient dans ~4,5 ko, avec de la marge.
- */
-const CHUNK = 120;
-
-/**
- * Lots exécutés de front. Le découpage plus fin multiplie les allers-retours : les
- * paralléliser garde le tableau de bord aussi rapide qu'avant, sans inonder la base.
- */
-const CHUNK_CONCURRENCY = 4;
-
-/**
- * Plafond de lignes que PostgREST renvoie par réponse (mesuré sur ce projet : 1000).
- * Au-delà, la réponse est **tronquée en silence** — sans erreur, sans indice dans les
- * données. Un lot de ventes peut largement dépasser ce seuil côté `sale_items` : sans
- * pagination, le coût d'achat manquant gonflait la marge affichée. On lit donc chaque
- * lot page par page jusqu'à en voir la fin.
- */
-const MAX_ROWS_PER_RESPONSE = 1000;
-
-/**
- * Exécute `run` sur chaque lot d'identifiants et concatène les lignes obtenues.
- * Une erreur sur un lot fait échouer l'ensemble — un tableau de bord partiel afficherait
- * des chiffres faux, ce qui est pire qu'un écran en erreur.
- *
- * `run` reçoit une fenêtre `[from, to]` à passer à `.range()`, et doit trier sur une clé
- * stable (`.order("id")`) : sans tri déterministe, deux pages successives peuvent répéter
- * ou omettre des lignes.
- */
-async function fetchByChunks<T>(
-  ids: readonly string[],
-  run: (chunk: string[], from: number, to: number) => Promise<T[]>,
-): Promise<T[]> {
-  const chunks: string[][] = [];
-  for (let i = 0; i < ids.length; i += CHUNK) chunks.push(ids.slice(i, i + CHUNK));
-
-  const readChunkFully = async (chunk: string[]): Promise<T[]> => {
-    const rows: T[] = [];
-    for (let from = 0; ; from += MAX_ROWS_PER_RESPONSE) {
-      const page = await run(chunk, from, from + MAX_ROWS_PER_RESPONSE - 1);
-      rows.push(...page);
-      // Page incomplète = dernière page. Évite un aller-retour de plus dans le cas courant.
-      if (page.length < MAX_ROWS_PER_RESPONSE) return rows;
-    }
-  };
-
-  const out: T[] = [];
-  for (let i = 0; i < chunks.length; i += CHUNK_CONCURRENCY) {
-    const batch = chunks.slice(i, i + CHUNK_CONCURRENCY);
-    const settled = await Promise.all(batch.map(readChunkFully));
-    for (const rows of settled) out.push(...rows);
-  }
-  return out;
 }
 
 /**
@@ -516,12 +511,19 @@ async function fetchCashRecognizedInRange(
   const byDay = new Map<string, { revenue: number; margin: number }>();
 
   // 1) Paiements réels encaissés sur la période (RLS = entreprise courante).
-  const { data: payRows, error: pErr } = await supabase
-    .from("sale_payments")
-    .select("sale_id, amount, method, created_at")
-    .neq("method", "other")
-    .gte("created_at", localDayStartIso(fromDate))
-    .lte("created_at", localDayEndIso(toDate));
+  // Paginé : c'est la recette caisse du tableau de bord. Une boutique encaisse plus de
+  // 1000 paiements par mois sans rien avoir d'inhabituel — tronquée, la recette affichée
+  // était tout simplement inférieure à la réalité.
+  const { data: payRows, error: pErr } = await fetchAllPages((from, to) =>
+    supabase
+      .from("sale_payments")
+      .select("sale_id, amount, method, created_at")
+      .neq("method", "other")
+      .gte("created_at", localDayStartIso(fromDate))
+      .lte("created_at", localDayEndIso(toDate))
+      .order("id", { ascending: true })
+      .range(from, to),
+  );
   if (pErr) throw pErr;
   const payments = ((payRows ?? []) as Array<{
     sale_id?: string;
@@ -670,10 +672,15 @@ async function fetchStockMinOverridesMap(
   supabase: ReturnType<typeof createClient>,
   storeId: string,
 ): Promise<Map<string, number | null>> {
-  const { data, error } = await supabase
-    .from("product_store_settings")
-    .select("product_id, stock_min_override")
-    .eq("store_id", storeId);
+  // Paginé — voir `inventory/api.ts` : une troncature fausse les seuils d'alerte.
+  const { data, error } = await fetchAllPages((from, to) =>
+    supabase
+      .from("product_store_settings")
+      .select("product_id, stock_min_override")
+      .eq("store_id", storeId)
+      .order("product_id", { ascending: true })
+      .range(from, to),
+  );
   if (error) throw error;
   const m = new Map<string, number | null>();
   for (const row of data ?? []) {
@@ -865,12 +872,16 @@ async function fetchStockReportForStore(params: {
   );
   const overrideMap = await fetchStockMinOverridesMap(supabase, storeId);
 
-  const { data: inv, error: invErr } = await supabase
-    .from("store_inventory")
-    .select(
-      "product_id, quantity, product:products(id, name, stock_min)",
-    )
-    .eq("store_id", storeId);
+  // Paginé : ce rapport liste les ruptures. Tronqué, il en **cachait** — un produit en
+  // rupture qui n'apparaît pas est exactement ce que le rapport doit empêcher.
+  const { data: inv, error: invErr } = await fetchAllPages((from, to) =>
+    supabase
+      .from("store_inventory")
+      .select("product_id, quantity, product:products(id, name, stock_min)")
+      .eq("store_id", storeId)
+      .order("product_id", { ascending: true })
+      .range(from, to),
+  );
   if (invErr) throw invErr;
 
   const outOfStock: StockReportData["outOfStock"] = [];
@@ -912,12 +923,18 @@ async function fetchStockReportForStore(params: {
   outOfStock.sort((a, b) => a.quantity - b.quantity);
   lowStock.sort((a, b) => a.quantity - b.quantity);
 
-  const { data: movements, error: movErr } = await supabase
-    .from("stock_movements")
-    .select("quantity, created_at")
-    .eq("store_id", storeId)
-    .gte("created_at", localDayStartIso(fromDate))
-    .lte("created_at", localDayEndIso(toDate));
+  // Paginé : chaque vente produit un mouvement de sortie. Le total entrées/sorties de la
+  // période dépasse donc 1000 lignes chez toute boutique un peu active.
+  const { data: movements, error: movErr } = await fetchAllPages((from, to) =>
+    supabase
+      .from("stock_movements")
+      .select("quantity, created_at")
+      .eq("store_id", storeId)
+      .gte("created_at", localDayStartIso(fromDate))
+      .lte("created_at", localDayEndIso(toDate))
+      .order("id", { ascending: true })
+      .range(from, to),
+  );
   if (movErr) throw movErr;
 
   let entries = 0;
@@ -1171,16 +1188,21 @@ export async function fetchTeamPerformance(params: {
   const supabase = createClient();
   const { companyId, storeId, fromDate, toDate } = params;
 
-  // 1) Ventes créées sur la période (activité).
-  let salesQ = supabase
-    .from("sales")
-    .select("id, created_at, total, discount, created_by, store_id")
-    .eq("company_id", companyId)
-    .eq("status", "completed")
-    .gte("created_at", localDayStartIso(fromDate))
-    .lte("created_at", localDayEndIso(toDate));
-  if (storeId) salesQ = salesQ.eq("store_id", storeId);
-  const { data: salesRaw, error: salesErr } = await salesQ;
+  // 1) Ventes créées sur la période (activité). Paginé : tronquée, la comparaison entre
+  //    caissiers devenait arbitraire — celui dont les ventes tombaient après la 1000ᵉ
+  //    ligne apparaissait moins performant qu'il ne l'est.
+  const { data: salesRaw, error: salesErr } = await fetchAllPages((from, to) => {
+    let salesQ = supabase
+      .from("sales")
+      .select("id, created_at, total, discount, created_by, store_id")
+      .eq("company_id", companyId)
+      .eq("status", "completed")
+      .gte("created_at", localDayStartIso(fromDate))
+      .lte("created_at", localDayEndIso(toDate))
+      .order("id", { ascending: true });
+    if (storeId) salesQ = salesQ.eq("store_id", storeId);
+    return salesQ.range(from, to);
+  });
   if (salesErr) throw salesErr;
   const periodSales = ((salesRaw ?? []) as Array<{
     id: string;
@@ -1197,12 +1219,16 @@ export async function fetchTeamPerformance(params: {
 
   // 2) Encaissements de la période (recette) — peuvent porter sur des ventes
   //    antérieures (remboursement de crédit) : on remonte à leur vendeur.
-  const { data: payRaw, error: payErr } = await supabase
-    .from("sale_payments")
-    .select("sale_id, amount, method, created_at")
-    .neq("method", "other")
-    .gte("created_at", localDayStartIso(fromDate))
-    .lte("created_at", localDayEndIso(toDate));
+  const { data: payRaw, error: payErr } = await fetchAllPages((from, to) =>
+    supabase
+      .from("sale_payments")
+      .select("sale_id, amount, method, created_at")
+      .neq("method", "other")
+      .gte("created_at", localDayStartIso(fromDate))
+      .lte("created_at", localDayEndIso(toDate))
+      .order("id", { ascending: true })
+      .range(from, to),
+  );
   if (payErr) throw payErr;
   const rangePayments = ((payRaw ?? []) as Array<{
     sale_id?: string;
@@ -1598,15 +1624,19 @@ export async function fetchDashboardData(params: {
 
   let salesByDayComputed: SalesByDay[] = [];
   if (saleIds.length > 0) {
-    const { data: salesRows, error: salesErr } = await supabase
-      .from("sales")
-      .select("id, created_at, total")
-      .in("id", saleIds);
-    if (salesErr) throw salesErr;
-    salesByDayComputed = computeSalesByDay(
-      (salesRows ?? []) as Array<{ id: string; created_at: string; total: number }>,
-      ratioById,
-    );
+    // Découpé : c'est précisément ce `.in()` qui faisait tomber le tableau de bord en
+    // erreur (URL trop longue) dès que la période dépassait quelques centaines de ventes.
+    const salesRows = await fetchByChunks(saleIds, async (chunk, from, to) => {
+      const { data, error } = await supabase
+        .from("sales")
+        .select("id, created_at, total")
+        .in("id", chunk)
+        .order("id", { ascending: true })
+        .range(from, to);
+      if (error) throw error;
+      return (data ?? []) as Array<{ id: string; created_at: string; total: number }>;
+    });
+    salesByDayComputed = computeSalesByDay(salesRows, ratioById);
   }
 
   const productAggP = aggregateProductsFromSales(supabase, saleIds, ratioById);

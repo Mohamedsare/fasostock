@@ -1,6 +1,7 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
+import { fetchAllPages } from "@/lib/supabase/fetch-all-pages";
 import { mapSupabaseError } from "@/lib/supabase/map-error";
 import type {
   WarehouseInventorySession,
@@ -75,11 +76,17 @@ export async function listWarehouseInventorySessionItems(
   sessionId: string,
 ): Promise<WarehouseInventorySessionItem[]> {
   const supabase = createClient();
-  const { data, error } = await supabase
-    .from("warehouse_inventory_session_items")
-    .select("id, product_id, product_name, expected_qty, counted_qty, variance, unit_purchase_price, counted_at")
-    .eq("session_id", sessionId)
-    .order("product_name", { ascending: true });
+  // Paginé — même enjeu que l'inventaire boutique : un comptage tronqué valide un
+  // inventaire faux.
+  const { data, error } = await fetchAllPages((from, to) =>
+    supabase
+      .from("warehouse_inventory_session_items")
+      .select("id, product_id, product_name, expected_qty, counted_qty, variance, unit_purchase_price, counted_at")
+      .eq("session_id", sessionId)
+      .order("product_name", { ascending: true })
+      .order("id", { ascending: true })
+      .range(from, to),
+  );
   if (error) throw mapSupabaseError(error);
   return ((data ?? []) as Record<string, unknown>[]).map((r) => ({
     id: String(r.id ?? ""),

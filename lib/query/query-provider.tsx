@@ -8,14 +8,8 @@ import {
   RQ_PERSIST_BUSTER,
 } from "@/lib/offline";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
-import {
-  defaultShouldDehydrateQuery,
-  QueryClient,
-  QueryClientProvider,
-} from "@tanstack/react-query";
-import { useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
-
-const noopSubscribe = () => () => {};
+import { defaultShouldDehydrateQuery, QueryClient } from "@tanstack/react-query";
+import { useState, type ReactNode } from "react";
 
 /**
  * Le cache persisté transite par `JSON.stringify` : une `Map` / `Set` y devient `{}`
@@ -61,19 +55,27 @@ function makeClient() {
   return client;
 }
 
+/**
+ * Un SEUL type de provider, rendu aussi bien au serveur qu'au client.
+ *
+ * Auparavant, ce composant rendait `QueryClientProvider` avant l'hydratation puis
+ * basculait sur `PersistQueryClientProvider`. Changer de type de composant à la même
+ * position de l'arbre force React à **démonter puis remonter tout l'arbre applicatif** :
+ * chaque chargement de page montait l'app deux fois, relançait toutes les requêtes et
+ * perdait l'état local des composants (filtres, panier en cours de saisie). Sur une
+ * tablette d'entrée de gamme, cela se voit.
+ *
+ * `PersistQueryClientProvider` est sûr côté serveur : il ne lit ni `window` ni IndexedDB
+ * au rendu, tout son I/O vit dans un `useEffect`. Et `createStore` d'idb-keyval est
+ * paresseux — il n'ouvre la base qu'à la première lecture, donc jamais pendant le SSR.
+ *
+ * Effet de bord bienvenu : les requêtes attendent désormais la fin de la restauration
+ * du cache disque (`isRestoring`) avant de partir, au lieu de démarrer puis d'être
+ * écrasées par la copie restaurée.
+ */
 export function QueryProvider({ children }: { children: ReactNode }) {
   const [client] = useState(makeClient);
-  // false côté serveur (SSR), true après hydratation — sans setState dans un effet.
-  const mounted = useSyncExternalStore(noopSubscribe, () => true, () => false);
-
-  const persister = useMemo(() => {
-    if (!mounted || typeof window === "undefined") return null;
-    return createFasoStockQueryPersister();
-  }, [mounted]);
-
-  if (!mounted || !persister) {
-    return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
-  }
+  const [persister] = useState(createFasoStockQueryPersister);
 
   return (
     <PersistQueryClientProvider

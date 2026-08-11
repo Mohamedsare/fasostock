@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/client";
 import { fallbackCreatorLabel, fetchCreatorLabels } from "@/lib/features/users/creator-labels";
 import { firstProductImageUrlFromNestedRows } from "@/lib/features/products/product-images";
+import { fetchAllPages } from "@/lib/supabase/fetch-all-pages";
 import { mapSupabaseError } from "@/lib/supabase/map-error";
 import type {
   Warehouse,
@@ -114,13 +115,22 @@ export async function listWarehouseInventory(
   warehouseId?: string | null,
 ): Promise<WarehouseStockLine[]> {
   const supabase = createClient();
-  let q = supabase.from("warehouse_inventory").select(invSelect);
-  if (warehouseId) {
-    q = q.eq("warehouse_id", warehouseId);
-  } else {
-    q = q.eq("company_id", companyId);
-  }
-  const { data, error } = await q.order("updated_at", { ascending: false });
+  // Paginé : le stock du dépôt central couvre tout le catalogue.
+  const { data, error } = await fetchAllPages((from, to) => {
+    let q = supabase.from("warehouse_inventory").select(invSelect);
+    if (warehouseId) {
+      q = q.eq("warehouse_id", warehouseId);
+    } else {
+      q = q.eq("company_id", companyId);
+    }
+    // `warehouse_inventory` n'a pas de colonne `id` : sa clé primaire est le couple
+    // (company_id, product_id). C'est donc lui qui rend l'ordre total.
+    return q
+      .order("updated_at", { ascending: false })
+      .order("company_id", { ascending: true })
+      .order("product_id", { ascending: true })
+      .range(from, to);
+  });
   if (error) throw mapSupabaseError(error);
   return (data ?? [])
     .map((r) => mapStockLine(r as Record<string, unknown>))
@@ -346,10 +356,16 @@ export async function getWarehouseDispatchInvoiceDetails(
     ? (custRaw[0] as { name?: string; phone?: string } | undefined)
     : (custRaw as { name?: string; phone?: string } | null);
 
-  const { data: linesRaw, error: linesErr } = await supabase
-    .from("warehouse_dispatch_items")
-    .select("product_id, quantity, unit_price, product:products(name, sku, unit)")
-    .eq("invoice_id", invoiceId);
+  // Paginé : une facture de sortie de dépôt peut aligner plus de 1000 lignes ; les
+  // lignes perdues auraient minoré le total facturé.
+  const { data: linesRaw, error: linesErr } = await fetchAllPages((from, to) =>
+    supabase
+      .from("warehouse_dispatch_items")
+      .select("product_id, quantity, unit_price, product:products(name, sku, unit)")
+      .eq("invoice_id", invoiceId)
+      .order("id", { ascending: true })
+      .range(from, to),
+  );
   if (linesErr) throw mapSupabaseError(linesErr);
 
   const lines = (linesRaw ?? []).map((raw) => {

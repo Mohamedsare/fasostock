@@ -1,6 +1,7 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
+import { fetchAllPages } from "@/lib/supabase/fetch-all-pages";
 import { fallbackCreatorLabel, fetchCreatorLabels } from "@/lib/features/users/creator-labels";
 import { localDayEndIso, localDayStartIso } from "@/lib/utils/local-day";
 import type { SaleItem } from "@/lib/features/sales/types";
@@ -45,17 +46,22 @@ export async function listCreditSales(params: {
   to: string;
 }): Promise<CreditSaleRow[]> {
   const supabase = createClient();
-  let q = supabase
-    .from("sales")
-    .select(creditListSelect)
-    .eq("company_id", params.companyId)
-    .eq("status", "completed")
-    .not("customer_id", "is", null)
-    .order("created_at", { ascending: false });
-  if (params.storeId) q = q.eq("store_id", params.storeId);
-  if (params.from) q = q.gte("created_at", localDayStartIso(params.from));
-  if (params.to) q = q.lte("created_at", localDayEndIso(params.to));
-  const { data, error } = await q;
+  // Paginé : une créance oubliée est de l'argent perdu. Tronquée, la liste faisait
+  // disparaître des crédits pourtant dus, sans aucun signal.
+  const { data, error } = await fetchAllPages((from, to) => {
+    let q = supabase
+      .from("sales")
+      .select(creditListSelect)
+      .eq("company_id", params.companyId)
+      .eq("status", "completed")
+      .not("customer_id", "is", null)
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: true });
+    if (params.storeId) q = q.eq("store_id", params.storeId);
+    if (params.from) q = q.gte("created_at", localDayStartIso(params.from));
+    if (params.to) q = q.lte("created_at", localDayEndIso(params.to));
+    return q.range(from, to);
+  });
   if (error) throw error;
   const rows = ((data ?? []) as Array<Record<string, unknown>>).map(normalizeCreditRow);
 
@@ -126,6 +132,9 @@ export async function listCreditRepaymentsForRange(params: {
       .gte("created_at", startIso)
       .lte("created_at", endIso)
       .order("created_at", { ascending: false })
+      // Clé unique obligatoire : deux encaissements peuvent partager le même instant,
+      // et un ordre non total ferait répéter une ligne en en perdant une autre.
+      .order("id", { ascending: true })
       .range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1);
     if (params.storeId) q = q.eq("sale.store_id", params.storeId);
     const { data, error } = await q;

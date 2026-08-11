@@ -6,6 +6,7 @@ import { listCategories, listProducts, listStoreInventory } from "@/lib/features
 import { firstProductImageUrl } from "@/lib/features/products/product-images";
 import { fallbackCreatorLabel, fetchCreatorLabels } from "@/lib/features/users/creator-labels";
 import { createClient } from "@/lib/supabase/client";
+import { fetchAllPages } from "@/lib/supabase/fetch-all-pages";
 import type { InventoryRow, InventoryScreenData, InventoryStatus, StockMovementRow } from "./types";
 
 function toNum(v: unknown): number {
@@ -44,10 +45,17 @@ async function fetchStockMinOverrides(
   supabase: ReturnType<typeof createClient>,
   storeId: string,
 ): Promise<Map<string, number | null>> {
-  const { data, error } = await supabase
-    .from("product_store_settings")
-    .select("product_id, stock_min_override")
-    .eq("store_id", storeId);
+  // Paginé : un seuil d'alerte personnalisé par produit, donc autant de lignes que le
+  // catalogue. Tronquée, la table renvoyait les produits suivants au seuil par défaut —
+  // alertes de rupture fantômes d'un côté, ruptures silencieuses de l'autre.
+  const { data, error } = await fetchAllPages((from, to) =>
+    supabase
+      .from("product_store_settings")
+      .select("product_id, stock_min_override")
+      .eq("store_id", storeId)
+      .order("product_id", { ascending: true })
+      .range(from, to),
+  );
   if (error) throw error;
   const m = new Map<string, number | null>();
   for (const row of data ?? []) {

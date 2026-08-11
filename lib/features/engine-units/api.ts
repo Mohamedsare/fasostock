@@ -2,6 +2,7 @@
 
 import { UserFriendlyError } from "@/lib/errors/app-error-mapper";
 import { createClient } from "@/lib/supabase/client";
+import { fetchAllPages } from "@/lib/supabase/fetch-all-pages";
 import { formatUnknownErrorMessage } from "@/lib/utils/format-unknown-error";
 import type { EngineUnit, EngineUnitDraft, EngineUnitStatus } from "./types";
 import { normalizeEngineUnitDrafts } from "./types";
@@ -48,12 +49,16 @@ function rethrowChassisConflict(err: unknown, chassis?: string): never {
 export async function listEngineUnits(productId: string): Promise<EngineUnit[]> {
   if (!productId) return [];
   const supabase = createClient();
-  const { data, error } = await supabase
-    .from("engine_units")
-    .select(ENGINE_UNIT_SELECT)
-    .eq("product_id", productId)
-    .order("status", { ascending: true })
-    .order("created_at", { ascending: true });
+  const { data, error } = await fetchAllPages((from, to) =>
+    supabase
+      .from("engine_units")
+      .select(ENGINE_UNIT_SELECT)
+      .eq("product_id", productId)
+      .order("status", { ascending: true })
+      .order("created_at", { ascending: true })
+      .order("id", { ascending: true })
+      .range(from, to),
+  );
   if (error) throw error;
   return ((data ?? []) as Array<Record<string, unknown>>).map(mapRow);
 }
@@ -72,12 +77,16 @@ export async function listAvailableEngineUnits(
 ): Promise<EngineUnit[]> {
   if (!productId) return [];
   const supabase = createClient();
-  const { data, error } = await supabase
-    .from("engine_units")
-    .select(ENGINE_UNIT_SELECT)
-    .eq("product_id", productId)
-    .eq("status", "in_stock")
-    .order("created_at", { ascending: true });
+  const { data, error } = await fetchAllPages((from, to) =>
+    supabase
+      .from("engine_units")
+      .select(ENGINE_UNIT_SELECT)
+      .eq("product_id", productId)
+      .eq("status", "in_stock")
+      .order("created_at", { ascending: true })
+      .order("id", { ascending: true })
+      .range(from, to),
+  );
   if (error) throw error;
   const rows = ((data ?? []) as Array<Record<string, unknown>>).map(mapRow);
   if (!storeId) return rows;

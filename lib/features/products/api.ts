@@ -2,6 +2,7 @@
 
 import { enqueueOutbox } from "@/lib/db/dexie-db";
 import { createClient } from "@/lib/supabase/client";
+import { fetchAllPages } from "@/lib/supabase/fetch-all-pages";
 import { compressImageForUpload } from "@/lib/utils/image-compress";
 import { safeImageExtension } from "@/lib/utils/image-file";
 import { FULL_SUFFIX, THUMB_SUFFIX } from "@/lib/utils/product-thumb-url";
@@ -50,14 +51,28 @@ function activityFieldColumns(
   };
 }
 
+/**
+ * Catalogue complet de l'entreprise.
+ *
+ * Paginé : c'est la lecture qui alimente la caisse. Tronquée à 1000 lignes, elle rendait
+ * le 1001ᵉ produit introuvable en vente — grille ET scan de code-barres, la recherche se
+ * faisant côté client sur cette liste. Une quincaillerie ou un magasin de pièces dépasse
+ * 1000 références sans rien avoir d'exceptionnel.
+ */
 export async function listProducts(companyId: string): Promise<ProductItem[]> {
   const supabase = createClient();
-  const { data, error } = await supabase
-    .from("products")
-    .select(productSelect)
-    .eq("company_id", companyId)
-    .is("deleted_at", null)
-    .order("name", { ascending: true });
+  const { data, error } = await fetchAllPages((from, to) =>
+    supabase
+      .from("products")
+      .select(productSelect)
+      .eq("company_id", companyId)
+      .is("deleted_at", null)
+      .order("name", { ascending: true })
+      // Deux produits peuvent porter le même nom : sans cette clé, l'ordre n'est pas
+      // total et une page pourrait répéter une ligne en en perdant une autre.
+      .order("id", { ascending: true })
+      .range(from, to),
+  );
   if (error) throw error;
   return ((data ?? []) as Array<Record<string, unknown>>).map((row) => {
     const categoryRaw = row.category;
@@ -121,10 +136,17 @@ export async function listProducts(companyId: string): Promise<ProductItem[]> {
  */
 export async function listCompanySkus(companyId: string): Promise<string[]> {
   const supabase = createClient();
-  const { data, error } = await supabase
-    .from("products")
-    .select("sku")
-    .eq("company_id", companyId);
+  // Paginé : un SKU manquant à la lecture serait réattribué, et l'insertion partirait
+  // en violation de UNIQUE(company_id, sku) — la création de produit échouerait sans
+  // que rien n'explique pourquoi.
+  const { data, error } = await fetchAllPages((from, to) =>
+    supabase
+      .from("products")
+      .select("sku")
+      .eq("company_id", companyId)
+      .order("id", { ascending: true })
+      .range(from, to),
+  );
   if (error) throw error;
   return ((data ?? []) as Array<{ sku: string | null }>)
     .map((r) => r.sku)
@@ -135,22 +157,30 @@ export async function listCategories(
   companyId: string,
 ): Promise<ProductCategory[]> {
   const supabase = createClient();
-  const { data, error } = await supabase
-    .from("categories")
-    .select("id, company_id, name")
-    .eq("company_id", companyId)
-    .order("name", { ascending: true });
+  const { data, error } = await fetchAllPages((from, to) =>
+    supabase
+      .from("categories")
+      .select("id, company_id, name")
+      .eq("company_id", companyId)
+      .order("name", { ascending: true })
+      .order("id", { ascending: true })
+      .range(from, to),
+  );
   if (error) throw error;
   return (data ?? []) as ProductCategory[];
 }
 
 export async function listBrands(companyId: string): Promise<ProductBrand[]> {
   const supabase = createClient();
-  const { data, error } = await supabase
-    .from("brands")
-    .select("id, company_id, name")
-    .eq("company_id", companyId)
-    .order("name", { ascending: true });
+  const { data, error } = await fetchAllPages((from, to) =>
+    supabase
+      .from("brands")
+      .select("id, company_id, name")
+      .eq("company_id", companyId)
+      .order("name", { ascending: true })
+      .order("id", { ascending: true })
+      .range(from, to),
+  );
   if (error) throw error;
   return (data ?? []) as ProductBrand[];
 }
@@ -168,10 +198,17 @@ export async function listStoreInventory(
 ): Promise<Record<string, number>> {
   if (!storeId) return {};
   const supabase = createClient();
-  const { data, error } = await supabase
-    .from("store_inventory")
-    .select("product_id, quantity")
-    .eq("store_id", storeId);
+  // Paginé pour la même raison que `listProducts` : tronqué, le stock des produits
+  // au-delà de la 1000ᵉ ligne revenait à 0 — fausses ruptures en caisse et en inventaire.
+  // `product_id` est unique pour une boutique donnée : l'ordre est donc total.
+  const { data, error } = await fetchAllPages((from, to) =>
+    supabase
+      .from("store_inventory")
+      .select("product_id, quantity")
+      .eq("store_id", storeId)
+      .order("product_id", { ascending: true })
+      .range(from, to),
+  );
   if (error) throw error;
   const m: Record<string, number> = {};
   for (const row of data ?? []) {

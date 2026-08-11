@@ -12,6 +12,8 @@ import {
   reportPushOutcome,
 } from "@/lib/features/push/company-owners-push-client";
 import { createClient } from "@/lib/supabase/client";
+import { fetchAllPages } from "@/lib/supabase/fetch-all-pages";
+import { fetchByChunks } from "@/lib/supabase/fetch-by-chunks";
 import { listCategories, listProducts, listStoreInventory } from "@/lib/features/products/api";
 import { listCustomers } from "@/lib/features/customers/api";
 import { listStores } from "@/lib/features/stores/api";
@@ -59,34 +61,39 @@ export async function fetchStoreBestSellerQty(params: {
   const since = new Date();
   since.setDate(since.getDate() - params.sinceDays);
 
-  const { data: sales, error: sErr } = await supabase
-    .from("sales")
-    .select("id")
-    .eq("company_id", params.companyId)
-    .eq("store_id", params.storeId)
-    .eq("status", "completed")
-    .gte("created_at", since.toISOString());
+  const { data: sales, error: sErr } = await fetchAllPages((from, to) =>
+    supabase
+      .from("sales")
+      .select("id")
+      .eq("company_id", params.companyId)
+      .eq("store_id", params.storeId)
+      .eq("status", "completed")
+      .gte("created_at", since.toISOString())
+      .order("id", { ascending: true })
+      .range(from, to),
+  );
   if (sErr) throw sErr;
   const saleIds = (sales ?? []).map((r) => (r as { id: string }).id);
   if (saleIds.length === 0) return new Map();
 
-  const qtyByProduct = new Map<string, number>();
-  const chunkSize = 120;
-  for (let i = 0; i < saleIds.length; i += chunkSize) {
-    const chunk = saleIds.slice(i, i + chunkSize);
-    const { data: items, error: iErr } = await supabase
+  const rows = await fetchByChunks(saleIds, async (chunk, from, to) => {
+    const { data, error } = await supabase
       .from("sale_items")
       .select("product_id, quantity")
-      .in("sale_id", chunk);
-    if (iErr) throw iErr;
-    for (const row of items ?? []) {
-      const m = row as { product_id?: string; quantity?: number };
-      if (!m.product_id) continue;
-      qtyByProduct.set(
-        m.product_id,
-        (qtyByProduct.get(m.product_id) ?? 0) + Number(m.quantity ?? 0),
-      );
-    }
+      .in("sale_id", chunk)
+      .order("id", { ascending: true })
+      .range(from, to);
+    if (error) throw error;
+    return (data ?? []) as Array<{ product_id?: string; quantity?: number }>;
+  });
+
+  const qtyByProduct = new Map<string, number>();
+  for (const m of rows) {
+    if (!m.product_id) continue;
+    qtyByProduct.set(
+      m.product_id,
+      (qtyByProduct.get(m.product_id) ?? 0) + Number(m.quantity ?? 0),
+    );
   }
   return qtyByProduct;
 }

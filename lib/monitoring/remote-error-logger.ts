@@ -62,6 +62,34 @@ const DEDUPE_MS = 5000;
 let lastSentAt = 0;
 let lastFingerprint = "";
 
+/**
+ * Plafond global, en plus du dédoublonnage.
+ *
+ * Le dédoublonnage ne retient que les erreurs **identiques**. Une boucle de rendu qui
+ * produit des messages tous différents (index de tableau, identifiant, horodatage dans
+ * le message) passait donc au travers et pouvait écrire des milliers de lignes dans
+ * `log_app_error` en quelques secondes : la base du client sature, et la table de
+ * supervision devient illisible au moment précis où le super admin en a besoin.
+ *
+ * 30 remontées par minute suffisent très largement à diagnostiquer un incident — au-delà,
+ * on tient déjà l'information, ce sont des répétitions.
+ */
+const RATE_WINDOW_MS = 60_000;
+const RATE_MAX_PER_WINDOW = 30;
+let windowStartedAt = 0;
+let sentInWindow = 0;
+
+/** `true` si l'on peut encore émettre — et consomme alors un jeton. */
+function consumeRateBudget(now: number): boolean {
+  if (now - windowStartedAt >= RATE_WINDOW_MS) {
+    windowStartedAt = now;
+    sentInWindow = 0;
+  }
+  if (sentInWindow >= RATE_MAX_PER_WINDOW) return false;
+  sentInWindow++;
+  return true;
+}
+
 export function isClientErrorLoggingEnabled(): boolean {
   if (typeof process === "undefined") return true;
   return process.env.NEXT_PUBLIC_CLIENT_ERROR_LOGS !== "0";
@@ -133,6 +161,9 @@ export async function captureWebAppError(
   const fp = dedupeKey(message, stackStr ?? undefined);
   const now = Date.now();
   if (fp === lastFingerprint && now - lastSentAt < DEDUPE_MS) return;
+  // Après le dédoublonnage : ce qui arrive ici est une erreur *différente*, et c'est
+  // précisément le flot d'erreurs différentes qu'il faut plafonner.
+  if (!consumeRateBudget(now)) return;
   lastFingerprint = fp;
   lastSentAt = now;
 

@@ -3,6 +3,11 @@
   "framework": "nextjs",
   "installCommand": "npm install",
   "buildCommand": "npm run build",
+  "functions": {
+    "app/api/pdf/**": {
+      "memory": 2048
+    }
+  },
   "crons": [
     {
       "path": "/api/cron/subscription-emails",

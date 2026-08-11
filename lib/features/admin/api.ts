@@ -3,11 +3,7 @@
 import { createClient } from "@/lib/supabase/client";
 import { mapSupabaseError } from "@/lib/supabase/map-error";
 import { compressImageForUpload } from "@/lib/utils/image-compress";
-import {
-  localDateFromIso,
-  localDayEndIso,
-  localDayStartIso,
-} from "@/lib/utils/local-day";
+import { localDayEndIso, localDayStartIso } from "@/lib/utils/local-day";
 import type {
   AdminAppClientKind,
   AdminAppErrorLog,
@@ -405,36 +401,28 @@ export async function adminDeleteStore(id: string): Promise<void> {
   if (error) throw mapSupabaseError(error);
 }
 
+/**
+ * Compteurs plateforme — agrégés en base (`admin_platform_stats`, migration 00184).
+ *
+ * Cette page téléchargeait auparavant toutes les ventes de toutes les entreprises pour
+ * les compter dans le navigateur. PostgREST tronquant chaque réponse à 1000 lignes sans
+ * le dire, les chiffres affichés étaient **déjà faux** — et le seraient devenus de plus
+ * en plus. Le compte se fait désormais là où sont les données ; la charge utile ne
+ * dépend plus de la taille de la plateforme.
+ */
 export async function adminGetStats(): Promise<AdminStats> {
   const supabase = createClient();
-  const [{ data: companies }, { data: stores }, { data: ucr }, { data: salesData }] = await Promise.all([
-    supabase.from("companies").select("id"),
-    supabase.from("stores").select("id"),
-    supabase.from("user_company_roles").select("id"),
-    supabase.from("sales").select("id, total").eq("status", "completed"),
-  ]);
+  const { data, error } = await supabase.rpc("admin_platform_stats");
+  if (error) throw mapSupabaseError(error);
 
-  let salesTotalAmount = 0;
-  for (const r of salesData ?? []) {
-    const row = r as { total?: unknown };
-    salesTotalAmount += toNum(row.total);
-  }
-
-  let activeSubscriptionsCount = 0;
-  try {
-    const { data: subs } = await supabase.from("company_subscriptions").select("id").eq("status", "active");
-    activeSubscriptionsCount = (subs ?? []).length;
-  } catch {
-    /* table optionnelle */
-  }
-
+  const row = (Array.isArray(data) ? data[0] : data) as Record<string, unknown> | null | undefined;
   return {
-    companiesCount: (companies ?? []).length,
-    storesCount: (stores ?? []).length,
-    usersCount: (ucr ?? []).length,
-    salesCount: (salesData ?? []).length,
-    salesTotalAmount,
-    activeSubscriptionsCount,
+    companiesCount: toNum(row?.companies_count),
+    storesCount: toNum(row?.stores_count),
+    usersCount: toNum(row?.users_count),
+    salesCount: toNum(row?.sales_count),
+    salesTotalAmount: toNum(row?.sales_total_amount),
+    activeSubscriptionsCount: toNum(row?.active_subscriptions_count),
   };
 }
 
@@ -454,75 +442,33 @@ export async function adminListUsers(): Promise<AdminUser[]> {
   }));
 }
 
+/** Ventes par entreprise — agrégées en base, déjà triées par montant décroissant. */
 export async function adminGetSalesByCompany(): Promise<AdminSalesByCompany[]> {
   const supabase = createClient();
-  const [{ data: sales }, { data: companies }] = await Promise.all([
-    supabase.from("sales").select("company_id, total").eq("status", "completed"),
-    supabase.from("companies").select("id, name"),
-  ]);
-  const byCompany = new Map<string, { count: number; total: number }>();
-  for (const s of sales ?? []) {
-    const row = s as { company_id?: string; total?: unknown };
-    const cid = row.company_id;
-    if (!cid) continue;
-    const cur = byCompany.get(cid) ?? { count: 0, total: 0 };
-    byCompany.set(cid, {
-      count: cur.count + 1,
-      total: cur.total + toNum(row.total),
-    });
-  }
-  const list: AdminSalesByCompany[] = [];
-  for (const c of companies ?? []) {
-    const row = c as { id?: string; name?: string };
-    const id = row.id;
-    if (!id) continue;
-    const agg = byCompany.get(id) ?? { count: 0, total: 0 };
-    list.push({
-      companyId: id,
-      companyName: row.name ?? "—",
-      salesCount: agg.count,
-      totalAmount: agg.total,
-    });
-  }
-  list.sort((a, b) => b.totalAmount - a.totalAmount);
-  return list;
+  const { data, error } = await supabase.rpc("admin_sales_by_company");
+  if (error) throw mapSupabaseError(error);
+  return ((data ?? []) as Record<string, unknown>[]).map((r) => ({
+    companyId: String(r.company_id ?? ""),
+    companyName: String(r.company_name ?? "—"),
+    salesCount: toNum(r.sales_count),
+    totalAmount: toNum(r.total_amount),
+  }));
 }
 
+/**
+ * Courbe des ventes plateforme — agrégée en base. Les jours sans vente sont renvoyés
+ * à zéro par la fonction SQL (`generate_series`) : la courbe garde ses creux, et le
+ * client n'a plus à reconstruire le calendrier.
+ */
 export async function adminGetSalesOverTime(days = 30): Promise<AdminSalesOverTimeItem[]> {
-  const start = new Date();
-  start.setHours(0, 0, 0, 0);
-  start.setDate(start.getDate() - days);
-  const fromStr = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}-${String(start.getDate()).padStart(2, "0")}`;
-
   const supabase = createClient();
-  const { data: sales, error } = await supabase
-    .from("sales")
-    .select("created_at, total")
-    .eq("status", "completed")
-    .gte("created_at", localDayStartIso(fromStr));
+  const { data, error } = await supabase.rpc("admin_sales_over_time", { p_days: days });
   if (error) throw mapSupabaseError(error);
-
-  const byDay = new Map<string, { count: number; total: number }>();
-  for (const s of sales ?? []) {
-    const row = s as { created_at?: string; total?: unknown };
-    const day = row.created_at ? localDateFromIso(row.created_at) : "";
-    if (!day) continue;
-    const cur = byDay.get(day) ?? { count: 0, total: 0 };
-    byDay.set(day, {
-      count: cur.count + 1,
-      total: cur.total + toNum(row.total),
-    });
-  }
-
-  const result: AdminSalesOverTimeItem[] = [];
-  for (let d = 0; d < days; d++) {
-    const date = new Date(start);
-    date.setDate(date.getDate() + d);
-    const dayStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-    const agg = byDay.get(dayStr) ?? { count: 0, total: 0 };
-    result.push({ date: dayStr, count: agg.count, total: agg.total });
-  }
-  return result;
+  return ((data ?? []) as Record<string, unknown>[]).map((r) => ({
+    date: String(r.day ?? ""),
+    count: toNum(r.sales_count),
+    total: toNum(r.total_amount),
+  }));
 }
 
 export async function adminUpdateProfile(

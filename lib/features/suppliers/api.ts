@@ -2,6 +2,7 @@
 
 import { enqueueOutbox } from "@/lib/db/dexie-db";
 import { createClient } from "@/lib/supabase/client";
+import { fetchAllPages } from "@/lib/supabase/fetch-all-pages";
 import type {
   Supplier,
   SupplierAccount,
@@ -84,11 +85,15 @@ const EMPTY_STATS = (supplierId: string): SupplierPayableStats => ({
 
 export async function listSuppliers(companyId: string): Promise<Supplier[]> {
   const supabase = createClient();
-  const { data, error } = await supabase
-    .from("suppliers")
-    .select(FIELDS)
-    .eq("company_id", companyId)
-    .order("name", { ascending: true });
+  const { data, error } = await fetchAllPages((from, to) =>
+    supabase
+      .from("suppliers")
+      .select(FIELDS)
+      .eq("company_id", companyId)
+      .order("name", { ascending: true })
+      .order("id", { ascending: true })
+      .range(from, to),
+  );
   if (error) throw error;
   return (data ?? []).map((r) => mapSupplier(r as Record<string, unknown>));
 }
@@ -259,21 +264,23 @@ export async function listSupplierInvoices(params: {
   includeCancelled?: boolean;
 }): Promise<SupplierInvoice[]> {
   const supabase = createClient();
-  let q = supabase
-    .from("supplier_invoices")
-    .select(INVOICE_FIELDS)
-    .eq("company_id", params.companyId)
-    .order("due_date", { ascending: true });
-
-  if (params.supplierId) q = q.eq("supplier_id", params.supplierId);
-
+  // Paginé : c'est le grand livre 401. Une facture fournisseur tronquée hors de la
+  // liste, c'est une dette qu'on ne voit plus et qu'on ne paie pas.
   const statuses: SupplierInvoiceStatus[] = params.includeSettled
     ? ["open", "partially_paid", "paid"]
     : ["open", "partially_paid"];
   if (params.includeCancelled) statuses.push("cancelled");
-  q = q.in("status", statuses);
 
-  const { data, error } = await q;
+  const { data, error } = await fetchAllPages((from, to) => {
+    let q = supabase
+      .from("supplier_invoices")
+      .select(INVOICE_FIELDS)
+      .eq("company_id", params.companyId)
+      .order("due_date", { ascending: true })
+      .order("id", { ascending: true });
+    if (params.supplierId) q = q.eq("supplier_id", params.supplierId);
+    return q.in("status", statuses).range(from, to);
+  });
   if (error) throw error;
   return (data ?? []).map((r) => mapInvoice(r as Record<string, unknown>));
 }
@@ -367,11 +374,17 @@ export async function listSupplierAllocations(
   supplierId: string,
 ): Promise<SupplierAllocation[]> {
   const supabase = createClient();
-  const { data, error } = await supabase
-    .from("supplier_payment_allocations")
-    .select("id, payment_id, invoice_id, amount")
-    .eq("company_id", companyId)
-    .eq("supplier_id", supplierId);
+  // Paginé : chaque règlement génère une ligne d'imputation par facture soldée.
+  // Tronquées, ces lignes faisaient réapparaître comme dues des factures déjà payées.
+  const { data, error } = await fetchAllPages((from, to) =>
+    supabase
+      .from("supplier_payment_allocations")
+      .select("id, payment_id, invoice_id, amount")
+      .eq("company_id", companyId)
+      .eq("supplier_id", supplierId)
+      .order("id", { ascending: true })
+      .range(from, to),
+  );
   if (error) throw error;
   return (data ?? []).map((r) => {
     const row = r as Record<string, unknown>;

@@ -121,8 +121,10 @@ export async function POST(req: Request) {
     p_session_id: sessionId,
     p_visitor_id: isUuid(body.visitorId) ? body.visitorId : null,
     p_referrer: body.referrer?.slice(0, 300) ?? null,
-    p_pathname: body.pathname ?? null,
-    p_activity: body.activity ?? null,
+    // Bornés comme `p_referrer` : route publique, ces champs viennent du navigateur et
+    // partaient sans plafond — de quoi écrire des mégaoctets par battement de cœur.
+    p_pathname: body.pathname?.slice(0, 300) ?? null,
+    p_activity: body.activity?.slice(0, 120) ?? null,
     p_company_id: isUuid(body.companyId) ? body.companyId : null,
     p_store_id: isUuid(body.storeId) ? body.storeId : null,
     p_ip: clientIp(req),

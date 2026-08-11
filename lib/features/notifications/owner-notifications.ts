@@ -5,6 +5,8 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
+import { fetchAllPages } from "@/lib/supabase/fetch-all-pages";
+import { fetchByChunks } from "@/lib/supabase/fetch-by-chunks";
 import { listProducts, listStoreInventory } from "@/lib/features/products/api";
 import { listPurchases } from "@/lib/features/purchases/api";
 import { listSales } from "@/lib/features/sales/api";
@@ -61,10 +63,15 @@ async function fetchStockMinOverridesMap(
   supabase: ReturnType<typeof createClient>,
   storeId: string,
 ): Promise<Map<string, number | null>> {
-  const { data, error } = await supabase
-    .from("product_store_settings")
-    .select("product_id, stock_min_override")
-    .eq("store_id", storeId);
+  // Paginé — voir `inventory/api.ts` : une troncature fausse les seuils d'alerte.
+  const { data, error } = await fetchAllPages((from, to) =>
+    supabase
+      .from("product_store_settings")
+      .select("product_id, stock_min_override")
+      .eq("store_id", storeId)
+      .order("product_id", { ascending: true })
+      .range(from, to),
+  );
   if (error) throw error;
   const m = new Map<string, number | null>();
   for (const row of data ?? []) {
@@ -160,15 +167,18 @@ async function fetchSalesIdsInRange(
   fromDate: string,
   toDate: string,
 ): Promise<string[]> {
-  let q = supabase
-    .from("sales")
-    .select("id")
-    .eq("company_id", companyId)
-    .eq("status", "completed")
-    .gte("created_at", `${fromDate}T00:00:00.000Z`)
-    .lte("created_at", toEndOfDay(toDate));
-  if (storeId) q = q.eq("store_id", storeId);
-  const { data, error } = await q;
+  const { data, error } = await fetchAllPages((from, to) => {
+    let q = supabase
+      .from("sales")
+      .select("id")
+      .eq("company_id", companyId)
+      .eq("status", "completed")
+      .gte("created_at", `${fromDate}T00:00:00.000Z`)
+      .lte("created_at", toEndOfDay(toDate))
+      .order("id", { ascending: true });
+    if (storeId) q = q.eq("store_id", storeId);
+    return q.range(from, to);
+  });
   if (error) throw error;
   return (data ?? []).map((r) => (r as { id: string }).id);
 }
@@ -177,34 +187,46 @@ async function fetchSaleItemsForSaleIds(
   supabase: ReturnType<typeof createClient>,
   saleIds: string[],
 ): Promise<Array<{ product_id: string; quantity: number }>> {
-  if (saleIds.length === 0) return [];
-  const chunkSize = 120;
-  const out: Array<{ product_id: string; quantity: number }> = [];
-  for (let i = 0; i < saleIds.length; i += chunkSize) {
-    const chunk = saleIds.slice(i, i + chunkSize);
+  const rows = await fetchByChunks(saleIds, async (chunk, from, to) => {
     const { data, error } = await supabase
       .from("sale_items")
       .select("product_id, quantity")
-      .in("sale_id", chunk);
+      .in("sale_id", chunk)
+      .order("id", { ascending: true })
+      .range(from, to);
     if (error) throw error;
-    for (const row of data ?? []) {
-      const m = row as { product_id?: string; quantity?: number };
-      if (m.product_id) {
-        out.push({ product_id: String(m.product_id), quantity: Number(m.quantity ?? 0) });
-      }
+    return (data ?? []) as Array<{ product_id?: string; quantity?: number }>;
+  });
+  const out: Array<{ product_id: string; quantity: number }> = [];
+  for (const m of rows) {
+    if (m.product_id) {
+      out.push({ product_id: String(m.product_id), quantity: Number(m.quantity ?? 0) });
     }
   }
   return out;
 }
 
+/**
+ * Date du premier mouvement de chaque produit d'une boutique.
+ *
+ * Trié par `created_at` croissant : la **première** ligne vue pour un produit est donc
+ * déjà la bonne, et les suivantes ne changent rien. Cet ordre permet aussi de paginer
+ * correctement — sans lui, l'historique complet des mouvements était tronqué à 1000
+ * lignes et des produits anciens passaient pour des nouveautés.
+ */
 async function fetchEarliestMovementByProduct(
   supabase: ReturnType<typeof createClient>,
   storeId: string,
 ): Promise<Map<string, string>> {
-  const { data, error } = await supabase
-    .from("stock_movements")
-    .select("product_id, created_at")
-    .eq("store_id", storeId);
+  const { data, error } = await fetchAllPages((from, to) =>
+    supabase
+      .from("stock_movements")
+      .select("product_id, created_at")
+      .eq("store_id", storeId)
+      .order("created_at", { ascending: true })
+      .order("id", { ascending: true })
+      .range(from, to),
+  );
   if (error) throw error;
   const m = new Map<string, string>();
   for (const row of data ?? []) {

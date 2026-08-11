@@ -1,6 +1,7 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
+import { fetchAllPages } from "@/lib/supabase/fetch-all-pages";
 import { mapSupabaseError } from "@/lib/supabase/map-error";
 import type {
   AccountingAccount,
@@ -27,11 +28,18 @@ function one<T>(rel: unknown): T | null {
 
 export async function listAccountingAccounts(companyId: string): Promise<AccountingAccount[]> {
   const supabase = createClient();
-  const { data, error } = await supabase
-    .from("accounting_accounts")
-    .select("id, code, label, account_class, parent_code, is_active")
-    .eq("company_id", companyId)
-    .order("code", { ascending: true });
+  // Paginé : le plan SYSCOHADA amorcé frôle déjà le millier de comptes, et chaque
+  // sous-compte ouvert par l'entreprise s'y ajoute. Un plan tronqué produirait un
+  // grand livre incomplet — inacceptable sur des états comptables.
+  const { data, error } = await fetchAllPages((from, to) =>
+    supabase
+      .from("accounting_accounts")
+      .select("id, code, label, account_class, parent_code, is_active")
+      .eq("company_id", companyId)
+      .order("code", { ascending: true })
+      .order("id", { ascending: true })
+      .range(from, to),
+  );
   if (error) throw mapSupabaseError(error);
   return (data ?? []).map((row) => {
     const r = row as Record<string, unknown>;
@@ -116,20 +124,26 @@ export async function listAccountingEntries(params: {
   journalId: string | null;
 }): Promise<AccountingEntry[]> {
   const supabase = createClient();
-  let q = supabase
-    .from("accounting_entries")
-    .select(
-      "id, entry_date, reference, label, source_type, source_id, " +
-        "journal:accounting_journals(code, label), " +
-        "lines:accounting_entry_lines(id, label, debit, credit, position, account:accounting_accounts(code, label))",
-    )
-    .eq("company_id", params.companyId)
-    .gte("entry_date", params.from)
-    .lte("entry_date", params.to);
-  if (params.journalId) q = q.eq("journal_id", params.journalId);
-  const { data, error } = await q
-    .order("entry_date", { ascending: false })
-    .order("created_at", { ascending: false });
+  // Paginé : chaque vente génère son écriture. Le journal d'un exercice dépasse donc
+  // 1000 lignes en quelques semaines, et un journal tronqué ne s'équilibre plus.
+  const { data, error } = await fetchAllPages((from, to) => {
+    let q = supabase
+      .from("accounting_entries")
+      .select(
+        "id, entry_date, reference, label, source_type, source_id, " +
+          "journal:accounting_journals(code, label), " +
+          "lines:accounting_entry_lines(id, label, debit, credit, position, account:accounting_accounts(code, label))",
+      )
+      .eq("company_id", params.companyId)
+      .gte("entry_date", params.from)
+      .lte("entry_date", params.to);
+    if (params.journalId) q = q.eq("journal_id", params.journalId);
+    return q
+      .order("entry_date", { ascending: false })
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: true })
+      .range(from, to);
+  });
   if (error) throw mapSupabaseError(error);
 
   return ((data ?? []) as unknown as Record<string, unknown>[]).map((row) => {

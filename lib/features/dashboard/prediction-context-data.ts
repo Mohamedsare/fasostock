@@ -7,6 +7,8 @@ import type {
   TopProduct,
 } from "@/lib/features/dashboard/types";
 import { countLowStockAlerts } from "@/lib/features/inventory/stock-alert-count";
+import { fetchAllPages } from "@/lib/supabase/fetch-all-pages";
+import { fetchByChunks } from "@/lib/supabase/fetch-by-chunks";
 import type { PredictionContext } from "@/lib/features/ai/prediction-types";
 import { format } from "date-fns";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -24,15 +26,21 @@ async function fetchSalesIdsInRange(
   fromDate: string,
   toDate: string,
 ): Promise<string[]> {
-  let q = supabase
-    .from("sales")
-    .select("id")
-    .eq("company_id", companyId)
-    .eq("status", "completed")
-    .gte("created_at", fromDate)
-    .lte("created_at", toEndOfDay(toDate));
-  if (storeId) q = q.eq("store_id", storeId);
-  const { data, error } = await q;
+  // Paginé/découpé comme le tableau de bord : ce contexte est ce que l'IA reçoit pour
+  // raisonner. Tronqué, le modèle produisait des prévisions confiantes sur des chiffres
+  // amputés — l'erreur la plus difficile à repérer pour le commerçant.
+  const { data, error } = await fetchAllPages((from, to) => {
+    let q = supabase
+      .from("sales")
+      .select("id")
+      .eq("company_id", companyId)
+      .eq("status", "completed")
+      .gte("created_at", fromDate)
+      .lte("created_at", toEndOfDay(toDate))
+      .order("id", { ascending: true });
+    if (storeId) q = q.eq("store_id", storeId);
+    return q.range(from, to);
+  });
   if (error) throw error;
   return (data ?? []).map((r) => r.id as string);
 }
@@ -42,28 +50,37 @@ async function computeSalesSummaryFromIds(
   saleIds: string[],
 ): Promise<SalesSummary> {
   if (saleIds.length === 0) return emptySummary();
-  const { data: sales, error: sErr } = await supabase
-    .from("sales")
-    .select("id, total")
-    .in("id", saleIds);
-  if (sErr) throw sErr;
+  const sales = await fetchByChunks(saleIds, async (chunk, from, to) => {
+    const { data, error } = await supabase
+      .from("sales")
+      .select("id, total")
+      .in("id", chunk)
+      .order("id", { ascending: true })
+      .range(from, to);
+    if (error) throw error;
+    return (data ?? []) as Array<{ total?: number }>;
+  });
   let totalAmount = 0;
-  for (const s of sales ?? []) {
-    totalAmount += Number((s as { total?: number }).total ?? 0);
+  for (const s of sales) {
+    totalAmount += Number(s.total ?? 0);
   }
-  const { data: items, error: iErr } = await supabase
-    .from("sale_items")
-    .select("quantity, total, product:products(id, purchase_price)")
-    .in("sale_id", saleIds);
-  if (iErr) throw iErr;
-  let itemsSold = 0;
-  let margin = 0;
-  for (const row of items ?? []) {
-    const m = row as {
+  const items = await fetchByChunks(saleIds, async (chunk, from, to) => {
+    const { data, error } = await supabase
+      .from("sale_items")
+      .select("quantity, total, product:products(id, purchase_price)")
+      .in("sale_id", chunk)
+      .order("id", { ascending: true })
+      .range(from, to);
+    if (error) throw error;
+    return (data ?? []) as Array<{
       quantity?: number;
       total?: number;
       product?: { purchase_price?: number } | null;
-    };
+    }>;
+  });
+  let itemsSold = 0;
+  let margin = 0;
+  for (const m of items) {
     const qty = Number(m.quantity ?? 0);
     const lineTotal = Number(m.total ?? 0);
     const purchasePrice = Number(m.product?.purchase_price ?? 0);
@@ -101,22 +118,26 @@ async function aggregateProductsFromSales(
   saleIds: string[],
 ): Promise<TopProduct[]> {
   if (saleIds.length === 0) return [];
-  const { data: items, error } = await supabase
-    .from("sale_items")
-    .select("product_id, quantity, total, product:products(id, name, purchase_price)")
-    .in("sale_id", saleIds);
-  if (error) throw error;
-  const agg = new Map<
-    string,
-    { name: string; qty: number; revenue: number; cost: number }
-  >();
-  for (const row of items ?? []) {
-    const m = row as {
+  const items = await fetchByChunks(saleIds, async (chunk, from, to) => {
+    const { data, error } = await supabase
+      .from("sale_items")
+      .select("product_id, quantity, total, product:products(id, name, purchase_price)")
+      .in("sale_id", chunk)
+      .order("id", { ascending: true })
+      .range(from, to);
+    if (error) throw error;
+    return (data ?? []) as Array<{
       product_id?: string;
       quantity?: number;
       total?: number;
       product?: { id?: string; name?: string; purchase_price?: number } | null;
-    };
+    }>;
+  });
+  const agg = new Map<
+    string,
+    { name: string; qty: number; revenue: number; cost: number }
+  >();
+  for (const m of items) {
     const pid = m.product_id;
     if (!pid) continue;
     const name = m.product?.name ?? "—";
@@ -157,15 +178,18 @@ async function getPurchasesSummary(
   fromDate: string,
   toDate: string,
 ): Promise<PurchasesSummary> {
-  let q = supabase
-    .from("purchases")
-    .select("id, total")
-    .eq("company_id", companyId)
-    .in("status", ["confirmed", "received", "partially_received"])
-    .gte("created_at", fromDate)
-    .lte("created_at", toEndOfDay(toDate));
-  if (storeId) q = q.eq("store_id", storeId);
-  const { data, error } = await q;
+  const { data, error } = await fetchAllPages((from, to) => {
+    let q = supabase
+      .from("purchases")
+      .select("id, total")
+      .eq("company_id", companyId)
+      .in("status", ["confirmed", "received", "partially_received"])
+      .gte("created_at", fromDate)
+      .lte("created_at", toEndOfDay(toDate))
+      .order("id", { ascending: true });
+    if (storeId) q = q.eq("store_id", storeId);
+    return q.range(from, to);
+  });
   if (error) throw error;
   let totalAmount = 0;
   for (const row of data ?? []) {
@@ -180,10 +204,14 @@ async function getStockValue(
   storeId: string | null,
 ): Promise<StockValue> {
   if (storeId) {
-    const { data: inv, error } = await supabase
-      .from("store_inventory")
-      .select("product_id, quantity, product:products(id, sale_price)")
-      .eq("store_id", storeId);
+    const { data: inv, error } = await fetchAllPages((from, to) =>
+      supabase
+        .from("store_inventory")
+        .select("product_id, quantity, product:products(id, sale_price)")
+        .eq("store_id", storeId)
+        .order("product_id", { ascending: true })
+        .range(from, to),
+    );
     if (error) throw error;
     let totalValue = 0;
     for (const row of inv ?? []) {
@@ -205,11 +233,17 @@ async function getStockValue(
   if (e1) throw e1;
   const storeIds = (stores ?? []).map((s) => s.id as string);
   if (storeIds.length === 0) return { totalValue: 0, productCount: 0 };
-  const { data: inv, error } = await supabase
-    .from("store_inventory")
-    .select("store_id, product_id, quantity, product:products(id, sale_price)")
-    .in("store_id", storeIds);
-  if (error) throw error;
+  const inv = await fetchByChunks(storeIds, async (chunk, from, to) => {
+    const { data, error } = await supabase
+      .from("store_inventory")
+      .select("store_id, product_id, quantity, product:products(id, sale_price)")
+      .in("store_id", chunk)
+      .order("store_id", { ascending: true })
+      .order("product_id", { ascending: true })
+      .range(from, to);
+    if (error) throw error;
+    return (data ?? []) as Array<Record<string, unknown>>;
+  });
   const seen = new Set<string>();
   let totalValue = 0;
   for (const row of inv ?? []) {
@@ -274,14 +308,17 @@ export async function fetchPredictionContextWithSupabase(
 
   let salesByDayComputed: SalesByDay[] = [];
   if (saleIds.length > 0) {
-    const { data: salesRows, error: salesErr } = await supabase
-      .from("sales")
-      .select("created_at, total")
-      .in("id", saleIds);
-    if (salesErr) throw salesErr;
-    salesByDayComputed = computeSalesByDay(
-      (salesRows ?? []) as Array<{ created_at: string; total: number }>,
-    );
+    const salesRows = await fetchByChunks(saleIds, async (chunk, from, to) => {
+      const { data, error } = await supabase
+        .from("sales")
+        .select("id, created_at, total")
+        .in("id", chunk)
+        .order("id", { ascending: true })
+        .range(from, to);
+      if (error) throw error;
+      return (data ?? []) as Array<{ created_at: string; total: number }>;
+    });
+    salesByDayComputed = computeSalesByDay(salesRows);
   }
 
   const [

@@ -1,6 +1,7 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
+import { fetchAllPages } from "@/lib/supabase/fetch-all-pages";
 
 /** Un lot de médicament (table `product_batches`). */
 export type ProductBatch = {
@@ -29,11 +30,15 @@ export async function listProductBatches(
   productId: string,
 ): Promise<ProductBatch[]> {
   const supabase = createClient();
-  const { data, error } = await supabase
-    .from("product_batches")
-    .select(batchSelect)
-    .eq("product_id", productId)
-    .order("expiry_date", { ascending: true, nullsFirst: false });
+  const { data, error } = await fetchAllPages((from, to) =>
+    supabase
+      .from("product_batches")
+      .select(batchSelect)
+      .eq("product_id", productId)
+      .order("expiry_date", { ascending: true, nullsFirst: false })
+      .order("id", { ascending: true })
+      .range(from, to),
+  );
   if (error) throw error;
   return ((data ?? []) as ProductBatch[]).map((b) => ({
     ...b,
@@ -127,15 +132,22 @@ export async function fetchExpiryList(
   companyId: string,
 ): Promise<ExpiryListItem[]> {
   const supabase = createClient();
-  const { data, error } = await supabase
-    .from("product_batches")
-    .select(
-      "id, product_id, store_id, lot_number, expiry_date, quantity, product:products(name)",
-    )
-    .eq("company_id", companyId)
-    .gt("quantity", 0)
-    .not("expiry_date", "is", null)
-    .order("expiry_date", { ascending: true });
+  // Paginé : une pharmacie suit un lot par référence et par arrivage — la table
+  // dépasse vite 1000 lignes. Tronquée, elle **cachait des produits périmés**, ce qui
+  // est exactement ce que ce module doit empêcher.
+  const { data, error } = await fetchAllPages((from, to) =>
+    supabase
+      .from("product_batches")
+      .select(
+        "id, product_id, store_id, lot_number, expiry_date, quantity, product:products(name)",
+      )
+      .eq("company_id", companyId)
+      .gt("quantity", 0)
+      .not("expiry_date", "is", null)
+      .order("expiry_date", { ascending: true })
+      .order("id", { ascending: true })
+      .range(from, to),
+  );
   if (error) throw error;
 
   const todayIso = new Date().toISOString().slice(0, 10);
@@ -173,14 +185,19 @@ export async function fetchExpirySummary(
   soon.setDate(soon.getDate() + soonDays);
   const soonIso = soon.toISOString().slice(0, 10);
 
-  const { data, error } = await supabase
-    .from("product_batches")
-    .select("product_id, lot_number, expiry_date, quantity, product:products(name)")
-    .eq("company_id", companyId)
-    .gt("quantity", 0)
-    .not("expiry_date", "is", null)
-    .lte("expiry_date", soonIso)
-    .order("expiry_date", { ascending: true });
+  // Paginé — même enjeu : un compteur de péremptions tronqué rassure à tort.
+  const { data, error } = await fetchAllPages((from, to) =>
+    supabase
+      .from("product_batches")
+      .select("product_id, lot_number, expiry_date, quantity, product:products(name)")
+      .eq("company_id", companyId)
+      .gt("quantity", 0)
+      .not("expiry_date", "is", null)
+      .lte("expiry_date", soonIso)
+      .order("expiry_date", { ascending: true })
+      .order("id", { ascending: true })
+      .range(from, to),
+  );
   if (error) throw error;
 
   const todayIso = today.toISOString().slice(0, 10);
