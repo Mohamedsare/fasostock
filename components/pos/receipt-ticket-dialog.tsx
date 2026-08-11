@@ -48,7 +48,7 @@ export function ReceiptTicketDialog({
       onClick={onClose}
     >
       <div
-        className="flex max-h-[90vh] w-full max-w-md flex-col rounded-t-2xl bg-white shadow-xl min-[500px]:rounded-2xl"
+        className="flex max-h-[90vh] w-full max-w-md flex-col rounded-t-lg bg-white shadow-xl min-[500px]:rounded-lg"
         role="dialog"
         aria-modal="true"
         aria-labelledby="receipt-dialog-title"
@@ -75,7 +75,7 @@ export function ReceiptTicketDialog({
             type="button"
             disabled={printing}
             onClick={() => void handlePrint()}
-            className="inline-flex min-w-[140px] items-center justify-center gap-2 rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] py-3 pl-4 pr-5 text-sm font-semibold text-[#1F2937] disabled:opacity-60"
+            className="inline-flex min-w-[140px] items-center justify-center gap-2 rounded-md border border-[#E5E7EB] bg-[#F3F4F6] py-3 pl-4 pr-5 text-sm font-semibold text-[#1F2937] disabled:opacity-60"
           >
             {printing ? (
               <span className="h-5 w-5 animate-spin rounded-full border-2 border-[#F97316] border-t-transparent" />
@@ -101,7 +101,7 @@ export function ReceiptTicketDialog({
           <button
             type="button"
             onClick={onClose}
-            className="min-w-[120px] rounded-xl border border-[#E5E7EB] bg-white py-3 px-5 text-sm font-semibold text-[#1F2937]"
+            className="min-w-[120px] rounded-md border border-[#E5E7EB] bg-white py-3 px-5 text-sm font-semibold text-[#1F2937]"
           >
             Fermer
           </button>

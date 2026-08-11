@@ -99,7 +99,7 @@ export function InvoicePostSaleDialog({
           role="dialog"
           aria-modal
           aria-labelledby="invoice-post-title"
-          className="relative z-10 w-full max-w-md rounded-t-2xl border border-black/[0.08] bg-fs-card p-5 shadow-xl min-[500px]:rounded-2xl"
+          className="relative z-10 w-full max-w-md rounded-t-lg border border-black/[0.08] bg-fs-card p-5 shadow-xl min-[500px]:rounded-lg"
           onClick={(e) => e.stopPropagation()}
         >
           <h2
@@ -153,7 +153,7 @@ export function InvoicePostSaleDialog({
           <button
             type="button"
             onClick={onClose}
-            className="mt-4 w-full rounded-xl py-2.5 text-sm font-semibold text-[#F97316] hover:bg-orange-50"
+            className="mt-4 w-full rounded-md py-2.5 text-sm font-semibold text-[#F97316] hover:bg-orange-50"
           >
             Fermer
           </button>
@@ -189,7 +189,7 @@ function PostSaleAction({
       disabled={disabled}
       onClick={onClick}
       className={cn(
-        "touch-manipulation inline-flex min-h-11 w-full min-w-0 items-center justify-center gap-2 rounded-xl bg-[#F97316] px-3 text-sm font-semibold text-white shadow-sm hover:bg-[#ea580c] disabled:opacity-50",
+        "touch-manipulation inline-flex min-h-11 w-full min-w-0 items-center justify-center gap-2 rounded-md bg-[#F97316] px-3 text-sm font-semibold text-white shadow-sm hover:bg-[#ea580c] disabled:opacity-50",
       )}
     >
       {loading ? (

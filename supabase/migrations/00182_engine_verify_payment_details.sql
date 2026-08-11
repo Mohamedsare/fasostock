@@ -66,8 +66,13 @@ AS $$
   paid AS (
     SELECT
       COALESCE(SUM(p.amount), 0)::numeric AS amount_paid,
+      -- `sale_payments.method` est l'enum `payment_method` : sans le `::text`,
+      -- l'agrégat sort en `payment_method[]` et le COALESCE échoue (42846), alors
+      -- que la fonction déclare `payment_methods text[]`. L'ORDER BY, qui doit
+      -- reprendre la même expression que le DISTINCT, rend la liste stable.
       COALESCE(
-        array_agg(DISTINCT p.method) FILTER (WHERE p.method IS NOT NULL),
+        array_agg(DISTINCT p.method::text ORDER BY p.method::text)
+          FILTER (WHERE p.method IS NOT NULL),
         '{}'::text[]
       ) AS payment_methods
     FROM public.sale_payments p

@@ -1647,7 +1647,7 @@ export function PosScreen({
         </p>
         <Link
           href="/stores"
-          className="mt-6 inline-flex items-center gap-2 rounded-[10px] bg-[#F97316] px-4 py-3 text-sm font-semibold text-white"
+          className="mt-6 inline-flex items-center gap-2 rounded-md bg-[#F97316] px-4 py-3 text-sm font-semibold text-white"
         >
           <MdArrowBack className="h-4 w-4" aria-hidden />
           Retour aux boutiques
@@ -1666,7 +1666,7 @@ export function PosScreen({
         <button
           type="button"
           onClick={() => router.push(`${ROUTES.sales}?store=${encodeURIComponent(storeId)}`)}
-          className="mt-6 inline-flex items-center gap-2 rounded-[10px] bg-[#F97316] px-4 py-3 text-sm font-semibold text-white"
+          className="mt-6 inline-flex items-center gap-2 rounded-md bg-[#F97316] px-4 py-3 text-sm font-semibold text-white"
         >
           <MdArrowBack className="h-4 w-4" aria-hidden />
           Retour aux ventes
@@ -1695,7 +1695,7 @@ export function PosScreen({
           </p>
           <Link
             href={ROUTES.settings}
-            className="mt-6 inline-flex items-center gap-2 rounded-[10px] bg-[#F97316] px-4 py-3 text-sm font-semibold text-white"
+            className="mt-6 inline-flex items-center gap-2 rounded-md bg-[#F97316] px-4 py-3 text-sm font-semibold text-white"
           >
             Ouvrir les paramètres
           </Link>
@@ -1930,7 +1930,7 @@ export function PosScreen({
           <button
             type="button"
             onClick={() => router.replace(quitSaleEditHref)}
-            className="shrink-0 rounded-lg px-2 py-1 text-xs font-bold text-[var(--fs-accent)] underline underline-offset-2"
+            className="shrink-0 rounded-md px-2 py-1 text-xs font-bold text-[var(--fs-accent)] underline underline-offset-2"
           >
             Quitter
           </button>
@@ -1956,7 +1956,7 @@ export function PosScreen({
           <p className="text-sm text-[#1F2937]">
             {(posQ.error as Error)?.message ?? "Impossible de charger la caisse."}
           </p>
-          <Link href="/stores" className="rounded-[10px] bg-[#F97316] px-4 py-2 text-sm font-semibold text-white">
+          <Link href="/stores" className="rounded-md bg-[#F97316] px-4 py-2 text-sm font-semibold text-white">
             Choisir une boutique
           </Link>
         </div>
@@ -1964,7 +1964,7 @@ export function PosScreen({
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 overflow-y-auto px-6 py-12 text-center">
           <MdStore className="h-16 w-16 text-red-500" aria-hidden />
           <p className="text-sm text-[#1F2937]">Boutique introuvable.</p>
-          <Link href="/stores" className="rounded-[10px] bg-[#F97316] px-4 py-2 text-sm font-semibold text-white">
+          <Link href="/stores" className="rounded-md bg-[#F97316] px-4 py-2 text-sm font-semibold text-white">
             Retour aux boutiques
           </Link>
         </div>
@@ -2009,7 +2009,7 @@ export function PosScreen({
                   <div
                     className={cn(
                       mode === "a4-table"
-                        ? "overflow-hidden rounded-[14px] border border-[#E5E7EB]/80 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.06)]"
+                        ? "overflow-hidden rounded-lg border border-[#E5E7EB]/80 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.06)]"
                         : "contents",
                     )}
                   >
@@ -2042,7 +2042,7 @@ export function PosScreen({
                     className={fsInputClass(
                       // fsInputClass inclut `sm:px-3` : sans `sm:pl-*` explicite, le padding gauche
                       // repasse à ~12px au breakpoint sm et le placeholder chevauche l’icône scanner.
-                      "h-9 w-full rounded-lg border-[#E5E7EB] bg-white py-1 pl-11 pr-9 text-xs leading-snug text-[#1F2937] placeholder:text-[#1F2937]/50 sm:pl-12 sm:pr-10 sm:text-[13px]",
+                      "h-9 w-full rounded-md border-[#E5E7EB] bg-white py-1 pl-11 pr-9 text-xs leading-snug text-[#1F2937] placeholder:text-[#1F2937]/50 sm:pl-12 sm:pr-10 sm:text-[13px]",
                     )}
                     value={search}
                     onChange={(e) => {
@@ -2065,7 +2065,7 @@ export function PosScreen({
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
                   <Link
                     href={`${ROUTES.sales}?store=${encodeURIComponent(storeId)}`}
-                    className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#F97316] text-white shadow-sm transition hover:opacity-95"
+                    className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-[#F97316] text-white shadow-sm transition hover:opacity-95"
                     aria-label="Retour aux ventes"
                   >
                     <MdArrowBack className="h-5 w-5" aria-hidden />
@@ -2078,7 +2078,7 @@ export function PosScreen({
                     <input
                       className={fsInputClass(
                         // Même cause que caisse rapide : `fsInputClass` → `sm:px-3` écrase `pl-*` au breakpoint sm.
-                        "h-[55px] w-full rounded-xl border-[#E5E7EB] bg-white py-2 pl-12 pr-3 text-sm leading-snug text-[#1F2937] placeholder:text-[#1F2937]/50 sm:pl-12 sm:pr-3",
+                        "h-[55px] w-full rounded-md border-[#E5E7EB] bg-white py-2 pl-12 pr-3 text-sm leading-snug text-[#1F2937] placeholder:text-[#1F2937]/50 sm:pl-12 sm:pr-3",
                       )}
                       value={search}
                       onChange={(e) => {
@@ -2099,7 +2099,7 @@ export function PosScreen({
                   <div className="flex shrink-0 items-center gap-2">
                     <select
                       className={fsInputClass(
-                        "h-12 w-[140px] min-w-0 shrink-0 rounded-xl border-[#E5E7EB] bg-white px-2 py-1.5 text-sm text-[#1F2937] min-[600px]:w-[180px]",
+                        "h-12 w-[140px] min-w-0 shrink-0 rounded-md border-[#E5E7EB] bg-white px-2 py-1.5 text-sm text-[#1F2937] min-[600px]:w-[180px]",
                       )}
                       value={
                         customerId && customers.some((c) => c.id === customerId)
@@ -2121,7 +2121,7 @@ export function PosScreen({
                       title="Créer un client"
                       aria-label="Créer un client"
                       onClick={() => setCustomerCreateOpen(true)}
-                      className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#F97316] text-white shadow-sm transition hover:opacity-95"
+                      className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-[#F97316] text-white shadow-sm transition hover:opacity-95"
                     >
                       <MdPersonAdd className="h-[22px] w-[22px]" aria-hidden />
                     </button>
@@ -2129,7 +2129,7 @@ export function PosScreen({
                       type="button"
                       onClick={() => void handleRefreshPos()}
                       disabled={posQ.isFetching}
-                      className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-[#1F2937]/70 transition hover:bg-black/5 disabled:opacity-50"
+                      className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md text-[#1F2937]/70 transition hover:bg-black/5 disabled:opacity-50"
                       aria-label="Actualiser catalogue et stock"
                     >
                       <MdRefresh
@@ -2149,7 +2149,7 @@ export function PosScreen({
                     <input
                       className={fsInputClass(
                         // `sm:px-3` du fsInputClass sans `sm:pl-*` → placeholder sous l’icône loupe.
-                        "h-9 w-full rounded-lg border-[#E5E7EB] bg-white py-1 pl-10 pr-3 text-xs leading-snug text-[#1F2937] placeholder:text-[#1F2937]/50 sm:pl-11 sm:pr-3 sm:text-[13px]",
+                        "h-9 w-full rounded-md border-[#E5E7EB] bg-white py-1 pl-10 pr-3 text-xs leading-snug text-[#1F2937] placeholder:text-[#1F2937]/50 sm:pl-11 sm:pr-3 sm:text-[13px]",
                       )}
                       value={search}
                       onChange={(e) => {
@@ -2170,7 +2170,7 @@ export function PosScreen({
                   <div className="flex shrink-0 gap-2 sm:gap-2">
                     <select
                       className={fsInputClass(
-                        "h-10 min-w-0 flex-1 rounded-xl border-[#E5E7EB] bg-white px-2 py-1.5 text-xs text-[#1F2937] sm:min-w-[140px] sm:text-sm md:min-w-[180px]",
+                        "h-10 min-w-0 flex-1 rounded-md border-[#E5E7EB] bg-white px-2 py-1.5 text-xs text-[#1F2937] sm:min-w-[140px] sm:text-sm md:min-w-[180px]",
                       )}
                       value={
                         customerId && customers.some((c) => c.id === customerId)
@@ -2192,7 +2192,7 @@ export function PosScreen({
                       title="Créer un client"
                       aria-label="Créer un client"
                       onClick={() => setCustomerCreateOpen(true)}
-                      className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#F97316] text-white shadow-sm transition hover:opacity-95"
+                      className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-[#F97316] text-white shadow-sm transition hover:opacity-95"
                     >
                       <MdPersonAdd className="h-5 w-5" aria-hidden />
                     </button>
@@ -2278,7 +2278,7 @@ export function PosScreen({
                             if (!noStock) onPickProduct(p, thumb);
                           }}
                           className={cn(
-                            "relative flex min-h-0 w-full min-w-0 flex-col items-center justify-center rounded-[14px] border bg-white px-2 py-1.5 text-center transition active:scale-[0.98]",
+                            "relative flex min-h-0 w-full min-w-0 flex-col items-center justify-center rounded-lg border bg-white px-2 py-1.5 text-center transition active:scale-[0.98]",
                             noStock
                               ? "border-[#E5E7EB] opacity-45"
                               : "border-[1.5px] border-[#F97316]/35 shadow-[0_2px_8px_rgba(249,115,22,0.1)]",
@@ -2300,7 +2300,7 @@ export function PosScreen({
                               -{promoPct}%
                             </span>
                           ) : null}
-                          <div className="mx-auto flex size-[clamp(3rem,52%,4.5rem)] max-h-[72px] max-w-[72px] shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[#F8F9FA]">
+                          <div className="mx-auto flex size-[clamp(3rem,52%,4.5rem)] max-h-[72px] max-w-[72px] shrink-0 items-center justify-center overflow-hidden rounded-md bg-[#F8F9FA]">
                             {thumb ? (
                               // eslint-disable-next-line @next/next/no-img-element
                               <img
@@ -2361,7 +2361,7 @@ export function PosScreen({
                         type="button"
                         onClick={() => onPickProduct(p, thumb)}
                         className={cn(
-                          "relative flex min-h-0 w-full min-w-0 flex-col items-center overflow-hidden rounded-xl bg-white px-2 py-1.5 text-center transition active:scale-[0.98]",
+                          "relative flex min-h-0 w-full min-w-0 flex-col items-center overflow-hidden rounded-md bg-white px-2 py-1.5 text-center transition active:scale-[0.98]",
                           "aspect-[0.82] @[400px]:aspect-[0.88] @[600px]:aspect-[0.93]",
                           "border border-[#F97316]/35 shadow-[0_1px_6px_rgba(249,115,22,0.08)]",
                         )}
@@ -2382,7 +2382,7 @@ export function PosScreen({
                             -{promoPct}%
                           </span>
                         ) : null}
-                        <div className="mx-auto flex h-[72px] w-[72px] shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[#F8F9FA] sm:h-[76px] sm:w-[76px]">
+                        <div className="mx-auto flex h-[72px] w-[72px] shrink-0 items-center justify-center overflow-hidden rounded-md bg-[#F8F9FA] sm:h-[76px] sm:w-[76px]">
                           {thumb ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img
@@ -2472,7 +2472,7 @@ export function PosScreen({
             <button
               type="button"
               onClick={() => setCartOpen(true)}
-              className="min-h-12 min-w-0 flex-1 rounded-xl py-2 text-left"
+              className="min-h-12 min-w-0 flex-1 rounded-md py-2 text-left"
             >
               <div className="flex items-center gap-3">
                 <MdReceiptLong className="h-[26px] w-[26px] shrink-0 text-[#F97316]" aria-hidden />
@@ -2487,7 +2487,7 @@ export function PosScreen({
             <button
               type="button"
               onClick={() => setCartOpen(true)}
-              className="h-12 shrink-0 rounded-lg bg-[#F97316] px-4 text-sm font-semibold text-white"
+              className="h-12 shrink-0 rounded-md bg-[#F97316] px-4 text-sm font-semibold text-white"
             >
               Voir / Payer
             </button>
@@ -2568,7 +2568,7 @@ export function PosScreen({
                   if (e.target === e.currentTarget) setPkgChooser(null);
                 }}
               >
-                <div className="w-full max-w-md rounded-2xl bg-fs-card p-4 shadow-xl sm:p-5">
+                <div className="w-full max-w-md rounded-lg bg-fs-card p-4 shadow-xl sm:p-5">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <h2 className="text-base font-bold text-fs-text">
@@ -2597,7 +2597,7 @@ export function PosScreen({
                     <button
                       type="button"
                       onClick={() => setPkgChooser(null)}
-                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-black/[0.08] text-neutral-600"
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-black/[0.08] text-neutral-600"
                       aria-label="Fermer"
                     >
                       <MdClose className="h-5 w-5" aria-hidden />
@@ -2611,7 +2611,7 @@ export function PosScreen({
                         addToCart(cp.id, cp.name, cp.unit, pkgChooser.thumb);
                         closeAndFocus();
                       }}
-                      className="flex items-center justify-between gap-2 rounded-xl border-2 border-fs-accent bg-fs-accent/[0.06] px-4 py-3 text-left"
+                      className="flex items-center justify-between gap-2 rounded-md border-2 border-fs-accent bg-fs-accent/[0.06] px-4 py-3 text-left"
                     >
                       <span className="text-sm font-bold text-fs-text">Pièce ({cp.unit || "pce"})</span>
                       <span className="text-sm font-extrabold text-fs-accent">
@@ -2630,7 +2630,7 @@ export function PosScreen({
                             addChosenPackaging(cp, pkgChooser.thumb, pk);
                             closeAndFocus();
                           }}
-                          className="flex items-center justify-between gap-2 rounded-xl border border-black/[0.1] bg-white px-4 py-3 text-left"
+                          className="flex items-center justify-between gap-2 rounded-md border border-black/[0.1] bg-white px-4 py-3 text-left"
                         >
                           <span className="min-w-0">
                             <span className="block text-sm font-bold text-fs-text">{pk.label}</span>
@@ -2706,7 +2706,7 @@ export function PosScreen({
             onClick={() => setQuickSettingsOpen(false)}
           />
           <div
-            className="relative z-10 max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-white px-6 pb-6 pt-5 shadow-xl sm:rounded-2xl"
+            className="relative z-10 max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-t-lg bg-white px-6 pb-6 pt-5 shadow-xl sm:rounded-lg"
             onClick={(e) => e.stopPropagation()}
           >
             <h2 id="pos-quick-settings-title" className="text-xl font-bold text-[#1F2937]">
@@ -2767,7 +2767,7 @@ export function PosScreen({
             <button
               type="button"
               onClick={() => setQuickSettingsOpen(false)}
-              className="mt-6 flex h-12 w-full items-center justify-center rounded-xl bg-[#F97316] text-sm font-semibold text-white hover:opacity-95"
+              className="mt-6 flex h-12 w-full items-center justify-center rounded-md bg-[#F97316] text-sm font-semibold text-white hover:opacity-95"
             >
               Fermer
             </button>
@@ -2804,8 +2804,8 @@ function CategoryChip({
       className={cn(
         "shrink-0 font-semibold transition-colors",
         tab
-          ? "rounded-[10px] px-3.5 py-2.5 text-sm"
-          : "rounded-[8px] px-2 py-0.5 text-[11px] min-[600px]:rounded-[10px] min-[600px]:px-2.5 min-[600px]:text-xs",
+          ? "rounded-md px-3.5 py-2.5 text-sm"
+          : "rounded-sm px-2 py-0.5 text-[11px] min-[600px]:rounded-md min-[600px]:px-2.5 min-[600px]:text-xs",
         selected
           ? "border-2 border-[#F97316] bg-[#F97316] text-white"
           : "border border-[#E5E7EB] bg-[#F3F4F6] text-[#1F2937]",
@@ -2907,7 +2907,7 @@ function PosCartQtyInput({
       inputMode="numeric"
       autoComplete="off"
       aria-label="Quantité"
-      className="h-7 w-[56px] rounded-lg border border-[#E5E7EB] bg-white px-1 text-center text-sm font-bold text-[#1F2937] outline-none focus:border-[#F97316]"
+      className="h-7 w-[56px] rounded-md border border-[#E5E7EB] bg-white px-1 text-center text-sm font-bold text-[#1F2937] outline-none focus:border-[#F97316]"
       value={display}
       onChange={(e) => {
         const v = e.target.value;
@@ -3047,7 +3047,7 @@ function PosCartUnitPriceInput({
       inputMode="numeric"
       autoComplete="off"
       aria-label="Prix unitaire"
-      className="h-8 w-full min-w-[72px] max-w-[104px] rounded-lg border border-[#E5E7EB] bg-white px-1.5 text-right text-sm font-bold leading-tight text-[#1F2937] outline-none focus:border-[#F97316]"
+      className="h-8 w-full min-w-[72px] max-w-[104px] rounded-md border border-[#E5E7EB] bg-white px-1.5 text-right text-sm font-bold leading-tight text-[#1F2937] outline-none focus:border-[#F97316]"
       value={display}
       onChange={(e) => {
         const raw = e.target.value.replace(/\D/g, "");
@@ -3246,7 +3246,7 @@ function PosCartPanel({
         className={cn(
           "mx-0 border border-[#E5E7EB] bg-white p-3 min-[900px]:mx-3 min-[900px]:p-4",
           // Facture A4 : rayons plus sobres que la caisse rapide (document, pas tactile).
-          isA4Cart ? "rounded-lg" : "rounded-xl",
+          isA4Cart ? "rounded-sm" : "rounded-md",
         )}
       >
         <div className="flex justify-between text-xs text-[#1F2937] min-[900px]:text-sm">
@@ -3278,7 +3278,7 @@ function PosCartPanel({
               onChange={(e) => setPrescriptionNumber?.(e.target.value)}
               placeholder="Ex. ORD-2026-00123"
               autoComplete="off"
-              className="w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#1F2937] outline-none focus:border-[#F97316]"
+              className="w-full rounded-md border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#1F2937] outline-none focus:border-[#F97316]"
             />
           </label>
         </div>
@@ -3305,7 +3305,7 @@ function PosCartPanel({
               type="button"
               onClick={() => setQuickPayment(key)}
               className={cn(
-                "truncate rounded-lg px-1 py-2 font-semibold transition-colors",
+                "truncate rounded-md px-1 py-2 font-semibold transition-colors",
                 quickPaymentButtons.length >= 5
                   ? "text-[10px]"
                   : quickPaymentButtons.length === 4
@@ -3338,7 +3338,7 @@ function PosCartPanel({
                 type="button"
                 onClick={() => setPaymentMethod(key)}
                 className={cn(
-                  "rounded-md border px-2 py-1.5 text-[10px] font-semibold",
+                  "rounded-sm border px-2 py-1.5 text-[10px] font-semibold",
                   sel
                     ? "border-[#F97316] bg-[color-mix(in_srgb,#F97316_18%,transparent)] text-[#1F2937]"
                     : "border-[#E5E7EB] bg-[#F8F9FA] text-[#1F2937]",
@@ -3374,7 +3374,7 @@ function PosCartPanel({
                   onClick={() => setMobileProvider?.(p.id)}
                   aria-pressed={mobileProvider === p.id}
                   className={cn(
-                    "truncate rounded-lg px-1 py-2 text-xs font-semibold transition-colors",
+                    "truncate rounded-md px-1 py-2 text-xs font-semibold transition-colors",
                     mobileProvider === p.id
                       ? "bg-[#F97316] text-white"
                       : "bg-[#F8F9FA] text-[#1F2937]",
@@ -3397,14 +3397,14 @@ function PosCartPanel({
        * mobile money. Une seule saisie (la part espèces) — le reste se déduit tout
        * seul, c'est la question qu'on pose au comptoir. */}
       {isMixedCart ? (
-        <div className="mt-3 rounded-lg border border-[#F97316]/40 bg-[#FFF7ED] p-2.5 min-[900px]:mx-3">
+        <div className="mt-3 rounded-md border border-[#F97316]/40 bg-[#FFF7ED] p-2.5 min-[900px]:mx-3">
           <label className="block">
             <span className="mb-1 block text-[11px] font-semibold text-[#9A3412]">
               Part payée en espèces
             </span>
             <input
               className={fsInputClass(
-                "rounded-md bg-white px-2 py-2 text-[13px] sm:px-2 sm:py-2 sm:text-[13px]",
+                "rounded-sm bg-white px-2 py-2 text-[13px] sm:px-2 sm:py-2 sm:text-[13px]",
               )}
               value={splitCashAmount ?? ""}
               onChange={(e) => setSplitCashAmount?.(e.target.value)}
@@ -3428,11 +3428,11 @@ function PosCartPanel({
       {/* Vente à crédit (caisse rapide) : client obligatoire, acompte et échéance.
        * Bloc compact — l'échéance (rarement saisie) reste repliée par défaut. */}
       {mode === "quick" && quickPayment === "credit" ? (
-        <div className="mt-3 rounded-lg border border-[#F97316]/40 bg-[#FFF7ED] p-2.5 min-[900px]:mx-3">
+        <div className="mt-3 rounded-md border border-[#F97316]/40 bg-[#FFF7ED] p-2.5 min-[900px]:mx-3">
           <div className="flex gap-2">
             <select
               className={fsInputClass(
-                "min-w-0 flex-1 rounded-md bg-white px-2 py-2 text-[13px] sm:px-2 sm:py-2 sm:text-[13px]",
+                "min-w-0 flex-1 rounded-sm bg-white px-2 py-2 text-[13px] sm:px-2 sm:py-2 sm:text-[13px]",
               )}
               value={customerId}
               onChange={(e) => setCustomerId(e.target.value)}
@@ -3451,14 +3451,14 @@ function PosCartPanel({
                 title="Créer un client"
                 aria-label="Créer un client"
                 onClick={onCreateCustomer}
-                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-[#F97316] text-white"
+                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-sm bg-[#F97316] text-white"
               >
                 <MdPersonAdd className="h-5 w-5" aria-hidden />
               </button>
             ) : null}
             <input
               className={fsInputClass(
-                "w-24 shrink-0 rounded-md bg-white px-2 py-2 text-[13px] sm:px-2 sm:py-2 sm:text-[13px]",
+                "w-24 shrink-0 rounded-sm bg-white px-2 py-2 text-[13px] sm:px-2 sm:py-2 sm:text-[13px]",
               )}
               value={amountReceived}
               onChange={(e) => {
@@ -3478,7 +3478,7 @@ function PosCartPanel({
               <input
                 type="date"
                 className={fsInputClass(
-                  "w-38 rounded-md bg-white px-2 py-1.5 text-xs sm:px-2 sm:py-1.5 sm:text-xs",
+                  "w-38 rounded-sm bg-white px-2 py-1.5 text-xs sm:px-2 sm:py-1.5 sm:text-xs",
                 )}
                 value={creditDueDate ?? ""}
                 onChange={(e) => setCreditDueDate?.(e.target.value)}
@@ -3515,7 +3515,7 @@ function PosCartPanel({
           <div className="flex gap-2">
             <select
               className={fsInputClass(
-                "min-w-0 flex-1 rounded-md bg-white px-2.5 py-1.5 sm:px-2.5 sm:py-1.5",
+                "min-w-0 flex-1 rounded-sm bg-white px-2.5 py-1.5 sm:px-2.5 sm:py-1.5",
               )}
               value={customerId}
               onChange={(e) => setCustomerId(e.target.value)}
@@ -3533,7 +3533,7 @@ function PosCartPanel({
                 title="Créer un client"
                 aria-label="Créer un client"
                 onClick={onCreateCustomer}
-                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-[#F97316] text-white"
+                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-sm bg-[#F97316] text-white"
               >
                 <MdPersonAdd className="h-5 w-5" aria-hidden />
               </button>
@@ -3549,7 +3549,7 @@ function PosCartPanel({
           </label>
           <input
             className={fsInputClass(
-              cn("bg-white px-2.5 py-1.5 sm:px-2.5 sm:py-1.5", isA4Cart && "rounded-md"),
+              cn("rounded-md bg-white px-2.5 py-1.5 sm:px-2.5 sm:py-1.5", isA4Cart && "rounded-sm"),
             )}
             value={discount}
             onChange={(e) => setDiscount(e.target.value)}
@@ -3564,7 +3564,7 @@ function PosCartPanel({
           <label className="mb-1 block text-xs font-semibold text-[#1F2937]">Montant reçu</label>
           <input
             className={fsInputClass(
-              "bg-white px-2.5 py-1.5 sm:px-2.5 sm:py-1.5",
+              "rounded-md bg-white px-2.5 py-1.5 sm:px-2.5 sm:py-1.5",
             )}
             value={amountReceived}
             onChange={(e) => {
@@ -3597,7 +3597,7 @@ function PosCartPanel({
           </label>
           <input
             className={fsInputClass(
-              "rounded-md bg-white px-2.5 py-1.5 sm:px-2.5 sm:py-1.5",
+              "rounded-sm bg-white px-2.5 py-1.5 sm:px-2.5 sm:py-1.5",
             )}
             value={amountReceived}
             onChange={(e) => {
@@ -3610,14 +3610,14 @@ function PosCartPanel({
           {/* À crédit : l'acompte saisi est encaissé, le solde part en créance.
            * Le caissier voit le reste dû avant de valider, et peut fixer l'échéance. */}
           {paymentMethod === "other" ? (
-            <div className="mt-2 flex items-center justify-between gap-2 rounded-lg border border-[#F97316]/40 bg-[#FFF7ED] px-2.5 py-2">
+            <div className="mt-2 flex items-center justify-between gap-2 rounded-md border border-[#F97316]/40 bg-[#FFF7ED] px-2.5 py-2">
               {isSaleEdit ? (
                 <span />
               ) : dueDateOpen || (creditDueDate ?? "").length > 0 ? (
                 <input
                   type="date"
                   className={fsInputClass(
-                    "w-38 rounded-md bg-white px-2 py-1.5 text-xs sm:px-2 sm:py-1.5 sm:text-xs",
+                    "w-38 rounded-sm bg-white px-2 py-1.5 text-xs sm:px-2 sm:py-1.5 sm:text-xs",
                   )}
                   value={creditDueDate ?? ""}
                   onChange={(e) => setCreditDueDate?.(e.target.value)}
@@ -3649,7 +3649,7 @@ function PosCartPanel({
           onClick={onClear}
           className={cn(
             "flex-1 border border-[#E5E7EB] bg-[#F8F9FA] py-2.5 text-sm font-semibold text-[#1F2937]",
-            isA4Cart ? "rounded-lg" : "rounded-xl",
+            isA4Cart ? "rounded-sm" : "rounded-md",
           )}
         >
           {mode === "quick" ? "Annuler" : "Vider panier"}
@@ -3660,7 +3660,7 @@ function PosCartPanel({
           onClick={() => void onPay()}
           className={cn(
             "flex-[2] inline-flex items-center justify-center gap-2 bg-[#F97316] py-2.5 text-sm font-bold text-white disabled:opacity-50",
-            isA4Cart ? "rounded-lg" : "rounded-xl",
+            isA4Cart ? "rounded-sm" : "rounded-md",
           )}
         >
           {isSaleEdit ? (
@@ -3785,7 +3785,7 @@ function PosCartPanel({
                       <td className="truncate border border-[#E5E7EB] px-1.5 py-1.5 align-middle">
                         <select
                           className={fsInputClass(
-                            "w-full max-w-full bg-white py-1 pl-1 pr-1 text-[13px] leading-tight text-[#1F2937]",
+                            "w-full max-w-full rounded-sm bg-white py-1 pl-1 pr-1 text-[13px] leading-tight text-[#1F2937]",
                           )}
                           value={defaultInvoiceUnitForProduct(c.unit)}
                           onChange={(e) => onLineUnitChange(c.productId, e.target.value)}
@@ -3804,7 +3804,7 @@ function PosCartPanel({
                             <button
                               type="button"
                               onClick={() => onUpdateQty(c.productId, -1)}
-                              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#F8F9FA] text-[#1F2937]"
+                              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-[#F8F9FA] text-[#1F2937]"
                               aria-label="Moins"
                             >
                               <span className="text-lg leading-none">−</span>
@@ -3828,7 +3828,7 @@ function PosCartPanel({
                             <button
                               type="button"
                               onClick={() => onUpdateQty(c.productId, 1)}
-                              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#F97316] text-white"
+                              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-[#F97316] text-white"
                               aria-label="Plus"
                             >
                               <MdAdd className="h-[22px] w-[22px]" aria-hidden />
@@ -3872,9 +3872,9 @@ function PosCartPanel({
               return (
                 <li
                   key={c.productId}
-                  className="flex gap-2 rounded-[10px] border border-[#E5E7EB] bg-white px-2 py-1.5"
+                  className="flex gap-2 rounded-md border border-[#E5E7EB] bg-white px-2 py-1.5"
                 >
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[#F8F9FA]">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-md bg-[#F8F9FA]">
                     {c.imageUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={productThumbUrl(c.imageUrl)!} alt="" className="h-full w-full object-cover" />
@@ -3894,7 +3894,7 @@ function PosCartPanel({
                         <button
                           type="button"
                           onClick={() => onUpdateQty(c.productId, -1)}
-                          className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#F8F9FA] text-[#1F2937]"
+                          className="flex h-7 w-7 items-center justify-center rounded-md bg-[#F8F9FA] text-[#1F2937]"
                           aria-label="Moins"
                         >
                           <span className="text-base leading-none">−</span>
@@ -3916,7 +3916,7 @@ function PosCartPanel({
                         <button
                           type="button"
                           onClick={() => onUpdateQty(c.productId, 1)}
-                          className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#F97316] text-white"
+                          className="flex h-7 w-7 items-center justify-center rounded-md bg-[#F97316] text-white"
                           aria-label="Plus"
                         >
                           <MdAdd className="h-4 w-4" aria-hidden />

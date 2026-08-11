@@ -168,7 +168,7 @@ export function PosBarcodeScannerDialog({
     >
       <div
         className={cn(
-          "relative w-full max-w-md overflow-hidden rounded-2xl bg-[#1F2937] shadow-xl",
+          "relative w-full max-w-md overflow-hidden rounded-lg bg-[#1F2937] shadow-xl",
         )}
       >
         <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
@@ -185,7 +185,7 @@ export function PosBarcodeScannerDialog({
         <div className="p-3">
           <div
             id={regionId}
-            className="mx-auto min-h-[220px] w-full max-w-[360px] overflow-hidden rounded-xl bg-black"
+            className="mx-auto min-h-[220px] w-full max-w-[360px] overflow-hidden rounded-md bg-black"
           />
           <p className="mt-3 text-center text-xs text-white/70">
             Cadrez le code-barres ou le QR code. La lecture se fait automatiquement.
