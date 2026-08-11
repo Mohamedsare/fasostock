@@ -93,9 +93,6 @@ export function SiteHeader({ sectionHrefPrefix = "" }: SiteHeaderProps) {
           >
             {isDark ? <MdLightMode className="h-5 w-5 text-amber-500" /> : <MdDarkMode className="h-5 w-5 text-fs-accent" />}
           </button>
-          <Link href={section("fonctionnalites-principales")} className="rounded-md px-3 py-2.5 text-sm font-semibold text-neutral-800 hover:bg-black/5">
-            Fonctionnalités
-          </Link>
           <Link href={section("tarifs")} className="rounded-md px-3 py-2.5 text-sm font-semibold text-neutral-800 hover:bg-black/5">
             Tarifs
           </Link>
@@ -172,9 +169,6 @@ export function SiteHeader({ sectionHrefPrefix = "" }: SiteHeaderProps) {
           </button>
 
           <nav className="hidden items-center gap-5 lg:flex">
-            <Link href={section("fonctionnalites-principales")} className="inline-flex items-center text-[13px] font-semibold text-neutral-800 hover:text-fs-accent">
-              Fonctionnalités
-            </Link>
             <Link href={section("tarifs")} className="text-[13px] font-semibold text-neutral-800 hover:text-fs-accent">
               Tarifs
             </Link>
