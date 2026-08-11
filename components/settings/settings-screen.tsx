@@ -11,6 +11,7 @@ import {
 import { ROUTES } from "@/lib/config/routes";
 import { P } from "@/lib/constants/permissions";
 import { useAppContext } from "@/lib/features/common/app-context";
+import { applyActiveStoreChange } from "@/lib/features/stores/active-store";
 import { usePermissions } from "@/lib/features/permissions/use-permissions";
 import {
   updateCompanyLogoUrl,
@@ -1762,12 +1763,7 @@ export function SettingsScreen() {
                 value={ctxStoreId === null ? "__all__" : ctxStoreId}
                 onChange={(e) => {
                   const v = e.target.value;
-                  try {
-                    localStorage.setItem("fs_active_store_id", v === "__all__" ? "__all__" : v);
-                  } catch {
-                    /* */
-                  }
-                  void qc.invalidateQueries({ queryKey: queryKeys.appContext });
+                  applyActiveStoreChange(qc, v === "__all__" ? null : v);
                 }}
               >
                 <option value="__all__">— Toutes —</option>

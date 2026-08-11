@@ -7,6 +7,10 @@ import type { AppContextData } from "@/lib/features/permissions/access";
 import { reportHandledClientError } from "@/lib/monitoring/remote-error-logger";
 import { createClient } from "@/lib/supabase/client";
 import { getCurrentSupportSession } from "@/lib/features/support/api";
+import {
+  ACTIVE_STORE_STORAGE_KEY,
+  ALL_STORES_VALUE,
+} from "@/lib/features/stores/active-store";
 import { mapSupabaseError } from "@/lib/supabase/map-error";
 import { queryKeys } from "@/lib/query/query-keys";
 import { formatUnknownErrorMessage } from "@/lib/utils/format-unknown-error";
@@ -139,14 +143,19 @@ function defaultStoreIdFromList(
   return primary?.id ?? sorted[0]!.id;
 }
 
+/**
+ * La boutique enregistrée n'est retenue que si elle fait toujours partie des
+ * boutiques de l'utilisateur : une réaffectation par le propriétaire le ramène
+ * ainsi automatiquement sur une boutique valide, sans écran vide.
+ */
 function pickActiveStoreId(
   stores: { id: string; name: string; isPrimary?: boolean }[],
 ): string | null {
   if (stores.length === 0) return null;
   if (typeof window === "undefined") return defaultStoreIdFromList(stores);
   try {
-    const v = localStorage.getItem("fs_active_store_id");
-    if (v === "__all__") return null;
+    const v = localStorage.getItem(ACTIVE_STORE_STORAGE_KEY);
+    if (v === ALL_STORES_VALUE) return null;
     if (v && stores.some((s) => s.id === v)) return v;
   } catch {
     /* */

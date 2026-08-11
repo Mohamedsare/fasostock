@@ -20,6 +20,7 @@ import { FullscreenToggleButton } from "@/components/layout/fullscreen-toggle-bu
 import { OwnerNotificationsBell } from "@/components/layout/owner-notifications-bell";
 import { NAV_ITEMS, RESTAURANT_NAV_ITEMS } from "@/lib/config/navigation";
 import { useAppContext } from "@/lib/features/common/app-context";
+import { applyActiveStoreChange } from "@/lib/features/stores/active-store";
 import { StoreSwitcherSheet } from "@/components/layout/store-switcher-sheet";
 import { SupportSessionBanner } from "@/components/layout/support-session-banner";
 import { usePermissions } from "@/lib/features/permissions/use-permissions";
@@ -45,7 +46,7 @@ import {
   hasSeenInitialAppLoad,
   markInitialAppLoadDone,
 } from "@/lib/features/common/initial-app-load";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 const BOTTOM_PATHS = [ROUTES.dashboard, ROUTES.products, ROUTES.sales];
 
@@ -97,28 +98,66 @@ export function AppShell({ children, userEmail }: AppShellProps) {
   const stores = data?.stores ?? [];
   const activeStoreId = data?.storeId ?? null;
   const [storeSwitcherOpen, setStoreSwitcherOpen] = useState(false);
+  /**
+   * Incrémenté à chaque changement de boutique depuis la barre supérieure : sert
+   * de `key` à l'écran courant pour le remonter. Un compteur plutôt que le
+   * `storeId` lui-même, sinon la première résolution du contexte
+   * (`undefined` → id) provoquerait un remontage inutile à chaque chargement.
+   */
+  const [storeEpoch, setStoreEpoch] = useState(0);
+  /** Une bascule depuis la barre supérieure attend son remontage. */
+  const remountOnStoreChange = useRef(false);
 
+  /**
+   * Changer de boutique doit valoir pour TOUTE l'application, immédiatement.
+   * Deux pièges, traités dans l'ordre — en retirer un laisse des écrans afficher
+   * les chiffres de la boutique précédente.
+   */
   const switchStore = (storeId: string) => {
-    try { localStorage.setItem("fs_active_store_id", storeId); } catch { /* */ }
+    setStoreSwitcherOpen(false);
+    if (storeId === activeStoreId) return;
+
+    // 1. Contexte + cache : voir `applyActiveStoreChange`.
+    applyActiveStoreChange(queryClient, storeId);
+
     /*
-     * Changement de boutique = changement de catalogue, de stock, de prix et de
-     * promotions. La plupart des clés portent déjà le `storeId`, mais pas toutes :
-     * on invalide tout pour qu'aucun écran ne garde à l'affichage les chiffres de
-     * la boutique précédente. Seules les requêtes montées sont réellement rejouées.
-     */
-    void queryClient.invalidateQueries();
-    /*
-     * Les écrans sous `/stores/<id>/…` (caisse, facture, vente d'engin) tiennent
-     * leur boutique de l'URL, pas du contexte. Sans cette redirection, l'en-tête
-     * annoncerait la nouvelle boutique pendant qu'on continue d'encaisser dans
-     * l'ancienne.
+     * 2. Les écrans sous `/stores/<id>/…` (caisse, facture, vente d'engin) tiennent
+     *    leur boutique de l'URL, pas du contexte : il faut y aller. Ailleurs, on
+     *    remonte l'écran courant — beaucoup de pages recopient la boutique active
+     *    dans un filtre local au premier affichage et ne la relisent jamais.
      */
     const scoped = /^\/stores\/[^/]+(\/.*)?$/.exec(pathname);
     if (scoped) {
       router.replace(`/stores/${storeId}${scoped[1] ?? ""}`);
+      return;
     }
-    setStoreSwitcherOpen(false);
+
+    /*
+     * 3. `?store=` — l'historique des ventes reçoit ce paramètre en revenant de la
+     *    caisse, et il l'emporte sur le contexte. Laissé tel quel, il rétablirait
+     *    l'ancienne boutique au remontage.
+     */
+    const search = new URLSearchParams(window.location.search);
+    if (search.get("store")) {
+      search.set("store", storeId);
+      router.replace(`${pathname}?${search.toString()}`);
+    }
+    remountOnStoreChange.current = true;
   };
+
+  /**
+   * Le remontage est déclenché ici, et non dans `switchStore` : il doit survenir
+   * APRÈS un rendu où le contexte porte déjà la nouvelle boutique, sinon l'écran
+   * se reconstruirait en relisant l'ancienne. Le drapeau limite l'effet aux
+   * bascules de la barre supérieure — les sélecteurs internes du Tableau de bord
+   * et des Rapports gèrent leur propre état et n'ont pas à être réinitialisés.
+   */
+  useEffect(() => {
+    if (!remountOnStoreChange.current) return;
+    remountOnStoreChange.current = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- remontage volontaire, ordonné après la mise à jour du contexte
+    setStoreEpoch((n) => n + 1);
+  }, [activeStoreId]);
 
   /**
    * Le super admin vit dans /admin — sauf en mode dépannage, où il travaille
@@ -520,7 +559,14 @@ export function AppShell({ children, userEmail }: AppShellProps) {
               isPosRoute ? "overflow-hidden" : "overflow-y-auto overflow-x-hidden",
             )}
           >
-            {children}
+            {/*
+              * `key` : au changement de boutique, l'écran courant repart de zéro.
+              * Sans lui, les filtres qui recopient la boutique active à leur
+              * premier affichage (Ventes, Crédit, Tableau de bord…) resteraient
+              * figés sur l'ancienne. Un `Fragment` — aucun nœud DOM ajouté, donc
+              * aucune incidence sur la mise en page (notamment les écrans POS).
+              */}
+            <Fragment key={storeEpoch}>{children}</Fragment>
           </main>
 
           {!isDesktop && !isPosRoute && primaryMobile.length > 0 ? (

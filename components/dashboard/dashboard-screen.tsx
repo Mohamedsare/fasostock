@@ -38,6 +38,7 @@ import {
   type DashboardPeriod,
 } from "@/lib/features/dashboard/date-range";
 import { useAppContext } from "@/lib/features/common/app-context";
+import { applyActiveStoreChange } from "@/lib/features/stores/active-store";
 import type { AccessHelpers } from "@/lib/features/permissions/access";
 import { expiryModuleOverride } from "@/lib/features/permissions/access";
 import { usePermissions } from "@/lib/features/permissions/use-permissions";
@@ -77,30 +78,19 @@ function getDashboardFallbackRoute(h: AccessHelpers): string {
   return ROUTES.settings;
 }
 
-/**
- * Aligné `CompanyProvider.setCurrentStoreId` (Flutter) : la boutique choisie sur le dashboard
- * doit devenir la boutique active pour toute l’app (Produits, POS, stock, etc.).
- * Sur le web : `fs_active_store_id` + invalidation du contexte React Query.
- */
-function persistGlobalActiveStore(storeId: string) {
-  if (typeof window === "undefined") return;
-  try {
-    localStorage.setItem("fs_active_store_id", storeId);
-  } catch {
-    /* */
-  }
-}
-
 export function DashboardScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const ctx = useAppContext();
 
+  /**
+   * Aligné `CompanyProvider.setCurrentStoreId` (Flutter) : la boutique choisie sur le
+   * tableau de bord devient la boutique active pour toute l'app (Produits, POS, stock…).
+   */
   const syncGlobalStoreFromDashboard = useCallback(
     (storeId: string | null) => {
       if (!storeId) return;
-      persistGlobalActiveStore(storeId);
-      void queryClient.invalidateQueries({ queryKey: queryKeys.appContext });
+      applyActiveStoreChange(queryClient, storeId);
     },
     [queryClient],
   );

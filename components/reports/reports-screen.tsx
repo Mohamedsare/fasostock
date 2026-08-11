@@ -37,6 +37,7 @@ import {
 import { listCompanyUsers } from "@/lib/features/users/api";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { queryKeys } from "@/lib/query/query-keys";
+import { applyActiveStoreChange } from "@/lib/features/stores/active-store";
 import { messageFromUnknownError, toast } from "@/lib/toast";
 import { formatCurrency } from "@/lib/utils/currency";
 import { cn } from "@/lib/utils/cn";
@@ -392,22 +393,8 @@ export function ReportsScreen() {
   };
 
   const onStoreSelectChange = (v: string) => {
-    if (v === "") {
-      setStorePick("all");
-      try {
-        localStorage.setItem("fs_active_store_id", "__all__");
-      } catch {
-        /* */
-      }
-    } else {
-      setStorePick(v);
-      try {
-        localStorage.setItem("fs_active_store_id", v);
-      } catch {
-        /* */
-      }
-    }
-    void qc.invalidateQueries({ queryKey: queryKeys.appContext });
+    setStorePick(v === "" ? "all" : v);
+    applyActiveStoreChange(qc, v === "" ? null : v);
   };
 
   const reportsParams = useMemo(
