@@ -40,6 +40,10 @@ import {
   fetchInvoiceTablePosEnabled,
   peekInvoiceTablePosEnabled,
 } from "@/lib/features/settings/invoice-table-pos";
+import {
+  fetchSalePickupTrackingEnabled,
+  peekSalePickupTrackingEnabled,
+} from "@/lib/features/settings/sale-pickup-tracking";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDateTime, toIsoDate } from "@/lib/utils/date";
 import { salesToSpreadsheetMatrix } from "@/lib/features/sales/csv";
@@ -448,7 +452,7 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
    * « c'est parti » ou « ça attend ». Ni argent ni stock ne bougent — la RPC
    * `sale_set_delivery_state` applique la même règle côté base.
    */
-  const canMarkDelivery = isOwner || canCreateSale || canUpdateSale;
+  const mayMarkDelivery = isOwner || canCreateSale || canUpdateSale;
   /**
    * Le bénéfice révèle les prix d'achat : réservé à qui voit déjà les marges
    * (propriétaire ou droit Rapports). Un caissier ne voit tout simplement pas la colonne.
@@ -503,6 +507,24 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
     hasPermission(P.salesInvoiceA4Table) &&
     canPosInvoiceA4 &&
     invoiceTablePosEnabled;
+
+  /*
+   * Suivi « payé, pas encore emporté » — ouvert par le propriétaire dans Paramètres,
+   * FERMÉ par défaut. Coupé, la page Ventes est exactement ce qu'elle était : ni icône,
+   * ni puce, ni bannière, et aucune requête supplémentaire.
+   */
+  const peekPickup =
+    companyId.length > 0 ? peekSalePickupTrackingEnabled(companyId) : undefined;
+  const pickupTrackingQ = useQuery({
+    queryKey: queryKeys.salePickupTrackingEnabled(companyId),
+    queryFn: () => fetchSalePickupTrackingEnabled(companyId),
+    enabled: !!companyId,
+    staleTime: 60_000,
+    ...(peekPickup !== undefined ? { initialData: peekPickup } : {}),
+  });
+  const pickupTrackingEnabled = pickupTrackingQ.data ?? false;
+  /** Droit ET réglage : les deux sont nécessaires pour voir le bouton. */
+  const canMarkDelivery = pickupTrackingEnabled && mayMarkDelivery;
 
   const searchParams = useSearchParams();
   /**
@@ -589,7 +611,7 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
     }),
     queryFn: () =>
       listAwaitingPickupSales({ companyId, storeId: effectiveStoreId }),
-    enabled: !!companyId,
+    enabled: !!companyId && pickupTrackingEnabled,
     staleTime: 30_000,
     refetchInterval: 30_000,
   });
@@ -865,6 +887,7 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
         }
         const { headers, rows } = salesToSpreadsheetMatrix(visibleSales, stores, {
           costById,
+          pickupTracking: pickupTrackingEnabled,
         });
         await downloadProSpreadsheet(
           `${isRestaurant ? "commandes" : "ventes"}-${d}.xlsx`,
@@ -1077,7 +1100,7 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
         pas d'un pixel. Elle ouvre une liste SANS période — un client qui n'est pas revenu
         depuis trois semaines est justement celui qu'un filtre « aujourd'hui » cacherait.
       */}
-      {awaitingCount > 0 || awaitingOnly ? (
+      {pickupTrackingEnabled && (awaitingCount > 0 || awaitingOnly) ? (
         <button
           type="button"
           onClick={() => {
@@ -1475,7 +1498,7 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
                           >
                             {statusLabel[s.status]}
                           </span>
-                          <SaleDeliveryChip sale={s} />
+                          {pickupTrackingEnabled ? <SaleDeliveryChip sale={s} /> : null}
                         </span>
                       </td>
                       <td className="px-3 py-2 text-right">
@@ -1566,6 +1589,7 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
                   profitLoading={profitLoading}
                   canCancel={canCancelSale}
                   canEdit={canUpdateSale}
+                  pickupEnabled={pickupTrackingEnabled}
                   canMarkDelivery={canMarkDelivery}
                   isOwner={isOwner}
                   companyId={companyId}
@@ -1896,6 +1920,7 @@ function SaleCard({
   profitLoading,
   canCancel,
   canEdit,
+  pickupEnabled,
   canMarkDelivery,
   isOwner,
   companyId,
@@ -1913,6 +1938,8 @@ function SaleCard({
   profitLoading: boolean;
   canCancel: boolean;
   canEdit: boolean;
+  /** Réglage entreprise « marchandise payée non emportée » ouvert. */
+  pickupEnabled: boolean;
   canMarkDelivery: boolean;
   isOwner: boolean;
   companyId: string;
@@ -1965,7 +1992,7 @@ function SaleCard({
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
           <DocumentTypeChip sale={sale} />
           <SaleSettlementChip sale={sale} />
-          <SaleDeliveryChip sale={sale} />
+          {pickupEnabled ? <SaleDeliveryChip sale={sale} /> : null}
           <span
             className={cn(
               "rounded-lg px-2.5 py-1 text-xs font-semibold leading-none",
@@ -1976,7 +2003,7 @@ function SaleCard({
           </span>
         </div>
       </div>
-      {delivery.awaiting && delivery.note ? (
+      {pickupEnabled && delivery.awaiting && delivery.note ? (
         <p className="mt-2 line-clamp-2 rounded-lg bg-amber-500/10 px-2 py-1 text-xs leading-normal text-amber-900 dark:text-amber-200">
           {delivery.note}
         </p>

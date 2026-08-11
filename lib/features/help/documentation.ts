@@ -732,6 +732,7 @@ export const DOC_GROUPS: DocGroup[] = [
             kind: "steps",
             title: "Le client a payé mais n'emporte rien",
             items: [
+              "À activer d'abord : Paramètres › Marchandise payée non emportée (propriétaire). Désactivé par défaut.",
               "Sur la ligne de la vente, appuyez sur l'icône carton (à côté de l'œil).",
               "Indiquez, si vous le savez, le jour où il revient et une précision (« 3 sacs mis de côté au magasin »).",
               "Mettez physiquement les articles de côté, hors du rayon.",
@@ -743,7 +744,7 @@ export const DOC_GROUPS: DocGroup[] = [
             kind: "note",
             tone: "warn",
             title: "Le stock a déjà été décompté",
-            text: "Une vente « à retirer » reste une vente : l'argent est encaissé et les articles sont sortis du stock. Ils sont donc physiquement chez vous sans faire partie de votre stock théorique — mettez-les à part, sinon vous les revendrez à quelqu'un d'autre, ou vous croirez à un écart lors du comptage d'inventaire.",
+            text: "Une vente « à retirer » reste une vente : l'argent est encaissé et les articles sont sortis du stock. Ils sont donc physiquement chez vous sans faire partie de votre stock théorique — mettez-les à part, sinon vous les revendrez à quelqu'un d'autre. Au lancement d'un inventaire, l'application affiche la liste de ces articles avec la consigne de ne pas les compter.",
           },
           {
             kind: "note",

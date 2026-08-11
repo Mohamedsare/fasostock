@@ -248,6 +248,12 @@ export const queryKeys = {
     ["quick-pos-price-edit", companyId] as const,
   /** Réglage owner « encaissement en caisse rapide » — opérateurs, mixte, client. */
   quickPosPayments: (companyId: string) => ["quick-pos-payments", companyId] as const,
+  /** Réglage owner « marchandise payée non emportée » (`company_settings`). */
+  salePickupTrackingEnabled: (companyId: string) =>
+    ["sale-pickup-tracking", companyId] as const,
+  /** Articles retenus au comptoir sur une boutique — garde-fou du comptage d'inventaire. */
+  awaitingPickupItems: (storeId: string) =>
+    ["awaiting-pickup-items", storeId] as const,
   /** Dépôt central (`WarehousePage` Flutter) — invalider le préfixe `['warehouse', companyId]`. */
   warehouseInventory: (companyId: string) => ["warehouse", companyId, "inventory"] as const,
   warehouseMovements: (companyId: string) => ["warehouse", companyId, "movements"] as const,

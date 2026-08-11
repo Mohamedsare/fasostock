@@ -33,6 +33,11 @@ import {
   setQuickPosPriceEditEnabled,
 } from "@/lib/features/settings/quick-pos-price-edit";
 import {
+  fetchSalePickupTrackingEnabled,
+  peekSalePickupTrackingEnabled,
+  setSalePickupTrackingEnabled,
+} from "@/lib/features/settings/sale-pickup-tracking";
+import {
   fetchQuickPosPayments,
   peekQuickPosPayments,
   setQuickPosPayments,
@@ -107,6 +112,7 @@ import {
   MdSell,
   MdSecurity,
   MdCreditCard,
+  MdInventory2,
   MdPayments,
   MdPriceChange,
   MdReceiptLong,
@@ -428,6 +434,39 @@ export function SettingsScreen() {
           : "Vente à crédit désactivée en caisse rapide.",
       );
       await qc.invalidateQueries({ queryKey: queryKeys.quickPosCreditEnabled(companyId) });
+    },
+    onError: (e) => toastMutationError("settings", e),
+  });
+
+  /*
+   * Suivi « marchandise payée non emportée ». Fermé par défaut : la plupart des commerces
+   * remettent tout de suite, et l'icône supplémentaire dans la liste des ventes serait
+   * pour eux une question sans objet.
+   */
+  const peekPickupTracking =
+    companyId.length > 0 && isOwner ? peekSalePickupTrackingEnabled(companyId) : undefined;
+  const pickupTrackingQ = useQuery({
+    queryKey: queryKeys.salePickupTrackingEnabled(companyId),
+    queryFn: () => fetchSalePickupTrackingEnabled(companyId),
+    enabled: Boolean(companyId && isOwner),
+    staleTime: 30_000,
+    ...(peekPickupTracking !== undefined ? { initialData: peekPickupTracking } : {}),
+  });
+
+  const pickupTrackingMut = useMutation({
+    mutationFn: async (enabled: boolean) => {
+      if (!companyId) throw new Error("Entreprise introuvable.");
+      await setSalePickupTrackingEnabled(companyId, enabled);
+    },
+    onSuccess: async (_, enabled) => {
+      toast.success(
+        enabled
+          ? "Suivi des retraits activé. L'icône apparaît sur chaque vente de la page Ventes."
+          : "Suivi des retraits désactivé. Les ventes déjà marquées sont conservées.",
+      );
+      await qc.invalidateQueries({
+        queryKey: queryKeys.salePickupTrackingEnabled(companyId),
+      });
     },
     onError: (e) => toastMutationError("settings", e),
   });
@@ -900,6 +939,67 @@ export function SettingsScreen() {
                   disabled={quickPosCreditMut.isPending}
                   onChange={(e) => {
                     void quickPosCreditMut.mutateAsync(e.target.checked);
+                  }}
+                />
+              </label>
+            </div>
+          )}
+        </FsCard>
+      ) : null}
+
+      {/* Marchandise payée non emportée — owner uniquement */}
+      {isOwner && companyId ? (
+        <FsCard className="mt-5" padding="p-5">
+          <SettingsCardTitle
+            icon={MdInventory2}
+            title="Marchandise payée non emportée"
+          />
+          <p className="mt-2 text-xs leading-relaxed text-neutral-600 sm:text-sm">
+            Ajoute une icône sur chaque vente de la page Ventes pour marquer que le client a
+            payé mais n&apos;a rien emporté (« il repasse ce soir »). Une bannière indique alors
+            ce qui attend derrière le comptoir, depuis combien de temps et pour quel montant ;
+            à la remise, votre nom et l&apos;heure sont enregistrés.
+          </p>
+          {/*
+            Le seul avertissement qui compte vraiment : le stock a déjà été décompté à
+            l'encaissement. Si le commerçant ne met pas la marchandise à part, il la
+            revendra — ou il la recomptera comme un surplus au prochain inventaire.
+          */}
+          <p className="mt-2 rounded-[10px] bg-amber-500/10 px-3 py-2 text-xs leading-relaxed text-amber-900 dark:text-amber-200">
+            À savoir : ces articles sont déjà sortis du stock (ils sont vendus) tout en étant
+            encore chez vous. Rangez-les dans un coin « retraits » et ne les comptez pas à
+            l&apos;inventaire — l&apos;application vous le rappellera au moment du comptage.
+          </p>
+          {pickupTrackingQ.isPending ? (
+            <div className="mt-4 flex justify-center py-4" role="status" aria-label="Chargement">
+              <div className="h-8 w-8 animate-spin rounded-full border-2 border-fs-accent border-t-transparent" />
+            </div>
+          ) : (
+            <div className="mt-4 space-y-0 rounded-[10px] border border-black/[0.08]">
+              <label
+                className={cn(
+                  "flex cursor-pointer items-start justify-between gap-3 px-3 py-3 sm:px-4",
+                  pickupTrackingMut.isPending && "pointer-events-none opacity-60",
+                )}
+              >
+                <span className="min-w-0">
+                  <span className="block text-sm font-medium text-fs-text">
+                    Suivre les marchandises à retirer
+                  </span>
+                  <span className="mt-0.5 block text-xs text-neutral-600">
+                    {pickupTrackingQ.data
+                      ? "L'icône « à retirer » est disponible sur chaque vente complétée."
+                      : "Désactivé : la page Ventes reste telle quelle."}
+                  </span>
+                </span>
+                <input
+                  type="checkbox"
+                  role="switch"
+                  className="mt-1 h-5 w-9 shrink-0 cursor-pointer accent-fs-accent"
+                  checked={Boolean(pickupTrackingQ.data)}
+                  disabled={pickupTrackingMut.isPending}
+                  onChange={(e) => {
+                    void pickupTrackingMut.mutateAsync(e.target.checked);
                   }}
                 />
               </label>

@@ -179,6 +179,87 @@ export async function listAwaitingPickupSales(params: {
   }));
 }
 
+/** Un article vendu qui attend encore dans la boutique. */
+export type AwaitingPickupItem = {
+  productId: string;
+  productName: string;
+  quantity: number;
+  /** Nombre de ventes concernées — « 3 sacs pour 2 clients ». */
+  saleCount: number;
+};
+
+/**
+ * Ce qui est vendu mais physiquement encore là, **par produit**, pour une boutique.
+ *
+ * Sert au garde-fou du comptage d'inventaire : la personne qui compte voit 12 sacs et le
+ * logiciel en annonce 9. Sans cette liste, elle « corrige » à 12 — et remet en vente trois
+ * sacs qui appartiennent déjà à un client. Le vrai risque n'est pas l'écart : c'est la
+ * correction faite de bonne foi par quelqu'un qui n'était pas au courant.
+ */
+export async function listAwaitingPickupItems(
+  storeId: string,
+): Promise<AwaitingPickupItem[]> {
+  if (!deliveryColumnsAvailable || !storeId) return [];
+  const supabase = createClient();
+
+  const { data: saleRows, error: salesErr } = await fetchAllPages((from, to) =>
+    supabase
+      .from("sales")
+      .select("id")
+      .eq("store_id", storeId)
+      .eq("sale_kind", "standard")
+      .eq("status", "completed")
+      .eq("delivery_state", "pending")
+      .order("id", { ascending: true })
+      .range(from, to),
+  );
+  if (salesErr) {
+    if (isMissingDeliveryColumn(salesErr)) {
+      deliveryColumnsAvailable = false;
+      return [];
+    }
+    throw salesErr;
+  }
+  const saleIds = ((saleRows ?? []) as Array<{ id: string }>).map((r) => r.id);
+  if (saleIds.length === 0) return [];
+
+  const rows = await fetchByChunks(saleIds, async (chunk, from, to) => {
+    const { data, error } = await supabase
+      .from("sale_items")
+      .select("sale_id, quantity, product:products(id, name)")
+      .in("sale_id", chunk)
+      .order("id", { ascending: true })
+      .range(from, to);
+    if (error) throw error;
+    return (data ?? []) as Array<Record<string, unknown>>;
+  });
+
+  const byProduct = new Map<string, AwaitingPickupItem & { sales: Set<string> }>();
+  for (const raw of rows) {
+    const productRaw = raw.product;
+    const product = (Array.isArray(productRaw) ? productRaw[0] : productRaw) as
+      | { id?: string; name?: string }
+      | null
+      | undefined;
+    const productId = String(product?.id ?? "");
+    if (!productId) continue;
+    const cur = byProduct.get(productId) ?? {
+      productId,
+      productName: String(product?.name ?? "Produit"),
+      quantity: 0,
+      saleCount: 0,
+      sales: new Set<string>(),
+    };
+    cur.quantity += Number(raw.quantity ?? 0);
+    cur.sales.add(String(raw.sale_id ?? ""));
+    byProduct.set(productId, cur);
+  }
+
+  return [...byProduct.values()]
+    .map(({ sales, ...item }) => ({ ...item, saleCount: sales.size }))
+    .sort((a, b) => b.quantity - a.quantity || a.productName.localeCompare(b.productName, "fr"));
+}
+
 /**
  * Coût d'achat agrégé des ventes demandées — alimente la colonne « Bénéfice » de
  * l'historique. Volontairement appelé sur les seules ventes **affichées** (une page)

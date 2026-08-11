@@ -15,6 +15,9 @@ import {
   validateInventorySession,
 } from "@/lib/features/inventory/sessions/api";
 import type { InventorySessionItem } from "@/lib/features/inventory/sessions/types";
+import { listAwaitingPickupItems } from "@/lib/features/sales/api";
+import { fetchSalePickupTrackingEnabled } from "@/lib/features/settings/sale-pickup-tracking";
+import { queryKeys } from "@/lib/query/query-keys";
 import { usePermissions } from "@/lib/features/permissions/use-permissions";
 import { messageFromUnknownError, toast } from "@/lib/toast";
 import { formatCurrency } from "@/lib/utils/currency";
@@ -28,6 +31,7 @@ import {
   MdCheck,
   MdCheckCircle,
   MdClose,
+  MdInventory2,
   MdReplay,
   MdSearch,
 } from "react-icons/md";
@@ -71,6 +75,27 @@ export function InventoryCountScreen({ sessionId }: { sessionId: string }) {
   const session = sessionQ.data ?? null;
   const isOpen = session?.status === "open";
   const editable = isOpen && canDoInventory;
+
+  /*
+   * Garde-fou du comptage : la marchandise payée mais pas encore emportée est SORTIE du
+   * stock et pourtant encore dans la boutique. Sans ce rappel, la personne qui compte
+   * voit un surplus, « corrige » de bonne foi — et remet en vente des articles qui
+   * appartiennent déjà à un client. Le danger n'est pas l'écart : c'est la correction.
+   */
+  const pickupTrackingQ = useQuery({
+    queryKey: queryKeys.salePickupTrackingEnabled(companyId),
+    queryFn: () => fetchSalePickupTrackingEnabled(companyId),
+    enabled: !!companyId,
+    staleTime: 60_000,
+  });
+  const pickupTrackingEnabled = pickupTrackingQ.data ?? false;
+  const awaitingItemsQ = useQuery({
+    queryKey: queryKeys.awaitingPickupItems(session?.storeId ?? ""),
+    queryFn: () => listAwaitingPickupItems(session?.storeId ?? ""),
+    enabled: Boolean(session?.storeId) && pickupTrackingEnabled,
+    staleTime: 30_000,
+  });
+  const awaitingItems = useMemo(() => awaitingItemsQ.data ?? [], [awaitingItemsQ.data]);
 
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<CountFilter>("all");
@@ -272,6 +297,51 @@ export function InventoryCountScreen({ sessionId }: { sessionId: string }) {
           />
         </div>
       </FsCard>
+
+      {/*
+        Marchandise vendue mais encore sur place : le seul avertissement qui empêche une
+        « correction » destructrice. Affiché uniquement s'il y a réellement quelque chose
+        en attente sur cette boutique.
+      */}
+      {awaitingItems.length > 0 ? (
+        <FsCard
+          className="mt-3 border-amber-500/40 bg-amber-500/8"
+          padding="p-4"
+        >
+          <div className="flex items-start gap-3">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-amber-700 dark:text-amber-300">
+              <MdInventory2 className="h-5 w-5" aria-hidden />
+            </span>
+            <div className="min-w-0">
+              <h2 className="text-sm font-bold text-amber-900 dark:text-amber-200">
+                Ne comptez pas la zone « retraits »
+              </h2>
+              <p className="mt-1 text-xs leading-relaxed text-neutral-700 dark:text-neutral-300">
+                Ces articles sont <strong>vendus et payés</strong> mais le client ne les a pas
+                encore emportés. Ils sont donc chez vous sans faire partie du stock : s&apos;ils
+                sont comptés, l&apos;inventaire les remettra en vente.
+              </p>
+              <ul className="mt-2 flex flex-wrap gap-1.5">
+                {awaitingItems.map((it) => (
+                  <li
+                    key={it.productId}
+                    className="rounded-lg bg-white/70 px-2 py-1 text-xs font-semibold text-amber-900 dark:bg-white/10 dark:text-amber-200"
+                    title={`${it.saleCount} vente(s) en attente de retrait`}
+                  >
+                    {it.productName} × {it.quantity}
+                  </li>
+                ))}
+              </ul>
+              <Link
+                href={ROUTES.sales}
+                className="mt-2 inline-block text-xs font-semibold text-fs-accent underline"
+              >
+                Voir les ventes concernées
+              </Link>
+            </div>
+          </div>
+        </FsCard>
+      ) : null}
 
       {/* Recherche + filtres */}
       <FsCard className="mt-3" padding="p-3">

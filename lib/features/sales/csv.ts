@@ -22,11 +22,13 @@ const SALES_HEADERS = [
   "reste_du",
   "paiement",
   "reglement",
-  // Suivi de retrait (00188) : « À retirer » = payée, marchandise encore en boutique.
-  "retrait",
-  "retrait_prevu_le",
-  "retrait_note",
 ] as const;
+
+/**
+ * Colonnes ajoutées seulement si le suivi des retraits est activé (réglage propriétaire) :
+ * une entreprise qui ne s'en sert pas n'exporte pas trois colonnes « Remis » inutiles.
+ */
+const PICKUP_HEADERS = ["retrait", "retrait_prevu_le", "retrait_note"] as const;
 
 /** Colonnes ajoutées seulement si le coût d'achat est fourni (droit « bénéfice »). */
 const PROFIT_HEADERS = ["cout_achat", "benefice", "marge_pct"] as const;
@@ -40,9 +42,12 @@ export function salesToSpreadsheetMatrix(
      * identique à avant (un caissier n'exporte pas de colonnes vides).
      */
     costById?: Record<string, SaleCostAggregate>;
+    /** Réglage « marchandise payée non emportée » activé pour l'entreprise. */
+    pickupTracking?: boolean;
   },
 ): { headers: string[]; rows: ProSheetCell[][] } {
   const costById = options?.costById;
+  const pickupTracking = options?.pickupTracking ?? false;
   const rows: ProSheetCell[][] = sales.map((s) => {
     const date = s.created_at?.slice(0, 19) ?? "";
     const st = saleSettlement(s);
@@ -62,9 +67,13 @@ export function salesToSpreadsheetMatrix(
       st.remaining,
       salePaymentsLabel(s.sale_payments),
       SETTLEMENT_LABELS[st.kind],
-      dl.awaiting ? "A retirer" : "Remis",
-      dl.awaiting ? dl.dueAt ?? "" : "",
-      dl.awaiting ? dl.note ?? "" : "",
+      ...(pickupTracking
+        ? [
+            dl.awaiting ? "A retirer" : "Remis",
+            dl.awaiting ? dl.dueAt ?? "" : "",
+            dl.awaiting ? dl.note ?? "" : "",
+          ]
+        : []),
     ];
     if (!costById) return base;
     const profit = computeSaleProfit(s, costById[s.id]);
@@ -79,7 +88,11 @@ export function salesToSpreadsheetMatrix(
     ];
   });
   return {
-    headers: costById ? [...SALES_HEADERS, ...PROFIT_HEADERS] : [...SALES_HEADERS],
+    headers: [
+      ...SALES_HEADERS,
+      ...(pickupTracking ? PICKUP_HEADERS : []),
+      ...(costById ? PROFIT_HEADERS : []),
+    ],
     rows,
   };
 }

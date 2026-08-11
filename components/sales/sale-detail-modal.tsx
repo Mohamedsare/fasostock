@@ -10,6 +10,7 @@ import type { CreditSaleRow } from "@/lib/features/credit/types";
 import { CREDIT_AMOUNT_EPS, paidTotal, remainingTotal } from "@/lib/features/credit/credit-math";
 import type { SaleItem } from "@/lib/features/sales/types";
 import { deliveryTooltip, saleDelivery } from "@/lib/features/sales/sale-delivery";
+import { fetchSalePickupTrackingEnabled } from "@/lib/features/settings/sale-pickup-tracking";
 import { buildReceiptTicketDataFromSale } from "@/lib/features/receipt/build-receipt-ticket-data";
 import {
   paymentDisplay,
@@ -98,6 +99,15 @@ export function SaleDetailModal({
     queryFn: () => listStores(companyId),
     enabled: !!companyId && !!q.data,
   });
+
+  /** Réglage propriétaire : coupé, aucun rappel de retrait n'apparaît ici non plus. */
+  const pickupTrackingQ = useQuery({
+    queryKey: queryKeys.salePickupTrackingEnabled(companyId),
+    queryFn: () => fetchSalePickupTrackingEnabled(companyId),
+    enabled: !!companyId,
+    staleTime: 60_000,
+  });
+  const pickupTrackingEnabled = pickupTrackingQ.data ?? false;
 
   const sale = q.data;
   const creditSale = sale as CreditSaleRow | null;
@@ -314,7 +324,7 @@ export function SaleDetailModal({
 
                   {/* Payée mais pas emportée : c'est la première chose à savoir en
                       ouvrant la vente — avant les articles, avant le paiement. */}
-                  {saleDelivery(sale).awaiting ? (
+                  {pickupTrackingEnabled && saleDelivery(sale).awaiting ? (
                     <div className="rounded-2xl border border-amber-500/40 bg-amber-50 p-3 dark:bg-amber-950/30">
                       <p className="flex items-center gap-1.5 text-xs font-bold text-amber-800 dark:text-amber-300">
                         <MdInventory2 className="h-4 w-4 shrink-0" aria-hidden />
