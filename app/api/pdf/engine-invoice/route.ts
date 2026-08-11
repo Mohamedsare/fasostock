@@ -12,23 +12,6 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-function paymentLabel(m: string | null): string | null {
-  switch (m) {
-    case "cash":
-      return "Espèces";
-    case "mobile_money":
-      return "Mobile money";
-    case "card":
-      return "Carte";
-    case "transfer":
-      return "Virement";
-    case "other":
-      return "Autre";
-    default:
-      return null;
-  }
-}
-
 export async function GET(req: Request) {
   try {
     const supabase = await createClient();
@@ -57,8 +40,10 @@ export async function GET(req: Request) {
     const allowed = await userBelongsToCompany(supabase, auth.user.id, companyId);
     if (!allowed) return NextResponse.json({ error: "Non autorisé." }, { status: 403 });
 
-    // Détails engin, boutique, entreprise, agent, paiements
-    const [detRes, storeRes, companyRes, agentRes, payRes, itemsRes] = await Promise.all([
+    // Détails engin, boutique, entreprise, agent, lignes.
+    // Pas de lecture des règlements : la facture ne les imprime plus (ils sont derrière
+    // le QR de vérification, RPC `verify_engine_sale`).
+    const [detRes, storeRes, companyRes, agentRes, itemsRes] = await Promise.all([
       supabase.from("engine_sale_details").select("*").eq("sale_id", saleId).maybeSingle(),
       supabase
         .from("stores")
@@ -69,7 +54,6 @@ export async function GET(req: Request) {
         .maybeSingle(),
       supabase.from("companies").select("name").eq("id", companyId).maybeSingle(),
       supabase.from("profiles").select("full_name").eq("id", String(s.created_by)).maybeSingle(),
-      supabase.from("sale_payments").select("method, amount").eq("sale_id", saleId),
       supabase.from("sale_items").select("quantity").eq("sale_id", saleId),
     ]);
     const items = (itemsRes.data ?? []) as { quantity: number }[];
@@ -79,14 +63,8 @@ export async function GET(req: Request) {
     const store = (storeRes.data ?? {}) as Record<string, unknown>;
     const company = (companyRes.data ?? {}) as Record<string, unknown>;
     const agent = (agentRes.data ?? {}) as Record<string, unknown>;
-    const payments = (payRes.data ?? []) as { method: string; amount: number }[];
 
     const total = Number(s.total ?? 0);
-    const amountPaid = payments.reduce((acc, p) => acc + Number(p.amount ?? 0), 0);
-    const reste = Math.max(0, total - amountPaid);
-    const paymentStatus =
-      amountPaid <= 0 ? "Impayé" : amountPaid >= total ? "Payé" : "Partiel";
-    const firstMethod = payments[0]?.method ?? null;
 
     const createdAt = new Date(String(s.created_at));
     const dateLabel = createdAt.toLocaleDateString("fr-FR", {
@@ -166,11 +144,6 @@ export async function GET(req: Request) {
 
       total,
       amountInWords: (d.amount_in_words as string | null) ?? null,
-
-      paymentMethodLabel: paymentLabel(firstMethod),
-      amountPaid,
-      reste,
-      paymentStatusLabel: paymentStatus,
 
       warranty: d.warranty === true,
       warrantyDuration: (d.warranty_duration as string | null) ?? null,

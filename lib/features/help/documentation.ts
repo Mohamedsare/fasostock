@@ -823,7 +823,14 @@ export const DOC_GROUPS: DocGroup[] = [
               "Payé, Partiel, Impayé : chaque vente affiche son état.",
               "Vous encaissez les versements successifs depuis la fiche de la vente.",
               "Le reste dû est visible à tout moment.",
+              "La facture A4 n'imprime PAS le détail du règlement : il se consulte en scannant le QR code.",
             ],
+          },
+          {
+            kind: "note",
+            tone: "info",
+            title: "Pourquoi le règlement n'est pas imprimé",
+            text: "Une facture d'engin circule : mairie, transporteur, photocopie, bureau. Y afficher « reste à payer 600 000 » expose la situation de votre client à tous ceux qui la croisent. Le montant versé, le reste dû, le mode et le statut s'obtiennent en scannant le QR — la page affiche la situation à jour, qui change à chaque versement que vous enregistrez.",
           },
           {
             kind: "note",

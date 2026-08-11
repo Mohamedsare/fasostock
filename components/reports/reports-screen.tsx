@@ -45,7 +45,9 @@ import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-quer
 import { useRouter } from "next/navigation";
 import {
   useCallback,
+  useEffect,
   useMemo,
+  useRef,
   useState,
   type ComponentType,
   type ReactNode,
@@ -375,6 +377,22 @@ export function ReportsScreen() {
     (p: "period" | "filters") => setPanel((cur) => (cur === p ? null : p)),
     [],
   );
+
+  /**
+   * Suivre la boutique active quand elle change ailleurs (barre supérieure).
+   * Cet écran n'est pas remonté au changement de boutique — il perdrait sa
+   * période, son onglet et ses filtres — donc il se recale lui-même en
+   * repassant sur « unset », qui suit `ctxStoreId` (affichage compris).
+   */
+  const lastSyncedCtxStore = useRef<string | null>(null);
+  useEffect(() => {
+    if (!ctxStoreId) return;
+    const previous = lastSyncedCtxStore.current;
+    lastSyncedCtxStore.current = ctxStoreId;
+    if (previous === null || previous === ctxStoreId) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- synchronisation sur une préférence externe (boutique active)
+    setStorePick("unset");
+  }, [ctxStoreId]);
 
   const effectiveStoreId =
     stores.length <= 1

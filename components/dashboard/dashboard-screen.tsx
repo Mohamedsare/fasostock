@@ -28,6 +28,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ComponentType,
   type ReactNode,
@@ -116,6 +117,27 @@ export function DashboardScreen() {
     if (stores.length === 0) return;
     setDashboardStoreId(ctxStoreId ?? stores[0]?.id ?? null);
   }, [scope, dashboardStoreId, stores, ctxStoreId]);
+
+  /**
+   * Suivre la boutique active quand elle change ailleurs (barre supérieure).
+   * Cet écran n'est volontairement pas remonté au changement de boutique — il
+   * perdrait sa portée et sa période — donc il doit se recaler lui-même.
+   *
+   * La portée n'est PAS touchée : en « Entreprise », l'utilisateur regarde
+   * délibérément l'ensemble, et changer de boutique active ne doit pas l'en
+   * faire sortir. On recale quand même `dashboardStoreId` — invisible dans cette
+   * portée, mais c'est lui qui sera repris au retour sur « Boutique ». Sans ça,
+   * on y retrouverait la boutique d'avant la bascule.
+   */
+  const lastSyncedCtxStore = useRef<string | null>(null);
+  useEffect(() => {
+    if (!ctxStoreId) return;
+    const previous = lastSyncedCtxStore.current;
+    lastSyncedCtxStore.current = ctxStoreId;
+    if (previous === null || previous === ctxStoreId) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- synchronisation sur une préférence externe (boutique active)
+    setDashboardStoreId(ctxStoreId);
+  }, [ctxStoreId]);
 
   const effectiveStoreId = scope === "company" ? null : dashboardStoreId;
 

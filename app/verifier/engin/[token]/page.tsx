@@ -20,10 +20,45 @@ type VerifyRow = {
   engine_model: string | null;
   engine_chassis: string | null;
   internal_reference: string | null;
+  /**
+   * Règlement : ces champs ne sont PLUS imprimés sur la facture A4 (elle circule et se
+   * photocopie). On les montre ici, derrière le geste de scanner.
+   */
+  amount_paid: number | null;
+  amount_due: number | null;
+  payment_status: "paid" | "partial" | "unpaid" | null;
+  payment_methods: string[] | null;
 };
 
 function fcfa(n: number): string {
   return `${Math.round(Number(n) || 0).toLocaleString("fr-FR")} CFA`;
+}
+
+const PAYMENT_STATUS_LABEL: Record<string, { text: string; color: string }> = {
+  paid: { text: "Payé intégralement", color: "#059669" },
+  partial: { text: "Partiellement payé", color: "#b45309" },
+  unpaid: { text: "Non payé", color: "#b91c1c" },
+};
+
+const PAYMENT_METHOD_LABEL: Record<string, string> = {
+  cash: "Espèces",
+  mobile_money: "Mobile money",
+  card: "Carte",
+  transfer: "Virement",
+  other: "Autre",
+};
+
+function methodsLabel(methods: string[] | null): string | null {
+  if (!methods || methods.length === 0) return null;
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const m of methods) {
+    const label = PAYMENT_METHOD_LABEL[m] ?? m;
+    if (seen.has(label)) continue;
+    seen.add(label);
+    out.push(label);
+  }
+  return out.join(", ") || null;
 }
 
 function Row({ label, value }: { label: string; value: string | null }) {
@@ -124,6 +159,59 @@ export default async function VerifyEnginePage({
               />
               <Row label="N° châssis" value={row.engine_chassis} />
               <Row label="Référence interne" value={row.internal_reference} />
+
+              {/* Règlement — l'information que la facture papier n'imprime plus. */}
+              {row.payment_status ? (
+                <div style={{ marginTop: 18 }}>
+                  <div
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 800,
+                      textTransform: "uppercase",
+                      letterSpacing: ".4px",
+                      color: "#6b7280",
+                      borderTop: "1px solid #e5e7eb",
+                      paddingTop: 14,
+                      marginBottom: 4,
+                    }}
+                  >
+                    Règlement
+                  </div>
+                  <Row
+                    label="Montant payé"
+                    value={row.amount_paid != null ? fcfa(row.amount_paid) : null}
+                  />
+                  <Row
+                    label="Reste à payer"
+                    value={row.amount_due != null ? fcfa(row.amount_due) : null}
+                  />
+                  <Row label="Mode de paiement" value={methodsLabel(row.payment_methods)} />
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      gap: 16,
+                      padding: "8px 0",
+                    }}
+                  >
+                    <span style={{ color: "#6b7280", fontWeight: 600 }}>Statut</span>
+                    <span
+                      style={{
+                        color:
+                          PAYMENT_STATUS_LABEL[row.payment_status]?.color ?? "#111827",
+                        fontWeight: 700,
+                        textAlign: "right",
+                      }}
+                    >
+                      {PAYMENT_STATUS_LABEL[row.payment_status]?.text ?? row.payment_status}
+                    </span>
+                  </div>
+                  <p style={{ margin: "6px 0 0", fontSize: 11, color: "#9ca3af", lineHeight: 1.5 }}>
+                    Situation à jour au moment de ce scan. Elle change à chaque versement
+                    enregistré par le vendeur.
+                  </p>
+                </div>
+              ) : null}
             </div>
           ) : (
             <div style={{ padding: "24px 20px", textAlign: "center", color: "#6b7280", fontSize: 14 }}>
@@ -133,7 +221,8 @@ export default async function VerifyEnginePage({
         </div>
 
         <p style={{ textAlign: "center", color: "#9ca3af", fontSize: 11, marginTop: 16 }}>
-          Vérification fournie par FasoStock — les informations sensibles ne sont pas affichées.
+          Vérification fournie par FasoStock — page destinée au porteur de cette facture.
+          Aucune coordonnée ni information bancaire n&apos;y figure.
         </p>
       </div>
     </main>

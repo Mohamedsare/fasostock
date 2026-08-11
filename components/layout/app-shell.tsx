@@ -50,6 +50,13 @@ import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "
 
 const BOTTOM_PATHS = [ROUTES.dashboard, ROUTES.products, ROUTES.sales];
 
+/**
+ * Écrans qui pilotent eux-mêmes leur boutique (portée Entreprise / Boutique,
+ * sélecteur propre, période, onglet) : ils suivent `ctx.storeId` et ne doivent
+ * PAS être remontés au changement de boutique, sous peine de perdre ce réglage.
+ */
+const SELF_MANAGED_STORE_ROUTES = [ROUTES.dashboard, ROUTES.reports];
+
 const MOBILE_ICONS: Record<string, typeof LayoutDashboard> = {
   "/dashboard": LayoutDashboard,
   "/products": Package,
@@ -144,6 +151,16 @@ export function AppShell({ children, userEmail }: AppShellProps) {
     if (search.get("store")) {
       search.set("store", storeId);
       router.replace(`${pathname}?${search.toString()}`);
+      return;
+    }
+
+    /*
+     * 4. Tableau de bord et Rapports ont leur propre vue par boutique (portée
+     *    Entreprise / Boutique, période, onglet). Les remonter les renverrait à
+     *    leurs valeurs par défaut — on perdrait la portée « Boutique » choisie
+     *    juste avant. Ces deux écrans suivent `ctx.storeId` par eux-mêmes.
+     */
+    if (SELF_MANAGED_STORE_ROUTES.some((r) => pathname === r || pathname.startsWith(`${r}/`))) {
       return;
     }
 

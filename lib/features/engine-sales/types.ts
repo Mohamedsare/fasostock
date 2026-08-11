@@ -139,4 +139,13 @@ export type EngineSaleVerification = {
   engineModel: string | null;
   engineChassis: string | null;
   internalReference: string | null;
+  /**
+   * Règlement — affiché ici et NULLE PART sur la facture A4 (elle circule et se
+   * photocopie ; la situation financière de l'acheteur ne s'expose pas au premier
+   * regard). Il faut scanner le QR pour l'obtenir.
+   */
+  amountPaid: number | null;
+  amountDue: number | null;
+  paymentStatus: "paid" | "partial" | "unpaid" | null;
+  paymentMethods: string[];
 };

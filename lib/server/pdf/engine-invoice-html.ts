@@ -48,11 +48,11 @@ export type EngineInvoiceData = {
   total: number;
   amountInWords: string | null;
 
-  // Paiement
-  paymentMethodLabel: string | null;
-  amountPaid: number | null;
-  reste: number | null;
-  paymentStatusLabel: string | null;
+  /*
+   * Aucun champ de règlement ici, volontairement : ce que le client a payé et ce qu'il
+   * doit encore ne s'impriment PAS sur une facture qui circule (mairie, transporteur,
+   * photocopie). Ce détail vit derrière le QR de vérification (`verifyUrl`).
+   */
 
   // Garantie
   warranty: boolean;
@@ -182,6 +182,8 @@ export async function renderEngineInvoiceHtml(data: EngineInvoiceData): Promise<
   .kv:last-child { border-bottom: 0; }
   .kv .k { color: #374151; font-weight: 700; }
   .kv .v { text-align: right; color: #111827; }
+  .note { margin: 0 0 6px; font-size: 11px; line-height: 1.45; color: #4b5563; }
+  .note:last-child { margin-bottom: 0; }
   .chk { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 11.5px; }
   .chk .box { display: inline-flex; align-items: center; justify-content: center; width: 15px; height: 15px; border: 1.5px solid #9ca3af; border-radius: 3px; font-size: 11px; color: ${primary}; font-weight: 800; }
 
@@ -260,12 +262,16 @@ export async function renderEngineInvoiceHtml(data: EngineInvoiceData): Promise<
         </div>
       </div>
       <div class="card">
-        <div class="card-h">Paiement</div>
+        <div class="card-h">Règlement</div>
         <div class="card-b">
-          ${kv("Mode de paiement", data.paymentMethodLabel)}
-          ${kv("Montant payé", data.amountPaid != null ? fcfa(data.amountPaid) : null)}
-          ${kv("Reste à payer", data.reste != null ? fcfa(data.reste) : null)}
-          ${kv("Statut", data.paymentStatusLabel)}
+          <p class="note">
+            Le détail du règlement (montant versé, reste à payer) n&rsquo;est pas imprimé
+            sur cette facture.
+          </p>
+          <p class="note">
+            Scannez le QR code ci-dessous pour le consulter : il donne la situation à jour
+            de ce dossier.
+          </p>
         </div>
       </div>
     </div>
@@ -297,7 +303,7 @@ export async function renderEngineInvoiceHtml(data: EngineInvoiceData): Promise<
         </div>
       </div>
       <div class="card">
-        <div class="card-h">QR de vérification</div>
+        <div class="card-h">QR — vérification et règlement</div>
         <div class="card-b qr-wrap">
           <img src="${qrDataUrl}" alt="QR" />
         </div>
