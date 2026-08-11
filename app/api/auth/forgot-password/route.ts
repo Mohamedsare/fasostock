@@ -17,6 +17,35 @@ function isValidEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
+/**
+ * Supabase limite lui-même les envois (60 s entre deux demandes pour un même email, plus
+ * un quota horaire par projet). Ses messages arrivent en anglais : on les traduit en
+ * consigne actionnable plutôt que de renvoyer « Envoi impossible » sur un simple délai.
+ */
+function describeSendError(message: string): { error: string; status: number } {
+  const m = message.toLowerCase();
+
+  const seconds = m.match(/after (\d+) seconds?/)?.[1];
+  if (seconds || m.includes("only request this after")) {
+    const n = Number(seconds ?? 60);
+    return {
+      error: `Un lien vient déjà d’être demandé. Patientez ${n} seconde${n > 1 ? "s" : ""} avant de réessayer, et vérifiez vos spams.`,
+      status: 429,
+    };
+  }
+  if (m.includes("rate limit") || m.includes("too many")) {
+    return {
+      error:
+        "Trop d’emails envoyés pour le moment. Réessayez dans une heure ou contactez le support.",
+      status: 429,
+    };
+  }
+  return {
+    error: "Envoi impossible. Réessayez dans quelques instants.",
+    status: 502,
+  };
+}
+
 function createAnonAuthClient() {
   const urlRaw = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
@@ -41,25 +70,26 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Email invalide." }, { status: 400 });
   }
 
-  let svc;
+  /**
+   * L'anti-abus (5 demandes / 24 h) est une protection *secondaire* : Supabase applique
+   * déjà ses propres limites sur `/recover`. On ne bloque donc jamais la récupération de
+   * mot de passe parce que ce compteur est indisponible — c'est ce qui a rendu la
+   * fonctionnalité totalement inutilisable quand la table `password_reset_rate_limits`
+   * manquait en base (migration 00187). En cas de souci on trace et on laisse passer.
+   */
+  let rate = null;
   try {
-    svc = createServiceRoleClient();
-  } catch {
-    return NextResponse.json(
-      { error: "Envoi impossible pour le moment. Réessayez plus tard." },
-      { status: 503 },
-    );
+    rate = await consumePasswordResetAttempt(createServiceRoleClient(), email);
+  } catch (e) {
+    console.error("[forgot-password] anti-abus indisponible:", e);
   }
-
-  const rate = await consumePasswordResetAttempt(svc, email);
   if (!rate) {
-    return NextResponse.json(
-      { error: "Protection anti-abus indisponible. Réessayez plus tard." },
-      { status: 503 },
+    console.error(
+      "[forgot-password] anti-abus non appliqué (compteur injoignable) — envoi effectué quand même.",
     );
   }
 
-  if (!rate.allowed) {
+  if (rate && !rate.allowed) {
     const message = rate.blockedUntil
       ? formatPasswordResetBlockedMessage(rate.blockedUntil)
       : "Trop de demandes de réinitialisation. Réessayez plus tard.";
@@ -81,10 +111,8 @@ export async function POST(req: Request) {
     });
     if (sendErr) {
       console.error("[forgot-password] resetPasswordForEmail:", sendErr.message);
-      return NextResponse.json(
-        { error: "Envoi impossible. Réessayez dans quelques instants." },
-        { status: 502 },
-      );
+      const { error, status } = describeSendError(sendErr.message);
+      return NextResponse.json({ error }, { status });
     }
   } catch (e) {
     console.error("[forgot-password] send:", e);
@@ -96,6 +124,8 @@ export async function POST(req: Request) {
 
   return NextResponse.json({
     ok: true,
-    remainingAttempts: rate.remainingAttempts,
+    // `null` quand le compteur est injoignable : l'écran n'annonce alors aucun quota
+    // plutôt que d'afficher un chiffre faux.
+    remainingAttempts: rate?.remainingAttempts ?? null,
   });
 }

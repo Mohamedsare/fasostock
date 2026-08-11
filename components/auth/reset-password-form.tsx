@@ -4,13 +4,90 @@ import { AuthCard, AuthPageShell, authInputClass } from "@/components/auth/auth-
 import { ROUTES } from "@/lib/config/routes";
 import { reportHandledClientError } from "@/lib/monitoring/remote-error-logger";
 import { createClient } from "@/lib/supabase/client";
+import type { EmailOtpType } from "@supabase/supabase-js";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
+
+const EXPIRED_LINK_MESSAGE =
+  "Ce lien a expiré ou a déjà été utilisé. Demandez un nouveau lien de réinitialisation.";
+
+/**
+ * Paramètres du lien de réinitialisation.
+ *
+ * Ils peuvent arriver de trois façons selon le gabarit d'email et le flux Supabase :
+ * — fragment `#access_token=…&refresh_token=…` (lien par défaut, flux implicite) ;
+ * — `?token_hash=…&type=recovery` (gabarit « token hash ») ;
+ * — `?code=…` (flux PKCE, demande partie du navigateur).
+ * Le fragment n'atteint jamais le serveur : c'est pourquoi tout est lu ici.
+ */
+type LinkParams = {
+  accessToken: string | null;
+  refreshToken: string | null;
+  tokenHash: string | null;
+  otpType: string | null;
+  code: string | null;
+  errorCode: string | null;
+  errorDescription: string | null;
+};
+
+function readLinkParams(): LinkParams {
+  const url = new URL(window.location.href);
+  const fragment = new URLSearchParams(
+    url.hash.startsWith("#") ? url.hash.slice(1) : url.hash,
+  );
+  const pick = (key: string) => fragment.get(key) ?? url.searchParams.get(key);
+
+  return {
+    accessToken: pick("access_token"),
+    refreshToken: pick("refresh_token"),
+    tokenHash: pick("token_hash") ?? pick("token"),
+    otpType: pick("type"),
+    code: url.searchParams.get("code"),
+    errorCode: pick("error_code") ?? pick("error") ?? pick("auth_error"),
+    errorDescription: pick("error_description"),
+  };
+}
+
+function hasAnyLinkParam(p: LinkParams): boolean {
+  return Boolean(
+    p.accessToken || p.tokenHash || p.code || p.errorCode || p.errorDescription,
+  );
+}
+
+function describeLinkError(p: LinkParams): string {
+  const raw = `${p.errorCode ?? ""} ${p.errorDescription ?? ""}`.toLowerCase();
+  if (
+    raw.includes("expired") ||
+    raw.includes("access_denied") ||
+    raw.includes("link_expired") ||
+    raw.includes("invalid")
+  ) {
+    return EXPIRED_LINK_MESSAGE;
+  }
+  return "Ce lien de réinitialisation n’est pas valide. Demandez-en un nouveau.";
+}
+
+/** Messages Supabase (anglais) → phrase actionnable en français. */
+function describeUpdateError(message: string): string {
+  const m = message.toLowerCase();
+  if (m.includes("should be different") || m.includes("same as the old")) {
+    return "Choisissez un mot de passe différent de l’ancien.";
+  }
+  if (m.includes("weak") || m.includes("at least") || m.includes("length")) {
+    return "Mot de passe trop simple : au moins 8 caractères, avec des chiffres.";
+  }
+  if (m.includes("session") || m.includes("jwt") || m.includes("token")) {
+    return "Votre lien n’est plus valide. Demandez un nouveau lien de réinitialisation.";
+  }
+  if (m.includes("network") || m.includes("fetch")) {
+    return "Problème réseau. Vérifiez votre connexion puis réessayez.";
+  }
+  return "Impossible de mettre à jour le mot de passe. Réessayez.";
+}
 
 export function ResetPasswordForm() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [ready, setReady] = useState(false);
   const [linkError, setLinkError] = useState<string | null>(null);
   const [password, setPassword] = useState("");
@@ -19,38 +96,94 @@ export function ResetPasswordForm() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    const params = readLinkParams();
+
+    /**
+     * Nettoyage immédiat de l'URL : les jetons du fragment ne doivent rester ni dans
+     * la barre d'adresse ni dans l'historique. Fait avant de créer le client Supabase,
+     * qui refuserait de toute façon un fragment implicite (le client navigateur est en PKCE).
+     */
+    if (window.location.hash || window.location.search) {
+      window.history.replaceState(null, "", ROUTES.resetPassword);
+    }
+
     const supabase = createClient();
     let cancelled = false;
-    let unsubscribe: (() => void) | undefined;
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") {
+        setLinkError(null);
+        setReady(true);
+      }
+    });
 
     async function bootstrapSession() {
-      const code = searchParams.get("code");
-      if (code) {
-        const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+      if (params.errorCode || params.errorDescription) {
+        setLinkError(describeLinkError(params));
+        return;
+      }
+
+      // 1. Flux implicite : jetons dans le fragment du lien email.
+      if (params.accessToken && params.refreshToken) {
+        const { error: sessionErr } = await supabase.auth.setSession({
+          access_token: params.accessToken,
+          refresh_token: params.refreshToken,
+        });
         if (cancelled) return;
-        if (exchangeError) {
-          setLinkError("Ce lien a expiré ou est invalide. Demandez un nouveau lien de réinitialisation.");
+        if (sessionErr) {
+          setLinkError(EXPIRED_LINK_MESSAGE);
           return;
         }
-        router.replace(ROUTES.resetPassword);
         setReady(true);
         return;
       }
 
-      const {
-        data: { subscription },
-      } = supabase.auth.onAuthStateChange((event) => {
-        if (event === "PASSWORD_RECOVERY") {
-          setReady(true);
+      // 2. Gabarit « token hash » non encore consommé côté serveur.
+      if (params.tokenHash) {
+        const { error: otpErr } = await supabase.auth.verifyOtp({
+          type: (params.otpType as EmailOtpType) || "recovery",
+          token_hash: params.tokenHash,
+        });
+        if (cancelled) return;
+        if (otpErr) {
+          setLinkError(EXPIRED_LINK_MESSAGE);
+          return;
         }
-      });
-      unsubscribe = () => subscription.unsubscribe();
+        setReady(true);
+        return;
+      }
 
+      // 3. Flux PKCE (demande partie de ce navigateur).
+      if (params.code) {
+        const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(
+          params.code,
+        );
+        if (cancelled) return;
+        if (exchangeError) {
+          setLinkError(EXPIRED_LINK_MESSAGE);
+          return;
+        }
+        setReady(true);
+        return;
+      }
+
+      // 4. Session déjà posée en cookies (lien consommé par `/auth/confirm`).
       const {
         data: { session },
       } = await supabase.auth.getSession();
-      if (!cancelled && session) {
+      if (cancelled) return;
+      if (session) {
         setReady(true);
+        return;
+      }
+
+      // Rien d'exploitable : ne pas laisser tourner un chargement sans fin.
+      if (!hasAnyLinkParam(params)) {
+        setLinkError(
+          "Ouvrez le lien reçu par email pour choisir un nouveau mot de passe.",
+        );
       }
     }
 
@@ -63,9 +196,9 @@ export function ResetPasswordForm() {
 
     return () => {
       cancelled = true;
-      unsubscribe?.();
+      subscription.unsubscribe();
     };
-  }, [router, searchParams]);
+  }, []);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -83,14 +216,20 @@ export function ResetPasswordForm() {
       const supabase = createClient();
       const { error: err } = await supabase.auth.updateUser({ password });
       if (err) {
-        setError(err.message);
+        setError(describeUpdateError(err.message));
         return;
       }
-      router.push(ROUTES.login);
+      /**
+       * Déconnexion volontaire : le lien email peut avoir été ouvert sur un appareil
+       * partagé (cybercafé, téléphone d'un proche). On termine sur la page de connexion,
+       * où le nouveau mot de passe est saisi une première fois — preuve qu'il fonctionne.
+       */
+      await supabase.auth.signOut();
+      router.replace(`${ROUTES.login}?password_updated=1`);
       router.refresh();
     } catch (e) {
       reportHandledClientError(e, { source: "auth:reset-password" });
-      setError("Impossible de mettre à jour le mot de passe.");
+      setError("Impossible de mettre à jour le mot de passe. Réessayez.");
     } finally {
       setLoading(false);
     }

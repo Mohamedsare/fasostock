@@ -27,10 +27,30 @@ Sans `.env.local`, l’app redirige vers `/setup`.
 |--------|----------------|
 | `/login` | `get_login_lock_status` → `signInWithPassword` → `reset_login_attempts` / `record_failed_login` ; écran **compte bloqué** + WhatsApp / téléphone comme le mobile |
 | `/register` | `signUp` → `profiles` upsert → RPC `create_company_with_owner` (même payload que `AuthService.registerCompany`) |
-| `/forgot-password` | `resetPasswordForEmail` avec `redirectTo` → `/reset-password` |
-| `/reset-password` | `PASSWORD_RECOVERY` / session → `updateUser({ password })` |
+| `/forgot-password` | `POST /api/auth/forgot-password` → anti-abus (5 / 24 h) puis `resetPasswordForEmail` |
+| `/auth/confirm` | Lien `token_hash` : `verifyOtp` côté serveur, session posée en cookies → `/reset-password` |
+| `/auth/callback` | Lien `?code=` (PKCE, inscription). Sans `code`, renvoie vers `/reset-password` en laissant le fragment suivre |
+| `/reset-password` | Établit la session depuis le lien (fragment / `token_hash` / `code` / cookie) → `updateUser({ password })` → `signOut` → `/login?password_updated=1` |
 
-Configurer dans **Supabase Dashboard → Authentication → URL** le site en production et les redirections autorisées (`/reset-password`).
+#### Récupération de mot de passe — les trois formes de lien
+
+La demande part du **serveur** (`/api/auth/forgot-password`), donc **sans PKCE** : le lien
+Supabase par défaut renvoie les jetons dans le **fragment** (`#access_token=…`), que le
+serveur ne reçoit jamais. Les trois formes sont prises en charge :
+
+| Lien reçu | Traitement |
+|---|---|
+| `#access_token=…&type=recovery` (gabarit `{{ .ConfirmationURL }}`, défaut) | `/auth/callback` redirige vers `/reset-password` — la cible n'ayant pas de fragment, le navigateur conserve celui d'origine (RFC 7231 §7.1.2) — puis le formulaire fait `setSession` |
+| `?token_hash=…&type=recovery` (gabarit `supabase/email-templates/reset-password.html`, recommandé) | `/auth/confirm` fait `verifyOtp` côté serveur ; aucun jeton dans l'URL |
+| `?code=…` (PKCE, demande partie du navigateur) | `exchangeCodeForSession` |
+
+Ne **pas** faire échouer la demande quand le compteur anti-abus est indisponible : c'est
+une protection secondaire (Supabase limite déjà `/recover`), et un `503` à cet endroit
+supprime purement et simplement la récupération de mot de passe.
+
+Configurer dans **Supabase Dashboard → Authentication → URL** le site en production
+(`https://fasostock.com`) et les redirections autorisées (`/auth/confirm`, `/auth/callback`,
+`/reset-password`).
 
 ## Architecture
 

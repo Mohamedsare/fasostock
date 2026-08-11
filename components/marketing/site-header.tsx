@@ -159,12 +159,12 @@ export function SiteHeader({ sectionHrefPrefix = "" }: SiteHeaderProps) {
 
           <button
             type="button"
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-black/10 bg-white text-neutral-800 sm:hidden"
+            className="flex h-10 w-10 items-center justify-center rounded-md border border-black/5 text-neutral-800 sm:hidden"
             aria-expanded={mobileOpen}
             aria-controls="mobile-nav-drawer"
             onClick={() => setMobileOpen((o) => !o)}
           >
-            {mobileOpen ? <MdClose className="h-5 w-5" aria-hidden /> : <MdMenu className="h-5 w-5" aria-hidden />}
+            {mobileOpen ? <MdClose className="h-7 w-7" aria-hidden /> : <MdMenu className="h-7 w-7" aria-hidden />}
             <span className="sr-only">{mobileOpen ? "Fermer le menu" : "Ouvrir le menu"}</span>
           </button>
 

@@ -70,6 +70,7 @@ export function LoginForm() {
   const searchParams = useSearchParams();
   const registered = searchParams.get("registered") === "1";
   const confirmEmail = searchParams.get("confirm_email") === "1";
+  const passwordUpdated = searchParams.get("password_updated") === "1";
   const authCallbackError = searchParams.get("auth_error");
 
   const [email, setEmail] = useState(() => searchParams.get("email")?.trim() ?? "");
@@ -295,6 +296,15 @@ export function LoginForm() {
         </div>
 
         <div className="mt-5">
+          {passwordUpdated ? (
+            <div
+              className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900"
+              role="status"
+            >
+              Mot de passe modifié. Connectez-vous avec votre nouveau mot de passe.
+            </div>
+          ) : null}
+
           {confirmEmail ? (
             <div
               className="mb-4 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-950"

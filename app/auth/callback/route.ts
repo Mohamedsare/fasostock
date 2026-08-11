@@ -25,24 +25,42 @@ export async function GET(request: Request) {
   const nextPath = searchParams.get("next");
   const authError = searchParams.get("error_description") ?? searchParams.get("error");
 
+  const resetNext =
+    nextPath === ROUTES.resetPassword ||
+    nextPath === "/reset-password" ||
+    nextPath?.endsWith("/reset-password");
+
   if (authError) {
-    return redirectTo(ROUTES.login, { auth_error: authError.slice(0, 200) });
+    return redirectTo(resetNext ? ROUTES.forgotPassword : ROUTES.login, {
+      auth_error: authError.slice(0, 200),
+    });
   }
 
   if (!code) {
+    /**
+     * Lien de réinitialisation Supabase par défaut (`{{ .ConfirmationURL }}`) : la
+     * demande partant du serveur, il n'y a pas de PKCE, donc pas de `?code=`. Les
+     * jetons arrivent dans le **fragment** (`#access_token=…`) que le serveur ne
+     * voit jamais. Une redirection dont la cible n'a pas de fragment conserve celui
+     * de l'URL d'origine (RFC 7231 §7.1.2) : on renvoie donc vers l'écran client,
+     * seul capable de le lire.
+     */
+    if (resetNext) {
+      return redirectTo(ROUTES.resetPassword);
+    }
     return redirectTo(ROUTES.login, { auth_error: "missing_code" });
   }
 
   const supabase = await createClient();
   const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
   if (exchangeError) {
+    if (resetNext) {
+      // Le code n'a pas pu être échangé ici (vérificateur PKCE absent de ces cookies) :
+      // l'écran de réinitialisation sait retenter avec le code, on le lui passe.
+      return redirectTo(ROUTES.resetPassword, { code });
+    }
     return redirectTo(ROUTES.login, { auth_error: "exchange_failed" });
   }
-
-  const resetNext =
-    nextPath === ROUTES.resetPassword ||
-    nextPath === "/reset-password" ||
-    nextPath?.endsWith("/reset-password");
 
   if (resetNext) {
     return redirectTo(ROUTES.resetPassword);
