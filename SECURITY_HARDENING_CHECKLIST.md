@@ -22,6 +22,30 @@ This project already uses Supabase RLS and admin checks, but keep this checklist
   - `companies` : plus d’INSERT client libre (RPC `create_company_with_owner` uniquement)
   - `log_app_error` : `company_id` / `store_id` validés pour l’appelant
 
+## 2 bis) Sessions — « rester connecté »
+
+Règle produit : **une session ne se termine que si l'utilisateur appuie sur « Se déconnecter »**.
+Un commerçant en caisse ne doit jamais être éjecté par une expiration ou une coupure réseau.
+
+À vérifier dans le tableau de bord Supabase (*Authentication → Sessions*), et reflété dans
+`supabase/config.toml` :
+
+| Réglage | Valeur attendue | Pourquoi |
+|---|---|---|
+| Time-box user sessions | **None** (vide) | Sinon déconnexion forcée au bout du délai. |
+| Inactivity timeout | **None** (vide) | Sinon déconnexion après une pause. |
+| Refresh token reuse interval | **60 s** (défaut 10 s) | Rendu serveur : proxy, onglets et PWA peuvent prolonger la session en même temps. En dessous, Supabase y voit une réutilisation de jeton volé et révoque **toute** la session. |
+| Detect and revoke potentially compromised refresh tokens (rotation) | **activé** | Protection conservée ; c'est l'intervalle ci-dessus qui absorbe les prolongations concurrentes. |
+| JWT expiry | 3600 s | Le jeton d'accès reste court ; c'est le rafraîchissement qui assure la continuité. |
+
+Côté application (ne pas régresser) :
+- `lib/supabase/auth-cookies.ts` — cookies d'auth forcés à 400 jours (jamais de cookie de session).
+- `lib/auth/server-session.ts` — les layouts ne renvoient au login que sur une **certitude** de
+  déconnexion ; une panne réseau laisse l'utilisateur dans l'app.
+- `lib/supabase/update-session.ts` — seul endroit qui peut enregistrer un jeton de
+  rafraîchissement renouvelé : ne jamais y sauter l'étape quand un cookie de session existe.
+- `components/auth/session-keeper.tsx` — prolongation au réveil de l'app / retour du réseau.
+
 ## 3) API Protection
 - Routes `/api/*` (sauf liste publique) : session obligatoire via `proxy.ts` / `update-session.ts`
 - Push : `notify-company-owners` réservé aux owners ; webhook `dispatch` exige `companyId` + membre actif

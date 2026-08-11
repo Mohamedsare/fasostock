@@ -164,7 +164,11 @@ jwt_expiry = 3600
 enable_refresh_token_rotation = true
 # Allows refresh tokens to be reused after expiry, up to the specified interval in seconds.
 # Requires enable_refresh_token_rotation = true.
-refresh_token_reuse_interval = 10
+# 60 s (et non 10) : le site rend côté serveur, plusieurs requêtes peuvent donc prolonger la
+# session en même temps (proxy + onglets + PWA). En dessous, Supabase prend ces prolongations
+# simultanées pour une réutilisation de jeton volé et révoque TOUTE la session — le
+# commerçant se retrouve déconnecté sans avoir rien fait.
+refresh_token_reuse_interval = 60
 # Allow/disallow new user signups to your project.
 enable_signup = true
 # Allow/disallow anonymous sign-ins to your project.
@@ -252,10 +256,15 @@ max_frequency = "5s"
 # 4152127777 = "123456"
 
 # Configure logged in session timeouts.
+#
+# VOLONTAIREMENT LAISSÉ DÉSACTIVÉ. Une session FasoStock ne se termine que lorsque
+# l'utilisateur appuie sur « Se déconnecter ». Ne PAS décommenter `timebox` ni
+# `inactivity_timeout` : ils déconnecteraient les commerçants d'office, ce qui est
+# exactement le comportement que l'on cherche à supprimer.
+# Les mêmes réglages existent dans le tableau de bord Supabase
+# (Authentication → Sessions) : ils doivent y rester à « None ».
 # [auth.sessions]
-# Force log out after the specified duration.
 # timebox = "24h"
-# Force log out if the user has been inactive longer than the specified duration.
 # inactivity_timeout = "8h"
 
 # This hook runs before a new user is created and allows developers to reject the request based on the incoming user object.

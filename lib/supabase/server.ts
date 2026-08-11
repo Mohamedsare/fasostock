@@ -1,6 +1,7 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
+import { withLongLivedSession } from "@/lib/supabase/auth-cookies";
 import { normalizeSupabaseUrl } from "@/lib/supabase/normalize-url";
 
 export async function createClient() {
@@ -28,7 +29,7 @@ export async function createClient() {
       ) {
         try {
           cookiesToSet.forEach(({ name, value, options }) =>
-            cookieStore.set(name, value, options),
+            cookieStore.set(name, value, withLongLivedSession(name, value, options)),
           );
         } catch {
           /* Appel depuis un Server Component sans possibilité de set — le proxy (`proxy.ts`) rafraîchit la session */

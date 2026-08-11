@@ -2,6 +2,10 @@ import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 import { isPublicApiRoute } from "@/lib/auth/public-api-routes";
+import {
+  hasStoredSessionCookie,
+  withLongLivedSession,
+} from "@/lib/supabase/auth-cookies";
 import { normalizeSupabaseUrl } from "@/lib/supabase/normalize-url";
 
 function requestHeadersWithPathname(request: NextRequest): Headers {
@@ -63,6 +67,27 @@ export async function updateSession(request: NextRequest) {
   if (!urlRaw || !key) {
     return supabaseResponse;
   }
+
+  /**
+   * Aucune session stockée sur cet appareil : rien à rafraîchir. On évite un aller-retour
+   * Supabase sur chaque visite anonyme (pages publiques), et le verdict « non authentifié »
+   * est certain pour les routes API.
+   */
+  if (!hasStoredSessionCookie(request.cookies.getAll())) {
+    if (guardsApiRoute) {
+      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+    }
+    return supabaseResponse;
+  }
+
+  /**
+   * À partir d'ici on rafraîchit toujours, y compris pour les requêtes de préchargement :
+   * ce proxy est le **seul** endroit qui puisse écrire les nouveaux cookies. Sauter l'étape
+   * laisserait un composant serveur faire tourner le jeton de rafraîchissement sans pouvoir
+   * l'enregistrer — l'ancien jeton deviendrait alors invalide et la session serait perdue.
+   * Les rafraîchissements concurrents sont absorbés par `refresh_token_reuse_interval`
+   * (voir `supabase/config.toml`).
+   */
   const url = normalizeSupabaseUrl(urlRaw);
 
   const supabase = createServerClient(url, key, {
@@ -86,7 +111,11 @@ export async function updateSession(request: NextRequest) {
           },
         });
         cookiesToSet.forEach(({ name, value, options }) =>
-          supabaseResponse.cookies.set(name, value, options),
+          supabaseResponse.cookies.set(
+            name,
+            value,
+            withLongLivedSession(name, value, options),
+          ),
         );
       },
     },

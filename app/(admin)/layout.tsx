@@ -1,5 +1,10 @@
 import { AdminLayoutClient } from "@/components/admin/admin-layout-client";
+import { SessionKeeper } from "@/components/auth/session-keeper";
 import { hasSupabaseConfig } from "@/lib/env";
+import {
+  isTransientBackendFailure,
+  resolveServerSession,
+} from "@/lib/auth/server-session";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
@@ -10,18 +15,28 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   if (!hasSupabaseConfig()) redirect("/setup");
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const session = await resolveServerSession(supabase);
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("is_super_admin")
-    .eq("id", user.id)
-    .maybeSingle();
+  /** Voir `app/(app)/layout.tsx` : seule une certitude de déconnexion renvoie au login. */
+  if (session.status === "signed-out") redirect("/login");
 
-  if (!profile?.is_super_admin) redirect("/dashboard");
+  if (session.status === "signed-in") {
+    const { data: profile, error } = await supabase
+      .from("profiles")
+      .select("is_super_admin")
+      .eq("id", session.user.id)
+      .maybeSingle();
 
-  return <AdminLayoutClient>{children}</AdminLayoutClient>;
+    /** Une coupure réseau n'est pas un refus : on ne sort de l'admin que sur un « non » certain. */
+    if (!isTransientBackendFailure(error) && !profile?.is_super_admin) {
+      redirect("/dashboard");
+    }
+  }
+
+  return (
+    <>
+      <SessionKeeper />
+      <AdminLayoutClient>{children}</AdminLayoutClient>
+    </>
+  );
 }
