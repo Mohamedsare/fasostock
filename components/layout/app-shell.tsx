@@ -107,6 +107,16 @@ export function AppShell({ children, userEmail }: AppShellProps) {
      * la boutique précédente. Seules les requêtes montées sont réellement rejouées.
      */
     void queryClient.invalidateQueries();
+    /*
+     * Les écrans sous `/stores/<id>/…` (caisse, facture, vente d'engin) tiennent
+     * leur boutique de l'URL, pas du contexte. Sans cette redirection, l'en-tête
+     * annoncerait la nouvelle boutique pendant qu'on continue d'encaisser dans
+     * l'ancienne.
+     */
+    const scoped = /^\/stores\/[^/]+(\/.*)?$/.exec(pathname);
+    if (scoped) {
+      router.replace(`/stores/${storeId}${scoped[1] ?? ""}`);
+    }
     setStoreSwitcherOpen(false);
   };
 

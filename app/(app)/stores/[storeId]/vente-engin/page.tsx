@@ -6,5 +6,6 @@ type Params = {
 
 export default async function StoreEngineSalePage({ params }: Params) {
   const { storeId } = await params;
-  return <EngineSaleScreen storeId={storeId} />;
+  /* `key` : changer de boutique repart d'un formulaire vierge — cf. la caisse. */
+  return <EngineSaleScreen key={storeId} storeId={storeId} />;
 }

@@ -8,5 +8,6 @@ type Params = {
 export default async function StorePosPage({ params, searchParams }: Params) {
   const { storeId } = await params;
   const sp = await searchParams;
-  return <PosScreen storeId={storeId} mode="a4" editSaleId={sp.editSale} />;
+  /* `key` : une caisse vierge par boutique — cf. la caisse rapide. */
+  return <PosScreen key={storeId} storeId={storeId} mode="a4" editSaleId={sp.editSale} />;
 }
