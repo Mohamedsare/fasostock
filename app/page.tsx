@@ -16,7 +16,6 @@ import { WhatsappFloat } from "@/components/marketing/whatsapp-float";
 import { VideoModalButton } from "@/components/marketing/video-modal-button";
 import { ScrollProgress } from "@/components/marketing/scroll-progress";
 import { LottiePlayer } from "@/components/marketing/lottie-player";
-import { InstallAppButton } from "@/components/pwa/install-app-button";
 import { SEO_LANDING_LINKS } from "@/lib/seo/landing-links";
 import { HOME_FAQS } from "@/lib/seo/home-faq";
 import { SITE_URL } from "@/lib/seo/site-url";
@@ -39,6 +38,7 @@ import {
   MdHeadsetMic,
   MdInventory2,
   MdLock,
+  MdLogin,
   MdMailOutline,
   MdOutlinePhoneAndroid,
   MdOfflineBolt,
@@ -484,7 +484,7 @@ export default async function Home({
             <div className="max-w-2xl">
               <p
                 className={cn(
-                  "mb-2 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase leading-tight tracking-wide ring-1 sm:mb-3 sm:gap-2 sm:px-3 sm:text-[11px]",
+                  "mb-2 inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[10px] font-bold uppercase leading-tight tracking-wide ring-1 sm:mb-3 sm:gap-2 sm:px-3 sm:text-[11px]",
                   heroBannerImageUrl
                     ? "bg-white/15 text-white ring-white/30 backdrop-blur"
                     : "bg-white text-neutral-700 ring-black/8",
@@ -527,20 +527,17 @@ export default async function Home({
                 employés et vos rapports au même endroit.
               </p>
 
-              {/* Sur mobile : « Démonstration » pleine largeur, les deux autres
-                  côte à côte en dessous — deux rangées au lieu de trois. */}
+              {/* Sur mobile : « Se connecter » pleine largeur, « Voir en vidéo »
+                  en dessous — deux rangées. */}
               <div className="mt-4 flex flex-wrap gap-2 sm:mt-6 sm:gap-2.5">
                 <Link
-                  href={supportWhatsappUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  href="/login"
                   className="inline-flex min-h-10 w-full items-center justify-center gap-2 whitespace-nowrap rounded-md bg-fs-accent px-4 py-2 text-xs font-extrabold uppercase tracking-wide text-white shadow-[0_18px_36px_-18px_rgba(232,93,44,0.95)] sm:w-auto sm:min-h-11 sm:px-5 sm:py-2.5 sm:text-sm"
                 >
-                  <MdWhatsapp className="h-5 w-5" aria-hidden />
-                  Démonstration
+                  <MdLogin className="h-5 w-5" aria-hidden />
+                  Se connecter
                 </Link>
                 <VideoModalButton className="inline-flex min-h-10 flex-1 basis-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-md border border-black/10 bg-white px-3 py-2 text-xs font-bold text-neutral-800 sm:flex-none sm:min-h-11 sm:gap-2 sm:px-5 sm:py-2.5 sm:text-sm" />
-                <InstallAppButton className="inline-flex min-h-10 flex-1 basis-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-md border border-fs-accent/45 bg-white px-3 py-2 text-xs font-bold text-fs-accent sm:flex-none sm:min-h-11 sm:gap-2 sm:px-5 sm:py-2.5 sm:text-sm" />
               </div>
             </div>
 
