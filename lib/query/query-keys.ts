@@ -181,6 +181,13 @@ export const queryKeys = {
    * de résultats en cours, pas sur la période : on ne charge que ce qui est à l'écran.
    */
   salesCost: (saleIds: string[]) => ["sales-cost", saleIds.join(",")] as const,
+  /**
+   * Ventes payées dont la marchandise attend en boutique. **Hors période** : ce qui
+   * traîne depuis trois semaines est justement ce qu'il faut voir, et un filtre
+   * « aujourd'hui » le cacherait.
+   */
+  salesAwaitingPickup: (params: { companyId: string; storeId: string | null }) =>
+    ["sales-awaiting-pickup", params] as const,
   creditSales: (params: {
     companyId: string;
     storeId: string | null;

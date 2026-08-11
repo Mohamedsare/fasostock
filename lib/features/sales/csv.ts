@@ -3,6 +3,7 @@ import type { ProSheetCell } from "@/lib/utils/spreadsheet-export-pro";
 import { escapeCsv } from "@/lib/utils/csv";
 import { saleSellerLabel, saleStoreLabel } from "./sale-display";
 import { SETTLEMENT_LABELS, saleSettlement } from "./sale-settlement";
+import { saleDelivery } from "./sale-delivery";
 import { computeSaleProfit, type SaleCostAggregate } from "./sale-profit";
 import { salePaymentsLabel } from "@/lib/features/payments/payment-display";
 
@@ -21,6 +22,10 @@ const SALES_HEADERS = [
   "reste_du",
   "paiement",
   "reglement",
+  // Suivi de retrait (00188) : « À retirer » = payée, marchandise encore en boutique.
+  "retrait",
+  "retrait_prevu_le",
+  "retrait_note",
 ] as const;
 
 /** Colonnes ajoutées seulement si le coût d'achat est fourni (droit « bénéfice »). */
@@ -41,6 +46,7 @@ export function salesToSpreadsheetMatrix(
   const rows: ProSheetCell[][] = sales.map((s) => {
     const date = s.created_at?.slice(0, 19) ?? "";
     const st = saleSettlement(s);
+    const dl = saleDelivery(s);
     const base: ProSheetCell[] = [
       s.sale_number ?? "",
       date,
@@ -56,6 +62,9 @@ export function salesToSpreadsheetMatrix(
       st.remaining,
       salePaymentsLabel(s.sale_payments),
       SETTLEMENT_LABELS[st.kind],
+      dl.awaiting ? "A retirer" : "Remis",
+      dl.awaiting ? dl.dueAt ?? "" : "",
+      dl.awaiting ? dl.note ?? "" : "",
     ];
     if (!costById) return base;
     const profit = computeSaleProfit(s, costById[s.id]);

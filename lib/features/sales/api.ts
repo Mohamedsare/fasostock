@@ -7,11 +7,63 @@ import { fetchAllPages } from "@/lib/supabase/fetch-all-pages";
 import { fetchByChunks } from "@/lib/supabase/fetch-by-chunks";
 import { fallbackCreatorLabel, fetchCreatorLabels } from "@/lib/features/users/creator-labels";
 import { localDayEndIso, localDayStartIso } from "@/lib/utils/local-day";
-import type { SaleItem, SaleStatus } from "./types";
+import { UserFriendlyError } from "@/lib/errors/app-error-mapper";
+import { businessRpcError } from "@/lib/errors/business-rpc-error";
+import type { SaleDeliveryState, SaleItem, SaleStatus } from "./types";
 import type { SaleCostAggregate } from "./sale-profit";
 
-const saleSelect =
+/**
+ * Deux chaînes ENTIÈRES, choisies à l'exécution. `supabase-js` type le résultat en
+ * analysant le littéral passé à `.select()` : une chaîne décidée à l'exécution lui
+ * échappe, d'où les conversions explicites `as unknown as` sur les lignes rendues.
+ * Le client n'étant pas typé par un schéma généré, on ne perd aucune vérification réelle.
+ */
+const saleSelectLegacy =
   "id, company_id, store_id, customer_id, sale_number, status, subtotal, discount, tax, total, created_by, created_at, updated_at, sale_mode, document_type, prescription_number, credit_due_at, store:stores(id, name), customer:customers(id, name, phone)";
+/** Idem + suivi de retrait (colonnes ajoutées par la migration 00188). */
+const saleSelectWithDelivery =
+  "id, company_id, store_id, customer_id, sale_number, status, subtotal, discount, tax, total, created_by, created_at, updated_at, sale_mode, document_type, prescription_number, credit_due_at, delivery_state, delivery_due_at, delivery_note, delivery_marked_at, delivered_at, store:stores(id, name), customer:customers(id, name, phone)";
+
+/**
+ * Vrai tant qu'on n'a pas constaté que la base ignore les colonnes de retrait.
+ *
+ * L'historique des ventes est l'écran le plus utilisé de l'application : il ne doit PAS
+ * tomber parce qu'une migration annexe n'est pas encore passée en production. On demande
+ * donc les colonnes, et si la base répond qu'elle ne les connaît pas, on la croit une
+ * fois pour toutes (pour la durée de l'onglet) et on continue sans elles.
+ */
+let deliveryColumnsAvailable = true;
+
+function saleSelect(): string {
+  return deliveryColumnsAvailable ? saleSelectWithDelivery : saleSelectLegacy;
+}
+
+/** 42703 / PGRST204 : migration 00188 pas encore appliquée sur cette base. */
+function isMissingDeliveryColumn(error: unknown): boolean {
+  const e = error as { code?: string; message?: string } | null;
+  const msg = String(e?.message ?? "").toLowerCase();
+  return (
+    (e?.code === "42703" || e?.code === "PGRST204" || msg.includes("does not exist")) &&
+    msg.includes("delivery_")
+  );
+}
+
+/** Les jointures PostgREST reviennent parfois en tableau d'un élément. */
+function normalizeSaleRow(row: Record<string, unknown>): SaleItem {
+  const storeRaw = row.store;
+  const customerRaw = row.customer;
+  const store = Array.isArray(storeRaw)
+    ? (storeRaw[0] as { id: string; name: string } | undefined) ?? null
+    : ((storeRaw as { id: string; name: string } | null) ?? null);
+  const customer = Array.isArray(customerRaw)
+    ? (customerRaw[0] as { id: string; name: string; phone: string | null } | undefined) ?? null
+    : ((customerRaw as { id: string; name: string; phone: string | null } | null) ?? null);
+  return {
+    ...(row as unknown as SaleItem),
+    store,
+    customer,
+  };
+}
 
 export async function listSales(params: {
   companyId: string;
@@ -24,39 +76,36 @@ export async function listSales(params: {
   // Paginé : la synthèse de période (« montants = facturé ») est calculée sur ces lignes.
   // Tronquée à 1000, elle sous-évaluait le chiffre d'affaires d'une boutique active sans
   // rien afficher d'anormal — l'écran restait crédible, les chiffres étaient faux.
-  const { data, error } = await fetchAllPages((from, to) => {
-    let q = supabase
-      .from("sales")
-      // `sale_payments` : nécessaire à la colonne Acompte / au statut de règlement de la liste.
-      .select(`${saleSelect},sale_payments(id, method, amount, reference, created_at)`)
-      .eq("company_id", params.companyId)
-      // Les ventes d'engins ont leur propre page (module Vente Engins).
-      .eq("sale_kind", "standard")
-      .order("created_at", { ascending: false })
-      // Deux ventes peuvent partager la même milliseconde (import, caisse rapide).
-      .order("id", { ascending: true });
-    if (params.storeId) q = q.eq("store_id", params.storeId);
-    if (params.status) q = q.eq("status", params.status);
-    if (params.from) q = q.gte("created_at", localDayStartIso(params.from));
-    if (params.to) q = q.lte("created_at", localDayEndIso(params.to));
-    return q.range(from, to);
-  });
+  const run = () =>
+    fetchAllPages((from, to) => {
+      let q = supabase
+        .from("sales")
+        // `sale_payments` : nécessaire à la colonne Acompte / au statut de règlement de la liste.
+        .select(`${saleSelect()},sale_payments(id, method, amount, reference, created_at)`)
+        .eq("company_id", params.companyId)
+        // Les ventes d'engins ont leur propre page (module Vente Engins).
+        .eq("sale_kind", "standard")
+        .order("created_at", { ascending: false })
+        // Deux ventes peuvent partager la même milliseconde (import, caisse rapide).
+        .order("id", { ascending: true });
+      if (params.storeId) q = q.eq("store_id", params.storeId);
+      if (params.status) q = q.eq("status", params.status);
+      if (params.from) q = q.gte("created_at", localDayStartIso(params.from));
+      if (params.to) q = q.lte("created_at", localDayEndIso(params.to));
+      return q.range(from, to);
+    });
+
+  let { data, error } = await run();
+  // Migration 00188 absente : on réessaie sans les colonnes de retrait plutôt que de
+  // laisser l'historique des ventes en erreur.
+  if (error && isMissingDeliveryColumn(error)) {
+    deliveryColumnsAvailable = false;
+    ({ data, error } = await run());
+  }
   if (error) throw error;
-  const rows = ((data ?? []) as Array<Record<string, unknown>>).map((row) => {
-    const storeRaw = row.store;
-    const customerRaw = row.customer;
-    const store = Array.isArray(storeRaw)
-      ? (storeRaw[0] as { id: string; name: string } | undefined) ?? null
-      : ((storeRaw as { id: string; name: string } | null) ?? null);
-    const customer = Array.isArray(customerRaw)
-      ? (customerRaw[0] as { id: string; name: string; phone: string | null } | undefined) ?? null
-      : ((customerRaw as { id: string; name: string; phone: string | null } | null) ?? null);
-    return {
-      ...(row as unknown as SaleItem),
-      store,
-      customer,
-    };
-  });
+  const rows = ((data ?? []) as unknown as Array<Record<string, unknown>>).map(
+    normalizeSaleRow,
+  );
 
   const creatorIds = rows.map((r) => r.created_by).filter(Boolean) as string[];
   let labelByUser: Map<string, string>;
@@ -69,6 +118,61 @@ export async function listSales(params: {
     }
   }
 
+  return rows.map((r) => ({
+    ...r,
+    created_by_label: labelByUser.get(r.created_by) ?? fallbackCreatorLabel(r.created_by),
+  }));
+}
+
+/**
+ * Ventes payées dont la marchandise attend encore en boutique.
+ *
+ * Volontairement **hors période** : ce qui traîne depuis trois semaines est précisément
+ * ce que le commerçant doit voir, et le filtre « aujourd'hui » de la page le cacherait.
+ * L'index partiel `idx_sales_delivery_pending` (00188) ne couvre que ces lignes-là — la
+ * requête reste donc légère même sur un historique de dizaines de milliers de ventes.
+ *
+ * Une base non migrée (colonne absente) renvoie une erreur PostgREST : on rend une liste
+ * vide plutôt que de casser l'écran des ventes pour une fonctionnalité annexe.
+ */
+export async function listAwaitingPickupSales(params: {
+  companyId: string;
+  storeId: string | null;
+}): Promise<SaleItem[]> {
+  if (!deliveryColumnsAvailable) return [];
+  const supabase = createClient();
+  const { data, error } = await fetchAllPages((from, to) => {
+    let q = supabase
+      .from("sales")
+      .select(`${saleSelect()},sale_payments(id, method, amount, reference, created_at)`)
+      .eq("company_id", params.companyId)
+      .eq("sale_kind", "standard")
+      .eq("status", "completed")
+      .eq("delivery_state", "pending")
+      // Le plus ancien d'abord : c'est celui qui pose problème.
+      .order("delivery_marked_at", { ascending: true, nullsFirst: true })
+      .order("id", { ascending: true });
+    if (params.storeId) q = q.eq("store_id", params.storeId);
+    return q.range(from, to);
+  });
+  if (error) {
+    if (isMissingDeliveryColumn(error)) {
+      deliveryColumnsAvailable = false;
+      return [];
+    }
+    throw error;
+  }
+  const rows = ((data ?? []) as unknown as Array<Record<string, unknown>>).map(
+    normalizeSaleRow,
+  );
+
+  const creatorIds = rows.map((r) => r.created_by).filter(Boolean) as string[];
+  let labelByUser: Map<string, string>;
+  try {
+    labelByUser = await fetchCreatorLabels(supabase, creatorIds);
+  } catch {
+    labelByUser = new Map();
+  }
   return rows.map((r) => ({
     ...r,
     created_by_label: labelByUser.get(r.created_by) ?? fallbackCreatorLabel(r.created_by),
@@ -164,6 +268,41 @@ export async function cancelSale(saleId: string): Promise<void> {
 }
 
 /**
+ * Suivi de retrait (migration 00188) : marquer une vente complétée « à retirer »
+ * (le client a payé et n'a rien emporté) ou « remise » (il est venu chercher).
+ *
+ * Ni le statut de la vente ni le stock ne bougent — la vente reste complétée, les
+ * articles restent sortis du stock. Voir `sale-delivery.ts`.
+ *
+ * Pas de file d'attente hors ligne : ce pointage sert à savoir, MAINTENANT et pour tout
+ * le monde, ce qui attend derrière le comptoir. Une remise enregistrée sur un téléphone
+ * et poussée trois heures plus tard laisserait un collègue redonner la même marchandise.
+ */
+export async function setSaleDeliveryState(params: {
+  saleId: string;
+  state: SaleDeliveryState;
+  /** Date annoncée par le client (`YYYY-MM-DD`), facultative. */
+  dueAt?: string | null;
+  note?: string | null;
+}): Promise<void> {
+  if (typeof navigator !== "undefined" && !navigator.onLine) {
+    throw new UserFriendlyError(
+      "Le suivi des retraits a besoin d'une connexion internet : vos collègues doivent voir le changement tout de suite.",
+    );
+  }
+  const supabase = createClient();
+  const { error } = await supabase.rpc("sale_set_delivery_state", {
+    p_sale_id: params.saleId,
+    p_state: params.state,
+    p_due_at: params.dueAt || null,
+    p_note: params.note?.trim() || null,
+  });
+  if (error) {
+    throw businessRpcError(error, "Impossible de mettre à jour le retrait de cette vente.");
+  }
+}
+
+/**
  * Propriétaire uniquement (RPC `owner_purge_cancelled_sale`) : efface définitivement une vente
  * déjà **annulée** (ligne retirée de la liste).
  */
@@ -204,16 +343,22 @@ export async function getSaleDetail(saleId: string): Promise<
   | null
 > {
   const supabase = createClient();
-  const { data, error } = await supabase
-    .from("sales")
-    .select(
-      `${saleSelect},sale_items(id, product_id, quantity, unit_price, discount, total, product:products(id,name,sku,unit)),sale_payments(id, method, amount, reference, created_at)`,
-    )
-    .eq("id", saleId)
-    .maybeSingle();
+  const run = () =>
+    supabase
+      .from("sales")
+      .select(
+        `${saleSelect()},sale_items(id, product_id, quantity, unit_price, discount, total, product:products(id,name,sku,unit)),sale_payments(id, method, amount, reference, created_at)`,
+      )
+      .eq("id", saleId)
+      .maybeSingle();
+  let { data, error } = await run();
+  if (error && isMissingDeliveryColumn(error)) {
+    deliveryColumnsAvailable = false;
+    ({ data, error } = await run());
+  }
   if (error) throw error;
   if (!data) return null;
-  const row = data as Record<string, unknown>;
+  const row = data as unknown as Record<string, unknown>;
   const storeRaw = row.store;
   const customerRaw = row.customer;
   const store = Array.isArray(storeRaw)

@@ -11,9 +11,17 @@ import type { AccessHelpers } from "@/lib/features/permissions/access";
 import {
   cancelSale,
   fetchSalesCost,
+  listAwaitingPickupSales,
   listSales,
   purgeCancelledSaleAsOwner,
+  setSaleDeliveryState,
 } from "@/lib/features/sales/api";
+import {
+  deliveryChipLabel,
+  deliveryPillClass,
+  deliveryTooltip,
+  saleDelivery,
+} from "@/lib/features/sales/sale-delivery";
 import {
   computeSaleProfit,
   profitTier,
@@ -22,7 +30,11 @@ import {
   PROFIT_TIER_TEXT_CLASS,
   type SaleCostAggregate,
 } from "@/lib/features/sales/sale-profit";
-import type { SaleItem, SaleStatus } from "@/lib/features/sales/types";
+import type {
+  SaleDeliveryState,
+  SaleItem,
+  SaleStatus,
+} from "@/lib/features/sales/types";
 import { queryKeys } from "@/lib/query/query-keys";
 import {
   fetchInvoiceTablePosEnabled,
@@ -58,6 +70,7 @@ import { messageFromUnknownError, toast } from "@/lib/toast";
 import { cn } from "@/lib/utils/cn";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { SaleDetailModal } from "./sale-detail-modal";
+import { SaleDeliveryDialog } from "./sale-delivery-dialog";
 import { FsHorizontalScroll } from "@/components/ui/fs-horizontal-scroll";
 import {
   FsPage,
@@ -78,6 +91,7 @@ import {
   MdDownload,
   MdFilterAltOff,
   MdHelpOutline,
+  MdInventory2,
   MdLocalOffer,
   MdLockPerson,
   MdEdit,
@@ -89,6 +103,7 @@ import {
   MdShoppingBag,
   MdShoppingCart,
   MdTableChart,
+  MdTaskAlt,
   MdVisibility,
   MdWarningAmber,
 } from "react-icons/md";
@@ -318,6 +333,83 @@ function SalePaymentChips({ sale }: { sale: SaleItem }) {
   );
 }
 
+/**
+ * « À retirer » — la vente est payée, la marchandise est encore en boutique.
+ * Rien ne s'affiche dans le cas normal (client reparti avec ses articles) : une puce
+ * « Remis » sur 99 % des lignes n'apprendrait rien à personne.
+ */
+function SaleDeliveryChip({ sale }: { sale: SaleItem }) {
+  const d = saleDelivery(sale);
+  if (!d.awaiting) return null;
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 whitespace-nowrap rounded-lg px-2 py-1 text-xs font-semibold",
+        deliveryPillClass(d),
+      )}
+      title={deliveryTooltip(d, d.dueAt ? formatDayLabel(d.dueAt) : null)}
+    >
+      <MdInventory2 className="h-3.5 w-3.5 shrink-0" aria-hidden />
+      {deliveryChipLabel(d)}
+    </span>
+  );
+}
+
+/** `YYYY-MM-DD` → `JJ/MM/AAAA` (date promise par le client). */
+function formatDayLabel(ymd: string): string {
+  const [y, m, d] = ymd.split("-");
+  return y && m && d ? `${d}/${m}/${y}` : ymd;
+}
+
+/**
+ * Le bouton demandé au comptoir : basculer une vente entre « emportée » et « à retirer ».
+ * Deux icônes distinctes plutôt qu'un interrupteur muet — on doit lire l'action à faire,
+ * pas deviner l'état courant.
+ */
+function SaleDeliveryButton({
+  sale,
+  className,
+  onOpen,
+}: {
+  sale: SaleItem;
+  className: string;
+  onOpen: (target: SaleDeliveryState) => void;
+}) {
+  if (sale.status !== "completed") return null;
+  const d = saleDelivery(sale);
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        onOpen(d.awaiting ? "delivered" : "pending");
+      }}
+      className={cn(
+        className,
+        d.awaiting
+          ? "text-emerald-600 dark:text-emerald-400"
+          : "text-neutral-500 hover:text-amber-600",
+      )}
+      aria-label={
+        d.awaiting
+          ? "Marquer la marchandise comme remise au client"
+          : "Marquer : payé, marchandise pas encore emportée"
+      }
+      title={
+        d.awaiting
+          ? "Le client est venu chercher"
+          : "Payé, pas encore emporté (à retirer)"
+      }
+    >
+      {d.awaiting ? (
+        <MdTaskAlt className="h-5 w-5 shrink-0" aria-hidden />
+      ) : (
+        <MdInventory2 className="h-5 w-5 shrink-0" aria-hidden />
+      )}
+    </button>
+  );
+}
+
 /** Payé · Payé partiellement · À crédit (aucun encaissement). */
 function SaleSettlementChip({ sale }: { sale: SaleItem }) {
   const s = saleSettlement(sale);
@@ -352,6 +444,12 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
   const canCancelSale = hasPermission(P.salesCancel);
   const canUpdateSale = hasPermission(P.salesUpdate);
   /**
+   * Pointer un retrait est un geste de comptoir : celui qui encaisse doit pouvoir dire
+   * « c'est parti » ou « ça attend ». Ni argent ni stock ne bougent — la RPC
+   * `sale_set_delivery_state` applique la même règle côté base.
+   */
+  const canMarkDelivery = isOwner || canCreateSale || canUpdateSale;
+  /**
    * Le bénéfice révèle les prix d'achat : réservé à qui voit déjà les marges
    * (propriétaire ou droit Rapports). Un caissier ne voit tout simplement pas la colonne.
    */
@@ -373,6 +471,17 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
   const [search, setSearch] = useState("");
   /** Affiche les deux champs date (période personnalisée). */
   const [customPeriodOpen, setCustomPeriodOpen] = useState(false);
+  /**
+   * Vue « À retirer » : marchandises payées qui attendent en boutique. Elle IGNORE la
+   * période — un client qui n'est pas revenu depuis trois semaines est exactement celui
+   * qu'un filtre « aujourd'hui » ferait disparaître de l'écran.
+   */
+  const [awaitingOnly, setAwaitingOnly] = useState(false);
+  /** Vente en cours de pointage (retrait) et geste visé. */
+  const [deliveryTarget, setDeliveryTarget] = useState<{
+    sale: SaleItem;
+    target: SaleDeliveryState;
+  } | null>(null);
 
   const companyId = ctx.data?.companyId ?? "";
   const stores = useMemo(() => ctx.data?.stores ?? [], [ctx.data?.stores]);
@@ -468,6 +577,46 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
     refetchIntervalInBackground: true,
   });
 
+  /**
+   * Ce qui attend derrière le comptoir, toutes périodes confondues. Requête à part et
+   * volontairement légère (index partiel `idx_sales_delivery_pending`) : elle alimente le
+   * compteur de la puce « À retirer » même quand la liste affiche « aujourd'hui ».
+   */
+  const awaitingQ = useQuery({
+    queryKey: queryKeys.salesAwaitingPickup({
+      companyId,
+      storeId: effectiveStoreId,
+    }),
+    queryFn: () =>
+      listAwaitingPickupSales({ companyId, storeId: effectiveStoreId }),
+    enabled: !!companyId,
+    staleTime: 30_000,
+    refetchInterval: 30_000,
+  });
+  const awaitingSales = useMemo(() => awaitingQ.data ?? [], [awaitingQ.data]);
+  const awaitingCount = awaitingSales.length;
+
+  const deliveryMut = useMutation({
+    mutationFn: (p: {
+      saleId: string;
+      state: SaleDeliveryState;
+      dueAt: string | null;
+      note: string | null;
+    }) => setSaleDeliveryState(p),
+    onSuccess: async (_r, p) => {
+      await qc.invalidateQueries({ queryKey: ["sales"] });
+      await qc.invalidateQueries({ queryKey: ["sales-awaiting-pickup"] });
+      await qc.invalidateQueries({ queryKey: ["sale-detail"] });
+      setDeliveryTarget(null);
+      toast.success(
+        p.state === "pending"
+          ? "Vente marquée « à retirer »."
+          : "Marchandise remise au client.",
+      );
+    },
+    onError: (e) => toast.error(messageFromUnknownError(e)),
+  });
+
   const cancelMut = useMutation({
     mutationFn: (saleId: string) => cancelSale(saleId),
     onSuccess: async () => {
@@ -487,7 +636,14 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
     onError: (e) => toast.error(messageFromUnknownError(e, "Impossible de supprimer cette vente.")),
   });
 
-  const sales = useMemo(() => salesQ.data ?? [], [salesQ.data]);
+  /**
+   * Base de la liste : l'historique de la période, ou — vue « À retirer » — ce qui attend
+   * en boutique quelle que soit la date de la vente.
+   */
+  const sales = useMemo(
+    () => (awaitingOnly ? awaitingSales : salesQ.data ?? []),
+    [awaitingOnly, awaitingSales, salesQ.data],
+  );
   const scopedSales = useMemo(() => {
     if (!isRestaurant || preset === "default") return sales;
     const isDelivery = (s: SaleItem) =>
@@ -546,20 +702,39 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
   const summary = useMemo(() => summarizeSales(visibleSales), [visibleSales]);
   const periodPreset = matchSalesPeriodPreset({ from, to });
   const periodLabel = salesRangeLabel({ from, to });
+  /**
+   * La vue « À retirer » n'a pas de période : afficher « aujourd'hui » au-dessus d'une
+   * liste qui contient des ventes de la semaine dernière ferait mentir l'écran.
+   */
+  const listPeriodLabel = awaitingOnly
+    ? "en attente de retrait — toutes périodes"
+    : periodLabel;
+  /** Requête qui alimente réellement la liste affichée (historique ou « à retirer »). */
+  const listQ = awaitingOnly ? awaitingQ : salesQ;
+  const listLoading = listQ.isLoading;
   const selectedSeller = effectiveSellerId
     ? sellerStats.find((s) => s.userId === effectiveSellerId) ?? null
     : null;
   const sellerTerm = isRestaurant ? "Serveur" : "Vendeur";
   const filtersActive =
-    Boolean(from || to || status || effectiveSellerId || search.trim());
+    Boolean(from || to || status || effectiveSellerId || search.trim() || awaitingOnly);
 
   const applyPeriod = (preset: Exclude<SalesPeriodPreset, "custom">) => {
     const r = salesPeriodRange(preset);
     setFrom(r.from);
     setTo(r.to);
     setCustomPeriodOpen(false);
+    // Choisir une période, c'est revenir à l'historique : la vue « À retirer », elle,
+    // n'a pas de période.
+    setAwaitingOnly(false);
     setPage(0);
   };
+
+  /** Montant immobilisé derrière le comptoir — argument le plus parlant pour relancer. */
+  const awaitingTotal = useMemo(
+    () => awaitingSales.reduce((sum, s) => sum + Number(s.total ?? 0), 0),
+    [awaitingSales],
+  );
 
   const resetFilters = () => {
     setFrom("");
@@ -568,6 +743,7 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
     setSellerId("");
     setSearch("");
     setCustomPeriodOpen(false);
+    setAwaitingOnly(false);
     setPage(0);
   };
 
@@ -701,7 +877,7 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
             // « ventes de X hier » devient indistinguable d'un export global.
             subtitle: [
               selectedSeller ? `${sellerTerm} : ${selectedSeller.label}` : null,
-              periodLabel.charAt(0).toUpperCase() + periodLabel.slice(1),
+              listPeriodLabel.charAt(0).toUpperCase() + listPeriodLabel.slice(1),
               `${visibleSales.length} ligne(s)`,
               `généré le ${d}`,
             ]
@@ -798,20 +974,25 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
           <div className="flex w-full flex-col gap-2 min-[400px]:flex-row min-[400px]:flex-wrap min-[560px]:w-auto min-[560px]:max-w-none min-[560px]:justify-end">
             <button
               type="button"
-              disabled={salesQ.isFetching}
-              onClick={() => void salesQ.refetch()}
+              disabled={listQ.isFetching}
+              onClick={() => {
+                void listQ.refetch();
+                // Le compteur « À retirer » est alimenté par sa propre requête : sans
+                // cela, il resterait figé après un pointage fait sur un autre poste.
+                if (!awaitingOnly) void awaitingQ.refetch();
+              }}
               className="touch-manipulation inline-flex min-h-12 shrink-0 items-center justify-center gap-2 self-start rounded-[10px] border border-black/10 bg-fs-card px-3 text-neutral-800 active:bg-neutral-50 disabled:opacity-40 min-[400px]:px-4"
               aria-label="Actualiser la liste"
             >
               <MdRefresh
-                className={cn("h-5 w-5 shrink-0", salesQ.isFetching && "animate-spin")}
+                className={cn("h-5 w-5 shrink-0", listQ.isFetching && "animate-spin")}
                 aria-hidden
               />
               <span className="hidden text-sm font-semibold min-[400px]:inline">Actualiser</span>
             </button>
             <button
               type="button"
-              disabled={visibleSales.length === 0 || salesQ.isFetching}
+              disabled={visibleSales.length === 0 || listQ.isFetching}
               onClick={exportExcel}
               className={btnOutline}
             >
@@ -888,6 +1069,54 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
           Choisissez une {uiTerms.storeSingular.toLowerCase()} dans les filtres ci-dessous pour
           ouvrir la caisse : la vente y sera enregistrée.
         </p>
+      ) : null}
+
+      {/*
+        Marchandise payée qui dort en boutique. La bannière n'apparaît que s'il y a
+        quelque chose à retirer : tant que personne n'utilise le suivi, la page ne change
+        pas d'un pixel. Elle ouvre une liste SANS période — un client qui n'est pas revenu
+        depuis trois semaines est justement celui qu'un filtre « aujourd'hui » cacherait.
+      */}
+      {awaitingCount > 0 || awaitingOnly ? (
+        <button
+          type="button"
+          onClick={() => {
+            setAwaitingOnly((v) => !v);
+            setPage(0);
+          }}
+          aria-pressed={awaitingOnly}
+          className={cn(
+            "touch-manipulation flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left shadow-sm transition-colors",
+            awaitingOnly
+              ? "border-amber-500/50 bg-amber-500/14"
+              : "border-amber-500/25 bg-fs-card hover:bg-amber-500/6",
+          )}
+        >
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-amber-700 dark:text-amber-300">
+            <MdInventory2 className="h-6 w-6" aria-hidden />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-bold text-fs-text">
+              {awaitingCount} vente{awaitingCount > 1 ? "s" : ""} payée
+              {awaitingCount > 1 ? "s" : ""} · marchandise pas encore emportée
+            </span>
+            <span className="mt-0.5 block text-xs text-neutral-600">
+              {awaitingOnly
+                ? `Liste en cours — toutes périodes · ${formatCurrency(awaitingTotal)} en attente`
+                : `${formatCurrency(awaitingTotal)} en attente derrière le comptoir — voir la liste`}
+            </span>
+          </span>
+          <span
+            className={cn(
+              "shrink-0 rounded-lg px-2.5 py-1 text-xs font-bold",
+              awaitingOnly
+                ? "bg-amber-600 text-white"
+                : "bg-amber-500/15 text-amber-800 dark:text-amber-300",
+            )}
+          >
+            {awaitingOnly ? "Tout voir" : "Voir"}
+          </span>
+        </button>
       ) : null}
 
       <FsCard padding="p-3 min-[500px]:p-4">
@@ -1094,14 +1323,14 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
 
       <SalesSummaryBand
         summary={summary}
-        periodLabel={periodLabel}
+        periodLabel={listPeriodLabel}
         sellerName={selectedSeller?.label ?? null}
         storeLabel={
           effectiveStoreId
             ? stores.find((s) => s.id === effectiveStoreId)?.name ?? null
             : null
         }
-        loading={salesQ.isLoading}
+        loading={listLoading}
       />
 
       {sellerStats.length > 0 ? (
@@ -1112,20 +1341,20 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
             setSellerId(id);
             setPage(0);
           }}
-          periodLabel={periodLabel}
+          periodLabel={listPeriodLabel}
           sellerTerm={sellerTerm}
         />
       ) : null}
 
-      {salesQ.isError ? (
+      {listQ.isError ? (
         <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
           <p>
-            {(salesQ.error as Error)?.message ??
+            {(listQ.error as Error)?.message ??
               "Impossible de charger les ventes."}
           </p>
           <button
             type="button"
-            onClick={() => void salesQ.refetch()}
+            onClick={() => void listQ.refetch()}
             className="mt-2 font-semibold text-red-900 underline"
           >
             Réessayer
@@ -1133,16 +1362,20 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
         </div>
       ) : null}
 
-      {salesQ.isLoading ? (
+      {listLoading ? (
         <div className="py-16">
           <LoadingState />
         </div>
       ) : visibleSales.length === 0 ? (
-        // Filtres actifs : ne pas dire « aucune vente, ouvrez la caisse » — la
+        // Vue « À retirer » vidée : c'est une bonne nouvelle, pas une absence de
+        // résultat. On le dit, et on ramène à l'historique.
+        awaitingOnly ? (
+          <NothingAwaitingCard onBack={() => setAwaitingOnly(false)} />
+        ) : // Filtres actifs : ne pas dire « aucune vente, ouvrez la caisse » — la
         // vente existe peut-être hors de la période ou du vendeur sélectionné.
         filtersActive ? (
           <NoResultCard
-            periodLabel={periodLabel}
+            periodLabel={listPeriodLabel}
             sellerName={selectedSeller?.label ?? null}
             onReset={resetFilters}
           />
@@ -1233,13 +1466,16 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
                         <SaleSettlementChip sale={s} />
                       </td>
                       <td className="px-3 py-2">
-                        <span
-                          className={cn(
-                            "inline-block rounded-lg px-2.5 py-1 text-xs font-semibold",
-                            saleStatusPillClass(s.status),
-                          )}
-                        >
-                          {statusLabel[s.status]}
+                        <span className="inline-flex items-center gap-1.5">
+                          <span
+                            className={cn(
+                              "inline-block rounded-lg px-2.5 py-1 text-xs font-semibold",
+                              saleStatusPillClass(s.status),
+                            )}
+                          >
+                            {statusLabel[s.status]}
+                          </span>
+                          <SaleDeliveryChip sale={s} />
                         </span>
                       </td>
                       <td className="px-3 py-2 text-right">
@@ -1251,6 +1487,15 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
                         >
                           <MdVisibility className="h-5 w-5" aria-hidden />
                         </button>
+                        {canMarkDelivery ? (
+                          <SaleDeliveryButton
+                            sale={s}
+                            className="mr-1 inline-flex min-h-10 min-w-10 items-center justify-center rounded-lg p-2"
+                            onOpen={(target) =>
+                              setDeliveryTarget({ sale: s, target })
+                            }
+                          />
+                        ) : null}
                         {s.status === "completed" && canUpdateSale ? (
                           <Link
                             href={saleEditHref(s.store_id, s)}
@@ -1321,10 +1566,12 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
                   profitLoading={profitLoading}
                   canCancel={canCancelSale}
                   canEdit={canUpdateSale}
+                  canMarkDelivery={canMarkDelivery}
                   isOwner={isOwner}
                   companyId={companyId}
                   purgeBusy={purgeCancelledMut.isPending}
                   onDetail={() => setDetailId(s.id)}
+                  onDelivery={(target) => setDeliveryTarget({ sale: s, target })}
                   onCancel={() => {
                     if (s.status !== "completed") return;
                     if (
@@ -1400,6 +1647,23 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
 
       {detailId ? (
         <SaleDetailModal saleId={detailId} onClose={() => setDetailId(null)} />
+      ) : null}
+
+      {deliveryTarget ? (
+        <SaleDeliveryDialog
+          sale={deliveryTarget.sale}
+          target={deliveryTarget.target}
+          busy={deliveryMut.isPending}
+          onCancel={() => setDeliveryTarget(null)}
+          onConfirm={({ dueAt, note }) =>
+            deliveryMut.mutate({
+              saleId: deliveryTarget.sale.id,
+              state: deliveryTarget.target,
+              dueAt,
+              note,
+            })
+          }
+        />
       ) : null}
       </div>
     </FsPage>
@@ -1632,11 +1896,13 @@ function SaleCard({
   profitLoading,
   canCancel,
   canEdit,
+  canMarkDelivery,
   isOwner,
   companyId,
   purgeBusy,
   onCancel,
   onDetail,
+  onDelivery,
   onPurgeCancelled,
 }: {
   sale: SaleItem;
@@ -1647,11 +1913,13 @@ function SaleCard({
   profitLoading: boolean;
   canCancel: boolean;
   canEdit: boolean;
+  canMarkDelivery: boolean;
   isOwner: boolean;
   companyId: string;
   purgeBusy: boolean;
   onCancel: () => void;
   onDetail: () => void;
+  onDelivery: (target: SaleDeliveryState) => void;
   onPurgeCancelled: () => void;
 }) {
   const subtitle = [
@@ -1664,6 +1932,7 @@ function SaleCard({
 
   const editHref =
     sale.status === "completed" && canEdit ? saleEditHref(sale.store_id, sale) : null;
+  const delivery = saleDelivery(sale);
 
   const iconRowBtn =
     "inline-flex min-h-10 min-w-10 shrink-0 items-center justify-center rounded-lg p-2";
@@ -1693,9 +1962,10 @@ function SaleCard({
             </span>
           ) : null}
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
           <DocumentTypeChip sale={sale} />
           <SaleSettlementChip sale={sale} />
+          <SaleDeliveryChip sale={sale} />
           <span
             className={cn(
               "rounded-lg px-2.5 py-1 text-xs font-semibold leading-none",
@@ -1706,6 +1976,11 @@ function SaleCard({
           </span>
         </div>
       </div>
+      {delivery.awaiting && delivery.note ? (
+        <p className="mt-2 line-clamp-2 rounded-lg bg-amber-500/10 px-2 py-1 text-xs leading-normal text-amber-900 dark:text-amber-200">
+          {delivery.note}
+        </p>
+      ) : null}
       <p className="mt-2 text-xs leading-normal text-neutral-600">
         {formatDateTime(sale.created_at)}
       </p>
@@ -1760,6 +2035,9 @@ function SaleCard({
           >
             <MdVisibility className="h-5 w-5 shrink-0" aria-hidden />
           </button>
+          {canMarkDelivery ? (
+            <SaleDeliveryButton sale={sale} className={iconRowBtn} onOpen={onDelivery} />
+          ) : null}
           {editHref ? (
             <Link
               href={editHref}
@@ -1837,6 +2115,29 @@ function EmptyStateCard({
           Ouvrir la caisse
         </Link>
       ) : null}
+    </FsCard>
+  );
+}
+
+/** Plus rien n'attend derrière le comptoir : tout a été remis. */
+function NothingAwaitingCard({ onBack }: { onBack: () => void }) {
+  return (
+    <FsCard className="text-center" padding="px-5 py-12 sm:px-6 sm:py-14">
+      <MdTaskAlt className="mx-auto h-12 w-12 text-emerald-500" aria-hidden />
+      <h3 className="mt-3 text-base font-semibold leading-snug text-neutral-900">
+        Rien à retirer
+      </h3>
+      <p className="mt-2 text-sm leading-relaxed text-neutral-600">
+        Toutes les marchandises payées ont été remises à leurs clients.
+      </p>
+      <button
+        type="button"
+        onClick={onBack}
+        className="touch-manipulation mt-5 inline-flex min-h-12 w-full max-w-sm items-center justify-center gap-2 rounded-xl border border-black/10 bg-fs-card px-5 py-3 text-sm font-semibold text-neutral-800 active:bg-neutral-50 sm:w-auto"
+      >
+        <MdArrowBack className="h-5 w-5" aria-hidden />
+        Revenir à l&apos;historique
+      </button>
     </FsCard>
   );
 }
