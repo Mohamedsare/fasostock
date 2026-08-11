@@ -173,7 +173,16 @@ export async function listCompanyStoreAssignments(
   const { data, error } = await supabase.rpc("list_company_store_assignments", {
     p_company_id: companyId,
   });
-  if (error) throw error;
+  /*
+   * PGRST202 = la fonction n'existe pas encore (migration 00183 non appliquée).
+   * On rend une carte vide plutôt qu'une erreur : la page Employés reste
+   * exactement ce qu'elle était avant la fonctionnalité, sans puces de boutique
+   * ni rapport d'erreur parasite.
+   */
+  if (error) {
+    if ((error as { code?: string }).code === "PGRST202") return {};
+    throw error;
+  }
   const byUser: Record<string, string[]> = {};
   for (const row of (data ?? []) as { user_id: string; store_id: string }[]) {
     const uid = String(row.user_id);

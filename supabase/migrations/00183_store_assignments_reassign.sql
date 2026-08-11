@@ -154,13 +154,19 @@ BEGIN
   SELECT p_user_id, x, p_company_id FROM unnest(v_ids) AS x
   ON CONFLICT (user_id, store_id) DO UPDATE SET company_id = EXCLUDED.company_id;
 
+  -- Trace. Isolée dans son propre bloc : une écriture d'audit qui échoue ne doit
+  -- jamais annuler la réaffectation elle-même.
   IF v_before IS DISTINCT FROM (SELECT COALESCE(array_agg(x ORDER BY x), ARRAY[]::uuid[]) FROM unnest(v_ids) AS x) THEN
-    INSERT INTO public.audit_logs (company_id, user_id, action, entity_type, entity_id, old_data, new_data)
-    VALUES (
-      p_company_id, auth.uid(), 'user.store_assignments', 'user', p_user_id,
-      jsonb_build_object('store_ids', v_before),
-      jsonb_build_object('store_ids', v_ids)
-    );
+    BEGIN
+      INSERT INTO public.audit_logs (company_id, user_id, action, entity_type, entity_id, old_data, new_data)
+      VALUES (
+        p_company_id, auth.uid(), 'user.store_assignments', 'user', p_user_id,
+        jsonb_build_object('store_ids', v_before),
+        jsonb_build_object('store_ids', v_ids)
+      );
+    EXCEPTION WHEN OTHERS THEN
+      NULL;
+    END;
   END IF;
 
   RETURN v_count;
@@ -201,6 +207,11 @@ GRANT EXECUTE ON FUNCTION public.list_company_store_assignments(uuid) TO authent
 -- La branche « owner » vérifiait `is_active`, pas la branche « affectations » :
 -- un employé désactivé continuait à voir ses boutiques via `stores_select`
 -- (policy sans contrôle d'entreprise). On aligne les deux.
+--
+-- ATTENTION : `SET search_path = public` est OBLIGATOIRE ici. La migration 00130
+-- l'avait posé par `ALTER FUNTION` ; un `CREATE OR REPLACE` qui l'omet le retire
+-- en silence et rouvre la faille de détournement de search_path sur une fonction
+-- SECURITY DEFINER dont dépendent une trentaine de policies.
 CREATE OR REPLACE FUNCTION public.current_user_store_ids(p_company_id UUID)
 RETURNS SETOF UUID AS $$
   SELECT s.id FROM public.stores s
@@ -223,7 +234,11 @@ RETURNS SETOF UUID AS $$
       WHERE ua.user_id = auth.uid() AND ua.store_id = s.id AND ua.company_id = p_company_id
     )
   );
-$$ LANGUAGE sql STABLE SECURITY DEFINER;
+$$ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public;
+
+-- Ceinture et bretelles : si la fonction préexistait sans search_path figé (base
+-- où 00130 n'a pas encore été jouée), on le pose quand même.
+ALTER FUNCTION public.current_user_store_ids(uuid) SET search_path = public;
 
 COMMENT ON FUNCTION public.current_user_store_ids(uuid) IS
   'Boutiques accessibles : super admin et propriétaire voient tout ; les autres uniquement leurs affectations (user_store_assignments), et seulement si leur compte est actif.';

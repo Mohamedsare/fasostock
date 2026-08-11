@@ -134,14 +134,19 @@ export function AppShell({ children, userEmail }: AppShellProps) {
 
     /*
      * 3. `?store=` — l'historique des ventes reçoit ce paramètre en revenant de la
-     *    caisse, et il l'emporte sur le contexte. Laissé tel quel, il rétablirait
-     *    l'ancienne boutique au remontage.
+     *    caisse, et il l'emporte sur le contexte. On le réaligne, et surtout on ne
+     *    remonte PAS l'écran : le remontage repartirait de l'URL telle qu'elle est
+     *    à cet instant, or `router.replace` n'a pas encore abouti — la page se
+     *    reconstruirait sur l'ancienne boutique. Ici, c'est le changement d'URL
+     *    lui-même qui pilote l'écran, sans course possible.
      */
     const search = new URLSearchParams(window.location.search);
     if (search.get("store")) {
       search.set("store", storeId);
       router.replace(`${pathname}?${search.toString()}`);
+      return;
     }
+
     remountOnStoreChange.current = true;
   };
 

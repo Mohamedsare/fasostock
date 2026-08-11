@@ -396,21 +396,27 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
     invoiceTablePosEnabled;
 
   const searchParams = useSearchParams();
-  /** Appliquer une seule fois `?store=` (ex. lien depuis la caisse rapide). */
-  const storeFromUrlAppliedRef = useRef(false);
+  /**
+   * Dernière valeur de `?store=` réellement appliquée (lien depuis la caisse).
+   * On mémorise la VALEUR et non un simple « déjà fait » : quand la barre
+   * supérieure change de boutique, elle réécrit ce paramètre, et l'écran doit
+   * suivre. Un booléen bloquerait la seconde application et figerait la page sur
+   * la boutique d'origine.
+   */
+  const storeFromUrlRef = useRef<string | null>(null);
 
   const isWide = useMediaQuery("(min-width: 900px)");
 
   useEffect(() => {
     if (!companyId) {
       lastCompanyId.current = null;
-      storeFromUrlAppliedRef.current = false;
+      storeFromUrlRef.current = null;
       return;
     }
     const companyChanged = lastCompanyId.current !== companyId;
     if (companyChanged) {
       lastCompanyId.current = companyId;
-      storeFromUrlAppliedRef.current = false;
+      storeFromUrlRef.current = null;
       allStoresChosen.current = false;
       if (currentStoreId) setStoreFilter(currentStoreId);
       else setStoreFilter("");
@@ -422,11 +428,11 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
   }, [companyId, currentStoreId, storeFilter]);
 
   useEffect(() => {
-    if (storeFromUrlAppliedRef.current) return;
     const sid = searchParams.get("store");
     if (!sid || stores.length === 0) return;
+    if (sid === storeFromUrlRef.current) return;
     if (!stores.some((s) => s.id === sid)) return;
-    storeFromUrlAppliedRef.current = true;
+    storeFromUrlRef.current = sid;
     allStoresChosen.current = true;
     setStoreFilter(sid);
   }, [searchParams, stores]);
