@@ -482,17 +482,6 @@ export default async function Home({
             )}
           >
             <div className="max-w-2xl">
-              <p
-                className={cn(
-                  "mb-2 inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[10px] font-bold uppercase leading-tight tracking-wide ring-1 sm:mb-3 sm:gap-2 sm:px-3 sm:text-[11px]",
-                  heroBannerImageUrl
-                    ? "bg-white/15 text-white ring-white/30 backdrop-blur"
-                    : "bg-white text-neutral-700 ring-black/8",
-                )}
-              >
-                <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-fs-accent text-white sm:h-5 sm:w-5">★</span>
-                LA SOLUTION N°1 POUR LES COMMERÇANTS ET PME
-              </p>
               <h1
                 className={cn(
                   "text-[1.95rem] font-black leading-[0.98] tracking-tight sm:text-6xl",
