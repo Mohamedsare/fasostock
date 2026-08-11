@@ -438,7 +438,9 @@ export default async function Home({
           className={cn(
             "relative overflow-hidden rounded-md border border-black/10 p-4 shadow-[0_28px_70px_-35px_rgba(17,24,39,0.4)] sm:p-6",
             heroBannerImageUrl
-              ? "min-h-[420px] sm:min-h-[520px]"
+              // Sur mobile, la bannière prend la hauteur du contenu : on garde un
+              // plancher bas pour ne pas rallonger inutilement le premier écran.
+              ? "min-h-[340px] sm:min-h-[520px]"
               : "bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.95),rgba(246,246,246,0.9)_52%),linear-gradient(to_bottom,#fafafa,#f3f3f3)]",
           )}
         >
@@ -482,18 +484,18 @@ export default async function Home({
             <div className="max-w-2xl">
               <p
                 className={cn(
-                  "mb-3 inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wide ring-1",
+                  "mb-2 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase leading-tight tracking-wide ring-1 sm:mb-3 sm:gap-2 sm:px-3 sm:text-[11px]",
                   heroBannerImageUrl
                     ? "bg-white/15 text-white ring-white/30 backdrop-blur"
                     : "bg-white text-neutral-700 ring-black/8",
                 )}
               >
-                <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-fs-accent text-white">★</span>
+                <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-fs-accent text-white sm:h-5 sm:w-5">★</span>
                 LA SOLUTION N°1 POUR LES COMMERÇANTS ET PME
               </p>
               <h1
                 className={cn(
-                  "text-[2.15rem] font-black leading-[0.98] tracking-tight sm:text-6xl",
+                  "text-[1.95rem] font-black leading-[0.98] tracking-tight sm:text-6xl",
                   heroBannerImageUrl
                     ? "text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.45)]"
                     : "text-[#202935]",
@@ -507,7 +509,7 @@ export default async function Home({
                 {/* Mot-clé principal, visible et lisible, à l'intérieur du H1. */}
                 <span
                   className={cn(
-                    "mt-3 block text-[15px] font-bold leading-snug tracking-normal sm:text-lg",
+                    "mt-2 block text-[13.5px] font-bold leading-snug tracking-normal sm:mt-3 sm:text-lg",
                     heroBannerImageUrl ? "text-white/90" : "text-neutral-700",
                   )}
                 >
@@ -516,7 +518,7 @@ export default async function Home({
               </h1>
               <p
                 className={cn(
-                  "mt-4 max-w-lg text-[15px] leading-relaxed sm:text-base",
+                  "mt-3 max-w-lg text-[13.5px] leading-snug sm:mt-4 sm:text-base sm:leading-relaxed",
                   heroBannerImageUrl ? "text-white/90" : "text-neutral-600",
                 )}
               >
@@ -525,18 +527,20 @@ export default async function Home({
                 employés et vos rapports au même endroit.
               </p>
 
-              <div className="mt-6 flex flex-col gap-2.5 min-[430px]:flex-row">
+              {/* Sur mobile : « Démonstration » pleine largeur, les deux autres
+                  côte à côte en dessous — deux rangées au lieu de trois. */}
+              <div className="mt-4 flex flex-wrap gap-2 sm:mt-6 sm:gap-2.5">
                 <Link
                   href={supportWhatsappUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex min-h-10 items-center justify-center gap-2 whitespace-nowrap rounded-md bg-fs-accent px-4 py-2 text-xs font-extrabold uppercase tracking-wide text-white shadow-[0_18px_36px_-18px_rgba(232,93,44,0.95)] sm:min-h-11 sm:px-5 sm:py-2.5 sm:text-sm"
+                  className="inline-flex min-h-10 w-full items-center justify-center gap-2 whitespace-nowrap rounded-md bg-fs-accent px-4 py-2 text-xs font-extrabold uppercase tracking-wide text-white shadow-[0_18px_36px_-18px_rgba(232,93,44,0.95)] sm:w-auto sm:min-h-11 sm:px-5 sm:py-2.5 sm:text-sm"
                 >
                   <MdWhatsapp className="h-5 w-5" aria-hidden />
                   Démonstration
                 </Link>
-                <VideoModalButton className="inline-flex min-h-10 items-center justify-center gap-2 whitespace-nowrap rounded-md border border-black/10 bg-white px-4 py-2 text-xs font-bold text-neutral-800 sm:min-h-11 sm:px-5 sm:py-2.5 sm:text-sm" />
-                <InstallAppButton className="inline-flex min-h-10 items-center justify-center gap-2 whitespace-nowrap rounded-md border border-fs-accent/45 bg-white px-4 py-2 text-xs font-bold text-fs-accent sm:min-h-11 sm:px-5 sm:py-2.5 sm:text-sm" />
+                <VideoModalButton className="inline-flex min-h-10 flex-1 basis-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-md border border-black/10 bg-white px-3 py-2 text-xs font-bold text-neutral-800 sm:flex-none sm:min-h-11 sm:gap-2 sm:px-5 sm:py-2.5 sm:text-sm" />
+                <InstallAppButton className="inline-flex min-h-10 flex-1 basis-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-md border border-fs-accent/45 bg-white px-3 py-2 text-xs font-bold text-fs-accent sm:flex-none sm:min-h-11 sm:gap-2 sm:px-5 sm:py-2.5 sm:text-sm" />
               </div>
             </div>
 
