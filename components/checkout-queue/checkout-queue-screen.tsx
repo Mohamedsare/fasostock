@@ -352,7 +352,7 @@ export function CheckoutQueueScreen() {
     return (
       <FsPage>
         <FsScreenHeader title="Encaissement" />
-        <FsCard padding="p-5">
+        <FsCard className="rounded-md sm:rounded-md" padding="p-5">
           <div className="flex items-start gap-3">
             <MdLock className="mt-0.5 h-5 w-5 shrink-0 text-neutral-400" aria-hidden />
             <div>
@@ -380,7 +380,7 @@ export function CheckoutQueueScreen() {
           type="button"
           onClick={toggleSound}
           className={cn(
-            "inline-flex shrink-0 items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold",
+            "inline-flex shrink-0 items-center gap-1.5 rounded-sm border px-3 py-2 text-xs font-semibold",
             soundOn
               ? "border-fs-accent/30 bg-fs-accent/10 text-fs-accent"
               : "border-black/[0.08] bg-fs-card text-neutral-600 dark:border-white/10",
@@ -418,7 +418,7 @@ export function CheckoutQueueScreen() {
         <TabButton active={tab === "queue"} onClick={() => setTab("queue")}>
           À encaisser
           {totals.count > 0 ? (
-            <span className="ml-1.5 inline-flex min-w-[20px] items-center justify-center rounded-full bg-fs-accent px-1.5 text-[11px] font-extrabold text-white">
+            <span className="ml-1.5 inline-flex min-w-[20px] items-center justify-center rounded-sm bg-fs-accent px-1.5 text-[11px] font-extrabold text-white">
               {totals.count}
             </span>
           ) : null}
@@ -451,7 +451,7 @@ export function CheckoutQueueScreen() {
             <div className="h-9 w-9 animate-spin rounded-full border-2 border-fs-accent border-t-transparent" />
           </div>
         ) : pending.length === 0 ? (
-          <FsCard className="mt-3" padding="p-8">
+          <FsCard className="mt-3 rounded-md sm:rounded-md" padding="p-8">
             <div className="flex flex-col items-center text-center">
               <MdInbox className="h-10 w-10 text-neutral-300" aria-hidden />
               <p className="mt-3 text-sm font-bold text-fs-text">Aucun panier en attente</p>
@@ -461,7 +461,7 @@ export function CheckoutQueueScreen() {
               </p>
               <Link
                 href={ROUTES.sales}
-                className="mt-4 inline-flex items-center gap-1.5 rounded-xl border border-black/[0.08] bg-fs-card px-4 py-2.5 text-sm font-semibold text-fs-text dark:border-white/10"
+                className="mt-4 inline-flex items-center gap-1.5 rounded-md border border-black/[0.08] bg-fs-card px-4 py-2.5 text-sm font-semibold text-fs-text dark:border-white/10"
               >
                 <MdPointOfSale className="h-4 w-4" aria-hidden />
                 Ouvrir une caisse
@@ -524,7 +524,7 @@ export function CheckoutQueueScreen() {
             aria-label="Fermer"
             onClick={() => (cancelMut.isPending ? undefined : setCancelling(null))}
           />
-          <div className="relative z-10 w-full rounded-t-2xl border border-black/10 bg-fs-card p-4 shadow-2xl sm:max-w-md sm:rounded-2xl dark:border-white/10">
+          <div className="relative z-10 w-full rounded-t-md border border-black/10 bg-fs-card p-4 shadow-2xl sm:max-w-md sm:rounded-md dark:border-white/10">
             <h2 className="text-base font-bold text-fs-text">
               Annuler le bon {cancelling.number} ?
             </h2>
@@ -533,7 +533,7 @@ export function CheckoutQueueScreen() {
               avait rien de réservé. Le vendeur verra l&apos;annulation et votre motif.
             </p>
             <input
-              className={fsInputClass("mt-3")}
+              className={fsInputClass("mt-3 rounded-md")}
               value={cancelReason}
               onChange={(e) => setCancelReason(e.target.value)}
               placeholder="Motif (ex. le client s'est ravisé)"
@@ -544,7 +544,7 @@ export function CheckoutQueueScreen() {
                 type="button"
                 onClick={() => setCancelling(null)}
                 disabled={cancelMut.isPending}
-                className="flex-1 rounded-xl border border-black/[0.08] bg-fs-card py-2.5 text-sm font-semibold text-fs-text disabled:opacity-60 dark:border-white/10"
+                className="flex-1 rounded-md border border-black/[0.08] bg-fs-card py-2.5 text-sm font-semibold text-fs-text disabled:opacity-60 dark:border-white/10"
               >
                 Retour
               </button>
@@ -554,7 +554,7 @@ export function CheckoutQueueScreen() {
                   cancelMut.mutate({ id: cancelling.id, reason: cancelReason })
                 }
                 disabled={cancelMut.isPending}
-                className="flex-1 rounded-xl bg-red-600 py-2.5 text-sm font-bold text-white disabled:opacity-60"
+                className="flex-1 rounded-md bg-red-600 py-2.5 text-sm font-bold text-white disabled:opacity-60"
               >
                 {cancelMut.isPending ? "Annulation…" : "Annuler le bon"}
               </button>
@@ -584,7 +584,7 @@ function TabButton({
       type="button"
       onClick={onClick}
       className={cn(
-        "inline-flex items-center rounded-lg border px-3 py-2 text-xs font-semibold sm:text-sm",
+        "inline-flex items-center rounded-sm border px-3 py-2 text-xs font-semibold sm:text-sm",
         active
           ? "border-fs-accent/30 bg-[color-mix(in_srgb,var(--fs-accent)_20%,transparent)] text-fs-accent"
           : "border-black/[0.08] bg-fs-card text-neutral-700 dark:border-white/10",
@@ -607,7 +607,7 @@ function Tile({
   tone?: "default" | "accent" | "danger" | "muted";
 }) {
   return (
-    <FsCard padding="p-3">
+    <FsCard className="rounded-md sm:rounded-md" padding="p-3">
       <div className="flex items-center gap-1.5">
         <Icon
           className={cn(
@@ -671,15 +671,15 @@ function QueueCard({
   const claimedByOther = handoff.claimedBy != null && handoff.claimedBy !== myId;
 
   return (
-    <FsCard className={cn("border-l-4", URGENCY_CARD[urgency])} padding="p-3.5">
+    <FsCard className={cn("border-l-4 rounded-md sm:rounded-md", URGENCY_CARD[urgency])} padding="p-3.5">
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2">
-          <span className="inline-flex items-center rounded-lg bg-fs-accent px-2.5 py-1 text-sm font-extrabold tracking-tight text-white">
+          <span className="inline-flex items-center rounded-sm bg-fs-accent px-2.5 py-1 text-sm font-extrabold tracking-tight text-white">
             {handoff.number}
           </span>
           <span
             className={cn(
-              "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold",
+              "inline-flex items-center gap-1 rounded-sm px-2 py-0.5 text-[11px] font-bold",
               URGENCY_CHIP[urgency],
             )}
           >
@@ -721,13 +721,13 @@ function QueueCard({
         <p className="mt-2 truncate text-xs text-neutral-600">Client : {customerName}</p>
       ) : null}
       {handoff.note ? (
-        <p className="mt-1.5 rounded-lg bg-amber-500/10 px-2 py-1.5 text-xs leading-relaxed text-amber-900 dark:text-amber-200">
+        <p className="mt-1.5 rounded-sm bg-amber-500/10 px-2 py-1.5 text-xs leading-relaxed text-amber-900 dark:text-amber-200">
           « {handoff.note} »
         </p>
       ) : null}
 
       {claimedByOther ? (
-        <p className="mt-2 rounded-lg bg-sky-500/10 px-2 py-1.5 text-xs font-medium text-sky-800 dark:text-sky-300">
+        <p className="mt-2 rounded-sm bg-sky-500/10 px-2 py-1.5 text-xs font-medium text-sky-800 dark:text-sky-300">
           {handoff.claimedByName ?? "Un collègue"} s&apos;en occupe — vous pouvez quand même
           reprendre.
         </p>
@@ -737,7 +737,7 @@ function QueueCard({
         <button
           type="button"
           onClick={onCancel}
-          className="rounded-xl border border-black/[0.08] bg-fs-card px-3 py-2.5 text-xs font-semibold text-neutral-600 dark:border-white/10"
+          className="rounded-md border border-black/[0.08] bg-fs-card px-3 py-2.5 text-xs font-semibold text-neutral-600 dark:border-white/10"
         >
           <MdClose className="h-4 w-4" aria-hidden />
           <span className="sr-only">Annuler le bon {handoff.number}</span>
@@ -747,7 +747,7 @@ function QueueCard({
           onClick={() => onClaim(!claimedByMe)}
           disabled={busy}
           className={cn(
-            "rounded-xl border px-3 py-2.5 text-xs font-semibold disabled:opacity-60",
+            "rounded-md border px-3 py-2.5 text-xs font-semibold disabled:opacity-60",
             claimedByMe
               ? "border-sky-500/40 bg-sky-500/10 text-sky-800 dark:text-sky-300"
               : "border-black/[0.08] bg-fs-card text-neutral-700 dark:border-white/10",
@@ -758,7 +758,7 @@ function QueueCard({
         <button
           type="button"
           onClick={onCheckout}
-          className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-fs-accent py-2.5 text-sm font-extrabold tracking-tight text-white shadow-sm"
+          className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-md bg-fs-accent py-2.5 text-sm font-extrabold tracking-tight text-white shadow-sm"
         >
           <MdPayments className="h-4 w-4" aria-hidden />
           ENCAISSER
@@ -797,7 +797,7 @@ function HistoryList({
   const rows = query.data ?? [];
   if (rows.length === 0) {
     return (
-      <FsCard className="mt-3" padding="p-8">
+      <FsCard className="mt-3 rounded-md sm:rounded-md" padding="p-8">
         <p className="text-center text-sm text-neutral-600">
           Aucun bon terminé aujourd&apos;hui.
         </p>
@@ -807,7 +807,7 @@ function HistoryList({
 
   return (
     <>
-      <FsCard className="mt-3" padding="p-3">
+      <FsCard className="mt-3 rounded-md sm:rounded-md" padding="p-3">
         <p className="text-xs text-neutral-600">
           <span className="font-bold text-fs-text">{paidCount}</span> bon
           {paidCount > 1 ? "s" : ""} encaissé{paidCount > 1 ? "s" : ""} aujourd&apos;hui, pour{" "}
@@ -818,12 +818,12 @@ function HistoryList({
         {rows.map((x) => {
           const paid = x.status === "paid";
           return (
-            <FsCard key={x.id} padding="p-3">
+            <FsCard key={x.id} className="rounded-md sm:rounded-md" padding="p-3">
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <span
                     className={cn(
-                      "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold",
+                      "inline-flex items-center gap-1 rounded-sm px-2 py-0.5 text-[11px] font-bold",
                       paid
                         ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
                         : "bg-neutral-500/15 text-neutral-600 dark:text-neutral-300",

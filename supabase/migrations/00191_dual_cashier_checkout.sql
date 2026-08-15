@@ -226,6 +226,12 @@ CREATE TABLE IF NOT EXISTS public.pos_handoffs (
   cancel_reason text
 );
 
+-- Rejeu de cette migration sur une base où la table existe déjà : `CREATE TABLE IF NOT
+-- EXISTS` ci-dessus ne fait alors RIEN, colonne comprise. On ajoute donc explicitement
+-- celle qui est arrivée après la première version du fichier.
+ALTER TABLE public.pos_handoffs
+  ADD COLUMN IF NOT EXISTS client_request_id uuid;
+
 COMMENT ON TABLE public.pos_handoffs IS
   'Panier en transit entre le vendeur qui l''a constitué et le caissier qui l''encaisse '
   '(module « Caisse à deux »). Ce n''est PAS une vente : ni stock sorti, ni chiffre '
@@ -413,6 +419,15 @@ GRANT EXECUTE ON FUNCTION public.can_handle_pos_handoffs(uuid) TO authenticated;
  * les quantités absurdes (≤ 0) et les articles réservés au dépôt, mais on ne verrouille
  * rien. Le vrai contrôle de stock a lieu à l'encaissement, là où la marchandise part.
  */
+-- `CREATE OR REPLACE` ne remplace QUE la fonction de signature identique : ajouter un
+-- paramètre crée une SURCHARGE et laisse l'ancienne en place. Deux `create_pos_handoff`
+-- cohabiteraient alors, dont une joignable sans clé d'idempotence et restée ouverte à
+-- PUBLIC. On supprime donc explicitement la version à 9 arguments, comme 00177 l'a fait
+-- pour `create_sale_with_stock`.
+DROP FUNCTION IF EXISTS public.create_pos_handoff(
+  uuid, uuid, jsonb, uuid, numeric, text, text, public.sale_mode, public.document_type
+);
+
 CREATE OR REPLACE FUNCTION public.create_pos_handoff(
   p_company_id uuid,
   p_store_id uuid,

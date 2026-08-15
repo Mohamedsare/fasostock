@@ -203,7 +203,7 @@ export function HandoffCheckoutDialog({
         aria-label={`Encaisser le bon ${handoff.number}`}
         className={cn(
           "relative z-10 flex max-h-[94vh] w-full flex-col overflow-hidden bg-fs-card shadow-2xl",
-          "rounded-t-2xl border border-black/10 sm:max-w-lg sm:rounded-2xl dark:border-white/10",
+          "rounded-t-md border border-black/10 sm:max-w-lg sm:rounded-md dark:border-white/10",
         )}
       >
         {/* En-tête : le numéro qu'on annonce, et le total qu'on annonce. Rien d'autre. */}
@@ -211,7 +211,7 @@ export function HandoffCheckoutDialog({
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <span className="inline-flex items-center rounded-lg bg-fs-accent px-2.5 py-1 text-sm font-extrabold tracking-tight text-white">
+                <span className="inline-flex items-center rounded-sm bg-fs-accent px-2.5 py-1 text-sm font-extrabold tracking-tight text-white">
                   {handoff.number}
                 </span>
                 <span className="inline-flex items-center gap-1 text-xs text-neutral-600">
@@ -231,14 +231,14 @@ export function HandoffCheckoutDialog({
             <button
               type="button"
               onClick={onClose}
-              className="-mr-1 rounded-full p-2 hover:bg-black/5 dark:hover:bg-white/10"
+              className="-mr-1 rounded-md p-2 hover:bg-black/5 dark:hover:bg-white/10"
               aria-label="Fermer"
             >
               <MdClose className="h-5 w-5 text-neutral-600" />
             </button>
           </div>
 
-          <div className="mt-3 flex items-end justify-between rounded-xl bg-fs-card px-3 py-2.5 shadow-sm">
+          <div className="mt-3 flex items-end justify-between rounded-md bg-fs-card px-3 py-2.5 shadow-sm">
             <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
               À encaisser
             </span>
@@ -251,7 +251,7 @@ export function HandoffCheckoutDialog({
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3.5">
           {/* Ce que le vendeur a mis dans le panier — en lecture seule : le caissier
               vérifie, il ne resaisit pas. */}
-          <div className="rounded-xl border border-black/[0.07] dark:border-white/10">
+          <div className="rounded-md border border-black/[0.07] dark:border-white/10">
             <div className="flex items-center gap-1.5 border-b border-black/[0.07] px-3 py-2 dark:border-white/10">
               <MdReceiptLong className="h-4 w-4 text-neutral-500" aria-hidden />
               <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
@@ -278,7 +278,7 @@ export function HandoffCheckoutDialog({
           </div>
 
           {handoff.note ? (
-            <p className="mt-2.5 rounded-xl bg-amber-500/10 px-3 py-2 text-sm leading-relaxed text-amber-900 dark:text-amber-200">
+            <p className="mt-2.5 rounded-md bg-amber-500/10 px-3 py-2 text-sm leading-relaxed text-amber-900 dark:text-amber-200">
               <span className="font-semibold">Mot du vendeur :</span> {handoff.note}
             </p>
           ) : null}
@@ -291,7 +291,7 @@ export function HandoffCheckoutDialog({
             </label>
             <input
               id="handoff-discount"
-              className={fsInputClass("w-36 text-right")}
+              className={fsInputClass("w-36 rounded-md text-right")}
               value={discountStr}
               onChange={(e) => setDiscountStr(e.target.value)}
               inputMode="decimal"
@@ -318,7 +318,7 @@ export function HandoffCheckoutDialog({
                 type="button"
                 onClick={() => setMode(m.id)}
                 className={cn(
-                  "rounded-lg border py-3 text-[11px] font-extrabold tracking-tight transition-colors sm:text-xs",
+                  "rounded-sm border py-3 text-[11px] font-extrabold tracking-tight transition-colors sm:text-xs",
                   mode === m.id
                     ? "border-fs-accent bg-fs-accent text-white shadow-sm"
                     : "border-black/[0.08] bg-fs-surface-container text-fs-text dark:border-white/10",
@@ -341,7 +341,7 @@ export function HandoffCheckoutDialog({
                       type="button"
                       onClick={() => setProvider(id)}
                       className={cn(
-                        "inline-flex items-center justify-center gap-1 rounded-lg border py-2.5 text-xs font-bold",
+                        "inline-flex items-center justify-center gap-1 rounded-sm border py-2.5 text-xs font-bold",
                         provider === id
                           ? "border-fs-accent bg-fs-accent/10 text-fs-accent"
                           : "border-black/[0.08] bg-fs-surface-container text-fs-text dark:border-white/10",
@@ -363,14 +363,14 @@ export function HandoffCheckoutDialog({
               </label>
               <input
                 id="handoff-received"
-                className={fsInputClass("text-lg font-bold")}
+                className={fsInputClass("rounded-md text-lg font-bold")}
                 value={amountReceived}
                 onChange={(e) => setAmountReceived(e.target.value)}
                 inputMode="decimal"
                 placeholder={formatCurrency(total)}
               />
               {receivedValue > 0 ? (
-                <div className="mt-2 flex items-center justify-between rounded-xl bg-emerald-500/10 px-3 py-2.5">
+                <div className="mt-2 flex items-center justify-between rounded-md bg-emerald-500/10 px-3 py-2.5">
                   <span className="text-sm font-semibold text-emerald-900 dark:text-emerald-200">
                     Monnaie à rendre
                   </span>
@@ -390,13 +390,13 @@ export function HandoffCheckoutDialog({
           ) : null}
 
           {mode === "mixed" ? (
-            <div className="mt-3 rounded-xl border border-fs-accent/35 bg-fs-accent/[0.06] p-3">
+            <div className="mt-3 rounded-md border border-fs-accent/35 bg-fs-accent/[0.06] p-3">
               <label className="mb-1 block text-xs font-medium text-neutral-600" htmlFor="handoff-split">
                 Part payée en espèces
               </label>
               <input
                 id="handoff-split"
-                className={fsInputClass("bg-fs-card text-lg font-bold")}
+                className={fsInputClass("rounded-md bg-fs-card text-lg font-bold")}
                 value={splitCash}
                 onChange={(e) => setSplitCash(e.target.value)}
                 inputMode="decimal"
@@ -414,13 +414,13 @@ export function HandoffCheckoutDialog({
           ) : null}
 
           {mode === "credit" ? (
-            <div className="mt-3 rounded-xl border border-fs-accent/35 bg-fs-accent/[0.06] p-3">
+            <div className="mt-3 rounded-md border border-fs-accent/35 bg-fs-accent/[0.06] p-3">
               <label className="mb-1 block text-xs font-medium text-neutral-600" htmlFor="handoff-down">
                 Acompte encaissé maintenant
               </label>
               <input
                 id="handoff-down"
-                className={fsInputClass("bg-fs-card text-lg font-bold")}
+                className={fsInputClass("rounded-md bg-fs-card text-lg font-bold")}
                 value={creditDown}
                 onChange={(e) => setCreditDown(e.target.value)}
                 inputMode="decimal"
@@ -429,7 +429,7 @@ export function HandoffCheckoutDialog({
               <div className="mt-2 flex items-center justify-between gap-2">
                 <input
                   type="date"
-                  className={fsInputClass("w-40 bg-fs-card py-1.5 text-xs sm:py-1.5 sm:text-xs")}
+                  className={fsInputClass("w-40 rounded-md bg-fs-card py-1.5 text-xs sm:py-1.5 sm:text-xs")}
                   value={creditDue}
                   onChange={(e) => setCreditDue(e.target.value)}
                   aria-label="Échéance du crédit"
@@ -453,7 +453,7 @@ export function HandoffCheckoutDialog({
               </label>
               <select
                 id="handoff-customer"
-                className={fsInputClass()}
+                className={fsInputClass("rounded-md")}
                 value={customerId}
                 onChange={(e) => setCustomerId(e.target.value)}
               >
@@ -486,7 +486,7 @@ export function HandoffCheckoutDialog({
               type="button"
               onClick={onClose}
               disabled={busy}
-              className="flex-1 rounded-xl border border-black/[0.08] bg-fs-card py-3 text-sm font-semibold text-fs-text disabled:opacity-50 dark:border-white/10"
+              className="flex-1 rounded-md border border-black/[0.08] bg-fs-card py-3 text-sm font-semibold text-fs-text disabled:opacity-50 dark:border-white/10"
             >
               Retour
             </button>
@@ -494,7 +494,7 @@ export function HandoffCheckoutDialog({
               type="button"
               onClick={submit}
               disabled={busy || blocker !== null}
-              className="inline-flex flex-[2] items-center justify-center gap-2 rounded-xl bg-fs-accent py-3 text-sm font-extrabold tracking-tight text-white shadow-sm disabled:opacity-50"
+              className="inline-flex flex-[2] items-center justify-center gap-2 rounded-md bg-fs-accent py-3 text-sm font-extrabold tracking-tight text-white shadow-sm disabled:opacity-50"
             >
               {busy ? (
                 <span className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
