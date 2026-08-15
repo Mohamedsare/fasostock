@@ -277,6 +277,7 @@ CREATE INDEX IF NOT EXISTS idx_pos_handoff_items_company
 CREATE OR REPLACE FUNCTION public.pos_handoffs_set_number()
 RETURNS trigger
 LANGUAGE plpgsql
+SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
@@ -551,8 +552,11 @@ BEGIN
   IF NOT public.can_handle_pos_handoffs(v_company) THEN
     RAISE EXCEPTION 'Vous n''avez pas le droit d''encaisser.';
   END IF;
-  IF v_status <> 'pending' THEN
-    RAISE EXCEPTION 'Ce bon n''attend plus : il est déjà % .', v_status;
+  IF v_status = 'paid' THEN
+    RAISE EXCEPTION 'Ce bon vient d''être encaissé.';
+  END IF;
+  IF v_status = 'cancelled' THEN
+    RAISE EXCEPTION 'Ce bon a été annulé.';
   END IF;
 
   IF COALESCE(p_claim, true) THEN
@@ -715,16 +719,19 @@ BEGIN
   -- indispensable pour une vente à crédit, décidée au comptoir.
   v_customer := COALESCE(p_customer_id, v_h.customer_id);
 
+  -- Notation nommée (`=>`) et non positionnelle : la signature de
+  -- `create_sale_with_stock` a déjà changé deux fois (00061, 00177) en gagnant des
+  -- paramètres à la fin. Nommer les arguments met cet appel à l'abri de la prochaine.
   v_sale_id := public.create_sale_with_stock(
-    p_company_id := v_h.company_id,
-    p_store_id := v_h.store_id,
-    p_customer_id := v_customer,
-    p_created_by := auth.uid(),
-    p_items := v_items,
-    p_payments := COALESCE(p_payments, '[]'::jsonb),
-    p_discount := v_discount,
-    p_sale_mode := v_h.sale_mode,
-    p_document_type := v_h.document_type
+    p_company_id => v_h.company_id,
+    p_store_id => v_h.store_id,
+    p_customer_id => v_customer,
+    p_created_by => auth.uid(),
+    p_items => v_items,
+    p_payments => COALESCE(p_payments, '[]'::jsonb),
+    p_discount => v_discount,
+    p_sale_mode => v_h.sale_mode,
+    p_document_type => v_h.document_type
   );
 
   -- Échéance de crédit et n° d'ordonnance : mêmes colonnes que la caisse ordinaire.

@@ -64,6 +64,9 @@ const ACTIVITY_PROFILES: ActivityProfile[] = [
       ROUTES.dashboard,
       ROUTES.products,
       ROUTES.sales,
+      // Caisse à deux : sa place est contre les commandes, pas en fin de menu — un
+      // href absent de cette liste serait relégué tout en bas.
+      ROUTES.checkoutQueue,
       ROUTES.inventory,
       ROUTES.purchases,
       ROUTES.customers,

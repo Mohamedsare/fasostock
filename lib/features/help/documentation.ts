@@ -766,6 +766,73 @@ export const DOC_GROUPS: DocGroup[] = [
         keywords: ["caisse", "pos", "vendre", "encaisser", "ticket", "panier", "scan", "monnaie"],
       },
       {
+        id: "dual-cashier",
+        title: "Caisse à deux",
+        route: "/encaissement",
+        tagline: "Un vendeur prépare le panier dans le magasin, un caissier confirme et encaisse.",
+        access: "Toute personne qui a le droit de vendre. Les deux rôles s'échangent librement.",
+        activation:
+          "Paramètres › Caisse à deux (propriétaire). Désactivé par défaut : une boutique tenue par une seule personne n'y gagne rien.",
+        blocks: [
+          {
+            kind: "p",
+            text: "Aux heures de pointe, une seule personne cherche les articles, compte, encaisse et rend la monnaie — pendant que la file s'allonge. Ce mode sépare les deux métiers du comptoir : quelqu'un reste près des rayons avec le client, quelqu'un reste à la caisse avec l'argent.",
+          },
+          {
+            kind: "steps",
+            title: "Comment ça se passe",
+            items: [
+              "Le vendeur remplit le panier dans la caisse rapide, exactement comme d'habitude.",
+              "Il touche ENVOYER À LA CAISSE. L'application donne un numéro court, par exemple « B-42 » : il l'annonce au client et l'envoie vers la caisse.",
+              "Sur le poste de caisse, la page Encaissement sonne et affiche le bon : qui l'a préparé, les articles, le total, et depuis combien de temps le client attend.",
+              "Le caissier touche ENCAISSER, choisit le mode de paiement (espèces, mobile money, carte, mixte, crédit), saisit le montant reçu et lit la monnaie à rendre.",
+              "Le ticket s'affiche, prêt à imprimer. La vente est enregistrée comme n'importe quelle autre vente.",
+            ],
+          },
+          {
+            kind: "bullets",
+            title: "Ce qui aide les deux employés",
+            items: [
+              "Un mot pour le caissier peut accompagner le bon : « il paie en Wave », « le monsieur au boubou bleu ».",
+              "Les cartes changent de couleur avec l'attente : verte, puis orange, puis rouge — le caissier prend le plus ancien sans lire les horaires.",
+              "« Je le prends » signale aux collègues qu'un bon est pris en charge. Ce n'est qu'un repère : n'importe qui peut le reprendre, et un bon ne peut jamais être encaissé deux fois.",
+              "Le vendeur voit dans sa caisse ce que sont devenus ses bons, et il est prévenu dès que le client a payé — ou si le caissier a refusé, avec le motif.",
+              "Un bon envoyé par erreur se rappelle d'un clic, tant qu'il n'est pas encaissé.",
+              "L'onglet Aujourd'hui garde la trace du binôme : qui a préparé, qui a encaissé, à quelle heure.",
+            ],
+          },
+          {
+            kind: "note",
+            tone: "warn",
+            title: "Le stock n'est pas réservé",
+            text: "Tant que le caissier n'a pas encaissé, rien ne sort du stock et rien n'est bloqué. C'est voulu : un panier abandonné immobiliserait de la marchandise invisible. Si le dernier article part entre-temps, l'encaissement est refusé avec le motif — au comptoir, pendant que vous pouvez encore corriger.",
+          },
+          {
+            kind: "note",
+            tone: "tip",
+            title: "Rester seul reste possible",
+            text: "Le bouton ENCAISSER ICI reste dans le panier du vendeur. Quand le collègue est absent, il encaisse lui-même sans rien désactiver.",
+          },
+          {
+            kind: "note",
+            tone: "info",
+            title: "Laissez la page ouverte",
+            text: "La page Encaissement se met à jour toute seule et sonne à chaque nouveau panier. Laissez-la ouverte sur le poste de caisse : le son est le seul moyen d'être prévenu quand on a les mains prises.",
+          },
+        ],
+        keywords: [
+          "caisse à deux",
+          "deux caissiers",
+          "encaissement",
+          "bon",
+          "file",
+          "vendeur",
+          "caissier",
+          "binôme",
+          "queue",
+        ],
+      },
+      {
         id: "invoice-a4",
         title: "Facture A4",
         route: "/sales",

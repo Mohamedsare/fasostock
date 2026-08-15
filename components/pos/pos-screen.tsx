@@ -28,6 +28,12 @@ import {
 } from "@/lib/features/pos/api";
 import { productNameMatches } from "@/lib/features/products/search-aliases";
 import {
+  cancelPosHandoff,
+  createPosHandoff,
+  listMyRecentHandoffs,
+} from "@/lib/features/dual-cashier/api";
+import { waitingLabel } from "@/lib/features/dual-cashier/types";
+import {
   buildMobileMoneyReference,
   mobileMoneyProviderFromReference,
   mobileMoneyProviderLabel,
@@ -100,6 +106,8 @@ import {
   MdReceiptLong,
   MdRefresh,
   MdSearch,
+  MdSend,
+  MdStorefront,
   MdSettings,
   MdStore,
   MdTableChart,
@@ -302,6 +310,27 @@ export function PosScreen({
         ? canA4
         : canAccessA4Table;
   const isA4Like = mode === "a4" || mode === "a4-table";
+
+  /*
+   * Caisse à deux (module activé par le propriétaire).
+   *
+   * Réservé à la caisse rapide : c'est le comptoir à deux personnes que le module décrit.
+   * Une facture A4 est un document qu'on rédige avec le client, pas un panier qu'on
+   * pousse vers une autre personne — et la modification d'une vente déjà encaissée n'a,
+   * elle, rien à envoyer à qui que ce soit.
+   */
+  const dualCashierOn =
+    mode === "quick" && !isSaleEditEntry && ctx?.dualCashierEnabled === true && canQuick;
+  /**
+   * Destination du panier. Le module activé, envoyer à la caisse est le geste NORMAL
+   * (c'est pour lui que le propriétaire l'a ouvert) — mais le vendeur peut encaisser
+   * lui-même en un clic : le collègue est parti déjeuner, il est seul, le client est
+   * pressé. Sans cette porte de sortie, le module transformerait une aide en obligation.
+   */
+  const [sendToCashier, setSendToCashier] = useState(true);
+  const handoffMode = dualCashierOn && sendToCashier;
+  /** Mot du vendeur au caissier (« il paie en Wave », « le monsieur en boubou bleu »). */
+  const [handoffNote, setHandoffNote] = useState("");
 
   const invoiceTableCompanyQ = useQuery({
     queryKey: queryKeys.invoiceTablePosEnabled(companyId),
@@ -1236,6 +1265,142 @@ export function PosScreen({
     onError: (e) => toast.error(messageFromUnknownError(e)),
   });
 
+  /*
+   * ── Caisse à deux : envoyer le panier, puis savoir ce qu'il est devenu ──────────
+   *
+   * Envoyer ne suffit pas. Le vendeur garde le client en face de lui : il doit voir,
+   * sans quitter sa caisse, que le bon a été encaissé (« c'est bon, allez-y ») ou refusé
+   * (« revenez, il manque quelque chose »). D'où le suivi ci-dessous, rafraîchi au même
+   * rythme que la file du caissier.
+   */
+  const posUserIdQ = useQuery({
+    queryKey: ["pos-user-id"] as const,
+    queryFn: async () => {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      return user?.id ?? null;
+    },
+    staleTime: 10 * 60_000,
+  });
+  const myUserId = posUserIdQ.data ?? null;
+
+  /** Fenêtre du suivi : les bons de la journée. Au-delà, la page Encaissement. */
+  const handoffSinceIso = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d.toISOString();
+  }, []);
+
+  const myHandoffsQ = useQuery({
+    queryKey: queryKeys.posHandoffsMine(companyId, storeId),
+    queryFn: () =>
+      listMyRecentHandoffs({
+        companyId,
+        storeId,
+        userId: myUserId ?? "",
+        sinceIso: handoffSinceIso,
+      }),
+    enabled: Boolean(dualCashierOn && companyId && storeId && myUserId),
+    refetchInterval: dualCashierOn ? 5000 : false,
+    refetchIntervalInBackground: false,
+    staleTime: 0,
+  });
+
+  /*
+   * Notification du dénouement. On compare l'état précédent au nouveau plutôt que
+   * d'afficher une liste que le vendeur devrait surveiller : au comptoir, on ne
+   * surveille rien — on est prévenu.
+   */
+  const handoffStatusRef = useRef<Map<string, string>>(new Map());
+  useEffect(() => {
+    const rows = myHandoffsQ.data;
+    if (!rows) return;
+    const previous = handoffStatusRef.current;
+    const next = new Map<string, string>();
+    for (const r of rows) next.set(r.id, r.status);
+    if (previous.size > 0) {
+      for (const r of rows) {
+        const before = previous.get(r.id);
+        if (!before || before === r.status || before !== "pending") continue;
+        if (r.status === "paid") {
+          toast.success(`Bon ${r.number} encaissé par ${r.paidByName ?? "la caisse"}.`);
+        } else if (r.status === "cancelled") {
+          toast.error(
+            r.cancelReason
+              ? `Bon ${r.number} annulé : ${r.cancelReason}`
+              : `Bon ${r.number} annulé par la caisse.`,
+          );
+        }
+      }
+    }
+    handoffStatusRef.current = next;
+  }, [myHandoffsQ.data]);
+
+  const myPendingHandoffs = useMemo(
+    () => (myHandoffsQ.data ?? []).filter((x) => x.status === "pending"),
+    [myHandoffsQ.data],
+  );
+
+  const handoffMut = useMutation({
+    mutationFn: async () => {
+      if (cart.length === 0) throw new Error("Panier vide.");
+      if (total <= 0) throw new Error("Le total est à zéro.");
+      return createPosHandoff({
+        companyId,
+        storeId,
+        items: cart.map((c) => ({
+          productId: c.productId,
+          quantity: c.quantity,
+          unitPrice: c.unitPrice,
+          // Même remise de ligne qu'en caisse : elle absorbe l'arrondi d'un
+          // conditionnement pour que le caissier lise le prix exact annoncé au client.
+          discount: Math.max(
+            0,
+            c.quantity * c.unitPrice - (c.lineTotal ?? c.quantity * c.unitPrice),
+          ),
+        })),
+        customerId: customerId || null,
+        discount: discountValue,
+        note: handoffNote.trim() || null,
+        prescriptionNumber: isPharmacy ? prescriptionNumber.trim() || null : null,
+        saleMode: "quick_pos",
+        documentType: "thermal_receipt",
+      });
+    },
+    onSuccess: async (res) => {
+      // Le panier repart à zéro tout de suite : le vendeur enchaîne avec le client
+      // suivant pendant que le premier traverse le magasin vers la caisse.
+      setCart([]);
+      setDiscount("0");
+      setAmountReceived("");
+      setAmountReceivedTouched(false);
+      setSplitCashAmount("");
+      setCustomerId("");
+      setPrescriptionNumber("");
+      setHandoffNote("");
+      setCartOpen(false);
+      toast.success(
+        res.number
+          ? `Panier envoyé à la caisse — bon ${res.number}. Annoncez ce numéro au client.`
+          : "Panier envoyé à la caisse.",
+      );
+      await qc.invalidateQueries({ queryKey: ["pos-handoffs", companyId] });
+    },
+    onError: (e) => toast.error(messageFromUnknownError(e, "Envoi à la caisse impossible.")),
+  });
+
+  /** Rappeler un bon envoyé par erreur — tant que le caissier ne l'a pas encaissé. */
+  const handoffCancelMut = useMutation({
+    mutationFn: (id: string) => cancelPosHandoff(id, "Rappelé par le vendeur"),
+    onSuccess: async () => {
+      toast.success("Bon rappelé. Il a disparu de la file du caissier.");
+      await qc.invalidateQueries({ queryKey: ["pos-handoffs", companyId] });
+    },
+    onError: (e) => toast.error(messageFromUnknownError(e, "Rappel impossible.")),
+  });
+
   function catalogUnitPrice(productId: string, quantity: number): number {
     const p = products.find((x) => x.id === productId);
     if (!p) return 0;
@@ -1813,6 +1978,13 @@ export function PosScreen({
         setCreditDueDate("");
       }}
       onPay={() => {
+        // En mode « envoyer à la caisse », le moyen de paiement n'est pas encore
+        // choisi : les contrôles de paiement n'ont donc rien à valider ici. Ils
+        // s'appliqueront chez le caissier, au moment où l'argent change de mains.
+        if (handoffMode) {
+          void handoffMut.mutateAsync();
+          return;
+        }
         const pre = getPosPayValidationError();
         if (pre) {
           toast.error(pre);
@@ -1820,6 +1992,12 @@ export function PosScreen({
         }
         void createMut.mutateAsync();
       }}
+      dualCashierOn={dualCashierOn}
+      handoffMode={handoffMode}
+      onSetSendToCashier={setSendToCashier}
+      handoffNote={handoffNote}
+      setHandoffNote={setHandoffNote}
+      handoffPending={handoffMut.isPending}
       hideCartTitle={!isWide}
       currencyLabel={currencyLabel}
       showPrescription={isPharmacy}
@@ -1934,6 +2112,45 @@ export function PosScreen({
           >
             Quitter
           </button>
+        </div>
+      ) : null}
+
+      {/*
+       * Suivi des paniers envoyés — le seul retour que le vendeur obtient sans quitter sa
+       * caisse. Un bandeau fin, en haut, qui n'apparaît que s'il y a quelque chose à
+       * suivre : un vendeur qui n'a rien envoyé ne perd pas un pixel de sa grille produits.
+       */}
+      {dualCashierOn && myPendingHandoffs.length > 0 ? (
+        <div className="flex shrink-0 items-center gap-2 overflow-x-auto border-b border-black/10 bg-[#ECFDF5] px-3 py-1.5">
+          <span className="shrink-0 text-[11px] font-bold uppercase tracking-wide text-[#047857]">
+            À la caisse
+          </span>
+          {myPendingHandoffs.map((h) => (
+            <span
+              key={h.id}
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[#10B981]/40 bg-white px-2.5 py-1 text-[11px] font-semibold text-[#065F46]"
+            >
+              <span className="font-extrabold">{h.number}</span>
+              <span className="tabular-nums">{formatCurrency(h.total)}</span>
+              <span className="text-[#6B7280]">· {waitingLabel(h.createdAt)}</span>
+              <button
+                type="button"
+                onClick={() => handoffCancelMut.mutate(h.id)}
+                disabled={handoffCancelMut.isPending}
+                className="-mr-1 rounded-full p-0.5 text-[#6B7280] hover:bg-black/5 disabled:opacity-50"
+                aria-label={`Rappeler le bon ${h.number}`}
+                title="Rappeler ce bon"
+              >
+                <MdClose className="h-3.5 w-3.5" aria-hidden />
+              </button>
+            </span>
+          ))}
+          <Link
+            href={ROUTES.checkoutQueue}
+            className="ml-auto shrink-0 text-[11px] font-bold text-[#047857] underline underline-offset-2"
+          >
+            Voir la caisse
+          </Link>
         </div>
       ) : null}
 
@@ -3119,6 +3336,12 @@ function PosCartPanel({
   onRemove,
   onClear,
   onPay,
+  dualCashierOn = false,
+  handoffMode = false,
+  onSetSendToCashier,
+  handoffNote = "",
+  setHandoffNote,
+  handoffPending = false,
   hideCartTitle,
   currencyLabel,
   showPrescription,
@@ -3188,6 +3411,15 @@ function PosCartPanel({
   onRemove: (id: string) => void;
   onClear: () => void;
   onPay: () => void | Promise<void>;
+  /** Caisse à deux ouverte par le propriétaire (caisse rapide uniquement). */
+  dualCashierOn?: boolean;
+  /** Le panier part chez le caissier : aucun moyen de paiement à choisir ici. */
+  handoffMode?: boolean;
+  onSetSendToCashier?: (v: boolean) => void;
+  /** Mot du vendeur au caissier, imprimé sur le bon dans la file d'attente. */
+  handoffNote?: string;
+  setHandoffNote?: (v: string) => void;
+  handoffPending?: boolean;
   hideCartTitle?: boolean;
   currencyLabel: string;
   /** Pharmacie : afficher le champ n° d'ordonnance. */
@@ -3196,7 +3428,7 @@ function PosCartPanel({
   setPrescriptionNumber?: (v: string) => void;
 }) {
   const isA4Cart = mode !== "quick";
-  const isMixedCart = !isA4Cart && quickPayment === "mixed";
+  const isMixedCart = !isA4Cart && !handoffMode && quickPayment === "mixed";
   const isMobileMoneyCart = isA4Cart
     ? paymentMethod === "mobile_money"
     : quickPayment === "mobile_money" || isMixedCart;
@@ -3284,7 +3516,55 @@ function PosCartPanel({
         </div>
       ) : null}
 
-      {mode === "quick" ? (
+      {/* Caisse à deux : le choix de la destination du panier, avant tout le reste.
+       * C'est LUI qui décide si les modes de paiement ci-dessous ont un sens — d'où sa
+       * place, juste au-dessus d'eux, et pas ailleurs dans l'écran. */}
+      {dualCashierOn && onSetSendToCashier ? (
+        <div className="mt-3 px-0 min-[900px]:px-3">
+          <div className="grid grid-cols-2 gap-1.5 rounded-md bg-[#E5E7EB]/60 p-1">
+            <button
+              type="button"
+              onClick={() => onSetSendToCashier(true)}
+              className={cn(
+                "inline-flex items-center justify-center gap-1.5 rounded-[6px] py-2 text-[11px] font-extrabold tracking-tight transition-colors sm:text-xs",
+                handoffMode ? "bg-[#F97316] text-white shadow-sm" : "text-[#6B7280]",
+              )}
+            >
+              <MdSend className="h-4 w-4" aria-hidden />
+              ENVOYER À LA CAISSE
+            </button>
+            <button
+              type="button"
+              onClick={() => onSetSendToCashier(false)}
+              className={cn(
+                "inline-flex items-center justify-center gap-1.5 rounded-[6px] py-2 text-[11px] font-extrabold tracking-tight transition-colors sm:text-xs",
+                handoffMode ? "text-[#6B7280]" : "bg-[#F97316] text-white shadow-sm",
+              )}
+            >
+              <MdStorefront className="h-4 w-4" aria-hidden />
+              ENCAISSER ICI
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {/* Mot du vendeur : deux ou trois mots qui évitent un aller-retour dans le magasin
+       * (« il paie en Wave », « le monsieur au boubou bleu », « il attend dehors »). */}
+      {handoffMode && setHandoffNote ? (
+        <div className="mt-2 px-0 min-[900px]:px-3">
+          <input
+            value={handoffNote}
+            onChange={(e) => setHandoffNote(e.target.value)}
+            placeholder="Mot pour le caissier (facultatif)"
+            maxLength={120}
+            autoComplete="off"
+            className="w-full rounded-md border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#1F2937] outline-none focus:border-[#F97316]"
+            aria-label="Mot pour le caissier"
+          />
+        </div>
+      ) : null}
+
+      {mode === "quick" && !handoffMode ? (
         <div
           className={cn(
             "mt-3 grid gap-1.5 px-0 min-[900px]:px-3",
@@ -3353,7 +3633,7 @@ function PosCartPanel({
 
       {/* Mobile money : quel opérateur encaisse. Obligatoire — sans lui, l'historique
        * des ventes ne pourrait afficher que « Mobile Money ». */}
-      {isMobileMoneyCart ? (
+      {isMobileMoneyCart && !handoffMode ? (
         /* Un seul opérateur encaissé : rien à choisir — le bouton porte déjà son nom,
          * et le récapitulatif du paiement mixte le nomme aussi. */
         providerChoices.length === 1 ? null : (
@@ -3427,7 +3707,7 @@ function PosCartPanel({
 
       {/* Vente à crédit (caisse rapide) : client obligatoire, acompte et échéance.
        * Bloc compact — l'échéance (rarement saisie) reste repliée par défaut. */}
-      {mode === "quick" && quickPayment === "credit" ? (
+      {mode === "quick" && !handoffMode && quickPayment === "credit" ? (
         <div className="mt-3 rounded-md border border-[#F97316]/40 bg-[#FFF7ED] p-2.5 min-[900px]:mx-3">
           <div className="flex gap-2">
             <select
@@ -3507,7 +3787,7 @@ function PosCartPanel({
        * À crédit, le client est déjà saisi — et obligatoire — dans le bloc ci-dessus.
        * Le propriétaire peut masquer ce bloc en caisse rapide : au comptoir à fort
        * débit, personne n'enregistre le client et le champ ne fait que ralentir. */}
-      {isA4Cart || (quickPayment !== "credit" && !hideQuickCustomer) ? (
+      {isA4Cart || ((handoffMode || quickPayment !== "credit") && !hideQuickCustomer) ? (
         <div className="mt-3 px-0 min-[900px]:px-3">
           <label className="mb-1 block text-[11px] font-medium text-[#6B7280]">
             Client (facultatif)
@@ -3559,7 +3839,7 @@ function PosCartPanel({
         </div>
       ) : null}
 
-      {mode === "quick" && quickPayment === "cash" ? (
+      {mode === "quick" && !handoffMode && quickPayment === "cash" ? (
         <div className="mt-3 px-0 min-[900px]:px-3">
           <label className="mb-1 block text-xs font-semibold text-[#1F2937]">Montant reçu</label>
           <input
@@ -3656,14 +3936,25 @@ function PosCartPanel({
         </button>
         <button
           type="button"
-          disabled={createMut.isPending || cart.length === 0 || total <= 0}
+          disabled={
+            createMut.isPending || handoffPending || cart.length === 0 || total <= 0
+          }
           onClick={() => void onPay()}
           className={cn(
             "flex-[2] inline-flex items-center justify-center gap-2 bg-[#F97316] py-2.5 text-sm font-bold text-white disabled:opacity-50",
             isA4Cart ? "rounded-sm" : "rounded-md",
           )}
         >
-          {isSaleEdit ? (
+          {handoffMode ? (
+            <>
+              {handoffPending ? (
+                <span className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+              ) : (
+                <MdSend className="h-5 w-5" aria-hidden />
+              )}
+              {handoffPending ? "Envoi..." : "ENVOYER À LA CAISSE"}
+            </>
+          ) : isSaleEdit ? (
             <>
               {createMut.isPending ? (
                 <span className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />

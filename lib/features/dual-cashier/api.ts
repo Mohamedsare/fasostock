@@ -127,7 +127,7 @@ export async function listPendingHandoffs(params: {
     return q.order("created_at", { ascending: true }).order("id", { ascending: true }).range(from, to);
   });
   if (error) throw mapSupabaseError(error);
-  return withNames(supabase, ((data ?? []) as Row[]).map(mapHandoff));
+  return withNames(supabase, ((data ?? []) as unknown as Row[]).map(mapHandoff));
 }
 
 /**
@@ -152,7 +152,7 @@ export async function listHandoffHistory(params: {
     return q.order("created_at", { ascending: false }).order("id", { ascending: true }).range(from, to);
   });
   if (error) throw mapSupabaseError(error);
-  return withNames(supabase, ((data ?? []) as Row[]).map(mapHandoff));
+  return withNames(supabase, ((data ?? []) as unknown as Row[]).map(mapHandoff));
 }
 
 /**
@@ -182,7 +182,7 @@ export async function listMyRecentHandoffs(params: {
       .range(from, to),
   );
   if (error) throw mapSupabaseError(error);
-  return withNames(supabase, ((data ?? []) as Row[]).map(mapHandoff));
+  return withNames(supabase, ((data ?? []) as unknown as Row[]).map(mapHandoff));
 }
 
 /** Envoie le panier courant à la caisse. Renvoie le numéro à annoncer (« B-42 »). */

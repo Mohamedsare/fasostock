@@ -48,6 +48,7 @@ import {
   MOBILE_MONEY_PROVIDERS,
   type MobileMoneyProvider,
 } from "@/lib/features/payments/payment-display";
+import { setDualCashierEnabled } from "@/lib/features/dual-cashier/api";
 import { setProductLocationsEnabled } from "@/lib/features/product-locations/api";
 import { setLandedCostEnabled } from "@/lib/features/landed-cost/api";
 import { setProductAliasesEnabled } from "@/lib/features/products/api";
@@ -100,6 +101,7 @@ import {
   MdDeleteSweep,
   MdExpandMore,
   MdErrorOutline,
+  MdGroups,
   MdHistory,
   MdKey,
   MdLock,
@@ -684,6 +686,28 @@ export function SettingsScreen() {
     onError: (e) => toastMutationError("settings", e),
   });
 
+  /**
+   * « Caisse à deux » : un vendeur constitue le panier, un second employé encaisse.
+   * Réglage entreprise, écrit par le propriétaire — fermé par défaut, parce qu'une
+   * boutique tenue par une seule personne n'a rien à y gagner.
+   */
+  const dualCashierEnabled = ctxQ.data?.dualCashierEnabled === true;
+  const dualCashierMut = useMutation({
+    mutationFn: async (enabled: boolean) => {
+      if (!companyId) throw new Error("Entreprise introuvable.");
+      await setDualCashierEnabled(companyId, enabled);
+    },
+    onSuccess: async (_, enabled) => {
+      toast.success(
+        enabled
+          ? "Caisse à deux activée. La caisse rapide propose « Envoyer à la caisse », et la page Encaissement reçoit les paniers."
+          : "Caisse à deux désactivée. Les paniers déjà envoyés restent encaissables.",
+      );
+      await qc.invalidateQueries({ queryKey: queryKeys.appContext });
+    },
+    onError: (e) => toastMutationError("settings", e),
+  });
+
   const profileMut = useMutation({
     mutationFn: async () => {
       const supabase = createClient();
@@ -1005,6 +1029,79 @@ export function SettingsScreen() {
               </label>
             </div>
           )}
+        </FsCard>
+      ) : null}
+
+      {/* Caisse à deux — owner uniquement */}
+      {isOwner && companyId ? (
+        <FsCard className="mt-5" padding="p-5">
+          <SettingsCardTitle icon={MdGroups} title="Caisse à deux" />
+          <p className="mt-2 text-xs leading-relaxed text-neutral-600 sm:text-sm">
+            Aux heures de pointe, une seule personne fait tout : elle cherche les articles,
+            elle compte, elle encaisse, elle rend la monnaie — et la file s&apos;allonge.
+            Avec ce mode, l&apos;un de vos employés reste dans le magasin et constitue le
+            panier avec le client, puis l&apos;envoie à la caisse d&apos;un bouton ; le
+            second confirme et encaisse depuis la page « Encaissement », où il choisit le
+            moyen de paiement et rend la monnaie.
+          </p>
+          <p className="mt-2 text-xs leading-relaxed text-neutral-600 sm:text-sm">
+            Les deux rôles ne sont pas attribués : n&apos;importe lequel de vos vendeurs
+            peut préparer ou encaisser, et ils échangent leurs postes dans la journée sans
+            aucun réglage à changer.
+          </p>
+          {/*
+            Le seul point qui surprend si on ne le dit pas : rien n'est réservé. C'est
+            volontaire (un panier abandonné bloquerait du stock invisible), mais le
+            propriétaire doit le savoir avant, pas le découvrir un samedi.
+          */}
+          <p className="mt-2 rounded-[10px] bg-amber-500/10 px-3 py-2 text-xs leading-relaxed text-amber-900 dark:text-amber-200">
+            À savoir : tant que le caissier n&apos;a pas encaissé, le stock n&apos;est pas
+            décompté et rien n&apos;est réservé. Si le dernier article part entre-temps,
+            l&apos;encaissement est refusé avec le motif — au comptoir, pendant que la
+            marchandise est encore devant vous.
+          </p>
+          <div className="mt-4 space-y-0 rounded-[10px] border border-black/[0.08]">
+            <label
+              className={cn(
+                "flex cursor-pointer items-start justify-between gap-3 px-3 py-3 sm:px-4",
+                dualCashierMut.isPending && "pointer-events-none opacity-60",
+              )}
+            >
+              <span className="min-w-0">
+                <span className="block text-sm font-medium text-fs-text">
+                  Vendre à deux (préparer / encaisser)
+                </span>
+                <span className="mt-0.5 block text-xs text-neutral-600">
+                  {dualCashierEnabled
+                    ? "La caisse rapide propose « Envoyer à la caisse », et la page Encaissement sonne à chaque panier reçu."
+                    : "Désactivé : chaque vendeur encaisse lui-même, comme aujourd'hui."}
+                </span>
+              </span>
+              <input
+                type="checkbox"
+                role="switch"
+                className="mt-1 h-5 w-9 shrink-0 cursor-pointer accent-fs-accent"
+                checked={dualCashierEnabled}
+                disabled={dualCashierMut.isPending}
+                onChange={(e) => {
+                  void dualCashierMut.mutateAsync(e.target.checked);
+                }}
+              />
+            </label>
+          </div>
+          <p className="mt-2.5 text-xs leading-relaxed text-neutral-600">
+            Le vendeur garde toujours le choix : un bouton « Encaisser ici » reste dans son
+            panier pour les moments où il est seul au comptoir.
+          </p>
+          {dualCashierEnabled ? (
+            <Link
+              href={ROUTES.checkoutQueue}
+              className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-fs-accent hover:underline hover:underline-offset-2"
+            >
+              Ouvrir la page Encaissement
+              <ChevronRight className="h-4 w-4" aria-hidden />
+            </Link>
+          ) : null}
         </FsCard>
       ) : null}
 
