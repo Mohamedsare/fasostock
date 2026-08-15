@@ -159,6 +159,105 @@ export const DOC_GROUPS: DocGroup[] = [
         keywords: ["accueil", "kpi", "chiffre d'affaires", "marge", "statistiques", "résumé"],
       },
       {
+        id: "trade-workspace",
+        title: "Espace métier",
+        route: "/metier",
+        tagline: "L'accueil taillé pour votre commerce : vos chiffres du jour et vos gestes courants.",
+        access: "Tout le monde, selon ses droits. Les chiffres du jour demandent l'accès au tableau de bord.",
+        activation:
+          "Automatique pour les activités qui en disposent (garage, maquis, salon, hôtel, boulangerie, tissus, station-service, gérance immobilière…). L'entrée apparaît dans le menu, juste sous le tableau de bord, sous le nom de votre métier : « Espace Garage », « Espace Maquis »…",
+        blocks: [
+          {
+            kind: "p",
+            text: "Le type d'activité choisi à l'inscription ne change pas que des libellés : pour de nombreux métiers, il ouvre une page d'accueil dédiée. Elle rassemble ce que vous regardez tous les jours, dans les mots de votre commerce.",
+          },
+          {
+            kind: "bullets",
+            title: "Ce qu'on y trouve",
+            items: [
+              "Vos quatre chiffres du jour, nommés comme chez vous : « additions » dans un maquis, « réparations facturées » dans un garage, « nuitées » dans un hôtel.",
+              "Les actions rapides de votre métier : encaisser, facturer une réparation, ouvrir une ardoise, enregistrer un arrivage… Seules celles auxquelles vous avez droit s'affichent.",
+              "Les alertes réelles du moment : articles passés sous leur seuil, avec le lien vers le stock.",
+              "Un mémo de gestion propre à votre commerce : les quelques réflexes qui évitent les pertes.",
+            ],
+          },
+          {
+            kind: "note",
+            tone: "tip",
+            title: "Ce n'est pas un doublon du tableau de bord",
+            text: "Le tableau de bord donne l'analyse sur une période (semaine, mois, comparaisons). L'espace métier répond à « qu'est-ce que je fais maintenant » : les chiffres du jour et les gestes du quotidien. Le lien « Tableau de bord complet » vous emmène à l'analyse détaillée.",
+          },
+          {
+            kind: "note",
+            tone: "info",
+            title: "Votre activité n'a pas d'espace dédié ?",
+            text: "Les activités historiques (supermarché, pharmacie, restaurant, quincaillerie, vente d'engins…) gardent leur application inchangée, tableau de bord compris. L'espace métier concerne les activités ajoutées récemment.",
+          },
+        ],
+        keywords: [
+          "espace métier", "mon métier", "garage", "maquis", "salon", "hôtel", "atelier",
+          "accueil métier", "activité", "raccourcis",
+        ],
+      },
+      {
+        id: "repairs",
+        title: "Réparations (garage)",
+        route: "/reparations",
+        tagline: "Le véhicule entre, on diagnostique, on monte des pièces, on facture.",
+        access: "Propriétaire, ou droit « Gérer les réparations ».",
+        activation:
+          "Automatique pour l'activité « Garage / Atelier mécanique ». Les autres activités ne voient pas cette page.",
+        blocks: [
+          {
+            kind: "p",
+            text: "Dans un garage, la vente n'est pas l'acte central : la réparation l'est. Un ordre de réparation suit un véhicule de son entrée à sa sortie, et devient la facture au moment de la livraison.",
+          },
+          {
+            kind: "steps",
+            title: "Le parcours d'un véhicule",
+            items: [
+              "À l'arrivée, créez l'ordre : plaque, marque, modèle, kilométrage, et surtout la panne DANS LES MOTS DU CLIENT. C'est ce qu'il vous redemandera à la livraison.",
+              "Après examen, notez le diagnostic de l'atelier et passez l'ordre en « Diagnostic » puis « En réparation ».",
+              "Ajoutez les lignes au fur et à mesure : les pièces (choisies dans votre stock) et la main-d'œuvre (libellé libre ou prestation de votre catalogue, avec sa quantité d'heures).",
+              "Travaux finis : passez l'ordre en « Prêt à livrer ». Le compteur de la page vous montre en un coup d'œil combien de véhicules attendent leur propriétaire.",
+              "À la livraison, cliquez sur « Facturer » : choisissez la remise éventuelle et ce que le client règle maintenant.",
+            ],
+          },
+          {
+            kind: "note",
+            tone: "info",
+            title: "Facturer crée une vraie vente",
+            text: "La facturation d'un ordre n'ouvre pas une caisse parallèle : elle crée une vente normale. Le chiffre d'affaires, la marge, les rapports et le tableau de bord restent une seule et même vérité, et les pièces sortent du stock automatiquement. La main-d'œuvre, elle, ne touche pas au stock : on ne stocke pas des heures.",
+          },
+          {
+            kind: "note",
+            tone: "tip",
+            title: "Main-d'œuvre : deux façons de faire",
+            text: "Saisie libre (« Remplacement plaquettes ») : rapide, sans rien préparer. Ou créez une fois pour toutes vos prestations dans Produits (« Vidange », « Diagnostic », « Révision ») avec leur prix : vous les retrouverez alors dans vos rapports et saurez quelles interventions vous rapportent le plus.",
+          },
+          {
+            kind: "note",
+            tone: "warn",
+            title: "Reste à payer et fiche client",
+            text: "Pour laisser un montant à crédit, l'ordre doit être rattaché à une fiche client : sans elle, personne ne pourrait relancer la créance. Un client de passage qui paie tout de suite n'a en revanche besoin que de son nom.",
+          },
+          {
+            kind: "bullets",
+            title: "Bon à savoir",
+            items: [
+              "Un ordre déjà facturé ne peut plus être supprimé — c'est la trace d'un véhicule sorti de l'atelier.",
+              "Les pièces doivent venir du catalogue : c'est ce qui permet de sortir le stock et de calculer votre marge réelle.",
+              "Si une pièce manque en stock au moment de facturer, l'application refuse et vous le dit : entrez d'abord l'achat de la pièce.",
+              "La recherche accepte la plaque, le nom du client ou un mot de la panne.",
+            ],
+          },
+        ],
+        keywords: [
+          "réparation", "garage", "atelier", "ordre de réparation", "OR", "véhicule",
+          "mécanique", "main-d'œuvre", "diagnostic", "plaque", "immatriculation",
+        ],
+      },
+      {
         id: "stores",
         title: "Boutiques",
         route: "/stores",

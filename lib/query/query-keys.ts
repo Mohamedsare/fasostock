@@ -37,6 +37,9 @@ export const queryKeys = {
   /** Module Pièces — familles de déclinaisons et leurs membres. */
   partsVariantGroups: (companyId: string, storeId: string | null) =>
     ["parts", companyId, "variant-groups", storeId ?? "__all__"] as const,
+  /** Module Garage — ordres de réparation d'une boutique. */
+  repairOrders: (companyId: string, storeId: string | null) =>
+    ["repair-orders", companyId, storeId ?? "__all__"] as const,
   /** Module Réassort — produits à recommander + quantité conseillée. */
   restockCandidates: (params: {
     companyId: string;
@@ -251,6 +254,17 @@ export const queryKeys = {
   /** Réglage owner « marchandise payée non emportée » (`company_settings`). */
   salePickupTrackingEnabled: (companyId: string) =>
     ["sale-pickup-tracking", companyId] as const,
+  /**
+   * Caisse à deux — la file des bons à encaisser. Préfixe `['pos-handoffs', companyId]`
+   * pour tout invalider d'un coup après un encaissement ou une annulation.
+   */
+  posHandoffsPending: (companyId: string, storeId: string | null) =>
+    ["pos-handoffs", companyId, "pending", storeId ?? "__all__"] as const,
+  posHandoffsHistory: (companyId: string, storeId: string | null, sinceIso: string) =>
+    ["pos-handoffs", companyId, "history", storeId ?? "__all__", sinceIso] as const,
+  /** Les bons que le vendeur connecté vient d'envoyer (suivi affiché dans sa caisse). */
+  posHandoffsMine: (companyId: string, storeId: string) =>
+    ["pos-handoffs", companyId, "mine", storeId] as const,
   /** Articles retenus au comptoir sur une boutique — garde-fou du comptage d'inventaire. */
   awaitingPickupItems: (storeId: string) =>
     ["awaiting-pickup-items", storeId] as const,

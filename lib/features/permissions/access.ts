@@ -6,6 +6,13 @@ import {
   isRouteAllowedForActivity,
 } from "@/lib/features/activity/activity-profiles";
 import { activityConfig } from "@/lib/features/activity/activity-config";
+import { tradeWorkspace } from "@/lib/features/activity/trade-workspaces";
+import { getBusinessTypeBySlug } from "@/lib/config/business-types";
+
+/** Icône de l'activité (réutilisée pour l'entrée de menu « Espace métier »). */
+function businessTypeIcon(slug: string | null | undefined) {
+  return getBusinessTypeBySlug(slug)?.icon;
+}
 
 /** Chemins affichés en menu restreint pendant le chargement des droits (Flutter `cashierPaths`). */
 export const CASHIER_FALLBACK_HREFS = [
@@ -103,6 +110,12 @@ export type AppContextData = {
    * REMPLACE le contenu de la page Dépenses : postes maison + saisie réduite.
    */
   customExpensesEnabled: boolean;
+  /**
+   * Module « Caisse à deux » (un vendeur prépare le panier, un caissier l'encaisse) —
+   * désactivé par défaut, ouvert par le PROPRIÉTAIRE dans Paramètres
+   * (`companies.dual_cashier_enabled`).
+   */
+  dualCashierEnabled: boolean;
   /**
    * Boutique en ligne ouverte pour TOUTE l'entreprise par la plateforme
    * (`companies.online_store_enabled`). S'ajoute aux drapeaux boutique.
@@ -235,6 +248,8 @@ export type AccessHelpers = {
   canProgressive: boolean;
   /** Module Location — boutique autorisée ET droit dédié (ou propriétaire). */
   canRental: boolean;
+  /** Page Réparations (ordres de réparation) — activité garage uniquement. */
+  canRepairs: boolean;
   canStores: boolean;
   canInventory: boolean;
   canPurchases: boolean;
@@ -273,6 +288,14 @@ export type AccessHelpers = {
    * sans réglage propre. Saisie dans la fiche produit + choix de l'engin à la vente.
    */
   engineUnitsOn: boolean;
+  /** Caisse à deux ouverte par le propriétaire pour l'entreprise. */
+  dualCashierOn: boolean;
+  /**
+   * Page Encaissement : module ouvert ET droit de vendre. Vendre et encaisser sont
+   * volontairement le même droit — les deux employés échangent leurs postes dans la
+   * journée sans que le propriétaire ait un réglage à revoir.
+   */
+  canCheckoutQueue: boolean;
   /** Module Prix de revient ouvert par le propriétaire pour l'entreprise. */
   landedCostOn: boolean;
   /** Page Prix de revient : module ouvert ET propriétaire / permission dédiée. */
@@ -371,6 +394,14 @@ export function buildAccessHelpers(
     ? activeStore?.rentalModuleEnabled === true
     : data.stores.some((s) => s.rentalModuleEnabled === true);
   const canRental = rentalStoreOn && (isOwner || hasPermission(P.rentalManage));
+  /**
+   * Réparations : module natif de l'activité garage — aucun drapeau plateforme.
+   * Une entreprise d'un autre métier ne le voit jamais, l'application des autres
+   * clients reste donc strictement inchangée.
+   */
+  const repairsActivityOn = data.businessTypeSlug === "garage-mecanique";
+  const canRepairs =
+    repairsActivityOn && (isOwner || hasPermission(P.repairsManage));
   const canStores =
     hasPermission(P.storesView) || hasPermission(P.storesCreate);
   const canInventory =
@@ -433,6 +464,13 @@ export function buildAccessHelpers(
   // Dépenses personnalisées : aucun droit dédié — c'est la MÊME page, présentée
   // autrement. Qui pouvait déjà saisir une dépense saisit dans les postes maison.
   const customExpensesOn = data.customExpensesEnabled === true;
+  /*
+   * Caisse à deux : pas de droit dédié. Qui peut vendre peut envoyer un panier ET
+   * l'encaisser — c'est la condition pour que les deux employés se passent les rôles
+   * dans la journée sans que personne n'ait à toucher aux permissions.
+   */
+  const dualCashierOn = data.dualCashierEnabled === true;
+  const canCheckoutQueue = dualCashierOn && (isOwner || hasPermission(P.salesCreate));
 
   // Modules plateforme : visibles seulement si le super admin les a activés pour l'entreprise.
   const accountingOn = data.accountingModuleEnabled === true;
@@ -456,6 +494,7 @@ export function buildAccessHelpers(
     canEngineRegistration,
     canProgressive,
     canRental,
+    canRepairs,
     canStores,
     canInventory,
     canPurchases,
@@ -479,6 +518,8 @@ export function buildAccessHelpers(
     canProductLocations,
     productAliasesOn,
     engineUnitsOn,
+    dualCashierOn,
+    canCheckoutQueue,
     landedCostOn,
     canLandedCost,
     onlineStoreOn,
@@ -521,6 +562,8 @@ export function filterNavItemsForPermissions(
     );
   }
 
+  const workspace = tradeWorkspace(businessTypeSlug);
+
   const filtered = items.filter((item) => {
     if (item.kind === "section") return true;
     const href = item.href;
@@ -528,6 +571,9 @@ export function filterNavItemsForPermissions(
       return h.canInventory && !h.isOwner;
     }
     if (href === ROUTES.dashboard) return h.canDashboard;
+    // Espace métier : uniquement pour les activités qui en ont un. Les autres
+    // (dont tous les métiers historiques) ne voient jamais cette entrée.
+    if (href === ROUTES.tradeWorkspace) return workspace !== undefined;
     if (href === ROUTES.products) return h.canProducts;
     if (href === ROUTES.parts) return h.canParts;
     if (href === ROUTES.restock) return h.canRestock;
@@ -536,11 +582,13 @@ export function filterNavItemsForPermissions(
     if (href === ROUTES.onlineStore) return h.canOnlineStore;
     if (href === ROUTES.barcodes) return h.canBarcodes;
     if (href === ROUTES.sales) return h.canSales;
+    if (href === ROUTES.checkoutQueue) return h.canCheckoutQueue;
     if (href === ROUTES.promotions) return h.canPromotions;
     if (href === ROUTES.engines) return h.canEngineSales;
     if (href === ROUTES.engineRegistration) return h.canEngineRegistration;
     if (href === ROUTES.progressive) return h.canProgressive;
     if (href === ROUTES.rental) return h.canRental;
+    if (href === ROUTES.repairs) return h.canRepairs;
     if (href === ROUTES.stores) return h.canStores;
     if (href === ROUTES.inventory) return h.canInventory && !h.isCashier;
     if (href === ROUTES.inventorySessions) {
@@ -574,10 +622,26 @@ export function filterNavItemsForPermissions(
     return true;
   });
 
-  // Navigation hiérarchique dédiée (restaurant) : garder l'ordre défini tel quel.
-  if (filtered.some((item) => item.kind === "section")) return filtered;
+  // L'entrée « Espace métier » prend le nom et l'icône de l'activité
+  // (« Espace Garage », « Espace Maquis »…) plutôt qu'un libellé générique.
+  const named = workspace
+    ? filtered.map((item) =>
+        item.href === ROUTES.tradeWorkspace
+          ? {
+              ...item,
+              label: workspace.navLabel,
+              ...(businessTypeIcon(businessTypeSlug)
+                ? { icon: businessTypeIcon(businessTypeSlug)! }
+                : {}),
+            }
+          : item,
+      )
+    : filtered;
 
-  return adaptNavItemsForActivity(filtered, businessTypeSlug);
+  // Navigation hiérarchique dédiée (restaurant) : garder l'ordre défini tel quel.
+  if (named.some((item) => item.kind === "section")) return named;
+
+  return adaptNavItemsForActivity(named, businessTypeSlug);
 }
 
 /** Normalise le chemin (sans query, sans slash final) pour la garde de route. */
@@ -596,6 +660,7 @@ function normalizeAppRoute(pathname: string): string {
  */
 const APP_SHELL_ROUTE_PREFIXES: readonly string[] = [
   ROUTES.dashboard,
+  ROUTES.tradeWorkspace,
   ROUTES.products,
   ROUTES.parts,
   ROUTES.restock,
@@ -604,11 +669,13 @@ const APP_SHELL_ROUTE_PREFIXES: readonly string[] = [
   ROUTES.onlineStore,
   ROUTES.barcodes,
   ROUTES.sales,
+  ROUTES.checkoutQueue,
   ROUTES.promotions,
   ROUTES.engines,
   ROUTES.engineRegistration,
   ROUTES.progressive,
   ROUTES.rental,
+  ROUTES.repairs,
   ROUTES.stores,
   ROUTES.inventory,
   ROUTES.inventorySessions,
@@ -687,6 +754,11 @@ export function canAccessPathname(
 
   const route = normalizeAppRoute(pathname);
   if (!isRouteAllowedForActivity(route, businessTypeSlug)) return false;
+  // Espace métier : réservé aux activités qui en ont un — l'URL directe non plus
+  // ne mène nulle part pour les autres.
+  if (route === ROUTES.tradeWorkspace && !tradeWorkspace(businessTypeSlug)) {
+    return false;
+  }
   // Page Péremptions : suivi actif (métier ou drapeau plateforme) — accès URL direct.
   // Le droit utilisateur, lui, reste géré par l'écran (carte « Accès réservé »).
   if (route === ROUTES.expiry && !h.expiryModuleOn) return false;
@@ -701,5 +773,11 @@ export function canAccessPathname(
   if (route === ROUTES.landedCost && !h.landedCostOn) return false;
   // Boutique en ligne : tant que la plateforme ne l'a pas ouverte, l'URL ne mène nulle part.
   if (route === ROUTES.onlineStore && !h.onlineStoreOn) return false;
+  // Réparations : module natif du garage. Une autre activité — ou un employé sans
+  // le droit dédié — ne l'ouvre pas davantage en tapant l'adresse à la main.
+  if (route === ROUTES.repairs && !h.canRepairs) return false;
+  // Encaissement : tant que le propriétaire n'a pas ouvert la caisse à deux, la page
+  // n'existe pour personne — l'adresse tapée à la main ne la fait pas apparaître.
+  if (route === ROUTES.checkoutQueue && !h.canCheckoutQueue) return false;
   return isAppShellRoute(route);
 }

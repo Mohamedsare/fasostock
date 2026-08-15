@@ -10,6 +10,12 @@ export const ROUTES = {
   forgotPassword: "/forgot-password",
   resetPassword: "/reset-password",
   dashboard: "/dashboard",
+  /**
+   * Espace métier — accueil dédié à l'activité de l'entreprise (chiffres du jour
+   * dans son vocabulaire, actions fréquentes, mémo de gestion). N'existe que pour
+   * les activités décrites dans `lib/features/activity/trade-workspaces.ts`.
+   */
+  tradeWorkspace: "/metier",
   products: "/products",
   barcodes: "/barcodes",
   sales: "/sales",
@@ -23,6 +29,16 @@ export const ROUTES = {
   progressive: "/achats-progressifs",
   /** Module Location (gestion locative immobilière) — activé par boutique. */
   rental: "/location",
+  /**
+   * Module Réparations (ordres de réparation) — réservé à l'activité « garage-mecanique » :
+   * le véhicule entre, on diagnostique, on monte des pièces, on facture.
+   */
+  repairs: "/reparations",
+  /**
+   * Caisse à deux : la file des paniers envoyés par les vendeurs, que le caissier
+   * confirme et encaisse. Activée par le propriétaire dans Paramètres.
+   */
+  checkoutQueue: "/encaissement",
   /** Module Pièces : compatibilités par modèle, équivalences, variantes — activé par la plateforme. */
   parts: "/pieces",
   /** Module Réassort : quoi recommander et en quelle quantité — actif par défaut. */

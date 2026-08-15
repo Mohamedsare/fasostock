@@ -15,9 +15,33 @@ import type {
   ProductPackaging,
 } from "./types";
 import { normalizeSearchAliases, productSearchAliases } from "./search-aliases";
+import { isColumnBackedActivityFieldKey } from "@/lib/features/activity/activity-config";
 
-const productSelect =
+const productSelectBase =
   "id, company_id, name, search_aliases, sku, barcode, unit, purchase_price, sale_price, wholesale_price, wholesale_qty, stock_min, description, is_active, category_id, brand_id, product_scope, dci, dosage_form, therapeutic_class, laboratory, prescription_required, storage_conditions, category:categories(id, name), brand:brands(id, name), product_images(id, product_id, url, position), product_packagings(id, product_id, label, barcode, factor, price, position)";
+
+/**
+ * `activity_attributes` (migration 00189) porte les champs métier des activités
+ * autres que la pharmacie. Tant que la migration n'est pas appliquée, la colonne
+ * n'existe pas : la demander ferait échouer TOUTE la lecture du catalogue (donc
+ * la caisse). On l'interroge donc de façon optimiste, et on rebascule
+ * définitivement sur l'ancien SELECT à la première erreur « colonne inconnue ».
+ */
+let activityAttributesColumnAvailable = true;
+
+function isUndefinedColumnError(error: unknown): boolean {
+  const e = error as { code?: string; message?: string } | null;
+  if (!e) return false;
+  // 42703 = undefined_column (Postgres) ; PGRST204 = colonne absente du cache PostgREST.
+  if (e.code === "42703" || e.code === "PGRST204") return true;
+  return typeof e.message === "string" && e.message.includes("activity_attributes");
+}
+
+function productSelectColumns(): string {
+  return activityAttributesColumnAvailable
+    ? `${productSelectBase}, activity_attributes`
+    : productSelectBase;
+}
 
 /**
  * Colonne `search_aliases` — envoyée UNIQUEMENT si le formulaire gère les autres noms
@@ -32,23 +56,43 @@ function searchAliasesColumn(input: ProductFormInput): Record<string, string[]> 
 }
 
 /**
- * Convertit les champs métier du formulaire (ex. pharmacie) en colonnes SQL.
+ * Convertit les champs métier du formulaire en colonnes SQL.
+ * - clés pharmacie (00115) → leurs colonnes dédiées, comportement inchangé ;
+ * - tout le reste → `activity_attributes` (JSONB, 00189), envoyé seulement s'il
+ *   y a quelque chose à écrire ET si la colonne existe.
+ *
  * Renvoie `{}` quand le métier n'a pas de champs spécifiques → aucune colonne
  * additionnelle envoyée (comportement historique préservé).
  */
 function activityFieldColumns(
   input: ProductFormInput,
-): Record<string, string | boolean | null> {
+): Record<string, string | boolean | null | Record<string, string | boolean>> {
   const a = input.activityFields;
   if (!a) return {};
-  return {
-    dci: a.dci.trim() || null,
-    dosage_form: a.dosage_form.trim() || null,
-    therapeutic_class: a.therapeutic_class.trim() || null,
-    laboratory: a.laboratory.trim() || null,
-    prescription_required: a.prescription_required,
-    storage_conditions: a.storage_conditions.trim() || null,
-  };
+  const columns: Record<string, string | boolean | null> = {};
+  const attributes: Record<string, string | boolean> = {};
+  /** Le métier courant a-t-il au moins un champ hors colonne dédiée ? */
+  let usesAttributes = false;
+
+  for (const [key, raw] of Object.entries(a)) {
+    if (isColumnBackedActivityFieldKey(key)) {
+      columns[key] = typeof raw === "boolean" ? raw : raw.trim() || null;
+      continue;
+    }
+    usesAttributes = true;
+    if (typeof raw === "boolean") {
+      attributes[key] = raw;
+      continue;
+    }
+    // Champ vidé = clé absente du JSONB (et non chaîne vide) : la remise à blanc
+    // d'un champ doit bien effacer la valeur enregistrée.
+    const value = raw.trim();
+    if (value) attributes[key] = value;
+  }
+
+  // Métier 100 % pharmacie → on n'écrit pas le JSONB (rien ne change pour lui).
+  if (!usesAttributes || !activityAttributesColumnAvailable) return columns;
+  return { ...columns, activity_attributes: attributes };
 }
 
 /**
@@ -61,20 +105,31 @@ function activityFieldColumns(
  */
 export async function listProducts(companyId: string): Promise<ProductItem[]> {
   const supabase = createClient();
-  const { data, error } = await fetchAllPages((from, to) =>
-    supabase
-      .from("products")
-      .select(productSelect)
-      .eq("company_id", companyId)
-      .is("deleted_at", null)
-      .order("name", { ascending: true })
-      // Deux produits peuvent porter le même nom : sans cette clé, l'ordre n'est pas
-      // total et une page pourrait répéter une ligne en en perdant une autre.
-      .order("id", { ascending: true })
-      .range(from, to),
-  );
+  const runQuery = () =>
+    fetchAllPages((from, to) =>
+      supabase
+        .from("products")
+        .select(productSelectColumns())
+        .eq("company_id", companyId)
+        .is("deleted_at", null)
+        .order("name", { ascending: true })
+        // Deux produits peuvent porter le même nom : sans cette clé, l'ordre n'est pas
+        // total et une page pourrait répéter une ligne en en perdant une autre.
+        .order("id", { ascending: true })
+        .range(from, to),
+    );
+
+  let { data, error } = await runQuery();
+  // Migration 00189 pas encore appliquée : on retire la colonne et on rejoue —
+  // le catalogue (et donc la caisse) reste opérationnel.
+  if (error && activityAttributesColumnAvailable && isUndefinedColumnError(error)) {
+    activityAttributesColumnAvailable = false;
+    ({ data, error } = await runQuery());
+  }
   if (error) throw error;
-  return ((data ?? []) as Array<Record<string, unknown>>).map((row) => {
+  // `select()` construit dynamiquement (colonne optionnelle) → PostgREST ne peut
+  // plus inférer la forme des lignes : on repasse par `unknown`.
+  return ((data ?? []) as unknown as Array<Record<string, unknown>>).map((row) => {
     const categoryRaw = row.category;
     const brandRaw = row.brand;
     const category = Array.isArray(categoryRaw)
@@ -247,7 +302,18 @@ export async function createProduct(
     await enqueueOutbox("product_create", payload);
     return undefined;
   }
-  const { data, error } = await supabase.from("products").insert(payload).select("id").single();
+  let { data, error } = await supabase.from("products").insert(payload).select("id").single();
+  // Migration 00189 absente : on retire le JSONB métier et on réenregistre —
+  // le produit est créé (sans ses champs métier) plutôt que perdu.
+  if (error && activityAttributesColumnAvailable && isUndefinedColumnError(error)) {
+    activityAttributesColumnAvailable = false;
+    const { activity_attributes: _dropped, ...retryPayload } = payload as Record<string, unknown>;
+    ({ data, error } = await supabase
+      .from("products")
+      .insert(retryPayload)
+      .select("id")
+      .single());
+  }
   if (error) throw error;
   const id = String((data as { id: string }).id);
   // Rattache le produit au catalogue de la boutique courante (idempotent). Sans effet pour
@@ -292,7 +358,13 @@ export async function updateProduct(
     await enqueueOutbox("product_update", { id, patch });
     return;
   }
-  const { error } = await supabase.from("products").update(patch).eq("id", id);
+  let { error } = await supabase.from("products").update(patch).eq("id", id);
+  // Idem création : sans la migration 00189, on enregistre sans les champs métier.
+  if (error && activityAttributesColumnAvailable && isUndefinedColumnError(error)) {
+    activityAttributesColumnAvailable = false;
+    const { activity_attributes: _dropped, ...retryPatch } = patch as Record<string, unknown>;
+    ({ error } = await supabase.from("products").update(retryPatch).eq("id", id));
+  }
   if (error) throw error;
 }
 

@@ -18,7 +18,11 @@ import {
   normalizeSearchAliases,
   productSearchAliases,
 } from "@/lib/features/products/search-aliases";
-import { activityConfig } from "@/lib/features/activity/activity-config";
+import {
+  activityConfig,
+  isColumnBackedActivityFieldKey,
+  type ActivityConfig,
+} from "@/lib/features/activity/activity-config";
 import { listEngineUnits } from "@/lib/features/engine-units/api";
 import {
   ENGINE_UNIT_FIELD_MAX_LENGTH,
@@ -147,17 +151,31 @@ type Props = {
   onBrandsChanged: () => void;
 };
 
+/**
+ * Valeurs de départ des champs métier : les clés pharmacie viennent de leurs
+ * colonnes dédiées, celles des autres métiers de `activity_attributes` (JSONB).
+ * Un champ absent en base part vide — jamais `undefined` (champ contrôlé).
+ */
 function initialActivityFields(
   initial: ProductItem | null,
+  config: ActivityConfig,
 ): ActivityProductFieldValues {
-  return {
-    dci: initial?.dci ?? "",
-    dosage_form: initial?.dosage_form ?? "",
-    therapeutic_class: initial?.therapeutic_class ?? "",
-    laboratory: initial?.laboratory ?? "",
-    prescription_required: initial?.prescription_required ?? false,
-    storage_conditions: initial?.storage_conditions ?? "",
-  };
+  const attributes = (initial?.activity_attributes ?? {}) as Record<
+    string,
+    string | boolean | null
+  >;
+  const values: ActivityProductFieldValues = {};
+  for (const field of config.productFields) {
+    const raw = isColumnBackedActivityFieldKey(field.key)
+      ? (initial as unknown as Record<string, unknown> | null)?.[field.key]
+      : attributes[field.key];
+    if (field.type === "bool") {
+      values[field.key] = raw === true;
+      continue;
+    }
+    values[field.key] = raw == null ? "" : String(raw);
+  }
+  return values;
 }
 
 export function ProductFormDialog({
@@ -184,11 +202,11 @@ export function ProductFormDialog({
     [businessTypeSlug, expiryModuleEnabled],
   );
   const [activityFields, setActivityFields] = useState<ActivityProductFieldValues>(
-    () => initialActivityFields(initial),
+    () => initialActivityFields(initial, config),
   );
 
   const setActivityField = useCallback(
-    (key: keyof ActivityProductFieldValues, value: string | boolean) => {
+    (key: string, value: string | boolean) => {
       setActivityFields((prev) => ({ ...prev, [key]: value }));
     },
     [],
@@ -808,12 +826,16 @@ export function ProductFormDialog({
                   {(() => {
                     const fields = config.productFields;
                     const rows: typeof fields[] = [];
+                    // Deux champs « demi-largeur » consécutifs partagent une ligne
+                    // (hors cases à cocher, qui prennent la largeur du libellé).
+                    const pairable = (f: (typeof fields)[number] | undefined) =>
+                      f != null && f.half === true && f.type !== "bool";
                     let i = 0;
                     while (i < fields.length) {
                       const f = fields[i]!;
                       const next = fields[i + 1];
-                      if (f.type === "text" && f.half && next?.type === "text" && next.half) {
-                        rows.push([f, next]);
+                      if (pairable(f) && pairable(next)) {
+                        rows.push([f, next!]);
                         i += 2;
                       } else {
                         rows.push([f]);
@@ -850,6 +872,34 @@ export function ProductFormDialog({
                               </label>
                             );
                           }
+                          if (field.type === "select") {
+                            return (
+                              <label key={field.key} className="block min-w-0 flex-1">
+                                <span className="mb-1 block text-xs font-medium text-neutral-600">
+                                  {field.label}
+                                </span>
+                                <select
+                                  value={String(activityFields[field.key] ?? "")}
+                                  onChange={(e) =>
+                                    setActivityField(field.key, e.target.value)
+                                  }
+                                  className={fsInputClass("appearance-none bg-fs-surface-container")}
+                                >
+                                  <option value="">— Non précisé —</option>
+                                  {(field.options ?? []).map((opt) => (
+                                    <option key={opt} value={opt}>
+                                      {opt}
+                                    </option>
+                                  ))}
+                                </select>
+                                {field.hint ? (
+                                  <span className="mt-1 block text-[11px] leading-snug text-neutral-500">
+                                    {field.hint}
+                                  </span>
+                                ) : null}
+                              </label>
+                            );
+                          }
                           return (
                             <label key={field.key} className="block min-w-0 flex-1">
                               <span className="mb-1 block text-xs font-medium text-neutral-600">
@@ -863,6 +913,9 @@ export function ProductFormDialog({
                                 className={fsInputClass()}
                                 placeholder={field.hint}
                                 autoComplete="off"
+                                {...(field.type === "number"
+                                  ? { inputMode: "decimal" as const, type: "text" }
+                                  : {})}
                               />
                             </label>
                           );

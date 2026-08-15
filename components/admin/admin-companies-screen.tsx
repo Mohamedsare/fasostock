@@ -2,7 +2,7 @@
 
 import { AdminCard, AdminPageHeader } from "@/components/admin/admin-page-header";
 import { FsHorizontalScroll } from "@/components/ui/fs-horizontal-scroll";
-import { BUSINESS_TYPES } from "@/lib/config/business-types";
+import { BUSINESS_TYPES, groupByCategory } from "@/lib/config/business-types";
 import {
   adminCreateCompanyAccount,
   adminDeleteCompany,
@@ -439,7 +439,17 @@ export function AdminCompaniesScreen() {
                   onChange={(e) => setCreateForm((f) => ({ ...f, businessTypeSlug: e.target.value }))}
                 >
                   <option value="">— Non précisé —</option>
-                  {BUSINESS_TYPES.map((b) => (
+                  {/* Regroupé par famille : la liste dépasse 40 activités. */}
+                  {groupByCategory(BUSINESS_TYPES).map((group) => (
+                    <optgroup key={group.category.id} label={group.category.label}>
+                      {group.options.map((b) => (
+                        <option key={b.slug} value={b.slug}>
+                          {b.label}
+                        </option>
+                      ))}
+                    </optgroup>
+                  ))}
+                  {BUSINESS_TYPES.filter((b) => b.category === "autre").map((b) => (
                     <option key={b.slug} value={b.slug}>
                       {b.label}
                     </option>

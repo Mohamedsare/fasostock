@@ -52,6 +52,8 @@ export const P = {
   progressiveManage: "progressive.manage",
   /** Page Location (gestion locative) — owner par défaut ; accord explicite aux autres. */
   rentalManage: "rental.manage",
+  /** Page Réparations (ordres de réparation garage) — owner par défaut. */
+  repairsManage: "repairs.manage",
   /** Page Péremptions (DLC/DLUO) — owner par défaut ; accord explicite aux autres. */
   expiryView: "expiry.view",
   /** Page Pièces (compatibilités, équivalences, variantes) — owner par défaut. */
@@ -136,6 +138,7 @@ export const PERMISSION_LABELS_FR: Record<string, string> = {
   [P.promotionsManage]: "Gerer les promotions (remises %)",
   [P.progressiveManage]: "Gerer les achats progressifs (avances clients)",
   [P.rentalManage]: "Gerer la location (biens, baux, loyers)",
+  [P.repairsManage]: "Gerer les reparations (ordres de reparation, facturation)",
   [P.expiryView]: "Voir la page Peremptions (DLC/DLUO)",
   [P.partsManage]: "Gerer les pieces (compatibilites, equivalences, variantes)",
   [P.restockView]: "Voir la page Reassort (produits a recommander)",

@@ -2,6 +2,7 @@ import type { LucideIcon } from "lucide-react";
 import {
   LayoutDashboard,
   CirclePlus,
+  Compass,
   Package,
   Puzzle,
   PackagePlus,
@@ -12,6 +13,8 @@ import {
   IdCard,
   PiggyBank,
   KeySquare,
+  Wrench,
+  HandCoins,
   History,
   Store,
   Globe,
@@ -60,6 +63,9 @@ export type NavItem = {
 /** Ordre et libellés alignés sur `app_shell.dart` (Flutter). */
 export const NAV_ITEMS: NavItem[] = [
   { href: ROUTES.dashboard, label: "Tableau de bord", icon: LayoutDashboard, iconBg: "#F97316" },
+  // Espace métier : libellé et icône remplacés par ceux de l'activité, et masqué
+  // pour les activités qui n'en ont pas (cf. `filterNavItemsForPermissions`).
+  { href: ROUTES.tradeWorkspace, label: "Mon métier", icon: Compass, iconBg: "#B45309" },
   { href: ROUTES.products, label: "Produits", icon: Package, iconBg: "#7C2D12" },
   { href: ROUTES.parts, label: "Pièces", icon: Puzzle, iconBg: "#0F766E" },
   { href: ROUTES.restock, label: "Réassort", icon: PackagePlus, iconBg: "#7E22CE" },
@@ -67,11 +73,15 @@ export const NAV_ITEMS: NavItem[] = [
   { href: ROUTES.landedCost, label: "Prix de revient", icon: Coins, iconBg: "#155E75" },
   { href: ROUTES.barcodes, label: "Code Barre", icon: Barcode, iconBg: "#9A3412" },
   { href: ROUTES.sales, label: "Ventes", icon: ShoppingCart, iconBg: "#EA580C" },
+  // Caisse à deux : la file d'attente des paniers à encaisser (activée par le propriétaire).
+  { href: ROUTES.checkoutQueue, label: "Encaissement", icon: HandCoins, iconBg: "#15803D" },
   { href: ROUTES.promotions, label: "Promotions", icon: BadgePercent, iconBg: "#DB2777" },
   { href: ROUTES.engines, label: "Vente Engins", icon: Bike, iconBg: "#DC2626" },
   { href: ROUTES.engineRegistration, label: "Immatriculation Engins", icon: IdCard, iconBg: "#B91C1C" },
   { href: ROUTES.progressive, label: "Achats Progressifs", icon: PiggyBank, iconBg: "#0D9488" },
   { href: ROUTES.rental, label: "Location", icon: KeySquare, iconBg: "#4338CA" },
+  // Réservé à l'activité garage (cf. `filterNavItemsForPermissions`).
+  { href: ROUTES.repairs, label: "Réparations", icon: Wrench, iconBg: "#9F1239" },
   { href: ROUTES.onlineStore, label: "Boutique en ligne", icon: Globe, iconBg: "#059669" },
   { href: ROUTES.stores, label: "Boutiques", icon: Store, iconBg: "#C2410C" },
   { href: ROUTES.inventory, label: "Stock", icon: Warehouse, iconBg: "#78350F" },

@@ -87,17 +87,20 @@ export type ProductItem = {
   laboratory?: string | null;
   prescription_required?: boolean | null;
   storage_conditions?: string | null;
+  /**
+   * Champs métier des AUTRES activités (boulangerie, tissus, garage…) — stockés
+   * dans un seul JSONB (migration 00189) plutôt qu'en colonnes dédiées. Absent
+   * tant que la migration n'est pas appliquée : la couche API s'en accommode.
+   */
+  activity_attributes?: Record<string, string | boolean | null> | null;
 };
 
-/** Champs produit propres à un métier — saisis dans une section dédiée du formulaire. */
-export type ActivityProductFieldValues = {
-  dci: string;
-  dosage_form: string;
-  therapeutic_class: string;
-  laboratory: string;
-  prescription_required: boolean;
-  storage_conditions: string;
-};
+/**
+ * Champs produit propres à un métier — saisis dans une section dédiée du formulaire.
+ * Clés définies par `activity-config.ts` : les 6 clés pharmacie ont leur colonne SQL,
+ * toutes les autres vivent dans `activity_attributes`.
+ */
+export type ActivityProductFieldValues = Record<string, string | boolean>;
 
 export type ProductFormInput = {
   name: string;
