@@ -213,7 +213,7 @@ export function PosScreen({
   editSaleId?: string;
 }) {
   const qc = useQueryClient();
-  const { data: ctx, hasPermission, isLoading: permLoading } = usePermissions();
+  const { data: ctx, helpers: accessH, hasPermission, isLoading: permLoading } = usePermissions();
   const companyId = ctx?.companyId ?? "";
   const [search, setSearch] = useState("");
   const [categoryId, setCategoryId] = useState<string | null>(null);
@@ -324,7 +324,7 @@ export function PosScreen({
    * elle, rien à envoyer à qui que ce soit.
    */
   const dualCashierOn =
-    mode === "quick" && !isSaleEditEntry && ctx?.dualCashierEnabled === true && canQuick;
+    mode === "quick" && !isSaleEditEntry && canQuick && (accessH?.canSendHandoff ?? false);
 
   /*
    * Le propriétaire peut RETIRER la porte de sortie « Encaisser ici ».
@@ -343,8 +343,17 @@ export function PosScreen({
     staleTime: 60_000,
     ...(peekSelfCheckout !== undefined ? { initialData: peekSelfCheckout } : {}),
   });
-  /** Tant que le réglage n'est pas connu, on suppose autorisé : ne jamais bloquer une vente. */
-  const selfCheckoutAllowed = selfCheckoutQ.data !== false;
+  /**
+   * Deux conditions, et non une : le propriétaire doit l'avoir laissé ouvert, ET cette
+   * personne doit avoir le droit d'encaisser. Un vendeur à qui le propriétaire a retiré
+   * `pos.checkout` ne voit plus « Encaisser ici » — son panier ne peut que partir à la
+   * caisse, quel que soit le réglage d'entreprise.
+   *
+   * Le réglage inconnu (requête en vol) vaut autorisé : on ne bloque jamais une vente sur
+   * une donnée qui n'est pas encore arrivée.
+   */
+  const mayCashHere = Boolean(accessH?.isOwner) || hasPermission(P.posCheckout);
+  const selfCheckoutAllowed = selfCheckoutQ.data !== false && mayCashHere;
 
   /**
    * Destination du panier. Le module activé, envoyer à la caisse est le geste NORMAL

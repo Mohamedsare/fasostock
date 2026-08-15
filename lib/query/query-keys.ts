@@ -270,6 +270,9 @@ export const queryKeys = {
   /** Réglage owner « le vendeur peut encaisser lui-même » (`company_settings`). */
   dualCashierSelfCheckout: (companyId: string) =>
     ["dual-cashier-self-checkout", companyId] as const,
+  /** Pages retirées du menu des employés (réglage d'affichage, `company_settings`). */
+  employeeHiddenPages: (companyId: string) =>
+    ["employee-hidden-pages", companyId] as const,
   /**
    * Approvisionnement express. Préfixe `['quick-supply', companyId]` : après un
    * arrivage, tout ce qui en dépend (catalogue, stock affiché, historique) s'invalide

@@ -123,6 +123,12 @@ export type AppContextData = {
    */
   quickSupplyEnabled: boolean;
   /**
+   * Pages retirées du menu de CET utilisateur par le propriétaire (« help »,
+   * « notifications »). Confort d'affichage, pas frontière de sécurité — voir
+   * `lib/features/settings/employee-hidden-pages.ts`. Absent ⇒ rien de masqué.
+   */
+  hiddenPages?: string[];
+  /**
    * Boutique en ligne ouverte pour TOUTE l'entreprise par la plateforme
    * (`companies.online_store_enabled`). S'ajoute aux drapeaux boutique.
    */
@@ -296,6 +302,8 @@ export type AccessHelpers = {
   engineUnitsOn: boolean;
   /** Caisse à deux ouverte par le propriétaire pour l'entreprise. */
   dualCashierOn: boolean;
+  /** Peut ENVOYER un panier à la caisse (droit de vendre). */
+  canSendHandoff: boolean;
   /**
    * Page Encaissement : module ouvert ET droit de vendre. Vendre et encaisser sont
    * volontairement le même droit — les deux employés échangent leurs postes dans la
@@ -316,7 +324,7 @@ export type AccessHelpers = {
    * changer les prix du magasin (la base refuse aussi, cf. `create_quick_supply`).
    */
   canRepriceOnSupply: boolean;
-  /** Page Aide visible. Accordée à tous par défaut ; le propriétaire peut la retirer. */
+  /** Page Aide visible. Visible par défaut ; le propriétaire peut la retirer du menu. */
   canHelp: boolean;
   /** Page Notifications visible. Idem — ne concerne pas la réception des push. */
   canNotifications: boolean;
@@ -489,12 +497,18 @@ export function buildAccessHelpers(
   // autrement. Qui pouvait déjà saisir une dépense saisit dans les postes maison.
   const customExpensesOn = data.customExpensesEnabled === true;
   /*
-   * Caisse à deux : pas de droit dédié. Qui peut vendre peut envoyer un panier ET
-   * l'encaisser — c'est la condition pour que les deux employés se passent les rôles
-   * dans la journée sans que personne n'ait à toucher aux permissions.
+   * Caisse à deux : deux gestes, deux droits.
+   *
+   * Envoyer un panier n'est que vendre (`sales.create`). ENCAISSER est un droit à part
+   * (`pos.checkout`), parce que c'est la décision que le propriétaire tient à garder :
+   * son neveu qui aide au rayon le jour de marché sert les clients, il n'ouvre pas le
+   * tiroir. Sans droit distinct, l'en empêcher voudrait dire l'empêcher de servir.
+   *
+   * Pas de repli sur `sales.create` : un repli rendrait le retrait du droit sans effet.
    */
   const dualCashierOn = data.dualCashierEnabled === true;
-  const canCheckoutQueue = dualCashierOn && (isOwner || hasPermission(P.salesCreate));
+  const canSendHandoff = dualCashierOn && (isOwner || hasPermission(P.salesCreate));
+  const canCheckoutQueue = dualCashierOn && (isOwner || hasPermission(P.posCheckout));
   /*
    * Approvisionnement : additif, ouvert par le PROPRIÉTAIRE (Paramètres). Le droit,
    * lui, est étroit et nominatif — le but étant précisément de laisser un caissier
@@ -505,12 +519,14 @@ export function buildAccessHelpers(
     quickSupplyOn && (isOwner || hasPermission(P.quickSupplyCreate));
   const canRepriceOnSupply = isOwner || hasPermission(P.productsUpdate);
   /*
-   * Aide et Notifications : visibles par défaut (droits accordés à tous les rôles en
-   * 00193), retirables par le propriétaire employé par employé. Le repli `!== false`
-   * n'existe pas ici : la clé est soit présente, soit explicitement révoquée.
+   * Aide et Notifications : VISIBLES par défaut, et retirées seulement si le
+   * propriétaire l'a demandé pour cet employé. Le sens de la liste est « ce qui est
+   * masqué » et non « ce qui est permis », précisément pour que l'absence de donnée
+   * (réglage jamais posé, lecture en échec) laisse le menu intact.
    */
-  const canHelp = hasPermission(P.helpView);
-  const canNotifications = hasPermission(P.notificationsView);
+  const hidden = new Set(data.hiddenPages ?? []);
+  const canHelp = !hidden.has("help");
+  const canNotifications = !hidden.has("notifications");
 
   // Modules plateforme : visibles seulement si le super admin les a activés pour l'entreprise.
   const accountingOn = data.accountingModuleEnabled === true;
@@ -559,6 +575,7 @@ export function buildAccessHelpers(
     productAliasesOn,
     engineUnitsOn,
     dualCashierOn,
+    canSendHandoff,
     canCheckoutQueue,
     quickSupplyOn,
     canQuickSupply,
@@ -832,8 +849,13 @@ export function canAccessPathname(
   // L'adresse tapée à la main ne la fait pas apparaître (la base refuserait de toute
   // façon l'écriture, mais mieux vaut ne pas montrer un écran qui ne servira à rien).
   if (route === ROUTES.quickSupply && !h.canQuickSupply) return false;
-  // Aide / Notifications retirées à cet employé : l'URL directe ne les rouvre pas non
-  // plus, sinon le menu allégé ne serait qu'un décor.
+  /*
+   * Aide / Notifications retirées du menu de cet employé : un lien resté ouvert dans
+   * un onglet ne doit pas rouvrir ce qu'on vient de ranger. La garde SERVEUR, elle, ne
+   * connaît pas ce réglage et laisse passer — c'est voulu : ce n'est pas une frontière
+   * de sécurité, et une garde serveur qui se tromperait renverrait « Accès réservé »
+   * sur des pages inoffensives.
+   */
   if (route === ROUTES.help && !h.canHelp) return false;
   if (route === ROUTES.notifications && !h.canNotifications) return false;
   return isAppShellRoute(route);

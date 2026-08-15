@@ -770,7 +770,8 @@ export const DOC_GROUPS: DocGroup[] = [
         title: "Caisse à deux",
         route: "/encaissement",
         tagline: "Un vendeur prépare le panier dans le magasin, un caissier confirme et encaisse.",
-        access: "Toute personne qui a le droit de vendre. Les deux rôles s'échangent librement.",
+        access:
+          "Envoyer un panier : droit de vendre. Encaisser : droit dédié « Encaisser les paniers envoyés », accordé employé par employé dans Employés.",
         activation:
           "Paramètres › Caisse à deux (propriétaire). Désactivé par défaut : une boutique tenue par une seule personne n'y gagne rien.",
         blocks: [
@@ -806,6 +807,12 @@ export const DOC_GROUPS: DocGroup[] = [
             tone: "warn",
             title: "Le stock n'est pas réservé",
             text: "Tant que le caissier n'a pas encaissé, rien ne sort du stock et rien n'est bloqué. C'est voulu : un panier abandonné immobiliserait de la marchandise invisible. Si le dernier article part entre-temps, l'encaissement est refusé avec le motif — au comptoir, pendant que vous pouvez encore corriger.",
+          },
+          {
+            kind: "note",
+            tone: "tip",
+            title: "Choisir qui touche l'argent",
+            text: "Dans Employés, le droit « Encaisser les paniers envoyés » se donne ou se retire personne par personne. Celui qui ne l'a pas continue de vendre et d'envoyer ses paniers : il n'est privé de rien d'autre. À l'activation du module, tous ceux qui pouvaient déjà vendre l'ont — c'est à vous de resserrer.",
           },
           {
             kind: "note",

@@ -7,6 +7,26 @@ import {
   canAccessPathname,
 } from "@/lib/features/permissions/access";
 
+/**
+ * Colonne `companies.quick_supply_enabled` (migration 00193) demandée de façon
+ * optimiste. Tant que la migration n'est pas jouée, la réclamer ferait échouer la
+ * lecture — et cette garde-là répondrait « Accès réservé » sur TOUTES les pages, pour
+ * tous les clients. On rejoue donc sans la colonne à la première erreur, et le module
+ * se comporte comme désactivé. Même parade que côté client (`app-context.ts`).
+ */
+let quickSupplyColumnAvailable = true;
+
+/** 42703 = undefined_column (Postgres) ; PGRST204 = colonne absente du cache PostgREST. */
+function isUndefinedColumnError(error: unknown): boolean {
+  const e = error as { code?: string; message?: string } | null;
+  if (!e) return false;
+  if (e.code === "42703" || e.code === "PGRST204") return true;
+  return typeof e.message === "string" && e.message.includes("quick_supply_enabled");
+}
+
+const COMPANY_SELECT_BASE =
+  "id, name, logo_url, business_type_slug, warehouse_feature_enabled, purchases_feature_enabled, transfers_feature_enabled, store_quota_increase_enabled, ai_predictions_enabled, warehouse_kpi_show_purchase_value, warehouse_kpi_show_sale_value, accounting_module_enabled, hr_module_enabled, expiry_module_enabled, parts_module_enabled, restock_module_enabled, product_locations_enabled, product_aliases_enabled, landed_cost_enabled, custom_expenses_enabled, dual_cashier_enabled, online_store_enabled";
+
 /** Contexte applicatif pour une entreprise (serveur, sans localStorage). */
 export async function fetchAppContextForCompany(
   supabase: SupabaseClient,
@@ -17,13 +37,24 @@ export async function fetchAppContextForCompany(
   const cid = companyId.trim();
   if (!cid) return null;
 
-  const { data: companyRow, error: cErr } = await supabase
-    .from("companies")
-    .select(
-      "id, name, logo_url, business_type_slug, warehouse_feature_enabled, purchases_feature_enabled, transfers_feature_enabled, store_quota_increase_enabled, ai_predictions_enabled, warehouse_kpi_show_purchase_value, warehouse_kpi_show_sale_value, accounting_module_enabled, hr_module_enabled, expiry_module_enabled, parts_module_enabled, restock_module_enabled, product_locations_enabled, product_aliases_enabled, landed_cost_enabled, custom_expenses_enabled, dual_cashier_enabled, quick_supply_enabled, online_store_enabled",
-    )
-    .eq("id", cid)
-    .maybeSingle();
+  const runCompanyQuery = () =>
+    supabase
+      .from("companies")
+      .select(
+        quickSupplyColumnAvailable
+          ? `${COMPANY_SELECT_BASE}, quick_supply_enabled`
+          : COMPANY_SELECT_BASE,
+      )
+      .eq("id", cid)
+      .maybeSingle();
+
+  let { data: companyRaw, error: cErr } = await runCompanyQuery();
+  if (cErr && quickSupplyColumnAvailable && isUndefinedColumnError(cErr)) {
+    quickSupplyColumnAvailable = false;
+    ({ data: companyRaw, error: cErr } = await runCompanyQuery());
+  }
+  // `select()` dynamique : PostgREST ne peut plus inférer la forme de la ligne.
+  const companyRow = (companyRaw ?? null) as unknown as Record<string, unknown> | null;
   if (cErr || !companyRow?.id) return null;
 
   const companyName = (companyRow.name as string) ?? "Entreprise";

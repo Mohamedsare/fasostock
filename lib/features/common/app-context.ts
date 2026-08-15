@@ -7,6 +7,7 @@ import type { AppContextData } from "@/lib/features/permissions/access";
 import { reportHandledClientError } from "@/lib/monitoring/remote-error-logger";
 import { createClient } from "@/lib/supabase/client";
 import { getCurrentSupportSession } from "@/lib/features/support/api";
+import { fetchMyHiddenPages } from "@/lib/features/settings/employee-hidden-pages";
 import {
   ACTIVE_STORE_STORAGE_KEY,
   ALL_STORES_VALUE,
@@ -180,6 +181,38 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
   });
 }
 
+/**
+ * Colonnes `companies` arrivées avec une migration récente.
+ *
+ * Le code part souvent en production avant que la migration ne soit jouée. Or CETTE
+ * lecture-ci n'est pas une lecture parmi d'autres : sans elle, il n'y a pas de contexte,
+ * donc pas de menu, pas de droits, pas d'application — un écran mort pour tous les
+ * clients, pas seulement pour ceux qui utiliseraient la nouveauté.
+ *
+ * On demande donc la colonne de façon optimiste, et à la première erreur « colonne
+ * inconnue » on rejoue la requête sans elle, définitivement pour la session. Le module
+ * concerné se comporte alors comme désactivé — exactement l'état d'avant la migration.
+ * Même parade que `activity_attributes` dans `products/api.ts` (migration 00189).
+ */
+let quickSupplyColumnAvailable = true;
+
+/** 42703 = undefined_column (Postgres) ; PGRST204 = colonne absente du cache PostgREST. */
+function isUndefinedColumnError(error: unknown): boolean {
+  const e = error as { code?: string; message?: string } | null;
+  if (!e) return false;
+  if (e.code === "42703" || e.code === "PGRST204") return true;
+  return typeof e.message === "string" && e.message.includes("quick_supply_enabled");
+}
+
+const COMPANY_SELECT_BASE =
+  "id, name, logo_url, business_type_slug, warehouse_feature_enabled, purchases_feature_enabled, transfers_feature_enabled, store_quota_increase_enabled, ai_predictions_enabled, warehouse_kpi_show_purchase_value, warehouse_kpi_show_sale_value, accounting_module_enabled, hr_module_enabled, expiry_module_enabled, parts_module_enabled, restock_module_enabled, product_locations_enabled, product_aliases_enabled, landed_cost_enabled, custom_expenses_enabled, dual_cashier_enabled, online_store_enabled";
+
+function companySelectColumns(): string {
+  return quickSupplyColumnAvailable
+    ? `${COMPANY_SELECT_BASE}, quick_supply_enabled`
+    : COMPANY_SELECT_BASE;
+}
+
 async function fetchAppContext(): Promise<AppContextData | null> {
   const supabase = createClient();
 
@@ -270,14 +303,24 @@ async function fetchAppContext(): Promise<AppContextData | null> {
   const primaryCompanyId = supportSession
     ? supportSession.companyId
     : pickActiveCompanyId(orderedCompanyIds);
-  const { data: companyRow, error: cErr } = await supabase
-    .from("companies")
-    .select(
-      "id, name, logo_url, business_type_slug, warehouse_feature_enabled, purchases_feature_enabled, transfers_feature_enabled, store_quota_increase_enabled, ai_predictions_enabled, warehouse_kpi_show_purchase_value, warehouse_kpi_show_sale_value, accounting_module_enabled, hr_module_enabled, expiry_module_enabled, parts_module_enabled, restock_module_enabled, product_locations_enabled, product_aliases_enabled, landed_cost_enabled, custom_expenses_enabled, dual_cashier_enabled, quick_supply_enabled, online_store_enabled",
-    )
-    .eq("id", primaryCompanyId)
-    .maybeSingle();
+  const runCompanyQuery = () =>
+    supabase
+      .from("companies")
+      .select(companySelectColumns())
+      .eq("id", primaryCompanyId)
+      .maybeSingle();
+
+  let { data: companyRaw, error: cErr } = await runCompanyQuery();
+  // Migration 00193 pas encore appliquée : on retire la colonne et on rejoue, plutôt
+  // que de laisser l'application entière sans contexte.
+  if (cErr && quickSupplyColumnAvailable && isUndefinedColumnError(cErr)) {
+    quickSupplyColumnAvailable = false;
+    ({ data: companyRaw, error: cErr } = await runCompanyQuery());
+  }
   if (cErr) throw mapSupabaseError(cErr);
+  // `select()` construit dynamiquement (colonne optionnelle) → PostgREST ne peut plus
+  // inférer la forme de la ligne : on repasse par `unknown`, comme `listProducts`.
+  const companyRow = (companyRaw ?? null) as unknown as Record<string, unknown> | null;
   if (!companyRow?.id) {
     void reportHandledClientError(
       new Error(
@@ -482,6 +525,13 @@ async function fetchAppContext(): Promise<AppContextData | null> {
       (s as { online_store_enabled?: boolean }).online_store_enabled === true,
   }));
 
+  /*
+   * Pages que le propriétaire a retirées du menu de CET employé. Lecture tolérante par
+   * construction (`fetchMyHiddenPages` ne lève jamais) : si le réglage n'existe pas ou
+   * ne se lit pas, rien n'est masqué et le menu reste celui d'avant.
+   */
+  const hiddenPages = await fetchMyHiddenPages(companyId, user.id);
+
   let permissionKeys: string[] = [];
   let roleSlug: string | null = null;
   try {
@@ -530,6 +580,7 @@ async function fetchAppContext(): Promise<AppContextData | null> {
     quickSupplyEnabled,
     onlineStoreEnabled,
     promoAdGenerationEnabled,
+    hiddenPages,
   };
 }
 

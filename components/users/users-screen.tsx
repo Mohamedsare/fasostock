@@ -27,6 +27,13 @@ import {
   updateCompanyUserRole,
 } from "@/lib/features/users/api";
 import type { CompanyUser } from "@/lib/features/users/types";
+import {
+  HIDEABLE_PAGES,
+  HIDEABLE_PAGE_LABELS,
+  fetchHiddenEmployeePages,
+  setEmployeeHiddenPages,
+  type HideablePage,
+} from "@/lib/features/settings/employee-hidden-pages";
 import { usePermissions } from "@/lib/features/permissions/use-permissions";
 import { activityRoleLabels } from "@/lib/features/activity/activity-profiles";
 import { queryKeys } from "@/lib/query/query-keys";
@@ -332,6 +339,31 @@ export function UsersScreen() {
     staleTime: 10_000,
   });
 
+  /**
+   * Pages masquées par employé. Réglage d'affichage rangé dans `company_settings` :
+   * aucune migration, et une lecture en échec ne masque rien.
+   */
+  const hiddenPagesQ = useQuery({
+    queryKey: queryKeys.employeeHiddenPages(companyId),
+    queryFn: () => fetchHiddenEmployeePages(companyId),
+    enabled: Boolean(companyId) && canManage,
+    staleTime: 30_000,
+  });
+
+  const hiddenPagesMut = useMutation({
+    mutationFn: (vars: { userId: string; pages: HideablePage[] }) =>
+      setEmployeeHiddenPages({ companyId, userId: vars.userId, pages: vars.pages }),
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: queryKeys.employeeHiddenPages(companyId) });
+      // Le menu de l'employé concerné se lit dans SON contexte : le nôtre n'a rien à
+      // recharger, mais l'invalider est sans coût et couvre le cas « je me règle
+      // moi-même depuis un autre poste ».
+      await qc.invalidateQueries({ queryKey: queryKeys.appContext });
+      toast.success("Menu de l'employé mis à jour");
+    },
+    onError: (e) => toastMutationError("users", e),
+  });
+
   const rightsMut = useMutation({
     mutationFn: setUserPermissionOverride,
     onSuccess: async () => {
@@ -591,17 +623,6 @@ export function UsersScreen() {
             sortie d&apos;argent. Son nom reste attaché à chaque ligne, et il ne peut corriger que
             les siennes.
           </p>
-          {/*
-            Le menu d'un caissier tient sur un écran de cinq pouces : chaque entrée
-            inutile éloigne celles qui servent. « Aide » et « Notifications » sont
-            cochées pour tout le monde — les décocher les retire du menu de CET employé,
-            sans rien changer pour les autres.
-          */}
-          <p className="mt-1.5 text-xs text-neutral-600">
-            Vous pouvez aussi alléger le menu d&apos;un employé : décochez « Voir la page Aide » ou
-            « Voir la page Notifications » pour les retirer de son écran. Il continue de recevoir
-            ses notifications, il n&apos;en voit plus l&apos;historique.
-          </p>
           <div className="mt-3">
             <select
               className={fsInputClass()}
@@ -617,6 +638,60 @@ export function UsersScreen() {
               ))}
             </select>
           </div>
+
+          {/*
+            Le menu d'un caissier tient sur un écran de cinq pouces : chaque entrée
+            inutile éloigne celles qui servent. Aide et Notifications sont les deux
+            seules pages visibles par tout le monde sans droit associé — ce sont donc
+            les deux qu'on peut retirer, et c'est un réglage d'AFFICHAGE, pas un droit
+            (cf. `employee-hidden-pages.ts`). D'où sa place à part, au-dessus de la
+            liste des permissions.
+          */}
+          {rightsUserId ? (
+            <div className="mt-3 rounded-[10px] border border-black/[0.08] p-3">
+              <FsSectionLabel>Pages visibles dans son menu</FsSectionLabel>
+              <p className="mt-1 text-xs text-neutral-600">
+                Retirez ce qui ne le concerne pas pour lui laisser un écran simple. Il continue de
+                recevoir ses notifications ; il n&apos;en voit plus l&apos;historique.
+              </p>
+              <div className="mt-2 space-y-1">
+                {HIDEABLE_PAGES.map((page) => {
+                  const hidden = (hiddenPagesQ.data?.[rightsUserId] ?? []).includes(page);
+                  const busy = hiddenPagesMut.isPending || hiddenPagesQ.isFetching;
+                  return (
+                    <label
+                      key={page}
+                      className={cn(
+                        "flex cursor-pointer items-center justify-between gap-3 rounded-[10px] bg-fs-surface-container px-3 py-2",
+                        busy && "pointer-events-none opacity-60",
+                      )}
+                    >
+                      <span className="text-xs text-neutral-800 sm:text-sm">
+                        {HIDEABLE_PAGE_LABELS[page]}
+                      </span>
+                      <input
+                        type="checkbox"
+                        role="switch"
+                        className="h-5 w-9 shrink-0 cursor-pointer accent-fs-accent"
+                        // Coché = VISIBLE. La donnée stockée dit « masqué » ; l'afficher
+                        // en négatif ferait lire « Aide ☑ » pour « Aide cachée ».
+                        checked={!hidden}
+                        disabled={busy}
+                        aria-label={`Afficher la page ${HIDEABLE_PAGE_LABELS[page]}`}
+                        onChange={(e) => {
+                          const current = hiddenPagesQ.data?.[rightsUserId] ?? [];
+                          const next = e.target.checked
+                            ? current.filter((p) => p !== page)
+                            : [...current, page];
+                          hiddenPagesMut.mutate({ userId: rightsUserId, pages: next });
+                        }}
+                      />
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
 
           {rightsUserId ? (
             <div className="mt-3">

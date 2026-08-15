@@ -60,8 +60,24 @@ function norm(value: string): string {
 /** Au-delà, la liste devient un mur : on affiche les meilleurs et on laisse préciser. */
 const MAX_RESULTS = 8;
 
+/** Clé de rendu d'une ligne — locale à l'écran, jamais envoyée à la base. */
 function newKey(): string {
   return `l_${Math.random().toString(36).slice(2)}_${Date.now().toString(36)}`;
+}
+
+/**
+ * Clé d'idempotence de l'arrivage — envoyée à un paramètre `uuid` de PostgreSQL, qui
+ * refuse tout ce qui n'a pas la forme d'un UUID. D'où un vrai repli au format v4 (et
+ * non une chaîne libre) : sur un navigateur ancien ou un contexte non sécurisé, où
+ * `crypto.randomUUID` n'existe pas, une clé mal formée ferait échouer CHAQUE
+ * validation. Même repli que `presence-tracker.tsx`.
+ */
+function newRequestId(): string {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
+  return "10000000-1000-4000-8000-100000000000".replace(/[018]/g, (c) => {
+    const n = Number(c);
+    return (n ^ (Math.floor(Math.random() * 256) & (15 >> (n / 4)))).toString(16);
+  });
 }
 
 function timeLabel(iso: string): string {
@@ -115,11 +131,32 @@ export function QuickSupplyScreen() {
    * si la validation part deux fois (réseau qui lâche, double tape), la base reconnaît
    * la même clé et n'entre le stock qu'une fois. Renouvelée après chaque succès.
    */
-  const requestIdRef = useRef<string>(
-    typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : newKey(),
-  );
+  const requestIdRef = useRef<string>(newRequestId());
 
   const enabled = Boolean(companyId && storeId) && canView;
+
+  /*
+   * Changer de boutique en cours de saisie : les lignes portent le stock et les prix
+   * de l'ANCIENNE boutique, et la validation les ferait entrer dans la nouvelle. On
+   * repart donc à zéro — perdre trois lignes retapées en dix secondes vaut mieux que
+   * faire entrer dix cartons au mauvais endroit, erreur qui ne se découvre qu'à
+   * l'inventaire. La clé d'idempotence est renouvelée avec : le nouvel arrivage n'a
+   * rien à voir avec celui qu'on abandonne.
+   */
+  const previousStoreIdRef = useRef<string | null>(storeId);
+  useEffect(() => {
+    // `lines.length` est en dépendance pour être lu à jour, mais cette garde fait de
+    // toutes les exécutions « hors changement de boutique » des non-événements.
+    if (previousStoreIdRef.current === storeId) return;
+    previousStoreIdRef.current = storeId;
+    if (lines.length > 0) {
+      setLines([]);
+      toast.info("Boutique changée : la saisie en cours a été vidée.");
+    }
+    requestIdRef.current = newRequestId();
+    setQuery("");
+    setFocusKey(null);
+  }, [storeId, lines.length]);
 
   const catalogQ = useQuery({
     queryKey: queryKeys.quickSupplyCatalog(companyId, storeId ?? "__none__"),
@@ -317,10 +354,7 @@ export function QuickSupplyScreen() {
       setPaidText("");
       setNote("");
       setDetailsOpen(false);
-      requestIdRef.current =
-        typeof crypto !== "undefined" && "randomUUID" in crypto
-          ? crypto.randomUUID()
-          : newKey();
+      requestIdRef.current = newRequestId();
       // Le stock affiché ici, la caisse, le catalogue : tout ce qui vient de changer.
       await qc.invalidateQueries({ queryKey: ["quick-supply", companyId] });
       await qc.invalidateQueries({ queryKey: ["pos"] });

@@ -155,7 +155,7 @@ REVOKE ALL ON FUNCTION public.company_set_quick_supply_enabled(uuid, boolean) FR
 GRANT EXECUTE ON FUNCTION public.company_set_quick_supply_enabled(uuid, boolean) TO authenticated;
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- 2. Le droit étroit — et deux droits « page » pour alléger l'écran du caissier
+-- 2. Le droit étroit
 -- ─────────────────────────────────────────────────────────────────────────────
 INSERT INTO public.permissions (id, key) VALUES (uuid_generate_v4(), 'quick_supply.create')
 ON CONFLICT (key) DO NOTHING;
@@ -163,33 +163,15 @@ ON CONFLICT (key) DO NOTHING;
 -- Volontairement accordé à AUCUN rôle : faire entrer de la marchandise engage le stock
 -- et le prix de revient. Le propriétaire (reconnu partout par `user_is_company_owner`,
 -- sans passer par les permissions) l'a de fait ; il l'ouvre nommément à qui il veut.
-
-/*
- * « Aide » et « Notifications » : jusqu'ici visibles par tout le monde, sans droit
- * associé — un choix raisonnable qui ne l'est plus dès qu'on regarde le téléphone
- * d'un caissier. Sur un écran de 5 pouces, chaque entrée de menu inutile éloigne
- * celles qui servent, et le patron veut souvent que son employé voie CINQ pages, pas
- * douze. On crée donc deux droits, accordés à TOUS LES RÔLES existants : personne ne
- * perd rien aujourd'hui, et le propriétaire peut désormais les décocher pour un
- * employé donné depuis la page Employés.
- *
- * Le sens est bien « voir la page » et non « recevoir des notifications » : décocher
- * Notifications retire l'entrée de menu et l'historique, cela n'éteint pas les push
- * (chacun garde les siennes, et la RLS les borne déjà à son compte).
- */
-INSERT INTO public.permissions (id, key) VALUES (uuid_generate_v4(), 'help.view')
-ON CONFLICT (key) DO NOTHING;
-INSERT INTO public.permissions (id, key) VALUES (uuid_generate_v4(), 'notifications.view')
-ON CONFLICT (key) DO NOTHING;
-
--- Rétrocompatibilité stricte : tous les rôles, y compris ceux ajoutés par la suite au
--- moment où cette migration tourne, reçoivent les deux droits.
-INSERT INTO public.role_permissions (role_id, permission_id)
-SELECT r.id, p.id
-FROM public.roles r
-CROSS JOIN public.permissions p
-WHERE p.key IN ('help.view', 'notifications.view')
-ON CONFLICT DO NOTHING;
+--
+-- NOTE — « masquer Aide / Notifications du menu d'un employé » n'est PAS ici, et c'est
+-- délibéré. Ce serait une permission accordée à tous les rôles, donc absente tant que
+-- la migration n'est pas jouée : entre le déploiement du code et le passage de cette
+-- migration, les deux pages disparaîtraient du menu de TOUS les utilisateurs, y compris
+-- du propriétaire. Masquer une entrée de menu est un confort d'affichage, pas une
+-- frontière de sécurité : ça n'a pas à pouvoir casser quoi que ce soit. C'est donc rangé
+-- dans `company_settings` (clé `employee_hidden_pages`), table qui existe depuis 00001 —
+-- valeur absente = rien de masqué, exactement le comportement d'aujourd'hui.
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 3. Numérotation : « A-17 », le numéro qu'on retrouve le soir

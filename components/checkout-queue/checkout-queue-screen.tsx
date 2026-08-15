@@ -430,7 +430,9 @@ export function CheckoutQueueScreen() {
               <p className="text-sm font-bold text-fs-text">Accès réservé</p>
               <p className="mt-1 text-sm text-neutral-600">
                 La caisse à deux doit être activée par le propriétaire dans Paramètres, et
-                cette page est réservée aux personnes qui ont le droit de vendre.
+                cette page est réservée aux personnes à qui il a accordé le droit
+                « Encaisser les paniers envoyés ». Vous pouvez continuer à vendre et à
+                envoyer vos paniers à la caisse.
               </p>
             </div>
           </div>

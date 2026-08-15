@@ -19,6 +19,12 @@ export const P = {
   salesView: "sales.view",
   salesInvoiceA4: "sales.invoice_a4",
   salesInvoiceA4Table: "sales.invoice_a4_table",
+  /**
+   * Caisse à deux : CONFIRMER et ENCAISSER un bon envoyé par un vendeur.
+   * Distinct de `sales.create` à dessein — le propriétaire choisit qui touche
+   * l'argent, sans avoir à empêcher quelqu'un de servir les clients.
+   */
+  posCheckout: "pos.checkout",
   purchasesCreate: "purchases.create",
   purchasesView: "purchases.view",
   purchasesCancel: "purchases.cancel",
@@ -73,16 +79,6 @@ export const P = {
    * produit ni l'ajustement de stock libre.
    */
   quickSupplyCreate: "quick_supply.create",
-  /**
-   * Voir la page Aide. Accordé à TOUS les rôles (migration 00193) : le décocher est
-   * une décision du propriétaire, employé par employé, pour alléger un menu de caissier.
-   */
-  helpView: "help.view",
-  /**
-   * Voir la page Notifications. Idem : retire l'entrée de menu et l'historique, mais
-   * n'éteint pas les notifications push (chacun ne voit que les siennes).
-   */
-  notificationsView: "notifications.view",
   /** Page Dépenses — consultation ; owner par défaut, accordable aux autres. */
   expensesView: "expenses.view",
   /** Page Dépenses — création / modification / suppression. */
@@ -129,6 +125,7 @@ export const PERMISSION_LABELS_FR: Record<string, string> = {
   [P.salesView]: "Voir l'historique des ventes",
   [P.salesInvoiceA4]: "Emettre des factures A4",
   [P.salesInvoiceA4Table]: "POS facture A4 (vue tableau)",
+  [P.posCheckout]: "Encaisser les paniers envoyes (caisse a deux)",
   [P.purchasesCreate]: "Creer des achats",
   [P.purchasesView]: "Voir les achats",
   [P.purchasesCancel]: "Annuler des achats",
@@ -163,8 +160,6 @@ export const PERMISSION_LABELS_FR: Record<string, string> = {
   [P.landedCostManage]: "Gerer le prix de revient (arrivages, frais, prix de vente)",
   [P.onlineStoreManage]: "Gerer la boutique en ligne (catalogue public, commandes web)",
   [P.quickSupplyCreate]: "Faire un approvisionnement (entrer de la marchandise)",
-  [P.helpView]: "Voir la page Aide",
-  [P.notificationsView]: "Voir la page Notifications",
   [P.expensesView]: "Voir la page Depenses (charges)",
   [P.expensesManage]: "Gerer les depenses (ajout / modif / suppression)",
   [P.suppliersView]: "Voir les fournisseurs",

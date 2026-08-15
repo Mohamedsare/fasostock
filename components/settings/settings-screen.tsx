@@ -1107,9 +1107,11 @@ export function SettingsScreen() {
             moyen de paiement et rend la monnaie.
           </p>
           <p className="mt-2 text-xs leading-relaxed text-neutral-600 sm:text-sm">
-            Les deux rôles ne sont pas attribués : n&apos;importe lequel de vos vendeurs
-            peut préparer ou encaisser, et ils échangent leurs postes dans la journée sans
-            aucun réglage à changer.
+            C&apos;est vous qui décidez qui encaisse : dans <b>Employés</b>, accordez ou
+            retirez le droit « Encaisser les paniers envoyés » à chacun. Celui qui ne
+            l&apos;a pas continue de vendre et d&apos;envoyer ses paniers — il ne touche
+            simplement pas à l&apos;argent. Ceux qui l&apos;ont peuvent échanger leurs
+            postes dans la journée sans aucun réglage à changer.
           </p>
           {/*
             Le seul point qui surprend si on ne le dit pas : rien n'est réservé. C'est
