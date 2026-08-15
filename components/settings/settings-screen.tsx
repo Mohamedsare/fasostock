@@ -49,6 +49,12 @@ import {
   type MobileMoneyProvider,
 } from "@/lib/features/payments/payment-display";
 import { setDualCashierEnabled } from "@/lib/features/dual-cashier/api";
+import { setQuickSupplyEnabled } from "@/lib/features/quick-supply/api";
+import {
+  fetchDualCashierSelfCheckout,
+  peekDualCashierSelfCheckout,
+  setDualCashierSelfCheckout,
+} from "@/lib/features/settings/dual-cashier-self-checkout";
 import { setProductLocationsEnabled } from "@/lib/features/product-locations/api";
 import { setLandedCostEnabled } from "@/lib/features/landed-cost/api";
 import { setProductAliasesEnabled } from "@/lib/features/products/api";
@@ -110,6 +116,7 @@ import {
   MdPerson,
   MdPlace,
   MdLocalShipping,
+  MdMoveToInbox,
   MdSave,
   MdSell,
   MdSecurity,
@@ -708,6 +715,61 @@ export function SettingsScreen() {
     onError: (e) => toastMutationError("settings", e),
   });
 
+  /*
+   * Sous-réglage de la caisse à deux : le vendeur garde-t-il le droit d'encaisser
+   * lui-même ? Fermé, l'argent ne peut plus passer que par la personne qui tient la
+   * caisse — c'est ce que demande le propriétaire qui veut une seule main sur le tiroir.
+   */
+  const peekSelfCheckout =
+    companyId.length > 0 && isOwner ? peekDualCashierSelfCheckout(companyId) : undefined;
+  const selfCheckoutQ = useQuery({
+    queryKey: queryKeys.dualCashierSelfCheckout(companyId),
+    queryFn: () => fetchDualCashierSelfCheckout(companyId),
+    enabled: Boolean(companyId && isOwner && dualCashierEnabled),
+    staleTime: 30_000,
+    ...(peekSelfCheckout !== undefined ? { initialData: peekSelfCheckout } : {}),
+  });
+  const selfCheckoutMut = useMutation({
+    mutationFn: async (enabled: boolean) => {
+      if (!companyId) throw new Error("Entreprise introuvable.");
+      await setDualCashierSelfCheckout(companyId, enabled);
+    },
+    onSuccess: async (_, enabled) => {
+      toast.success(
+        enabled
+          ? "Le vendeur peut de nouveau encaisser lui-même."
+          : "Encaissement réservé à la caisse : les paniers ne peuvent plus qu'y être envoyés.",
+      );
+      await qc.invalidateQueries({
+        queryKey: queryKeys.dualCashierSelfCheckout(companyId),
+      });
+    },
+    onError: (e) => toastMutationError("settings", e),
+  });
+
+  /**
+   * « Approvisionnement » : l'arrivage express, saisi debout, qui entre en stock et se
+   * vend dans la minute. Réglage entreprise, écrit par le propriétaire — fermé par
+   * défaut, parce qu'un commerce qui n'achète qu'à de vrais fournisseurs a déjà le
+   * module Achats et n'a rien à gagner à une entrée de menu de plus.
+   */
+  const quickSupplyEnabled = ctxQ.data?.quickSupplyEnabled === true;
+  const quickSupplyMut = useMutation({
+    mutationFn: async (enabled: boolean) => {
+      if (!companyId) throw new Error("Entreprise introuvable.");
+      await setQuickSupplyEnabled(companyId, enabled);
+    },
+    onSuccess: async (_, enabled) => {
+      toast.success(
+        enabled
+          ? "Approvisionnement activé. Donnez le droit à vos employés depuis la page Employés."
+          : "Approvisionnement désactivé. Les arrivages déjà enregistrés sont conservés.",
+      );
+      await qc.invalidateQueries({ queryKey: queryKeys.appContext });
+    },
+    onError: (e) => toastMutationError("settings", e),
+  });
+
   const profileMut = useMutation({
     mutationFn: async () => {
       const supabase = createClient();
@@ -1089,9 +1151,51 @@ export function SettingsScreen() {
               />
             </label>
           </div>
-          <p className="mt-2.5 text-xs leading-relaxed text-neutral-600">
-            Le vendeur garde toujours le choix : un bouton « Encaisser ici » reste dans son
-            panier pour les moments où il est seul au comptoir.
+          {/*
+            Second interrupteur, visible seulement quand le premier est ouvert : c'est un
+            réglage DU module, pas un réglage à côté. L'afficher module fermé poserait une
+            question sans objet.
+          */}
+          {dualCashierEnabled ? (
+            <div className="mt-2 space-y-0 rounded-[10px] border border-black/[0.08]">
+              <label
+                className={cn(
+                  "flex cursor-pointer items-start justify-between gap-3 px-3 py-3 sm:px-4",
+                  selfCheckoutMut.isPending && "pointer-events-none opacity-60",
+                )}
+              >
+                <span className="min-w-0">
+                  <span className="block text-sm font-medium text-fs-text">
+                    Le vendeur peut encaisser lui-même
+                  </span>
+                  <span className="mt-0.5 block text-xs text-neutral-600">
+                    {selfCheckoutQ.data === false
+                      ? "Désactivé : le bouton « Encaisser ici » disparaît. Le panier ne peut plus qu'être envoyé à la caisse."
+                      : "Le bouton « Encaisser ici » reste dans le panier, pour les moments où le vendeur est seul au comptoir."}
+                  </span>
+                </span>
+                <input
+                  type="checkbox"
+                  role="switch"
+                  className="mt-1 h-5 w-9 shrink-0 cursor-pointer accent-fs-accent"
+                  checked={selfCheckoutQ.data !== false}
+                  disabled={selfCheckoutMut.isPending}
+                  onChange={(e) => {
+                    void selfCheckoutMut.mutateAsync(e.target.checked);
+                  }}
+                />
+              </label>
+            </div>
+          ) : null}
+          {/*
+            La règle du module, dite une fois et clairement : c'est elle qui rend le
+            tiroir-caisse imputable à quelqu'un le soir.
+          */}
+          <p className="mt-2.5 rounded-[10px] bg-fs-surface-container px-3 py-2 text-xs leading-relaxed text-neutral-600">
+            Un seul caissier à la fois : dès qu&apos;une personne encaisse, elle tient la
+            caisse de la boutique et les autres restent en vente. Elle la rend quand elle a
+            fini — et la caisse se libère seule au bout de trois minutes sans activité, pour
+            qu&apos;un téléphone éteint ne bloque jamais votre comptoir.
           </p>
           {dualCashierEnabled ? (
             <Link
@@ -1099,6 +1203,82 @@ export function SettingsScreen() {
               className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-fs-accent hover:underline hover:underline-offset-2"
             >
               Ouvrir la page Encaissement
+              <ChevronRight className="h-4 w-4" aria-hidden />
+            </Link>
+          ) : null}
+        </FsCard>
+      ) : null}
+
+      {/* Approvisionnement (arrivage express) — owner uniquement */}
+      {isOwner && companyId ? (
+        <FsCard className="mt-5" padding="p-5">
+          <SettingsCardTitle icon={MdMoveToInbox} title="Approvisionnement" />
+          <p className="mt-2 text-xs leading-relaxed text-neutral-600 sm:text-sm">
+            Le rayon se vide un samedi midi : vous traversez le marché, vous achetez dix
+            cartons chez un grossiste ou chez le voisin, vous revenez — et un client
+            attend déjà. Cette page fait entrer la marchandise en trente secondes : vous
+            tapez le nom, la quantité, le prix payé, et c&apos;est vendable en caisse.
+          </p>
+          <p className="mt-2 text-xs leading-relaxed text-neutral-600 sm:text-sm">
+            L&apos;article qui n&apos;existe pas encore au catalogue se crée dans le même
+            geste, avec son prix de vente. Le prix d&apos;achat du jour remplace
+            l&apos;ancien : votre marge suit le vrai coût, et l&apos;historique garde
+            l&apos;ancien prix pour que vous voyiez ce qui a augmenté.
+          </p>
+          {/*
+            Distinction à poser une fois pour toutes, sinon le propriétaire croit qu'on
+            lui propose deux fois la même chose.
+          */}
+          <p className="mt-2 rounded-[10px] bg-sky-500/10 px-3 py-2 text-xs leading-relaxed text-sky-900 dark:text-sky-200">
+            Ce n&apos;est pas le module Achats : pas de fournisseur à enregistrer, pas de
+            bon de commande, pas de dette. Pour l&apos;achat organisé avec un vrai
+            fournisseur, gardez la page Achats — les deux coexistent.
+          </p>
+          <div className="mt-4 space-y-0 rounded-[10px] border border-black/[0.08]">
+            <label
+              className={cn(
+                "flex cursor-pointer items-start justify-between gap-3 px-3 py-3 sm:px-4",
+                quickSupplyMut.isPending && "pointer-events-none opacity-60",
+              )}
+            >
+              <span className="min-w-0">
+                <span className="block text-sm font-medium text-fs-text">
+                  Approvisionnement rapide
+                </span>
+                <span className="mt-0.5 block text-xs text-neutral-600">
+                  {quickSupplyEnabled
+                    ? "La page Approvisionnement est ouverte. Vous seul y avez accès tant que vous n'accordez pas le droit à un employé."
+                    : "Désactivé : la marchandise entre par les Achats ou par l'ajustement de stock."}
+                </span>
+              </span>
+              <input
+                type="checkbox"
+                role="switch"
+                className="mt-1 h-5 w-9 shrink-0 cursor-pointer accent-fs-accent"
+                checked={quickSupplyEnabled}
+                disabled={quickSupplyMut.isPending}
+                onChange={(e) => {
+                  void quickSupplyMut.mutateAsync(e.target.checked);
+                }}
+              />
+            </label>
+          </div>
+          {/*
+            Le point qui décide un patron : confier la réception sans confier le magasin.
+          */}
+          <p className="mt-2.5 text-xs leading-relaxed text-neutral-600">
+            Pour qu&apos;un caissier puisse réceptionner à votre place, cochez-lui « Faire
+            un approvisionnement » dans Employés › Gestion des droits. Ce droit ne lui
+            ouvre que cette page : ni la fiche produit, ni l&apos;ajustement de stock
+            libre, et il ne peut pas changer le prix de vente d&apos;un article existant.
+            Son nom reste attaché à chaque entrée.
+          </p>
+          {quickSupplyEnabled ? (
+            <Link
+              href={ROUTES.quickSupply}
+              className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-fs-accent hover:underline hover:underline-offset-2"
+            >
+              Ouvrir la page Approvisionnement
               <ChevronRight className="h-4 w-4" aria-hidden />
             </Link>
           ) : null}

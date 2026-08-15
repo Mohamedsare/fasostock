@@ -66,6 +66,23 @@ export const P = {
   landedCostManage: "landed_cost.manage",
   /** Boutique en ligne : vitrine publique + commandes web — owner par défaut. */
   onlineStoreManage: "online_store.manage",
+  /**
+   * Approvisionnement express (page /approvisionnement) — accordé à AUCUN rôle par
+   * défaut. Droit volontairement étroit : il autorise l'entrée de marchandise et la
+   * création d'un produit manquant par cette page seulement, sans ouvrir la fiche
+   * produit ni l'ajustement de stock libre.
+   */
+  quickSupplyCreate: "quick_supply.create",
+  /**
+   * Voir la page Aide. Accordé à TOUS les rôles (migration 00193) : le décocher est
+   * une décision du propriétaire, employé par employé, pour alléger un menu de caissier.
+   */
+  helpView: "help.view",
+  /**
+   * Voir la page Notifications. Idem : retire l'entrée de menu et l'historique, mais
+   * n'éteint pas les notifications push (chacun ne voit que les siennes).
+   */
+  notificationsView: "notifications.view",
   /** Page Dépenses — consultation ; owner par défaut, accordable aux autres. */
   expensesView: "expenses.view",
   /** Page Dépenses — création / modification / suppression. */
@@ -145,6 +162,9 @@ export const PERMISSION_LABELS_FR: Record<string, string> = {
   [P.productLocationsManage]: "Gerer les emplacements (plan de rangement des produits)",
   [P.landedCostManage]: "Gerer le prix de revient (arrivages, frais, prix de vente)",
   [P.onlineStoreManage]: "Gerer la boutique en ligne (catalogue public, commandes web)",
+  [P.quickSupplyCreate]: "Faire un approvisionnement (entrer de la marchandise)",
+  [P.helpView]: "Voir la page Aide",
+  [P.notificationsView]: "Voir la page Notifications",
   [P.expensesView]: "Voir la page Depenses (charges)",
   [P.expensesManage]: "Gerer les depenses (ajout / modif / suppression)",
   [P.suppliersView]: "Voir les fournisseurs",

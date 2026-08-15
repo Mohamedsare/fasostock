@@ -591,6 +591,17 @@ export function UsersScreen() {
             sortie d&apos;argent. Son nom reste attaché à chaque ligne, et il ne peut corriger que
             les siennes.
           </p>
+          {/*
+            Le menu d'un caissier tient sur un écran de cinq pouces : chaque entrée
+            inutile éloigne celles qui servent. « Aide » et « Notifications » sont
+            cochées pour tout le monde — les décocher les retire du menu de CET employé,
+            sans rien changer pour les autres.
+          */}
+          <p className="mt-1.5 text-xs text-neutral-600">
+            Vous pouvez aussi alléger le menu d&apos;un employé : décochez « Voir la page Aide » ou
+            « Voir la page Notifications » pour les retirer de son écran. Il continue de recevoir
+            ses notifications, il n&apos;en voit plus l&apos;historique.
+          </p>
           <div className="mt-3">
             <select
               className={fsInputClass()}

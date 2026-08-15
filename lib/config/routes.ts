@@ -39,6 +39,11 @@ export const ROUTES = {
    * confirme et encaisse. Activée par le propriétaire dans Paramètres.
    */
   checkoutQueue: "/encaissement",
+  /**
+   * Approvisionnement express : la marchandise achetée au marché entre en stock et
+   * se vend dans la minute. Activé par le propriétaire dans Paramètres.
+   */
+  quickSupply: "/approvisionnement",
   /** Module Pièces : compatibilités par modèle, équivalences, variantes — activé par la plateforme. */
   parts: "/pieces",
   /** Module Réassort : quoi recommander et en quelle quantité — actif par défaut. */

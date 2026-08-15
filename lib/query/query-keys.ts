@@ -265,6 +265,20 @@ export const queryKeys = {
   /** Les bons que le vendeur connecté vient d'envoyer (suivi affiché dans sa caisse). */
   posHandoffsMine: (companyId: string, storeId: string) =>
     ["pos-handoffs", companyId, "mine", storeId] as const,
+  /** Tenue de caisse : qui encaisse en ce moment dans cette boutique. */
+  posCheckoutHolder: (storeId: string) => ["pos-checkout-holder", storeId] as const,
+  /** Réglage owner « le vendeur peut encaisser lui-même » (`company_settings`). */
+  dualCashierSelfCheckout: (companyId: string) =>
+    ["dual-cashier-self-checkout", companyId] as const,
+  /**
+   * Approvisionnement express. Préfixe `['quick-supply', companyId]` : après un
+   * arrivage, tout ce qui en dépend (catalogue, stock affiché, historique) s'invalide
+   * d'un coup.
+   */
+  quickSupplyCatalog: (companyId: string, storeId: string) =>
+    ["quick-supply", companyId, "catalog", storeId] as const,
+  quickSupplyHistory: (companyId: string, storeId: string | null) =>
+    ["quick-supply", companyId, "history", storeId ?? "__all__"] as const,
   /** Articles retenus au comptoir sur une boutique — garde-fou du comptage d'inventaire. */
   awaitingPickupItems: (storeId: string) =>
     ["awaiting-pickup-items", storeId] as const,

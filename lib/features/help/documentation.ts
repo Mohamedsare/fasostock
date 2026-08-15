@@ -809,9 +809,15 @@ export const DOC_GROUPS: DocGroup[] = [
           },
           {
             kind: "note",
+            tone: "warn",
+            title: "Un seul caissier à la fois",
+            text: "Dès qu'une personne encaisse, elle tient la caisse de la boutique : les autres restent en vente et ne peuvent plus encaisser tant qu'elle ne l'a pas rendue. C'est ce qui rend le tiroir-caisse imputable à quelqu'un le soir. Le bandeau en haut de la page dit toujours qui la tient. Elle se libère seule après trois minutes sans activité — un téléphone éteint ne bloque donc jamais votre comptoir — et le propriétaire peut la reprendre à tout moment.",
+          },
+          {
+            kind: "note",
             tone: "tip",
-            title: "Rester seul reste possible",
-            text: "Le bouton ENCAISSER ICI reste dans le panier du vendeur. Quand le collègue est absent, il encaisse lui-même sans rien désactiver.",
+            title: "Rester seul reste possible — si le patron le veut",
+            text: "Par défaut, le bouton ENCAISSER ICI reste dans le panier du vendeur : quand le collègue est absent, il encaisse lui-même. Le propriétaire peut retirer ce bouton dans Paramètres › Caisse à deux ; le panier ne peut alors plus qu'être envoyé à la caisse, et l'argent ne passe que par une seule personne.",
           },
           {
             kind: "note",
@@ -1466,6 +1472,71 @@ export const DOC_GROUPS: DocGroup[] = [
           },
         ],
         keywords: ["achat", "commande", "fournisseur", "réception", "livraison", "lot"],
+      },
+      {
+        id: "quick-supply",
+        title: "Approvisionnement",
+        route: "/approvisionnement",
+        tagline: "La marchandise rapportée du marché entre en stock et se vend dans la minute.",
+        access:
+          "Propriétaire, plus tout employé à qui il a coché « Faire un approvisionnement ».",
+        activation:
+          "Paramètres › Approvisionnement (propriétaire). Désactivé par défaut.",
+        blocks: [
+          {
+            kind: "p",
+            text: "Le rayon se vide un samedi midi. Vous traversez le marché, vous achetez dix cartons chez un grossiste ou chez le voisin d'en face, vous revenez — et un client attend déjà. Cette page est faite pour ce moment-là, et pour rien d'autre : faire entrer la marchandise en trente secondes, debout, avec une main prise.",
+          },
+          {
+            kind: "steps",
+            title: "Comment ça se passe",
+            items: [
+              "Tapez le nom de l'article (ou scannez son code-barres). La liste se filtre pendant que vous tapez.",
+              "Appuyez sur Entrée, ou touchez la ligne : l'article s'ajoute avec son dernier prix d'achat.",
+              "Réglez la quantité reçue avec les gros boutons − et +, et corrigez le prix payé s'il a changé.",
+              "L'article n'existe pas encore ? Touchez « Créer … » : nom, quantité, prix d'achat, prix de vente — et c'est au catalogue.",
+              "Touchez FAIRE ENTRER EN STOCK. C'est vendable en caisse immédiatement.",
+            ],
+          },
+          {
+            kind: "bullets",
+            title: "Ce que la page fait pour vous",
+            items: [
+              "Le prix d'achat du jour remplace l'ancien : votre marge suit le vrai coût, pas celui d'il y a six mois.",
+              "L'ancien prix reste visible dans l'historique — « le carton est passé de 9 000 à 11 500 » est exactement l'information qui décide d'augmenter le prix de vente.",
+              "« Chez qui », le montant payé et une note sont facultatifs et repliés : personne ne vous les demande quand vous êtes pressé.",
+              "Chaque entrée porte le nom de qui l'a faite, et apparaît dans l'historique des mouvements de stock.",
+            ],
+          },
+          {
+            kind: "note",
+            tone: "info",
+            title: "Ce n'est pas le module Achats",
+            text: "Achats sert à l'achat organisé : un fournisseur enregistré, un bon de commande, une réception, une dette suivie au fournisseur. Ici, il n'y a ni fournisseur en base, ni commande, ni dette — juste de la marchandise qui entre. Les deux coexistent, et rien de vos achats habituels ne change.",
+          },
+          {
+            kind: "note",
+            tone: "info",
+            title: "Ce n'est pas une dépense non plus",
+            text: "Acheter de la marchandise ne vous appauvrit pas : l'argent devient du stock. L'écrire dans les Dépenses compterait la charge deux fois — une fois à l'achat, une fois dans la marge de la vente — et fausserait votre résultat du mois. Le montant payé est donc gardé ici, dans l'historique des arrivages.",
+          },
+          {
+            kind: "note",
+            tone: "tip",
+            title: "Confier la réception sans confier le magasin",
+            text: "Cochez « Faire un approvisionnement » à un caissier dans Employés › Gestion des droits. Ce droit n'ouvre que cette page : ni la fiche produit, ni l'ajustement de stock libre, ni la suppression. Et il ne peut pas changer le prix de vente d'un article déjà au catalogue — seulement fixer celui d'un article qu'il crée.",
+          },
+        ],
+        keywords: [
+          "approvisionnement",
+          "arrivage",
+          "entrer du stock",
+          "réapprovisionner",
+          "marché",
+          "grossiste",
+          "rapide",
+          "créer un produit",
+        ],
       },
       {
         id: "restock",

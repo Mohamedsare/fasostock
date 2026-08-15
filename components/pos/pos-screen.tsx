@@ -47,6 +47,10 @@ import { defaultInvoiceUnitForProduct, INVOICE_UNITS } from "@/lib/features/pos/
 import { factureTabStripHeightPx } from "@/lib/utils/facture-tab-layout";
 import { fetchInvoiceTablePosEnabled } from "@/lib/features/settings/invoice-table-pos";
 import { fetchQuickPosCreditEnabled } from "@/lib/features/settings/quick-pos-credit";
+import {
+  fetchDualCashierSelfCheckout,
+  peekDualCashierSelfCheckout,
+} from "@/lib/features/settings/dual-cashier-self-checkout";
 import { fetchQuickPosPriceEditEnabled } from "@/lib/features/settings/quick-pos-price-edit";
 import {
   effectiveQuickPosProviders,
@@ -321,14 +325,40 @@ export function PosScreen({
    */
   const dualCashierOn =
     mode === "quick" && !isSaleEditEntry && ctx?.dualCashierEnabled === true && canQuick;
+
+  /*
+   * Le propriétaire peut RETIRER la porte de sortie « Encaisser ici ».
+   *
+   * C'est le réglage de celui qui veut que l'argent ne passe que par une seule personne :
+   * coupé, le panier du vendeur ne peut plus QUE partir à la caisse. Ouvert par défaut,
+   * sinon on retirerait sans préavis un bouton déjà en service chez les clients qui ont
+   * activé la caisse à deux.
+   */
+  const peekSelfCheckout =
+    companyId.length > 0 ? peekDualCashierSelfCheckout(companyId) : undefined;
+  const selfCheckoutQ = useQuery({
+    queryKey: queryKeys.dualCashierSelfCheckout(companyId),
+    queryFn: () => fetchDualCashierSelfCheckout(companyId),
+    enabled: Boolean(companyId && dualCashierOn),
+    staleTime: 60_000,
+    ...(peekSelfCheckout !== undefined ? { initialData: peekSelfCheckout } : {}),
+  });
+  /** Tant que le réglage n'est pas connu, on suppose autorisé : ne jamais bloquer une vente. */
+  const selfCheckoutAllowed = selfCheckoutQ.data !== false;
+
   /**
    * Destination du panier. Le module activé, envoyer à la caisse est le geste NORMAL
    * (c'est pour lui que le propriétaire l'a ouvert) — mais le vendeur peut encaisser
-   * lui-même en un clic : le collègue est parti déjeuner, il est seul, le client est
-   * pressé. Sans cette porte de sortie, le module transformerait une aide en obligation.
+   * lui-même en un clic tant que le propriétaire le permet : le collègue est parti
+   * déjeuner, il est seul, le client est pressé.
    */
   const [sendToCashier, setSendToCashier] = useState(true);
-  const handoffMode = dualCashierOn && sendToCashier;
+  // Réglage coupé pendant que le vendeur était sur « Encaisser ici » : on le ramène au
+  // seul mode autorisé, plutôt que de le laisser buter sur un refus au moment de payer.
+  useEffect(() => {
+    if (dualCashierOn && !selfCheckoutAllowed && !sendToCashier) setSendToCashier(true);
+  }, [dualCashierOn, selfCheckoutAllowed, sendToCashier]);
+  const handoffMode = dualCashierOn && (sendToCashier || !selfCheckoutAllowed);
   /** Mot du vendeur au caissier (« il paie en Wave », « le monsieur en boubou bleu »). */
   const [handoffNote, setHandoffNote] = useState("");
 
@@ -2009,7 +2039,9 @@ export function PosScreen({
         }
         void createMut.mutateAsync();
       }}
-      dualCashierOn={dualCashierOn}
+      // Le sélecteur n'a de sens que s'il y a un choix : le propriétaire ayant retiré
+      // « Encaisser ici », le panier ne peut plus que partir à la caisse.
+      dualCashierOn={dualCashierOn && selfCheckoutAllowed}
       handoffMode={handoffMode}
       onSetSendToCashier={setSendToCashier}
       handoffNote={handoffNote}

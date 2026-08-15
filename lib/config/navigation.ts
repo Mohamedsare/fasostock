@@ -16,6 +16,7 @@ import {
   Wrench,
   HandCoins,
   History,
+  Inbox,
   Store,
   Globe,
   Warehouse,
@@ -94,6 +95,8 @@ export const NAV_ITEMS: NavItem[] = [
   },
   { href: ROUTES.expiry, label: "Péremptions", icon: CalendarClock, iconBg: "#B45309" },
   { href: ROUTES.purchases, label: "Achats", icon: Truck, iconBg: "#92400E" },
+  // Approvisionnement express : l'arrivage saisi debout, activé par le propriétaire.
+  { href: ROUTES.quickSupply, label: "Approvisionnement", icon: Inbox, iconBg: "#0E7490" },
   { href: ROUTES.expenses, label: "Dépenses", icon: Wallet, iconBg: "#B45309" },
   { href: ROUTES.warehouse, label: "Magasin", icon: Boxes, iconBg: "#7C2D12" },
   { href: ROUTES.transfers, label: "Transferts", icon: ArrowLeftRight, iconBg: "#EA580C" },

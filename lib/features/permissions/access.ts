@@ -117,6 +117,12 @@ export type AppContextData = {
    */
   dualCashierEnabled: boolean;
   /**
+   * Module « Approvisionnement » (arrivage express : la marchandise achetée au marché
+   * entre en stock et se vend dans la minute) — désactivé par défaut, ouvert par le
+   * PROPRIÉTAIRE dans Paramètres (`companies.quick_supply_enabled`).
+   */
+  quickSupplyEnabled: boolean;
+  /**
    * Boutique en ligne ouverte pour TOUTE l'entreprise par la plateforme
    * (`companies.online_store_enabled`). S'ajoute aux drapeaux boutique.
    */
@@ -296,6 +302,24 @@ export type AccessHelpers = {
    * journée sans que le propriétaire ait un réglage à revoir.
    */
   canCheckoutQueue: boolean;
+  /** Module Approvisionnement ouvert par le propriétaire pour l'entreprise. */
+  quickSupplyOn: boolean;
+  /**
+   * Page Approvisionnement : module ouvert ET propriétaire / droit dédié. Le droit
+   * (`quick_supply.create`) n'est donné à aucun rôle : le propriétaire l'accorde
+   * nommément, employé par employé, depuis la page Employés.
+   */
+  canQuickSupply: boolean;
+  /**
+   * Prix de vente modifiable depuis l'approvisionnement. Réservé à qui peut déjà
+   * modifier un produit : faire entrer de la marchandise ne donne pas le droit de
+   * changer les prix du magasin (la base refuse aussi, cf. `create_quick_supply`).
+   */
+  canRepriceOnSupply: boolean;
+  /** Page Aide visible. Accordée à tous par défaut ; le propriétaire peut la retirer. */
+  canHelp: boolean;
+  /** Page Notifications visible. Idem — ne concerne pas la réception des push. */
+  canNotifications: boolean;
   /** Module Prix de revient ouvert par le propriétaire pour l'entreprise. */
   landedCostOn: boolean;
   /** Page Prix de revient : module ouvert ET propriétaire / permission dédiée. */
@@ -471,6 +495,22 @@ export function buildAccessHelpers(
    */
   const dualCashierOn = data.dualCashierEnabled === true;
   const canCheckoutQueue = dualCashierOn && (isOwner || hasPermission(P.salesCreate));
+  /*
+   * Approvisionnement : additif, ouvert par le PROPRIÉTAIRE (Paramètres). Le droit,
+   * lui, est étroit et nominatif — le but étant précisément de laisser un caissier
+   * réceptionner sans lui ouvrir la fiche produit ni l'ajustement de stock.
+   */
+  const quickSupplyOn = data.quickSupplyEnabled === true;
+  const canQuickSupply =
+    quickSupplyOn && (isOwner || hasPermission(P.quickSupplyCreate));
+  const canRepriceOnSupply = isOwner || hasPermission(P.productsUpdate);
+  /*
+   * Aide et Notifications : visibles par défaut (droits accordés à tous les rôles en
+   * 00193), retirables par le propriétaire employé par employé. Le repli `!== false`
+   * n'existe pas ici : la clé est soit présente, soit explicitement révoquée.
+   */
+  const canHelp = hasPermission(P.helpView);
+  const canNotifications = hasPermission(P.notificationsView);
 
   // Modules plateforme : visibles seulement si le super admin les a activés pour l'entreprise.
   const accountingOn = data.accountingModuleEnabled === true;
@@ -520,6 +560,11 @@ export function buildAccessHelpers(
     engineUnitsOn,
     dualCashierOn,
     canCheckoutQueue,
+    quickSupplyOn,
+    canQuickSupply,
+    canRepriceOnSupply,
+    canHelp,
+    canNotifications,
     landedCostOn,
     canLandedCost,
     onlineStoreOn,
@@ -599,6 +644,7 @@ export function filterNavItemsForPermissions(
     // drapeau plateforme) en plus du droit utilisateur.
     if (href === ROUTES.expiry) return h.canExpiry;
     if (href === ROUTES.purchases) return h.canPurchases;
+    if (href === ROUTES.quickSupply) return h.canQuickSupply;
     if (href === ROUTES.expenses) return h.canExpenses;
     if (href === ROUTES.warehouse) return h.canWarehouse;
     if (href === ROUTES.customers) return h.canCustomers;
@@ -613,10 +659,12 @@ export function filterNavItemsForPermissions(
     if (href === ROUTES.accounting) return h.canAccounting;
     if (href === ROUTES.hr) return h.canHr;
     if (href === ROUTES.audit) return h.canAudit && !h.isOwner;
-    // Aide : visible par tous (tutoriels vidéo + contacts). Le guide détaillé interne reste owner.
-    if (href === ROUTES.help) return true;
-    // Ses propres notifications : visible par tous, chacun ne voit que les siennes.
-    if (href === ROUTES.notifications) return true;
+    // Aide : visible par tous (tutoriels vidéo + contacts) tant que le propriétaire ne
+    // l'a pas retirée à cet employé. Le guide détaillé interne reste owner.
+    if (href === ROUTES.help) return h.canHelp;
+    // Ses propres notifications : chacun ne voit que les siennes — mais le patron peut
+    // alléger le menu d'un caissier en retirant l'entrée.
+    if (href === ROUTES.notifications) return h.canNotifications;
     if (href === ROUTES.subscription) return h.isOwner;
     if (href === ROUTES.integrations) return false;
     return true;
@@ -682,6 +730,7 @@ const APP_SHELL_ROUTE_PREFIXES: readonly string[] = [
   ROUTES.stockCashier,
   ROUTES.expiry,
   ROUTES.purchases,
+  ROUTES.quickSupply,
   ROUTES.expenses,
   ROUTES.warehouse,
   ROUTES.transfers,
@@ -779,5 +828,13 @@ export function canAccessPathname(
   // Encaissement : tant que le propriétaire n'a pas ouvert la caisse à deux, la page
   // n'existe pour personne — l'adresse tapée à la main ne la fait pas apparaître.
   if (route === ROUTES.checkoutQueue && !h.canCheckoutQueue) return false;
+  // Approvisionnement : le droit est nominatif et la page fait entrer du stock réel.
+  // L'adresse tapée à la main ne la fait pas apparaître (la base refuserait de toute
+  // façon l'écriture, mais mieux vaut ne pas montrer un écran qui ne servira à rien).
+  if (route === ROUTES.quickSupply && !h.canQuickSupply) return false;
+  // Aide / Notifications retirées à cet employé : l'URL directe ne les rouvre pas non
+  // plus, sinon le menu allégé ne serait qu'un décor.
+  if (route === ROUTES.help && !h.canHelp) return false;
+  if (route === ROUTES.notifications && !h.canNotifications) return false;
   return isAppShellRoute(route);
 }

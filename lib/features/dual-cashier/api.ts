@@ -297,6 +297,99 @@ export async function checkoutPosHandoff(params: {
   return saleId;
 }
 
+/* ─────────────────────────────────────────────────────────────────────────────
+ * Tenue de caisse — un seul caissier à la fois par boutique (migration 00192)
+ * ─────────────────────────────────────────────────────────────────────────── */
+
+export type PosCheckoutHolder = {
+  storeId: string;
+  holderId: string;
+  /** Résolu depuis `profiles` — « Awa » plutôt qu'un UUID sur le bandeau. */
+  holderName: string | null;
+  takenAt: string;
+  lastSeenAt: string;
+  isMine: boolean;
+};
+
+/**
+ * Au-delà, la caisse est considérée comme abandonnée et se reprend sans autorisation.
+ * **Doit rester aligné sur l'intervalle de `pos_checkout_take`** (00192) : c'est la base
+ * qui tranche, l'écran ne fait qu'anticiper sa décision pour ne pas proposer un bouton
+ * qui échouerait.
+ */
+export const POS_CHECKOUT_STALE_MS = 3 * 60_000;
+
+/** La caisse est-elle libre en pratique — libre, à nous, ou tenue par un absent ? */
+export function isCheckoutAvailable(
+  holder: PosCheckoutHolder | null,
+  nowMs: number = Date.now(),
+): boolean {
+  if (!holder) return true;
+  if (holder.isMine) return true;
+  const seen = new Date(holder.lastSeenAt).getTime();
+  if (!Number.isFinite(seen)) return true;
+  return nowMs - seen > POS_CHECKOUT_STALE_MS;
+}
+
+async function mapHolderRow(
+  supabase: ReturnType<typeof createClient>,
+  row: Row | null,
+  myId: string | null,
+): Promise<PosCheckoutHolder | null> {
+  if (!row) return null;
+  const holderId = String(row.holder_id ?? "");
+  if (!holderId) return null;
+  const names = await fetchCreatorLabels(supabase, [holderId]);
+  return {
+    storeId: String(row.store_id ?? ""),
+    holderId,
+    holderName: names.get(holderId) ?? null,
+    takenAt: String(row.taken_at ?? ""),
+    lastSeenAt: String(row.last_seen_at ?? ""),
+    isMine:
+      typeof row.is_mine === "boolean" ? row.is_mine : Boolean(myId && holderId === myId),
+  };
+}
+
+/** Qui tient la caisse de cette boutique, en lecture seule. */
+export async function fetchPosCheckoutHolder(
+  storeId: string,
+  myId: string | null,
+): Promise<PosCheckoutHolder | null> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("store_checkout_holders")
+    .select("store_id, holder_id, taken_at, last_seen_at")
+    .eq("store_id", storeId)
+    .maybeSingle();
+  if (error) throw mapSupabaseError(error);
+  return mapHolderRow(supabase, (data ?? null) as Row | null, myId);
+}
+
+/**
+ * Prend la caisse — ou la garde, ce qui en fait aussi le signe de vie du détenteur.
+ * Échoue tant qu'un collègue actif la tient (sauf `force`, réservé au propriétaire).
+ */
+export async function takePosCheckout(
+  storeId: string,
+  force = false,
+): Promise<PosCheckoutHolder | null> {
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("pos_checkout_take", {
+    p_store_id: storeId,
+    p_force: force,
+  });
+  if (error) throw businessRpcError(error, "Impossible de prendre la caisse.");
+  return mapHolderRow(supabase, (data ?? null) as Row | null, null);
+}
+
+/** Rend la caisse : le collègue peut la prendre sans attendre l'expiration. */
+export async function releasePosCheckout(storeId: string): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase.rpc("pos_checkout_release", { p_store_id: storeId });
+  if (error) throw businessRpcError(error, "Impossible de rendre la caisse.");
+}
+
 /** Réglage entreprise « Caisse à deux » — écrit par le propriétaire (Paramètres). */
 export async function setDualCashierEnabled(
   companyId: string,

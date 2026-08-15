@@ -42,8 +42,13 @@ import {
   cancelPosHandoff,
   checkoutPosHandoff,
   claimPosHandoff,
+  fetchPosCheckoutHolder,
+  isCheckoutAvailable,
   listHandoffHistory,
   listPendingHandoffs,
+  releasePosCheckout,
+  takePosCheckout,
+  type PosCheckoutHolder,
 } from "@/lib/features/dual-cashier/api";
 import {
   handoffLineTotal,
@@ -201,6 +206,68 @@ export function CheckoutQueueScreen() {
     staleTime: 60_000,
   });
 
+  /*
+   * ── Tenue de caisse ──────────────────────────────────────────────────────────
+   *
+   * Un seul caissier à la fois par boutique : dès qu'une personne encaisse, elle tient
+   * la caisse, et les collègues restent en vente. Interrogé au même rythme que la file ;
+   * quand la caisse est à nous, l'appel sert AUSSI de signe de vie — sans lui, la base
+   * la libérerait au bout de trois minutes en nous croyant partis.
+   *
+   * En vue « toutes boutiques » (propriétaire), il n'y a pas de caisse unique à tenir :
+   * on n'interroge rien, et c'est la base qui tranche bon par bon.
+   */
+  const holderIsMineRef = useRef(false);
+  const holderQ = useQuery({
+    queryKey: queryKeys.posCheckoutHolder(storeId ?? "__none__"),
+    queryFn: async (): Promise<PosCheckoutHolder | null> => {
+      if (!storeId) return null;
+      if (holderIsMineRef.current) {
+        try {
+          return await takePosCheckout(storeId, false);
+        } catch {
+          /* caisse perdue entre-temps : on retombe sur la lecture simple ci-dessous */
+        }
+      }
+      return fetchPosCheckoutHolder(storeId, myId);
+    },
+    enabled: enabled && Boolean(storeId) && Boolean(myId),
+    refetchInterval: enabled && storeId ? QUEUE_POLL_MS : false,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
+    staleTime: 0,
+  });
+
+  const holder = holderQ.data ?? null;
+  // Mémorisé APRÈS le rendu (et non pendant) : le prochain sondage lira cette valeur
+  // pour choisir entre un signe de vie et une simple lecture.
+  useEffect(() => {
+    holderIsMineRef.current = holder?.isMine === true;
+  }, [holder]);
+  /** Caisse libre, à nous, ou tenue par un collègue absent : on peut encaisser. */
+  const canCash = !storeId || isCheckoutAvailable(holder, now);
+  const heldByOther = Boolean(holder && !holder.isMine && !canCash);
+
+  const takeMut = useMutation({
+    mutationFn: (force: boolean) => takePosCheckout(storeId ?? "", force),
+    onSuccess: async (h) => {
+      holderIsMineRef.current = h?.isMine === true;
+      toast.success("Vous tenez la caisse. Vos collègues restent en vente.");
+      await qc.invalidateQueries({ queryKey: ["pos-checkout-holder"] });
+    },
+    onError: (e) => toast.error(messageFromUnknownError(e, "Impossible de prendre la caisse.")),
+  });
+
+  const releaseMut = useMutation({
+    mutationFn: () => releasePosCheckout(storeId ?? ""),
+    onSuccess: async () => {
+      holderIsMineRef.current = false;
+      toast.success("Caisse rendue. Un collègue peut la prendre.");
+      await qc.invalidateQueries({ queryKey: ["pos-checkout-holder"] });
+    },
+    onError: (e) => toast.error(messageFromUnknownError(e, "Impossible de rendre la caisse.")),
+  });
+
   const paySettings = paymentsSettingsQ.data ?? QUICK_POS_PAYMENTS_DEFAULT;
   const providers = useMemo(() => effectiveQuickPosProviders(paySettings), [paySettings]);
 
@@ -294,6 +361,10 @@ export function CheckoutQueueScreen() {
     onSuccess: async ({ saleId, handoff }) => {
       setCheckingOut(null);
       toast.success(`Bon ${handoff.number} encaissé.`);
+      // Encaisser prend la caisse (côté base). L'écran doit le refléter tout de suite,
+      // sinon il continuerait à s'annoncer « caisse libre » à celui qui la tient.
+      holderIsMineRef.current = true;
+      void qc.invalidateQueries({ queryKey: ["pos-checkout-holder"] });
       invalidateQueue();
       await Promise.all([
         qc.invalidateQueries({ queryKey: ["sales"] }),
@@ -414,6 +485,89 @@ export function CheckoutQueueScreen() {
         />
       </div>
 
+      {/*
+        Bandeau de tenue de caisse. Il répond à la seule question qui décide de ce que la
+        personne doit faire dans la minute qui suit : « est-ce moi qui encaisse ? »
+      */}
+      {storeId ? (
+        <div
+          className={cn(
+            "mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-md border px-3 py-2.5",
+            heldByOther
+              ? "border-amber-500/40 bg-amber-500/10"
+              : holder?.isMine
+                ? "border-emerald-500/40 bg-emerald-500/10"
+                : "border-black/[0.08] bg-fs-card dark:border-white/10",
+          )}
+        >
+          <MdPointOfSale
+            className={cn(
+              "h-5 w-5 shrink-0",
+              heldByOther
+                ? "text-amber-600"
+                : holder?.isMine
+                  ? "text-emerald-600"
+                  : "text-neutral-400",
+            )}
+            aria-hidden
+          />
+          <p className="min-w-0 flex-1 text-xs leading-relaxed text-fs-text sm:text-sm">
+            {heldByOther ? (
+              <>
+                <span className="font-bold">
+                  {holder?.holderName ?? "Un collègue"} tient la caisse
+                </span>{" "}
+                depuis {timeLabel(holder?.takenAt ?? null)}. Vous restez en vente : envoyez-lui
+                vos paniers depuis la caisse rapide.
+              </>
+            ) : holder?.isMine ? (
+              <>
+                <span className="font-bold">Vous tenez la caisse</span> depuis{" "}
+                {timeLabel(holder.takenAt)}. Vos collègues ne peuvent pas encaisser tant que
+                vous ne l&apos;avez pas rendue.
+              </>
+            ) : (
+              <>
+                <span className="font-bold">Caisse libre.</span> La première personne qui
+                encaisse la prend — les autres restent alors en vente.
+              </>
+            )}
+          </p>
+          {holder?.isMine ? (
+            <button
+              type="button"
+              onClick={() => releaseMut.mutate()}
+              disabled={releaseMut.isPending}
+              className="shrink-0 rounded-md border border-black/[0.08] bg-fs-card px-3 py-2 text-xs font-semibold text-fs-text disabled:opacity-60 dark:border-white/10"
+            >
+              Rendre la caisse
+            </button>
+          ) : heldByOther ? (
+            /* Le propriétaire n'attend pas trois minutes qu'un employé parti déjeuner
+             * libère sa caisse : c'est son argent et son magasin. */
+            h?.isOwner ? (
+              <button
+                type="button"
+                onClick={() => takeMut.mutate(true)}
+                disabled={takeMut.isPending}
+                className="shrink-0 rounded-md border border-amber-500/50 bg-fs-card px-3 py-2 text-xs font-semibold text-amber-800 disabled:opacity-60 dark:text-amber-300"
+              >
+                Reprendre la caisse
+              </button>
+            ) : null
+          ) : (
+            <button
+              type="button"
+              onClick={() => takeMut.mutate(false)}
+              disabled={takeMut.isPending}
+              className="shrink-0 rounded-md bg-fs-accent px-3 py-2 text-xs font-bold text-white disabled:opacity-60"
+            >
+              Prendre la caisse
+            </button>
+          )}
+        </div>
+      ) : null}
+
       <div className="mt-3 flex items-center gap-2">
         <TabButton active={tab === "queue"} onClick={() => setTab("queue")}>
           À encaisser
@@ -481,6 +635,7 @@ export function CheckoutQueueScreen() {
                 }
                 storeName={storeId ? null : (storeNameById.get(handoff.storeId) ?? null)}
                 busy={claimMut.isPending}
+                canCash={canCash}
                 onClaim={(claim) => claimMut.mutate({ id: handoff.id, claim })}
                 onCheckout={() => setCheckingOut(handoff)}
                 onCancel={() => {
@@ -648,6 +803,7 @@ function QueueCard({
   customerName,
   storeName,
   busy,
+  canCash,
   onClaim,
   onCheckout,
   onCancel,
@@ -659,6 +815,8 @@ function QueueCard({
   /** Renseigne uniquement en vue « toutes boutiques » — sinon inutile et bruyant. */
   storeName: string | null;
   busy: boolean;
+  /** Faux quand un collègue tient la caisse : encaisser est alors interdit. */
+  canCash: boolean;
   onClaim: (claim: boolean) => void;
   onCheckout: () => void;
   onCancel: () => void;
@@ -758,7 +916,9 @@ function QueueCard({
         <button
           type="button"
           onClick={onCheckout}
-          className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-md bg-fs-accent py-2.5 text-sm font-extrabold tracking-tight text-white shadow-sm"
+          disabled={!canCash}
+          title={canCash ? undefined : "Un collègue tient la caisse"}
+          className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-md bg-fs-accent py-2.5 text-sm font-extrabold tracking-tight text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-40"
         >
           <MdPayments className="h-4 w-4" aria-hidden />
           ENCAISSER
