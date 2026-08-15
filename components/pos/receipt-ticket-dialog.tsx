@@ -17,10 +17,21 @@ import { MdClose, MdPrint } from "react-icons/md";
 export function ReceiptTicketDialog({
   data,
   paperWidthMm = 80,
+  remotePrint,
   onClose,
 }: {
   data: ReceiptTicketData;
   paperWidthMm?: 58 | 80;
+  /**
+   * Caisse à deux : l'imprimante thermique est branchée sur le poste du vendeur, pas sur
+   * celui du caissier. Fourni, un second bouton envoie le ticket là-bas. Absent, le
+   * dialogue est exactement celui d'avant — toutes ses autres utilisations sont intactes.
+   */
+  remotePrint?: {
+    label: string;
+    busy: boolean;
+    onPrint: () => void;
+  } | null;
   onClose: () => void;
 }) {
   const [printing, setPrinting] = useState(false);
@@ -71,6 +82,21 @@ export function ReceiptTicketDialog({
           <ReceiptTicketPreview data={data} />
         </div>
         <div className="flex shrink-0 flex-wrap items-center justify-center gap-3 border-t border-[#E5E7EB] px-6 py-5">
+          {remotePrint ? (
+            <button
+              type="button"
+              disabled={remotePrint.busy}
+              onClick={remotePrint.onPrint}
+              className="inline-flex min-w-[190px] items-center justify-center gap-2 rounded-md bg-[#F97316] py-3 pl-4 pr-5 text-sm font-bold text-white disabled:opacity-60"
+            >
+              {remotePrint.busy ? (
+                <span className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+              ) : (
+                <MdPrint className="h-5 w-5" aria-hidden />
+              )}
+              {remotePrint.label}
+            </button>
+          ) : null}
           <button
             type="button"
             disabled={printing}
@@ -82,7 +108,7 @@ export function ReceiptTicketDialog({
             ) : (
               <MdPrint className="h-5 w-5 text-[#1F2937]" aria-hidden />
             )}
-            Imprimer
+            {remotePrint ? "Imprimer ici" : "Imprimer"}
           </button>
           <SendDocumentButton
             makeBlob={() => generateReceiptThermalPdfBlob(data, { paperWidthMm })}

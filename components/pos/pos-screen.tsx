@@ -33,6 +33,7 @@ import {
   listMyRecentHandoffs,
 } from "@/lib/features/dual-cashier/api";
 import { waitingLabel } from "@/lib/features/dual-cashier/types";
+import { useRemotePrintListener } from "@/lib/features/dual-cashier/use-remote-print-listener";
 import {
   buildMobileMoneyReference,
   mobileMoneyProviderFromReference,
@@ -1445,6 +1446,17 @@ export function PosScreen({
       await qc.invalidateQueries({ queryKey: ["pos-handoffs", companyId] });
     },
     onError: (e) => toast.error(messageFromUnknownError(e, "Envoi à la caisse impossible.")),
+  });
+
+  /*
+   * L'imprimante thermique est branchée ICI, pas à la caisse. Ce poste écoute donc les
+   * tickets que le caissier lui envoie et les sort sur place — le client les reçoit là
+   * où il est, au lieu qu'on lui traverse le magasin.
+   */
+  useRemotePrintListener({
+    enabled: Boolean(dualCashierOn && myUserId && store),
+    userId: myUserId,
+    store,
   });
 
   /** Rappeler un bon envoyé par erreur — tant que le caissier ne l'a pas encaissé. */

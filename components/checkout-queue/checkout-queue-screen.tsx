@@ -74,6 +74,10 @@ import { formatCurrency } from "@/lib/utils/currency";
 import { messageFromUnknownError, toast } from "@/lib/toast";
 import { cn } from "@/lib/utils/cn";
 import type { HandoffCheckoutSubmit } from "./handoff-checkout-dialog";
+import {
+  createPosPrintJob,
+  fetchPrintJobStatus,
+} from "@/lib/features/dual-cashier/print-jobs";
 
 /**
  * Rythme de rafraîchissement de la file.
@@ -126,6 +130,17 @@ export function CheckoutQueueScreen() {
   const [cancelling, setCancelling] = useState<PosHandoff | null>(null);
   const [cancelReason, setCancelReason] = useState("");
   const [receipt, setReceipt] = useState<ReceiptTicketData | null>(null);
+  /**
+   * Contexte de la vente qui vient d'être encaissée : à QUI renvoyer le ticket, et pour
+   * quelle vente. Le dialogue de ticket, lui, ne connaît que le contenu imprimé.
+   */
+  const [receiptTarget, setReceiptTarget] = useState<{
+    saleId: string;
+    handoffId: string;
+    sellerId: string;
+    sellerName: string;
+    paperWidthMm: 58 | 80;
+  } | null>(null);
   const [soundOn, setSoundOn] = useState(true);
   const [now, setNow] = useState(() => Date.now());
 
@@ -377,6 +392,20 @@ export function CheckoutQueueScreen() {
         const sale = await getSaleDetail(saleId);
         const store = (storesQ.data ?? []).find((s) => s.id === handoff.storeId) ?? null;
         if (sale && store) {
+          const width = store.receipt_paper_width_mm === 58 ? 58 : 80;
+          // Le vendeur qui a préparé ce bon est aussi celui qui a le client — et souvent
+          // l'imprimante. C'est donc lui, la destination naturelle du ticket.
+          setReceiptTarget(
+            handoff.createdBy
+              ? {
+                  saleId,
+                  handoffId: handoff.id,
+                  sellerId: handoff.createdBy,
+                  sellerName: handoff.createdByName ?? "le vendeur",
+                  paperWidthMm: width,
+                }
+              : null,
+          );
           setReceipt(buildReceiptTicketDataFromSale(store, sale, saleId));
         } else {
           toast.info("Vente enregistrée. Le ticket est réimprimable depuis la page Ventes.");

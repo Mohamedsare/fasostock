@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/client";
 import { fetchAllPages } from "@/lib/supabase/fetch-all-pages";
 import { fetchByChunks } from "@/lib/supabase/fetch-by-chunks";
+import { firstProductImageUrlFromNestedRows } from "@/lib/features/products/product-images";
 import { fetchStoreCatalog } from "@/lib/features/stores/store-catalog";
 import type {
   CreateQuickSupplyInput,
@@ -19,9 +20,14 @@ function toNum(v: unknown): number {
 /**
  * Catalogue de saisie : ce que le réceptionnaire peut faire entrer, avec son stock.
  *
- * Volontairement plus maigre que `listProducts` (pas d'images, pas de conditionnements,
- * pas de catégories) : cette page s'ouvre sur un téléphone, debout, avec la marchandise
- * dans les bras — chaque kilo-octet est une seconde d'attente.
+ * Volontairement plus maigre que `listProducts` (pas de conditionnements, pas de
+ * catégories, pas de marques) : cette page s'ouvre sur un téléphone, debout, avec la
+ * marchandise dans les bras — chaque kilo-octet est une seconde d'attente.
+ *
+ * La photo, elle, reste : on reconnaît un article à son emballage bien plus vite qu'à
+ * son libellé, et c'est justement ce qui départage deux références au nom voisin. Seule
+ * l'URL de la première image est jointe (pas la table entière), et la vignette servie à
+ * l'écran est la version 320 px.
  *
  * Paginé (`fetchAllPages`) : au-delà de 1000 références, une lecture non paginée serait
  * tronquée EN SILENCE et l'article introuvable se ferait recréer en double au catalogue.
@@ -36,7 +42,9 @@ export async function fetchSupplyCatalog(params: {
     fetchAllPages((from, to) =>
       supabase
         .from("products")
-        .select("id, name, unit, barcode, search_aliases, purchase_price, sale_price, product_scope, is_active")
+        .select(
+          "id, name, unit, barcode, search_aliases, purchase_price, sale_price, product_scope, is_active, product_images(url, position)",
+        )
         .eq("company_id", params.companyId)
         .is("deleted_at", null)
         .order("name", { ascending: true })
@@ -74,6 +82,8 @@ export async function fetchSupplyCatalog(params: {
         purchasePrice: toNum(r.purchase_price),
         salePrice: toNum(r.sale_price),
         stock: stockByProduct[id] ?? 0,
+        // Jointure brute : le tri par `position` se fait ici, comme `listProducts`.
+        imageUrl: firstProductImageUrlFromNestedRows(r.product_images),
       } satisfies SupplyProduct;
     });
 }

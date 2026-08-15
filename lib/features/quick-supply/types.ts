@@ -19,6 +19,12 @@ export type SupplyProduct = {
   salePrice: number;
   /** Stock actuel dans la boutique en cours — ce que le réceptionnaire vérifie du coin de l'œil. */
   stock: number;
+  /**
+   * Première photo du produit (tri `position`), ou `null`. On reconnaît un article à
+   * son emballage bien plus vite qu'à son libellé — surtout quand deux références se
+   * ressemblent au nom près.
+   */
+  imageUrl: string | null;
 };
 
 /**

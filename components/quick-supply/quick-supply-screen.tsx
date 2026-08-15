@@ -19,6 +19,7 @@ import {
 } from "react-icons/md";
 
 import { PosBarcodeScannerDialog } from "@/components/pos/pos-barcode-scanner-dialog";
+import { ProductListThumbnail } from "@/components/products/product-list-thumbnail";
 import {
   FsCard,
   FsPage,
@@ -135,28 +136,28 @@ export function QuickSupplyScreen() {
 
   const enabled = Boolean(companyId && storeId) && canView;
 
-  /*
+  /**
    * Changer de boutique en cours de saisie : les lignes portent le stock et les prix
    * de l'ANCIENNE boutique, et la validation les ferait entrer dans la nouvelle. On
-   * repart donc à zéro — perdre trois lignes retapées en dix secondes vaut mieux que
-   * faire entrer dix cartons au mauvais endroit, erreur qui ne se découvre qu'à
-   * l'inventaire. La clé d'idempotence est renouvelée avec : le nouvel arrivage n'a
-   * rien à voir avec celui qu'on abandonne.
+   * repart donc à zéro — retaper trois lignes coûte dix secondes, faire entrer dix
+   * cartons au mauvais endroit ne se découvre qu'à l'inventaire.
+   *
+   * Un seul appelant : le sélecteur ci-dessous. Quand c'est la boutique ACTIVE de
+   * l'application qui change, le shell remonte déjà l'écran entier
+   * (`<Fragment key={storeEpoch}>` dans `app-shell.tsx`) — il n'y a rien à faire ici.
    */
-  const previousStoreIdRef = useRef<string | null>(storeId);
-  useEffect(() => {
-    // `lines.length` est en dépendance pour être lu à jour, mais cette garde fait de
-    // toutes les exécutions « hors changement de boutique » des non-événements.
-    if (previousStoreIdRef.current === storeId) return;
-    previousStoreIdRef.current = storeId;
+  function switchStore(nextStoreId: string | null) {
+    if (nextStoreId === storeId) return;
+    setPickedStoreId(nextStoreId);
     if (lines.length > 0) {
       setLines([]);
       toast.info("Boutique changée : la saisie en cours a été vidée.");
     }
+    // Nouvel arrivage, nouvelle clé : il n'a rien à voir avec celui qu'on abandonne.
     requestIdRef.current = newRequestId();
     setQuery("");
     setFocusKey(null);
-  }, [storeId, lines.length]);
+  }
 
   const catalogQ = useQuery({
     queryKey: queryKeys.quickSupplyCatalog(companyId, storeId ?? "__none__"),
@@ -456,7 +457,7 @@ export function QuickSupplyScreen() {
           <select
             className={fsInputClass("w-auto min-w-[10rem]")}
             value={storeId ?? ""}
-            onChange={(e) => setPickedStoreId(e.target.value || null)}
+            onChange={(e) => switchStore(e.target.value || null)}
             aria-label="Boutique de réception"
           >
             {stores.map((s) => (
@@ -544,8 +545,14 @@ export function QuickSupplyScreen() {
                     key={p.id}
                     type="button"
                     onClick={() => addProduct(p)}
-                    className="flex w-full items-center justify-between gap-3 rounded-[10px] border border-black/[0.06] bg-fs-card px-3 py-2.5 text-left active:bg-fs-surface-container"
+                    className="flex w-full items-center gap-3 rounded-[10px] border border-black/[0.06] bg-fs-card px-3 py-2.5 text-left active:bg-fs-surface-container"
                   >
+                    {/*
+                      La photo d'abord : on reconnaît l'emballage au premier coup d'œil,
+                      là où il faut lire un libellé. `previewOnTap` reste désactivé —
+                      ici, toucher la carte doit ajouter l'article, pas agrandir l'image.
+                    */}
+                    <ProductListThumbnail imageUrl={p.imageUrl} className="h-11 w-11" />
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm font-semibold text-fs-text">
                         {p.name}
