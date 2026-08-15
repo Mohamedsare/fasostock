@@ -75,8 +75,8 @@ import { messageFromUnknownError, toast } from "@/lib/toast";
 import { cn } from "@/lib/utils/cn";
 import type { HandoffCheckoutSubmit } from "./handoff-checkout-dialog";
 import {
+  awaitPrintJob,
   createPosPrintJob,
-  fetchPrintJobStatus,
 } from "@/lib/features/dual-cashier/print-jobs";
 
 /**
@@ -426,6 +426,42 @@ export function CheckoutQueueScreen() {
     },
   });
 
+  /*
+   * Envoi du ticket au poste du vendeur.
+   *
+   * On attend le compte rendu plutôt que de dire « envoyé » et de passer à autre chose :
+   * si le poste d'en face est éteint, le caissier doit le savoir MAINTENANT, pendant que
+   * le client est encore devant lui et que « Imprimer ici » est à un clic.
+   */
+  const remotePrintMut = useMutation({
+    mutationFn: async () => {
+      if (!receiptTarget) throw new Error("Poste du vendeur inconnu.");
+      const jobId = await createPosPrintJob({
+        saleId: receiptTarget.saleId,
+        targetUserId: receiptTarget.sellerId,
+        handoffId: receiptTarget.handoffId,
+        paperWidthMm: receiptTarget.paperWidthMm,
+      });
+      return awaitPrintJob(jobId);
+    },
+    onSuccess: (outcome) => {
+      const who = receiptTarget?.sellerName ?? "le vendeur";
+      if (outcome === "printed") {
+        toast.success(`Ticket imprimé sur le poste de ${who}.`);
+      } else if (outcome === "failed") {
+        toast.error(
+          `Le poste de ${who} n'a pas pu imprimer. Utilisez « Imprimer ici ».`,
+        );
+      } else {
+        toast.error(
+          `Pas de réponse du poste de ${who} (éteint ou hors ligne). Utilisez « Imprimer ici ».`,
+        );
+      }
+    },
+    onError: (e) =>
+      toast.error(messageFromUnknownError(e, "Envoi à l'imprimante du vendeur impossible.")),
+  });
+
   const totals = useMemo(() => {
     const waiting = pending.reduce((s, x) => s + x.total, 0);
     const late = pending.filter((x) => handoffUrgency(x.createdAt, now) === "late").length;
@@ -750,7 +786,24 @@ export function CheckoutQueueScreen() {
       ) : null}
 
       {receipt ? (
-        <ReceiptTicketDialog data={receipt} onClose={() => setReceipt(null)} />
+        <ReceiptTicketDialog
+          data={receipt}
+          paperWidthMm={receiptTarget?.paperWidthMm ?? 80}
+          remotePrint={
+            receiptTarget
+              ? {
+                  label: `Imprimer chez ${receiptTarget.sellerName}`,
+                  busy: remotePrintMut.isPending,
+                  onPrint: () => remotePrintMut.mutate(),
+                }
+              : null
+          }
+          onClose={() => {
+            if (remotePrintMut.isPending) return;
+            setReceipt(null);
+            setReceiptTarget(null);
+          }}
+        />
       ) : null}
     </FsPage>
   );

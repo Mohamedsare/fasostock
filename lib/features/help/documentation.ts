@@ -804,6 +804,18 @@ export const DOC_GROUPS: DocGroup[] = [
           },
           {
             kind: "note",
+            tone: "tip",
+            title: "Imprimer chez le vendeur",
+            text: "L'imprimante thermique est souvent branchée du côté du vendeur, là où se trouve le client — pas à la caisse. Après l'encaissement, le bouton « Imprimer chez … » envoie le ticket au poste du vendeur, qui le sort sur place : plus personne ne traverse le magasin. Le caissier voit tout de suite si le ticket est sorti ; sinon, « Imprimer ici » reste dans le même écran.",
+          },
+          {
+            kind: "note",
+            tone: "info",
+            title: "Impression sans fenêtre à valider",
+            text: "Par sécurité, un navigateur affiche toujours la fenêtre d'impression : le vendeur devra la valider d'un clic. Pour que le ticket parte directement à l'imprimante, lancez Chrome sur le poste de vente avec l'option --kiosk-printing (à faire une seule fois, dans le raccourci du bureau). C'est le réglage habituel des postes de caisse.",
+          },
+          {
+            kind: "note",
             tone: "warn",
             title: "Le stock n'est pas réservé",
             text: "Tant que le caissier n'a pas encaissé, rien ne sort du stock et rien n'est bloqué. C'est voulu : un panier abandonné immobiliserait de la marchandise invisible. Si le dernier article part entre-temps, l'encaissement est refusé avec le motif — au comptoir, pendant que vous pouvez encore corriger.",
