@@ -307,7 +307,9 @@ export function HandoffCheckoutDialog({
                 ? "grid-cols-5"
                 : modes.length === 4
                   ? "grid-cols-4"
-                  : "grid-cols-3",
+                  : modes.length === 3
+                    ? "grid-cols-3"
+                    : "grid-cols-2",
             )}
           >
             {modes.map((m) => (

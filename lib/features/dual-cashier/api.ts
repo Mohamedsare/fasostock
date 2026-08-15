@@ -196,6 +196,14 @@ export async function createPosHandoff(params: {
   prescriptionNumber: string | null;
   saleMode: "quick_pos" | "invoice_pos";
   documentType: "thermal_receipt" | "a4_invoice";
+  /**
+   * Identifiant d'envoi, conservé par l'appelant tant que le panier n'a pas changé.
+   *
+   * C'est lui qui rend le second appui inoffensif quand la réponse s'est perdue en
+   * route : la base retrouve le bon déjà créé au lieu d'en fabriquer un jumeau que le
+   * caissier risquerait d'encaisser deux fois.
+   */
+  clientRequestId?: string | null;
 }): Promise<{ handoffId: string; number: string }> {
   const supabase = createClient();
   const { data, error } = await supabase.rpc("create_pos_handoff", {
@@ -213,6 +221,7 @@ export async function createPosHandoff(params: {
     p_prescription_number: params.prescriptionNumber,
     p_sale_mode: params.saleMode,
     p_document_type: params.documentType,
+    p_client_request_id: params.clientRequestId ?? null,
   });
   if (error) throw businessRpcError(error, "Envoi à la caisse impossible.");
 

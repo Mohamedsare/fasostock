@@ -20,6 +20,20 @@ function rawErrorText(error: unknown): string {
   return formatUnknownErrorMessage(error, "").trim();
 }
 
+/**
+ * Retire d'un message déjà rédigé pour l'utilisateur les identifiants techniques que la
+ * base y a glissés.
+ *
+ * Cas réel : `create_sale_with_stock` lève « Stock insuffisant pour "Ciment 50kg"
+ * (référence: 8f3a…) ». Le nom du produit est exactement ce qu'il faut dire au caissier ;
+ * l'UUID, lui, ne veut rien dire pour lui et fait passer l'application pour cassée. Le
+ * nettoyage vit ICI et non au point d'appel : tout chemin qui remonte ce message —
+ * caisse, encaissement à deux, facturation d'un ordre de réparation — en bénéficie.
+ */
+export function stripTechnicalReference(message: string): string {
+  return message.replace(/\s*\(référence\s*:[^)]*\)/gi, "").trim();
+}
+
 function isNetworkErrorString(str: string, lower: string): boolean {
   return (
     str.includes("SocketException") ||
@@ -71,7 +85,7 @@ export function isNetworkErrorPublic(error: unknown): boolean {
  */
 export function toUserMessage(error: unknown, fallback?: string): string {
   if (error == null) return fallback ?? UNEXPECTED_MSG;
-  if (error instanceof UserFriendlyError) return error.message;
+  if (error instanceof UserFriendlyError) return stripTechnicalReference(error.message);
 
   const str = rawErrorText(error);
   const lower = str.toLowerCase();

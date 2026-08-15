@@ -1,4 +1,8 @@
-import { toUserMessage, UserFriendlyError } from "@/lib/errors/app-error-mapper";
+import {
+  stripTechnicalReference,
+  toUserMessage,
+  UserFriendlyError,
+} from "@/lib/errors/app-error-mapper";
 import { formatUnknownErrorMessage } from "@/lib/utils/format-unknown-error";
 
 /**
@@ -39,9 +43,15 @@ export function toFriendlyError(
   const code = codeOf(error);
   const low = technical.toLowerCase();
 
-  // Message déjà rédigé pour l'utilisateur par la couche métier.
+  // Message déjà rédigé pour l'utilisateur par la couche métier — débarrassé des
+  // identifiants techniques que la base peut y avoir glissés (voir le mapper).
   if (error instanceof UserFriendlyError) {
-    return { title: error.message, hint: "", retryable: true, technical };
+    return {
+      title: stripTechnicalReference(error.message),
+      hint: "",
+      retryable: true,
+      technical,
+    };
   }
 
   // 57014 — requête annulée côté serveur (statement_timeout). Cas typique :

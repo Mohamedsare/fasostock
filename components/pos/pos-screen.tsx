@@ -1343,11 +1343,28 @@ export function PosScreen({
     [myHandoffsQ.data],
   );
 
+  /*
+   * Identifiant d'envoi du panier courant.
+   *
+   * Il survit à un échec (le vendeur rappuie : même identifiant, donc le même bon si
+   * la base l'avait bien reçu) mais pas à une modification du panier — sinon un
+   * renvoi après correction rendrait l'ancienne version au caissier. D'où sa remise à
+   * zéro dès que le contenu du panier bouge.
+   */
+  const handoffRequestIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    handoffRequestIdRef.current = null;
+  }, [cart]);
+
   const handoffMut = useMutation({
     mutationFn: async () => {
       if (cart.length === 0) throw new Error("Panier vide.");
       if (total <= 0) throw new Error("Le total est à zéro.");
+      if (!handoffRequestIdRef.current) {
+        handoffRequestIdRef.current = crypto.randomUUID();
+      }
       return createPosHandoff({
+        clientRequestId: handoffRequestIdRef.current,
         companyId,
         storeId,
         items: cart.map((c) => ({

@@ -191,6 +191,17 @@ CREATE TABLE IF NOT EXISTS public.pos_handoffs (
   sale_mode public.sale_mode NOT NULL DEFAULT 'quick_pos',
   document_type public.document_type NOT NULL DEFAULT 'thermal_receipt',
 
+  /**
+   * Idempotence de l'envoi, même principe que `sale_sync_idempotency` (00061).
+   *
+   * Le cas se produit tous les jours ici : le vendeur touche « envoyer », la 3G lâche
+   * pendant la réponse, il croit l'envoi raté et rappuie. Sans cette clé, le caissier
+   * verrait DEUX bons identiques et encaisserait le client deux fois s'il ne s'en
+   * aperçoit pas. Avec elle, le second appel retrouve le bon déjà créé et renvoie son
+   * numéro — le vendeur voit « B-42 » et non « B-43 ».
+   */
+  client_request_id uuid,
+
   created_by uuid REFERENCES auth.users(id) ON DELETE SET NULL,
   created_at timestamptz NOT NULL DEFAULT now(),
 
@@ -235,6 +246,11 @@ CREATE INDEX IF NOT EXISTS idx_pos_handoffs_history
   ON public.pos_handoffs(company_id, store_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_pos_handoffs_author
   ON public.pos_handoffs(created_by, created_at DESC);
+-- Index partiel unique : c'est LUI qui rend le renvoi inoffensif. Les bons anciens, créés
+-- sans clé, ne s'y trouvent pas et ne se gênent donc pas entre eux.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_pos_handoffs_client_request
+  ON public.pos_handoffs(company_id, client_request_id)
+  WHERE client_request_id IS NOT NULL;
 
 /**
  * Une ligne du bon.
@@ -406,7 +422,8 @@ CREATE OR REPLACE FUNCTION public.create_pos_handoff(
   p_note text DEFAULT NULL,
   p_prescription_number text DEFAULT NULL,
   p_sale_mode public.sale_mode DEFAULT 'quick_pos',
-  p_document_type public.document_type DEFAULT 'thermal_receipt'
+  p_document_type public.document_type DEFAULT 'thermal_receipt',
+  p_client_request_id uuid DEFAULT NULL
 )
 RETURNS uuid
 LANGUAGE plpgsql
@@ -452,9 +469,28 @@ BEGIN
     RAISE EXCEPTION 'Panier vide : rien à envoyer à la caisse.';
   END IF;
 
+  /*
+   * Renvoi après une coupure réseau : le bon existe déjà, on rend le même. Le verrou
+   * consultatif sérialise deux appels simultanés portant la même clé — sans lui, les
+   * deux passeraient la lecture avant que l'un des deux n'ait inséré.
+   */
+  IF p_client_request_id IS NOT NULL THEN
+    PERFORM pg_advisory_xact_lock(
+      abs(hashtext(p_company_id::text)),
+      abs(hashtext(p_client_request_id::text))
+    );
+    SELECT id INTO v_handoff_id
+    FROM public.pos_handoffs
+    WHERE company_id = p_company_id
+      AND client_request_id = p_client_request_id;
+    IF v_handoff_id IS NOT NULL THEN
+      RETURN v_handoff_id;
+    END IF;
+  END IF;
+
   INSERT INTO public.pos_handoffs (
     company_id, store_id, customer_id, subtotal, discount, total,
-    note, prescription_number, sale_mode, document_type, created_by
+    note, prescription_number, sale_mode, document_type, client_request_id, created_by
   )
   VALUES (
     p_company_id, p_store_id, p_customer_id, 0, GREATEST(0, COALESCE(p_discount, 0)), 0,
@@ -462,6 +498,7 @@ BEGIN
     NULLIF(btrim(COALESCE(p_prescription_number, '')), ''),
     COALESCE(p_sale_mode, 'quick_pos'::public.sale_mode),
     COALESCE(p_document_type, 'thermal_receipt'::public.document_type),
+    p_client_request_id,
     auth.uid()
   )
   RETURNING id INTO v_handoff_id;
@@ -514,10 +551,10 @@ COMMENT ON FUNCTION public.create_pos_handoff IS
   'ventes : le bon n''est qu''un panier en transit.';
 
 REVOKE ALL ON FUNCTION public.create_pos_handoff(
-  uuid, uuid, jsonb, uuid, numeric, text, text, public.sale_mode, public.document_type
+  uuid, uuid, jsonb, uuid, numeric, text, text, public.sale_mode, public.document_type, uuid
 ) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.create_pos_handoff(
-  uuid, uuid, jsonb, uuid, numeric, text, text, public.sale_mode, public.document_type
+  uuid, uuid, jsonb, uuid, numeric, text, text, public.sale_mode, public.document_type, uuid
 ) TO authenticated;
 
 -- ─────────────────────────────────────────────────────────────────────────────

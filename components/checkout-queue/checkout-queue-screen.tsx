@@ -216,6 +216,18 @@ export function CheckoutQueueScreen() {
   }, [customerOptions]);
 
   /*
+   * Vue « toutes boutiques » (propriétaire) : la file mélange alors les comptoirs, et
+   * encaisser le bon d'une autre boutique sortirait le stock du mauvais endroit. On
+   * nomme donc la boutique sur la carte — uniquement dans ce cas, sinon le nom serait
+   * la même information répétée sur chaque ligne.
+   */
+  const storeNameById = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const s of storesQ.data ?? []) m.set(s.id, s.name);
+    return m;
+  }, [storesQ.data]);
+
+  /*
    * Annonce sonore d'un nouveau bon.
    *
    * Le caissier ne fixe pas son écran : il rend la monnaie, il range, il parle au client.
@@ -293,13 +305,25 @@ export function CheckoutQueueScreen() {
       try {
         const sale = await getSaleDetail(saleId);
         const store = (storesQ.data ?? []).find((s) => s.id === handoff.storeId) ?? null;
-        if (sale && store) setReceipt(buildReceiptTicketDataFromSale(store, sale, saleId));
+        if (sale && store) {
+          setReceipt(buildReceiptTicketDataFromSale(store, sale, saleId));
+        } else {
+          toast.info("Vente enregistrée. Le ticket est réimprimable depuis la page Ventes.");
+        }
       } catch {
         toast.info("Vente enregistrée. Le ticket est réimprimable depuis la page Ventes.");
       }
     },
-    onError: (e) =>
-      toast.error(messageFromUnknownError(e, "L'encaissement n'a pas abouti.")),
+    onError: (e) => {
+      toast.error(messageFromUnknownError(e, "L'encaissement n'a pas abouti."));
+      /*
+       * Rafraîchir la file après un échec, toujours. Les deux refus les plus probables
+       * — « déjà encaissé par quelqu'un d'autre », « stock insuffisant » — veulent dire
+       * que l'écran ne montre plus la réalité. Laisser la carte en place inviterait le
+       * caissier à réessayer sans fin devant le client.
+       */
+      invalidateQueue();
+    },
   });
 
   const totals = useMemo(() => {
@@ -455,6 +479,7 @@ export function CheckoutQueueScreen() {
                 customerName={
                   handoff.customerId ? (customerNameById.get(handoff.customerId) ?? null) : null
                 }
+                storeName={storeId ? null : (storeNameById.get(handoff.storeId) ?? null)}
                 busy={claimMut.isPending}
                 onClaim={(claim) => claimMut.mutate({ id: handoff.id, claim })}
                 onCheckout={() => setCheckingOut(handoff)}
@@ -621,6 +646,7 @@ function QueueCard({
   now,
   myId,
   customerName,
+  storeName,
   busy,
   onClaim,
   onCheckout,
@@ -630,6 +656,8 @@ function QueueCard({
   now: number;
   myId: string | null;
   customerName: string | null;
+  /** Renseigne uniquement en vue « toutes boutiques » — sinon inutile et bruyant. */
+  storeName: string | null;
   busy: boolean;
   onClaim: (claim: boolean) => void;
   onCheckout: () => void;
@@ -668,6 +696,7 @@ function QueueCard({
         <MdPerson className="h-3.5 w-3.5 shrink-0 text-neutral-400" aria-hidden />
         <span className="truncate">
           {handoff.createdByName ?? "Collègue"} · {units} article{units > 1 ? "s" : ""}
+          {storeName ? ` · ${storeName}` : ""}
         </span>
       </p>
 
