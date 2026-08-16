@@ -282,12 +282,12 @@ export function SaleDetailModal({
   return (
     <>
       <div className="fixed inset-0 z-[70] flex items-end justify-center bg-black/45 p-0 sm:items-center sm:p-4">
-        <div className="flex max-h-[min(560px,90vh)] w-full max-w-[460px] flex-col rounded-t-[22px] bg-[#ECEFF1] shadow-2xl sm:rounded-[22px]">
+        <div className="flex max-h-[min(560px,90vh)] w-full max-w-[460px] flex-col rounded-t-2xl bg-[#ECEFF1] shadow-2xl sm:rounded-2xl">
           <div className="flex min-h-0 flex-1 flex-col p-4">
             {/* En-tête — proche du DecoratedBox Flutter */}
-            <div className="shrink-0 rounded-2xl bg-white/90 p-3 shadow-sm ring-1 ring-black/5">
+            <div className="shrink-0 rounded-xl bg-white/90 p-3 shadow-sm ring-1 ring-black/5">
               <div className="flex items-start gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-orange-100 text-[#c2410c]">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-orange-100 text-[#c2410c]">
                   <MdReceiptLong className="h-6 w-6" aria-hidden />
                 </div>
                 <div className="min-w-0 flex-1">
@@ -351,7 +351,7 @@ export function SaleDetailModal({
                   {/* Payée mais pas emportée : c'est la première chose à savoir en
                       ouvrant la vente — avant les articles, avant le paiement. */}
                   {pickupTrackingEnabled && saleDelivery(sale).awaiting ? (
-                    <div className="rounded-2xl border border-amber-500/40 bg-amber-50 p-3 dark:bg-amber-950/30">
+                    <div className="rounded-xl border border-amber-500/40 bg-amber-50 p-3 dark:bg-amber-950/30">
                       <p className="flex items-center gap-1.5 text-xs font-bold text-amber-800 dark:text-amber-300">
                         <MdInventory2 className="h-4 w-4 shrink-0" aria-hidden />
                         Marchandise pas encore emportée
@@ -363,7 +363,7 @@ export function SaleDetailModal({
                   ) : null}
 
                   {(sale.sale_payments ?? []).length > 0 ? (
-                    <div className="rounded-2xl border border-black/10 bg-white p-3">
+                    <div className="rounded-xl border border-black/10 bg-white p-3">
                       <p className="text-xs font-semibold text-neutral-500">
                         Mode de paiement
                       </p>
@@ -374,7 +374,7 @@ export function SaleDetailModal({
                           <span
                             key={d.kind}
                             className={cn(
-                              "inline-block rounded-lg px-2.5 py-1 text-xs font-bold",
+                              "inline-block rounded-md px-2.5 py-1 text-xs font-bold",
                               d.pillClass,
                             )}
                           >
@@ -398,7 +398,7 @@ export function SaleDetailModal({
                         {(sale.sale_items ?? []).map((it) => (
                           <article
                             key={it.id}
-                            className="rounded-2xl border border-black/10 bg-white px-3 py-2.5"
+                            className="rounded-xl border border-black/10 bg-white px-3 py-2.5"
                           >
                             <div className="flex items-start justify-between gap-2">
                               <div className="min-w-0">
@@ -428,7 +428,7 @@ export function SaleDetailModal({
                         />
                         Paiements
                       </h4>
-                      <div className="space-y-1 rounded-2xl border border-black/10 bg-white px-3 py-2">
+                      <div className="space-y-1 rounded-xl border border-black/10 bg-white px-3 py-2">
                         {(sale.sale_payments ?? []).map((p) => (
                           <div
                             key={p.id}
@@ -447,7 +447,7 @@ export function SaleDetailModal({
                   ) : null}
 
                   {showCreditEncaissement ? (
-                    <div className="rounded-2xl border border-[#F97316]/35 bg-orange-50/90 p-3 dark:border-orange-500/40 dark:bg-orange-950/40">
+                    <div className="rounded-xl border border-[#F97316]/35 bg-orange-50/90 p-3 dark:border-orange-500/40 dark:bg-orange-950/40">
                       <p className="text-xs font-bold text-neutral-700 dark:text-neutral-200">
                         Encours à recouvrer
                       </p>
@@ -464,7 +464,7 @@ export function SaleDetailModal({
                       <button
                         type="button"
                         onClick={() => setCreditPayOpen(true)}
-                        className="mt-3 w-full rounded-xl bg-[#FF7000] py-2.5 text-sm font-bold text-white shadow-sm hover:bg-[#F97316] active:opacity-95"
+                        className="mt-3 w-full rounded-lg bg-[#FF7000] py-2.5 text-sm font-bold text-white shadow-sm hover:bg-[#F97316] active:opacity-95"
                       >
                         Enregistrer un paiement
                       </button>
@@ -500,11 +500,16 @@ export function SaleDetailModal({
                   {storeFull && hasItems ? (
                     <div className="border-t border-black/10 pt-3">
                       {showInvoiceBlock ? (
-                        <div className="rounded-2xl bg-[#F5F5F5] px-3 py-3 sm:px-4 sm:py-3.5">
+                        <div className="rounded-xl bg-[#F5F5F5] px-3 py-3 sm:px-4 sm:py-3.5">
                           <p className="mb-3 text-[11px] font-bold tracking-[0.06em] text-neutral-700 sm:text-xs">
                             FACTURE A4
                           </p>
-                          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
+                          {/*
+                            La fiche suit la fenêtre jusqu'à 460 px, puis s'arrête : au-delà,
+                            un point de rupture ne dit plus rien de la place disponible ici.
+                            D'où 380 px (≈ 75 px par bouton) plutôt que `sm:` (640 px).
+                          */}
+                          <div className="grid grid-cols-2 gap-2 min-[380px]:grid-cols-4">
                             <ActionButton
                               icon={<MdPictureAsPdf className="h-5 w-5 shrink-0" aria-hidden />}
                               label="Voir le PDF"
@@ -543,7 +548,7 @@ export function SaleDetailModal({
                       {showTicketBlock ? (
                         <div
                           className={cn(
-                            "rounded-2xl bg-[#F5F5F5] px-3 py-3 sm:px-4",
+                            "rounded-xl bg-[#F5F5F5] px-3 py-3 sm:px-4",
                             showInvoiceBlock && "mt-2",
                           )}
                         >
@@ -571,7 +576,7 @@ export function SaleDetailModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="rounded-lg px-4 py-2 text-sm font-semibold text-[#F97316] hover:bg-orange-50"
+                className="rounded-md px-4 py-2 text-sm font-semibold text-[#F97316] hover:bg-orange-50"
               >
                 Fermer
               </button>
@@ -631,7 +636,16 @@ function ActionButton({
       disabled={disabled || loading}
       onClick={onClick}
       className={cn(
-        "inline-flex min-h-12 min-w-0 flex-col items-center justify-center gap-1 rounded-[14px] px-1.5 py-2.5 text-center text-[10px] font-bold leading-tight shadow-sm transition-opacity active:opacity-90 sm:flex-row sm:gap-2 sm:px-2 sm:text-xs",
+        /*
+         * Icône AU-DESSUS du libellé, à toutes les tailles d'écran.
+         *
+         * L'ancien `sm:flex-row` regardait la largeur de la FENÊTRE, pas celle de la
+         * fiche — plafonnée à 460 px. Sur un ordinateur, les quatre boutons passaient
+         * donc côte à côte dans des cases de ~90 px : « Réimprimer » débordait sur
+         * l'icône du voisin et « Télécharger » se coupait en deux lignes. En colonne,
+         * chaque bouton tient dans sa case quelle que soit la fenêtre.
+         */
+        "inline-flex min-h-12 min-w-0 flex-col items-center justify-center gap-1 rounded-[10px] px-1 py-2 text-center text-[11px] font-bold leading-tight shadow-sm transition-opacity active:opacity-90",
         primary
           ? "bg-[#FF7000] text-white hover:bg-[#F97316] disabled:opacity-45"
           : "border border-black/10 bg-white text-neutral-800 hover:bg-neutral-50 disabled:opacity-50",
@@ -648,7 +662,8 @@ function ActionButton({
       ) : (
         icon
       )}
-      <span className="max-w-full break-words">{label}</span>
+      {/* Une seule ligne, jamais coupée : un libellé trop long s'abrège en « … ». */}
+      <span className="max-w-full truncate">{label}</span>
     </button>
   );
 }
