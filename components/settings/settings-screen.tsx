@@ -43,6 +43,13 @@ import {
   setPrintFormatChoiceEnabled,
 } from "@/lib/features/settings/print-format-choice";
 import {
+  fetchSaleCustomerPolicy,
+  peekSaleCustomerPolicy,
+  setSaleCustomerPolicy,
+  SALE_CUSTOMER_POLICY_DEFAULT,
+  type SaleCustomerPolicy,
+} from "@/lib/features/settings/sale-customer-policy";
+import {
   fetchQuickPosPayments,
   peekQuickPosPayments,
   setQuickPosPayments,
@@ -125,6 +132,7 @@ import {
   MdSave,
   MdSell,
   MdSecurity,
+  MdContactPhone,
   MdCreditCard,
   MdInventory2,
   MdPayments,
@@ -518,6 +526,37 @@ export function SettingsScreen() {
       await qc.invalidateQueries({
         queryKey: queryKeys.printFormatChoiceEnabled(companyId),
       });
+    },
+    onError: (e) => toastMutationError("settings", e),
+  });
+
+  /*
+   * Vente au nom d'un client — les deux règles sont coupées par défaut.
+   *
+   * Elles changent ce que la caisse ACCEPTE, pas seulement ce qu'elle affiche : on les
+   * réunit donc sous une seule carte, pour que le propriétaire voie d'un coup d'œil
+   * tout ce qui peut faire refuser une vente à son comptoir.
+   */
+  const peekCustomerPolicy =
+    companyId.length > 0 && isOwner ? peekSaleCustomerPolicy(companyId) : undefined;
+  const customerPolicyQ = useQuery({
+    queryKey: queryKeys.saleCustomerPolicy(companyId),
+    queryFn: () => fetchSaleCustomerPolicy(companyId),
+    enabled: Boolean(companyId && isOwner),
+    staleTime: 30_000,
+    ...(peekCustomerPolicy !== undefined ? { initialData: peekCustomerPolicy } : {}),
+  });
+  const customerPolicy = customerPolicyQ.data ?? SALE_CUSTOMER_POLICY_DEFAULT;
+
+  const customerPolicyMut = useMutation({
+    mutationFn: async (vars: { next: SaleCustomerPolicy; message: string }) => {
+      if (!companyId) throw new Error("Entreprise introuvable.");
+      await setSaleCustomerPolicy(companyId, vars.next);
+      return vars.message;
+    },
+    onSuccess: async (message) => {
+      toast.success(message);
+      await qc.invalidateQueries({ queryKey: queryKeys.saleCustomerPolicy(companyId) });
     },
     onError: (e) => toastMutationError("settings", e),
   });
@@ -1133,6 +1172,103 @@ export function SettingsScreen() {
               </label>
             </div>
           )}
+        </FsCard>
+      ) : null}
+
+      {/* Vente au nom d'un client — owner uniquement */}
+      {isOwner && companyId ? (
+        <FsCard className="mt-5" padding="p-5">
+          <SettingsCardTitle icon={MdContactPhone} title="Vente au nom d'un client" />
+          <p className="mt-2 text-xs leading-relaxed text-neutral-600 sm:text-sm">
+            Deux règles pour savoir <b>qui</b> achète, et pour ne plus laisser une ardoise
+            grossir. Les deux sont <b>désactivées par défaut</b> : tant qu&apos;elles le
+            restent, la caisse est exactement celle d&apos;aujourd&apos;hui.
+          </p>
+          {customerPolicyQ.isPending ? (
+            <div className="mt-4 flex justify-center py-4" role="status" aria-label="Chargement">
+              <div className="h-8 w-8 animate-spin rounded-full border-2 border-fs-accent border-t-transparent" />
+            </div>
+          ) : (
+            <div className="mt-4 divide-y divide-black/[0.06] rounded-[10px] border border-black/[0.08]">
+              <label
+                className={cn(
+                  "flex cursor-pointer items-start justify-between gap-3 px-3 py-3 sm:px-4",
+                  customerPolicyMut.isPending && "pointer-events-none opacity-60",
+                )}
+              >
+                <span className="min-w-0">
+                  <span className="block text-sm font-medium text-fs-text">
+                    Toute vente au nom d&apos;un client
+                  </span>
+                  <span className="mt-0.5 block text-xs text-neutral-600">
+                    {customerPolicy.requireCustomer
+                      ? "Caisse rapide, Facture A4 et vue tableau : aucune vente ne part sans client. Le numéro suffit pour en créer un."
+                      : "Désactivé : le client reste facultatif (sauf à crédit, où il l'a toujours été)."}
+                  </span>
+                </span>
+                <input
+                  type="checkbox"
+                  role="switch"
+                  className="mt-1 h-5 w-9 shrink-0 cursor-pointer accent-fs-accent"
+                  checked={customerPolicy.requireCustomer}
+                  disabled={customerPolicyMut.isPending}
+                  onChange={(e) => {
+                    void customerPolicyMut.mutateAsync({
+                      next: { ...customerPolicy, requireCustomer: e.target.checked },
+                      message: e.target.checked
+                        ? "Client obligatoire : chaque vente sera enregistrée à un nom."
+                        : "Client de nouveau facultatif sur les ventes comptant.",
+                    });
+                  }}
+                />
+              </label>
+              <label
+                className={cn(
+                  "flex cursor-pointer items-start justify-between gap-3 px-3 py-3 sm:px-4",
+                  customerPolicyMut.isPending && "pointer-events-none opacity-60",
+                )}
+              >
+                <span className="min-w-0">
+                  <span className="block text-sm font-medium text-fs-text">
+                    Refuser la vente si le client a une dette
+                  </span>
+                  <span className="mt-0.5 block text-xs text-neutral-600">
+                    {customerPolicy.blockOnDebt
+                      ? "Au moment d'encaisser, la caisse annonce la somme due et refuse la vente tant qu'elle n'est pas réglée."
+                      : "Désactivé : un client qui doit de l'argent peut acheter de nouveau."}
+                  </span>
+                </span>
+                <input
+                  type="checkbox"
+                  role="switch"
+                  className="mt-1 h-5 w-9 shrink-0 cursor-pointer accent-fs-accent"
+                  checked={customerPolicy.blockOnDebt}
+                  disabled={customerPolicyMut.isPending}
+                  onChange={(e) => {
+                    void customerPolicyMut.mutateAsync({
+                      next: { ...customerPolicy, blockOnDebt: e.target.checked },
+                      message: e.target.checked
+                        ? "Dette bloquante : la caisse refusera une nouvelle vente à un client endetté."
+                        : "Blocage retiré : les clients endettés peuvent acheter de nouveau.",
+                    });
+                  }}
+                />
+              </label>
+            </div>
+          )}
+          {/*
+            Les deux mises en garde que le propriétaire doit lire AVANT d'activer, pas
+            découvrir un samedi midi avec la file qui s'allonge.
+          */}
+          {customerPolicy.blockOnDebt ? (
+            <p className="mt-3 rounded-[10px] bg-amber-500/10 px-3 py-2 text-xs leading-relaxed text-amber-900 dark:text-amber-200">
+              À savoir : le refus vaut aussi pour un achat payé comptant — c&apos;est le but,
+              mais votre caissier doit le savoir. La dette compte toutes les fiches portant le
+              même numéro, pour qu&apos;un client ne puisse pas repartir à zéro en se faisant
+              réinscrire. Et si la connexion tombe, la vente passe : mieux vaut un crédit de
+              trop qu&apos;une boutique à l&apos;arrêt.
+            </p>
+          ) : null}
         </FsCard>
       ) : null}
 

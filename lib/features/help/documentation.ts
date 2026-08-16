@@ -386,6 +386,14 @@ export const DOC_GROUPS: DocGroup[] = [
           },
           {
             kind: "bullets",
+            title: "Vente au nom d'un client (deux règles, désactivées par défaut)",
+            items: [
+              "Toute vente au nom d'un client : plus aucune vente anonyme, dans les trois caisses (rapide, Facture A4, vue tableau). Pour créer un client au comptoir, le numéro de téléphone suffit — le nom est facultatif.",
+              "Refuser la vente si le client a une dette : au moment d'encaisser, la caisse annonce la somme due et refuse la nouvelle vente, même payée comptant. La dette est comptée sur toutes les fiches partageant le même numéro. Si la connexion est coupée, la vérification est impossible et la vente passe — une boutique doit pouvoir continuer à vendre.",
+            ],
+          },
+          {
+            kind: "bullets",
             title: "Impression",
             items: [
               "Choisir le format d'impression (désactivé par défaut) : par défaut le document suit la caisse — ticket thermique en caisse rapide, facture A4 en POS Facture. Activé, chaque vente peut sortir dans les deux formats, au choix, sans rien changer à votre façon de vendre.",
@@ -764,13 +772,42 @@ export const DOC_GROUPS: DocGroup[] = [
             ],
           },
           {
+            kind: "steps",
+            title: "Vendre au nom d'un client (si le propriétaire l'exige)",
+            items: [
+              "À activer d'abord : Paramètres › Vente au nom d'un client (propriétaire). Désactivé par défaut.",
+              "Le panier affiche « Client (obligatoire) » : choisissez-le dans la liste.",
+              "Client inconnu ? Touchez le bouton orange à côté de la liste : son numéro de téléphone suffit, le nom est facultatif et pourra être complété plus tard depuis la page Clients.",
+              "Sans client, la vente est refusée — en caisse rapide comme en Facture A4 et en vue tableau.",
+            ],
+          },
+          {
+            kind: "note",
+            tone: "warn",
+            title: "Client endetté : la vente peut être refusée",
+            text: "Si le propriétaire a activé « Refuser la vente si le client a une dette », la caisse vérifie l'ardoise au moment d'encaisser. Un message annonce alors la somme due et le nombre de ventes non soldées : le client doit régler avant de repartir avec autre chose, même s'il paie comptant. La dette est comptée sur toutes les fiches portant le même numéro de téléphone — se faire réinscrire ne remet pas le compteur à zéro. Encaissez la dette depuis la page Crédit, puis reprenez la vente.",
+          },
+          {
             kind: "note",
             tone: "info",
             title: "Le bip d'ajout au panier",
             text: "Il est volontairement franc et sec : dans le bruit d'une boutique, un son doux ne s'entend pas et le caissier scanne deux fois le même article. Sur iPhone, il reste muet si le téléphone est en mode silencieux — la vibration prend alors le relais.",
           },
         ],
-        keywords: ["caisse", "pos", "vendre", "encaisser", "ticket", "panier", "scan", "monnaie"],
+        keywords: [
+          "caisse",
+          "pos",
+          "vendre",
+          "encaisser",
+          "ticket",
+          "panier",
+          "scan",
+          "monnaie",
+          "client obligatoire",
+          "dette",
+          "ardoise",
+          "vente refusée",
+        ],
       },
       {
         id: "dual-cashier",

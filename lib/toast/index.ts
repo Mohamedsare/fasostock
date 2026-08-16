@@ -25,6 +25,26 @@ export function toastInfo(message: string, duration?: number) {
   emit({ type: "info", message, duration });
 }
 
+/**
+ * Refus expliqué : titre, motif, et ce qu'il faut faire. Pour les blocages métier que
+ * l'utilisateur ne peut pas deviner (vente refusée pour dette en cours, par exemple).
+ * Affiché plus longtemps qu'un toast ordinaire — il y a une décision à prendre.
+ */
+export function toastBlocked(o: {
+  title: string;
+  message: string;
+  hint?: string;
+  duration?: number;
+}) {
+  emit({
+    type: "error",
+    title: o.title,
+    message: o.message,
+    hint: o.hint,
+    duration: o.duration ?? 7000,
+  });
+}
+
 export function subscribeToToasts(handler: (payload: ToastPayload) => void) {
   if (typeof window === "undefined") return () => {};
   const fn = (e: Event) => {
@@ -74,6 +94,8 @@ export const toast = {
   success: toastSuccess,
   error: toastError,
   info: toastInfo,
+  /** Refus métier expliqué : titre + motif + geste à faire. */
+  blocked: toastBlocked,
   /** Erreur utilisateur + log super-admin (dédup avec React Query). */
   errorWithLog: toastErrorWithLog,
 };

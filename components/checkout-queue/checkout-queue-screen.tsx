@@ -73,6 +73,15 @@ import {
   peekPrintFormatChoiceEnabled,
 } from "@/lib/features/settings/print-format-choice";
 import type { Store } from "@/lib/features/stores/types";
+import {
+  fetchSaleCustomerPolicy,
+  peekSaleCustomerPolicy,
+  SALE_CUSTOMER_POLICY_DEFAULT,
+} from "@/lib/features/settings/sale-customer-policy";
+import {
+  allowSaleForCustomer,
+  SaleBlockedError,
+} from "@/lib/features/credit/customer-debt-guard";
 import { playPosAddBeep } from "@/lib/utils/pos-sound";
 import { createClient } from "@/lib/supabase/client";
 import { formatCurrency } from "@/lib/utils/currency";
@@ -230,6 +239,18 @@ export function CheckoutQueueScreen() {
       : {}),
   });
   const printFormatChoiceOn = printFormatChoiceQ.data === true;
+
+  /** Réglage propriétaire « Vente au nom d'un client » — client exigé, dette bloquante. */
+  const customerPolicyQ = useQuery({
+    queryKey: queryKeys.saleCustomerPolicy(companyId),
+    queryFn: () => fetchSaleCustomerPolicy(companyId),
+    enabled,
+    staleTime: 60_000,
+    ...(peekSaleCustomerPolicy(companyId) !== undefined
+      ? { initialData: peekSaleCustomerPolicy(companyId) }
+      : {}),
+  });
+  const customerPolicy = customerPolicyQ.data ?? SALE_CUSTOMER_POLICY_DEFAULT;
 
   // Réglages d'encaissement de la caisse rapide : le comptoir doit proposer ICI
   // exactement ce qu'il propose LÀ-BAS, sinon le module créerait deux caisses aux
@@ -390,6 +411,18 @@ export function CheckoutQueueScreen() {
 
   const checkoutMut = useMutation({
     mutationFn: async (vars: { handoff: PosHandoff; payload: HandoffCheckoutSubmit }) => {
+      /*
+       * Dette en cours : c'est ICI que le client paie, donc c'est ici qu'on refuse.
+       * Le contrôle est dans la mutation pour que le bouton reste occupé pendant la
+       * lecture — un double appui ne doit pas faire passer le bon.
+       */
+      const allowed = await allowSaleForCustomer({
+        enabled: customerPolicy.blockOnDebt,
+        companyId,
+        customerId: vars.payload.customerId,
+        customers: customersQ.data ?? [],
+      });
+      if (!allowed) throw new SaleBlockedError();
       const saleId = await checkoutPosHandoff({
         handoffId: vars.handoff.id,
         payments: vars.payload.payments,
@@ -442,6 +475,12 @@ export function CheckoutQueueScreen() {
       }
     },
     onError: (e) => {
+      /*
+       * Dette du client : le refus est déjà expliqué à l'écran, et le bon reste en
+       * file — le caissier fait régler l'ardoise puis reprend le même bon, ou
+       * l'annule. Un second toast technique par-dessus n'aiderait personne.
+       */
+      if (e instanceof SaleBlockedError) return;
       toast.error(messageFromUnknownError(e, "L'encaissement n'a pas abouti."));
       /*
        * Rafraîchir la file après un échec, toujours. Les deux refus les plus probables
@@ -757,6 +796,7 @@ export function CheckoutQueueScreen() {
           allowSplit={paySettings.enabled && paySettings.splitEnabled}
           allowCredit={creditEnabledQ.data === true}
           hideCustomer={paySettings.enabled && paySettings.hideCustomer}
+          requireCustomer={customerPolicy.requireCustomer}
           busy={checkoutMut.isPending}
           onClose={() => {
             if (!checkoutMut.isPending) setCheckingOut(null);

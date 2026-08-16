@@ -36,7 +36,13 @@ export async function createCustomer(
 ): Promise<string | null> {
   const payload = {
     company_id: companyId,
-    name: input.name.trim(),
+    /*
+     * Fiche créée au comptoir sans nom (le numéro suffit, cf. `nameOptional` du
+     * dialogue) : on retient le numéro comme nom. Une chaîne vide passerait la
+     * contrainte NOT NULL mais laisserait un client fantôme dans les listes, les
+     * tickets et les relances — le numéro, lui, désigne bien quelqu'un.
+     */
+    name: input.name.trim() || input.phone?.trim() || "Client",
     type: input.type,
     phone: input.phone?.trim() || null,
     email: input.email?.trim() || null,

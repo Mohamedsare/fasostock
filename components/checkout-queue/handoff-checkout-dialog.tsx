@@ -67,6 +67,7 @@ export function HandoffCheckoutDialog({
   allowSplit,
   allowCredit,
   hideCustomer,
+  requireCustomer = false,
   busy,
   onClose,
   onSubmit,
@@ -79,6 +80,12 @@ export function HandoffCheckoutDialog({
   allowSplit: boolean;
   allowCredit: boolean;
   hideCustomer: boolean;
+  /**
+   * Réglage propriétaire « Vente au nom d'un client ». Le vendeur a normalement déjà
+   * rattaché le client au bon ; si le réglage vient d'être activé, ou si le bon est
+   * plus ancien, c'est ici que le manque est rattrapé — avant d'encaisser.
+   */
+  requireCustomer?: boolean;
   busy: boolean;
   onClose: () => void;
   onSubmit: (payload: HandoffCheckoutSubmit) => void;
@@ -144,6 +151,9 @@ export function HandoffCheckoutDialog({
     if (mode === "credit" && !customerId) {
       return "Une vente à crédit exige un client : c'est lui qui devra l'argent.";
     }
+    if (requireCustomer && !customerId) {
+      return "Cette vente doit être au nom d'un client : choisissez-le ci-dessous.";
+    }
     if (mode === "credit" && creditRemaining <= 0) {
       return "Le client règle tout : choisissez « ESPÈCES » plutôt que « CRÉDIT ».";
     }
@@ -156,6 +166,7 @@ export function HandoffCheckoutDialog({
     splitCashValue,
     customerId,
     creditRemaining,
+    requireCustomer,
   ]);
 
   function buildPayments(): HandoffCheckoutSubmit["payments"] {
@@ -446,10 +457,15 @@ export function HandoffCheckoutDialog({
 
           {/* Client : obligatoire à crédit, facultatif sinon — et masquable par le patron
               sur les ventes comptant, comme en caisse rapide. */}
-          {mode === "credit" || !hideCustomer ? (
+          {mode === "credit" || requireCustomer || !hideCustomer ? (
             <div className="mt-3">
               <label className="mb-1 block text-xs font-medium text-neutral-600" htmlFor="handoff-customer">
-                Client {mode === "credit" ? "(obligatoire à crédit)" : "(facultatif)"}
+                Client{" "}
+                {mode === "credit"
+                  ? "(obligatoire à crédit)"
+                  : requireCustomer
+                    ? "(obligatoire)"
+                    : "(facultatif)"}
               </label>
               <select
                 id="handoff-customer"
@@ -457,7 +473,9 @@ export function HandoffCheckoutDialog({
                 value={customerId}
                 onChange={(e) => setCustomerId(e.target.value)}
               >
-                <option value="">Aucun client</option>
+                <option value="">
+                  {requireCustomer || mode === "credit" ? "Choisir un client…" : "Aucun client"}
+                </option>
                 {customers.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name}

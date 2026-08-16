@@ -112,9 +112,24 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
           style={{ backgroundColor: bg }}
         >
           <Icon className="mt-0.5 h-[22px] w-[22px] shrink-0" aria-hidden />
-          <p className="line-clamp-3 min-w-0 flex-1 text-sm font-medium leading-snug">
-            {active.message}
-          </p>
+          {active.title ? (
+            /* Refus expliqué : titre, motif, geste à faire — trois niveaux de lecture. */
+            <div className="min-w-0 flex-1">
+              <p className="text-[15px] font-bold leading-snug">{active.title}</p>
+              <p className="mt-1 line-clamp-4 text-sm font-medium leading-snug text-white/95">
+                {active.message}
+              </p>
+              {active.hint ? (
+                <p className="mt-2 border-t border-white/25 pt-2 text-xs font-semibold leading-snug text-white/90">
+                  {active.hint}
+                </p>
+              ) : null}
+            </div>
+          ) : (
+            <p className="line-clamp-3 min-w-0 flex-1 text-sm font-medium leading-snug">
+              {active.message}
+            </p>
+          )}
         </div>
       </div>
     ) : null;

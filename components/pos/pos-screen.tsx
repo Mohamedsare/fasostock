@@ -52,6 +52,15 @@ import {
   fetchPrintFormatChoiceEnabled,
   peekPrintFormatChoiceEnabled,
 } from "@/lib/features/settings/print-format-choice";
+import {
+  fetchSaleCustomerPolicy,
+  peekSaleCustomerPolicy,
+  SALE_CUSTOMER_POLICY_DEFAULT,
+} from "@/lib/features/settings/sale-customer-policy";
+import {
+  allowSaleForCustomer,
+  SaleBlockedError,
+} from "@/lib/features/credit/customer-debt-guard";
 import { fetchQuickPosCreditEnabled } from "@/lib/features/settings/quick-pos-credit";
 import {
   fetchDualCashierSelfCheckout,
@@ -400,6 +409,28 @@ export function PosScreen({
   });
   const printFormatChoiceOn = printFormatChoiceQ.data === true;
 
+  /*
+   * Réglage propriétaire « Vente au nom d'un client » — les deux règles sont coupées
+   * par défaut, et la caisse est alors exactement celle d'avant.
+   */
+  const saleCustomerPolicyQ = useQuery({
+    queryKey: queryKeys.saleCustomerPolicy(companyId),
+    queryFn: () => fetchSaleCustomerPolicy(companyId),
+    enabled: Boolean(companyId),
+    staleTime: 60_000,
+    ...(peekSaleCustomerPolicy(companyId) !== undefined
+      ? { initialData: peekSaleCustomerPolicy(companyId) }
+      : {}),
+  });
+  const saleCustomerPolicy = saleCustomerPolicyQ.data ?? SALE_CUSTOMER_POLICY_DEFAULT;
+  /*
+   * Une vente déjà enregistrée reste modifiable même si le propriétaire a activé la
+   * règle depuis : on n'exige un client que sur les ventes NOUVELLES. Même convention
+   * que la vente à crédit et le paiement mixte.
+   */
+  const requireCustomer = saleCustomerPolicy.requireCustomer && !activeEditSaleId;
+  const blockOnDebt = saleCustomerPolicy.blockOnDebt;
+
   // Vente à crédit en caisse rapide : réglage entreprise activé par le propriétaire
   // (Paramètres › « Caisse POS rapide — vente à crédit »).
   const quickCreditCompanyQ = useQuery({
@@ -443,8 +474,16 @@ export function PosScreen({
     mode === "quick" && quickPaymentsSettings.enabled && quickPaymentsSettings.splitEnabled;
   const hideQuickCard =
     mode === "quick" && quickPaymentsSettings.enabled && quickPaymentsSettings.hideCard;
+  /*
+   * « Client obligatoire » l'emporte sur « masquer le client » : les deux réglages
+   * appartiennent au même propriétaire, mais les cumuler donnerait une caisse qui
+   * exige un client sans offrir le moyen d'en choisir un — plus personne ne vend.
+   */
   const hideQuickCustomer =
-    mode === "quick" && quickPaymentsSettings.enabled && quickPaymentsSettings.hideCustomer;
+    mode === "quick" &&
+    quickPaymentsSettings.enabled &&
+    quickPaymentsSettings.hideCustomer &&
+    !requireCustomer;
 
   const posQ = useQuery({
     queryKey: ["pos", mode, companyId, storeId] as const,
@@ -812,6 +851,10 @@ export function PosScreen({
     if (stockWarnings.length > 0) {
       return "Stock insuffisant pour certains articles.";
     }
+    // Réglage propriétaire : toute vente est au nom d'un client, dans les trois POS.
+    if (requireCustomer && !customerId) {
+      return "Cette vente doit être au nom d'un client : choisissez-le, ou créez-le avec son numéro.";
+    }
     if (isA4CreditSale && !customerId) {
       return "Associez un client pour une vente à crédit.";
     }
@@ -1094,6 +1137,22 @@ export function PosScreen({
       const pre = getPosPayValidationError();
       if (pre) throw new Error(pre);
       const editingId = activeEditSaleIdRef.current;
+      /*
+       * Dette en cours : dernier contrôle avant que l'argent ne change de mains.
+       * Dans la mutation et non dans le bouton, pour que le bouton reste occupé
+       * pendant la lecture — sinon un double appui ferait passer la vente.
+       * Une vente déjà enregistrée qu'on corrige n'est pas un nouvel achat : on ne
+       * la bloque pas, sinon une erreur de saisie deviendrait impossible à réparer.
+       */
+      if (!editingId) {
+        const allowed = await allowSaleForCustomer({
+          enabled: blockOnDebt,
+          companyId,
+          customerId,
+          customers,
+        });
+        if (!allowed) throw new SaleBlockedError();
+      }
       if (editingId) {
         const payments = mode === "quick" ? buildQuickPayments() : buildInvoicePayments();
         await updateCompletedPosSale({
@@ -1358,7 +1417,11 @@ export function PosScreen({
         }
       }
     },
-    onError: (e) => toast.error(messageFromUnknownError(e)),
+    onError: (e) => {
+      // Vente refusée pour dette : le toast d'explication est déjà à l'écran.
+      if (e instanceof SaleBlockedError) return;
+      toast.error(messageFromUnknownError(e));
+    },
   });
 
   /*
@@ -1456,6 +1519,16 @@ export function PosScreen({
     mutationFn: async () => {
       if (cart.length === 0) throw new Error("Panier vide.");
       if (total <= 0) throw new Error("Le total est à zéro.");
+      /*
+       * Le bon part sans moyen de paiement, mais pas sans client quand le propriétaire
+       * l'exige : le vendeur a le client devant lui, le caissier ne l'aura pas. C'est
+       * ici, et nulle part ailleurs, qu'on peut lui demander son numéro.
+       */
+      if (requireCustomer && !customerId) {
+        throw new Error(
+          "Cette vente doit être au nom d'un client : choisissez-le, ou créez-le avec son numéro.",
+        );
+      }
       if (!handoffRequestIdRef.current) {
         handoffRequestIdRef.current = crypto.randomUUID();
       }
@@ -2072,6 +2145,7 @@ export function PosScreen({
       setCustomerId={setCustomerId}
       customers={customers}
       hideQuickCustomer={hideQuickCustomer}
+      requireCustomer={requireCustomer}
       allowQuickCredit={quickCreditEnabled || quickPayment === "credit"}
       // Vente rouverte réglée par carte : le bouton reste, sinon la modification
       // basculerait silencieusement son paiement en espèces.
@@ -3020,6 +3094,11 @@ export function PosScreen({
           open={customerCreateOpen}
           onClose={() => setCustomerCreateOpen(false)}
           variant="create"
+          /*
+           * Vente obligatoirement nominative : au comptoir, avec la file qui attend,
+           * le numéro seul doit suffire. Le nom se complète plus tard depuis Clients.
+           */
+          nameOptional={requireCustomer}
           onSubmit={async (v) => {
             const id = await createCustomer(companyId, {
               name: v.name,
@@ -3450,6 +3529,7 @@ function PosCartPanel({
   setCustomerId,
   customers,
   hideQuickCustomer,
+  requireCustomer,
   allowQuickCredit,
   allowQuickCard,
   allowQuickSplit,
@@ -3518,6 +3598,8 @@ function PosCartPanel({
   customers: Array<{ id: string; name: string }>;
   /** Caisse rapide : le propriétaire a masqué le client sur les ventes comptant. */
   hideQuickCustomer?: boolean;
+  /** Réglage propriétaire : aucune vente ne part sans être au nom d'un client. */
+  requireCustomer?: boolean;
   /** Caisse rapide : le propriétaire autorise la vente à crédit (réglage entreprise). */
   allowQuickCredit?: boolean;
   /** Caisse rapide : bouton « CARTE » proposé (le propriétaire peut le retirer). */
@@ -3924,18 +4006,29 @@ function PosCartPanel({
        * débit, personne n'enregistre le client et le champ ne fait que ralentir. */}
       {isA4Cart || ((handoffMode || quickPayment !== "credit") && !hideQuickCustomer) ? (
         <div className="mt-3 px-0 min-[900px]:px-3">
-          <label className="mb-1 block text-[11px] font-medium text-[#6B7280]">
-            Client (facultatif)
+          <label
+            className={cn(
+              "mb-1 block text-[11px] font-medium",
+              requireCustomer ? "text-[#9A3412]" : "text-[#6B7280]",
+            )}
+          >
+            {requireCustomer ? "Client (obligatoire)" : "Client (facultatif)"}
           </label>
           <div className="flex gap-2">
             <select
               className={fsInputClass(
-                "min-w-0 flex-1 rounded-sm bg-white px-2.5 py-1.5 sm:px-2.5 sm:py-1.5",
+                cn(
+                  "min-w-0 flex-1 rounded-sm bg-white px-2.5 py-1.5 sm:px-2.5 sm:py-1.5",
+                  // Champ vide alors qu'il est exigé : signalé avant le refus, pas après.
+                  requireCustomer && !customerId && "ring-1 ring-[#F97316]",
+                ),
               )}
               value={customerId}
               onChange={(e) => setCustomerId(e.target.value)}
             >
-              <option value="">Aucun client</option>
+              <option value="">
+                {requireCustomer ? "Choisir un client…" : "Aucun client"}
+              </option>
               {customers.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}

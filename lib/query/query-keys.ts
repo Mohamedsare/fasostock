@@ -257,6 +257,9 @@ export const queryKeys = {
   /** Réglage owner « choisir le format d'impression » (`company_settings`). */
   printFormatChoiceEnabled: (companyId: string) =>
     ["print-format-choice", companyId] as const,
+  /** Réglage owner « vente au nom d'un client » — client obligatoire, blocage sur dette. */
+  saleCustomerPolicy: (companyId: string) =>
+    ["sale-customer-policy", companyId] as const,
   /**
    * Caisse à deux — la file des bons à encaisser. Préfixe `['pos-handoffs', companyId]`
    * pour tout invalider d'un coup après un encaissement ou une annulation.

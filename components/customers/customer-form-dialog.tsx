@@ -24,6 +24,7 @@ export function CustomerFormDialog({
   initialValue,
   onSubmit,
   overlayClassName,
+  nameOptional = false,
 }: {
   open: boolean;
   onClose: () => void;
@@ -33,6 +34,12 @@ export function CustomerFormDialog({
   onSubmit: (value: CustomerFormValue) => Promise<void> | void;
   /** Ex. `z-[95]` quand le dialogue s’ouvre par-dessus un autre modal. */
   overlayClassName?: string;
+  /**
+   * Création au comptoir, la file derrière : seul le numéro est exigé. Le nom viendra
+   * plus tard depuis la page Clients — mieux vaut une fiche au numéro seul qu'une vente
+   * rattachée à personne parce que le caissier n'avait pas le temps de demander.
+   */
+  nameOptional?: boolean;
 }) {
   const [v, setV] = useState<CustomerFormValue>({
     name: "",
@@ -111,7 +118,9 @@ export function CustomerFormDialog({
 
             <div className="flex flex-col gap-4 sm:gap-3">
             <div>
-                <label className="mb-1.5 block text-[13px] font-medium text-neutral-700">Nom *</label>
+                <label className="mb-1.5 block text-[13px] font-medium text-neutral-700">
+                  {nameOptional ? "Nom (facultatif)" : "Nom *"}
+                </label>
               <input
                   className={fsInputClass(inputBase)}
                 value={v.name}
@@ -216,8 +225,12 @@ export function CustomerFormDialog({
                 onClick={async () => {
                   setError(null);
                   const name = v.name.trim();
-                  if (name.length < 2) {
+                  if (!nameOptional && name.length < 2) {
                     setError("Nom requis (2 caractères minimum)");
+                    return;
+                  }
+                  if (nameOptional && name.length > 0 && name.length < 2) {
+                    setError("Nom trop court (2 caractères minimum) — ou laissez-le vide.");
                     return;
                   }
                   // Téléphone obligatoire : sans numéro, impossible de rappeler le client.
@@ -228,7 +241,7 @@ export function CustomerFormDialog({
                   }
                   try {
                     setBusy(true);
-                    await onSubmit(v);
+                    await onSubmit({ ...v, name });
                     onClose();
                   } catch (e) {
                     setError(e instanceof Error ? e.message : "Enregistrement impossible.");
