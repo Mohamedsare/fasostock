@@ -218,6 +218,19 @@ export function QuickSupplyScreen() {
     [lines],
   );
 
+  /**
+   * Lignes dont le prix payé est resté vide.
+   *
+   * Non bloquant, à dessein : une marchandise offerte a réellement coûté zéro, et le
+   * commerçant pressé qui ne veut pas saisir doit pouvoir passer. Mais il faut le dire —
+   * un coût à zéro fait compter la vente entière comme bénéfice, et ce chiffre-là se
+   * relit le soir sans que rien ne rappelle d'où il vient.
+   */
+  const linesWithoutCost = useMemo(
+    () => lines.filter((l) => l.unitCost <= 0).length,
+    [lines],
+  );
+
   function focusSearch() {
     // `requestAnimationFrame` : le focus est repris APRÈS le rendu de la nouvelle ligne,
     // sinon le navigateur mobile referme le clavier au moment où on le rouvre.
@@ -242,9 +255,15 @@ export function QuickSupplyScreen() {
           label: p.name,
           unit: p.unit,
           quantity: 1,
-          // Proposé, pas imposé : le coût catalogue est le point de départ le plus
-          // probable, et c'est justement ce que le commerçant vient corriger.
-          unitCost: p.cataloguePurchasePrice,
+          /*
+           * Champ VIDE, délibérément. Le pré-remplir avec le coût du catalogue serait
+           * commode et faux : ce coût pilote désormais la marge du lot, et un chiffre
+           * déjà là s'accepte sans qu'on le lise. Le commerçant qui revient du marché
+           * sait ce qu'il a payé — c'est cela qu'on lui demande, pas de confirmer une
+           * valeur qu'on aurait devinée à sa place. Le prix du catalogue reste affiché
+           * sous le champ, comme repère.
+           */
+          unitCost: 0,
           // `null` = « je ne change pas le prix de vente de cette marchandise ».
           unitSalePrice: null,
           cataloguePurchasePrice: p.cataloguePurchasePrice,
@@ -724,6 +743,12 @@ export function QuickSupplyScreen() {
                   Saisissez le prix de vente des nouveaux articles : sans lui, ils entrent en stock
                   sans pouvoir être vendus.
                 </p>
+              ) : linesWithoutCost > 0 ? (
+                <p className="mt-2 text-[11px] font-semibold text-amber-700 dark:text-amber-300">
+                  Prix payé non saisi sur {linesWithoutCost} article
+                  {linesWithoutCost > 1 ? "s" : ""} : leur vente sera comptée entièrement comme
+                  bénéfice. Vous pouvez valider quand même.
+                </p>
               ) : null}
             </div>
           ) : null}
@@ -865,7 +890,15 @@ function DraftLineRow({
           </span>
           <input
             ref={priceRef}
-            className={fsInputClass("h-11 w-28 text-base")}
+            className={fsInputClass(
+              cn(
+                "h-11 w-28 text-base",
+                // Un champ vide qui part à zéro rendrait la marge égale au prix de vente
+                // entier. On le signale à l'œil, sans bloquer : c'est un oubli probable,
+                // pas une faute — une marchandise offerte a bien coûté zéro.
+                line.unitCost <= 0 ? "ring-1 ring-amber-500" : "",
+              ),
+            )}
             value={line.unitCost === 0 ? "" : String(line.unitCost)}
             inputMode="numeric"
             placeholder="0"
