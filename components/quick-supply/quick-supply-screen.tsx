@@ -117,7 +117,6 @@ export function QuickSupplyScreen() {
   const [query, setQuery] = useState("");
   const [lines, setLines] = useState<SupplyDraftLine[]>([]);
   const [scanOpen, setScanOpen] = useState(false);
-  const [detailsOpen, setDetailsOpen] = useState(false);
   const [supplier, setSupplier] = useState("");
   const [paidText, setPaidText] = useState("");
   const [note, setNote] = useState("");
@@ -230,6 +229,18 @@ export function QuickSupplyScreen() {
     () => lines.filter((l) => l.unitCost <= 0).length,
     [lines],
   );
+
+  /**
+   * « Chez qui » et « Montant payé » sont obligatoires, la note non.
+   *
+   * Le montant accepte **zéro** : « tout pris à crédit chez le grossiste » est une
+   * réponse, et une réponse fréquente. Ce qu'on refuse, c'est le champ laissé vide —
+   * l'absence de réponse, qui laisserait le propriétaire sans moyen de savoir si
+   * l'argent est sorti de sa caisse ce jour-là.
+   */
+  const missingSupplier = supplier.trim() === "";
+  const missingPaid = paidText.trim() === "";
+  const missingDetails = missingSupplier || missingPaid;
 
   function focusSearch() {
     // `requestAnimationFrame` : le focus est repris APRÈS le rendu de la nouvelle ligne,
@@ -360,8 +371,10 @@ export function QuickSupplyScreen() {
           unitSalePrice: l.unitSalePrice,
         })),
         supplierLabel: supplier.trim() || null,
-        // Champ laissé vide = payé comptant : la base retient le coût total.
-        amountPaid: paidText.trim() === "" ? null : Math.max(0, toNumber(paidText)),
+        // Champ obligatoire côté écran : la valeur saisie fait foi, zéro compris
+        // (« tout pris à crédit »). Le repli `null` de la base ne sert donc plus qu'aux
+        // appels qui ne passeraient pas par cette page.
+        amountPaid: Math.max(0, toNumber(paidText)),
         note: note.trim() || null,
         clientRequestId: requestIdRef.current,
       });
@@ -375,7 +388,6 @@ export function QuickSupplyScreen() {
       setSupplier("");
       setPaidText("");
       setNote("");
-      setDetailsOpen(false);
       requestIdRef.current = newRequestId();
       // Le stock affiché ici, la caisse, le catalogue : tout ce qui vient de changer.
       await qc.invalidateQueries({ queryKey: ["quick-supply", companyId] });
@@ -647,61 +659,66 @@ export function QuickSupplyScreen() {
             </FsCard>
           )}
 
-          {/* Facultatif, et replié : trois champs de plus entre le commerçant et sa vente
-              suffisent à faire abandonner la saisie. Qui en a besoin les déplie. */}
+          {/*
+            Dépliés, et non plus repliés derrière « Facultatif » : deux de ces trois
+            champs sont devenus obligatoires, et cacher un champ requis derrière un
+            bouton est la meilleure façon de faire buter quelqu'un sur une validation
+            qu'il ne comprend pas. Seule la note reste optionnelle.
+          */}
           {lines.length > 0 ? (
             <FsCard className="mt-3 rounded-[8px] sm:rounded-[8px]" padding="p-3 sm:p-4">
-              <button
-                type="button"
-                onClick={() => setDetailsOpen((v) => !v)}
-                className="flex w-full items-center gap-2 text-left"
-              >
+              <div className="flex items-center gap-2">
                 <MdTune className="h-5 w-5 text-fs-accent" aria-hidden />
                 <span className="flex-1 text-sm font-semibold text-fs-text">
                   Détails de l&apos;arrivage
                 </span>
-                <span className="text-[11px] font-semibold text-neutral-500">
-                  {detailsOpen ? "Masquer" : "Facultatif"}
-                </span>
-              </button>
-              {detailsOpen ? (
-                <div className="mt-3 grid gap-2 sm:grid-cols-3">
-                  <label className="block">
-                    <span className="mb-1 block text-[11px] font-semibold text-neutral-600">
-                      Chez qui ?
-                    </span>
-                    <input
-                      className={fsInputClass("rounded-[6px]")}
-                      value={supplier}
-                      onChange={(e) => setSupplier(e.target.value)}
-                      placeholder="Ali du marché…"
-                    />
-                  </label>
-                  <label className="block">
-                    <span className="mb-1 block text-[11px] font-semibold text-neutral-600">
-                      Montant payé
-                    </span>
-                    <input
-                      className={fsInputClass("rounded-[6px]")}
-                      value={paidText}
-                      onChange={(e) => setPaidText(e.target.value)}
-                      inputMode="numeric"
-                      placeholder={`${Math.round(totalCost)} (comptant)`}
-                    />
-                  </label>
-                  <label className="block">
-                    <span className="mb-1 block text-[11px] font-semibold text-neutral-600">
-                      Note
-                    </span>
-                    <input
-                      className={fsInputClass("rounded-[6px]")}
-                      value={note}
-                      onChange={(e) => setNote(e.target.value)}
-                      placeholder="2 cartons abîmés…"
-                    />
-                  </label>
-                </div>
-              ) : null}
+              </div>
+              <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                <label className="block">
+                  <span className="mb-1 block text-[11px] font-semibold text-neutral-600">
+                    Chez qui ? *
+                  </span>
+                  <input
+                    className={fsInputClass(
+                      cn("rounded-[6px]", supplier.trim() === "" ? "ring-1 ring-amber-500" : ""),
+                    )}
+                    value={supplier}
+                    onChange={(e) => setSupplier(e.target.value)}
+                    placeholder="Ali du marché…"
+                    aria-label="Chez qui la marchandise a été prise"
+                  />
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-[11px] font-semibold text-neutral-600">
+                    Montant payé *
+                  </span>
+                  <input
+                    className={fsInputClass(
+                      cn("rounded-[6px]", paidText.trim() === "" ? "ring-1 ring-amber-500" : ""),
+                    )}
+                    value={paidText}
+                    onChange={(e) => setPaidText(e.target.value)}
+                    inputMode="numeric"
+                    // Le coût total sert de repère : c'est le montant du cas courant, le
+                    // paiement comptant. Il vient de ce qui vient d'être saisi, pas d'un
+                    // ancien prix — le reprendre ne révèle rien.
+                    placeholder={`${Math.round(totalCost)} si tout payé`}
+                    aria-label="Montant réellement payé"
+                  />
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-[11px] font-semibold text-neutral-600">
+                    Note
+                  </span>
+                  <input
+                    className={fsInputClass("rounded-[6px]")}
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                    placeholder="2 cartons abîmés…"
+                    aria-label="Note sur l'arrivage (facultatif)"
+                  />
+                </label>
+              </div>
             </FsCard>
           ) : null}
 
@@ -720,10 +737,10 @@ export function QuickSupplyScreen() {
                 <button
                   type="button"
                   onClick={() => saveMut.mutate()}
-                  disabled={saveMut.isPending || missingSalePrice}
+                  disabled={saveMut.isPending || missingSalePrice || missingDetails}
                   className={cn(
                     "inline-flex min-h-[52px] flex-1 items-center justify-center gap-2 rounded-[8px] px-4 text-sm font-bold text-white shadow-sm sm:flex-none sm:px-8 sm:text-base",
-                    saveMut.isPending || missingSalePrice
+                    saveMut.isPending || missingSalePrice || missingDetails
                       ? "bg-neutral-400"
                       : "bg-fs-accent active:scale-[0.99]",
                   )}
@@ -736,10 +753,22 @@ export function QuickSupplyScreen() {
                   Faire entrer en stock
                 </button>
               </div>
+              {/*
+                Un seul message à la fois, du plus bloquant au simple avertissement :
+                empiler trois lignes rouges sous un bouton grisé ne dit pas quoi faire.
+              */}
               {missingSalePrice ? (
                 <p className="mt-2 text-[11px] font-semibold text-amber-700 dark:text-amber-300">
                   Saisissez le prix de vente des nouveaux articles : sans lui, ils entrent en stock
                   sans pouvoir être vendus.
+                </p>
+              ) : missingDetails ? (
+                <p className="mt-2 text-[11px] font-semibold text-amber-700 dark:text-amber-300">
+                  {missingSupplier && missingPaid
+                    ? "Renseignez chez qui vous avez pris la marchandise et le montant payé."
+                    : missingSupplier
+                      ? "Renseignez chez qui vous avez pris la marchandise."
+                      : "Renseignez le montant payé (0 si tout est à crédit)."}
                 </p>
               ) : linesWithoutCost > 0 ? (
                 <p className="mt-2 text-[11px] font-semibold text-amber-700 dark:text-amber-300">
@@ -797,16 +826,6 @@ function DraftLineRow({
 
   const isNew = line.productId == null;
   const newStock = line.currentStock == null ? line.quantity : line.currentStock + line.quantity;
-  const costRose =
-    line.cataloguePurchasePrice != null && line.unitCost > line.cataloguePurchasePrice;
-  /**
-   * Marge de CETTE marchandise. Calculée sur le seul prix que le commerçant a saisi :
-   * la déduire du prix habituel reviendrait à le réafficher en creux.
-   */
-  const lotMargin =
-    line.unitSalePrice != null && line.unitSalePrice > 0
-      ? line.unitSalePrice - line.unitCost
-      : null;
 
   return (
     <div className="border-t border-black/[0.06] p-3 first:border-t-0 sm:p-4">
@@ -937,14 +956,6 @@ function DraftLineRow({
             onFocus={(e) => e.currentTarget.select()}
             aria-label="Prix de vente de cette marchandise"
           />
-          {/*
-            Le sens sans le chiffre : laisser vide veut dire « au prix habituel », et
-            c'est une information indispensable. Le montant, lui, n'a rien à faire ici —
-            il ancrerait la saisie sur un prix que le commerçant vient justement revoir.
-          */}
-          {!isNew && line.unitSalePrice == null ? (
-            <span className="mt-1 block text-[10px] text-neutral-500">au prix habituel</span>
-          ) : null}
         </label>
 
         <div className="ml-auto text-right">
@@ -952,24 +963,9 @@ function DraftLineRow({
           <p className="text-sm font-bold text-fs-text">
             {formatCurrency(line.quantity * line.unitCost)}
           </p>
-          {lotMargin != null ? (
-            <p
-              className={cn(
-                "text-[10px] font-semibold",
-                lotMargin >= 0 ? "text-emerald-700 dark:text-emerald-400" : "text-red-600",
-              )}
-            >
-              marge {formatCurrency(lotMargin)}/u
-            </p>
-          ) : null}
         </div>
       </div>
 
-      {costRose ? (
-        <p className="mt-1.5 text-[11px] font-semibold text-amber-700 dark:text-amber-300">
-          Payé plus cher que d&apos;habitude. Pensez au prix de vente de cette marchandise.
-        </p>
-      ) : null}
     </div>
   );
 }
