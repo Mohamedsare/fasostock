@@ -11,6 +11,11 @@ import { CREDIT_AMOUNT_EPS, paidTotal, remainingTotal } from "@/lib/features/cre
 import type { SaleItem } from "@/lib/features/sales/types";
 import { deliveryTooltip, saleDelivery } from "@/lib/features/sales/sale-delivery";
 import { fetchSalePickupTrackingEnabled } from "@/lib/features/settings/sale-pickup-tracking";
+import {
+  fetchPrintFormatChoiceEnabled,
+  peekPrintFormatChoiceEnabled,
+} from "@/lib/features/settings/print-format-choice";
+import { thermalWidthForStore } from "@/lib/features/print/print-sale-format";
 import { buildReceiptTicketDataFromSale } from "@/lib/features/receipt/build-receipt-ticket-data";
 import {
   paymentDisplay,
@@ -109,6 +114,18 @@ export function SaleDetailModal({
   });
   const pickupTrackingEnabled = pickupTrackingQ.data ?? false;
 
+  /** Réglage propriétaire : réimprimer une vente dans l'autre format que sa caisse. */
+  const printFormatChoiceQ = useQuery({
+    queryKey: queryKeys.printFormatChoiceEnabled(companyId),
+    queryFn: () => fetchPrintFormatChoiceEnabled(companyId),
+    enabled: !!companyId,
+    staleTime: 60_000,
+    ...(peekPrintFormatChoiceEnabled(companyId) !== undefined
+      ? { initialData: peekPrintFormatChoiceEnabled(companyId) }
+      : {}),
+  });
+  const printFormatChoiceOn = printFormatChoiceQ.data === true;
+
   const sale = q.data;
   const creditSale = sale as CreditSaleRow | null;
   const creditReste =
@@ -127,8 +144,17 @@ export function SaleDetailModal({
     : null;
 
   const hasItems = Boolean(sale?.sale_items && sale.sale_items.length > 0);
-  const canInvoiceActions =
-    sale && (isA4Invoice(sale) || sale.sale_mode === "invoice_pos");
+  const isInvoiceSale = Boolean(
+    sale && (isA4Invoice(sale) || sale.sale_mode === "invoice_pos"),
+  );
+  /*
+   * Réglage propriétaire « Choisir le format d'impression ». Coupé (le défaut), chaque
+   * vente ne propose que le document de sa caisse d'origine, comme avant. Ouvert, les
+   * deux blocs sont là : le client qui revient réclamer une facture pour sa comptabilité
+   * l'obtient depuis la vente déjà enregistrée, sans la refaire.
+   */
+  const showInvoiceBlock = isInvoiceSale || printFormatChoiceOn;
+  const showTicketBlock = !isInvoiceSale || printFormatChoiceOn;
   const actionsDisabled =
     !storeFull || storesQ.isLoading || !hasItems || pdfBusy !== null;
 
@@ -473,7 +499,7 @@ export function SaleDetailModal({
 
                   {storeFull && hasItems ? (
                     <div className="border-t border-black/10 pt-3">
-                      {canInvoiceActions ? (
+                      {showInvoiceBlock ? (
                         <div className="rounded-2xl bg-[#F5F5F5] px-3 py-3 sm:px-4 sm:py-3.5">
                           <p className="mb-3 text-[11px] font-bold tracking-[0.06em] text-neutral-700 sm:text-xs">
                             FACTURE A4
@@ -513,8 +539,14 @@ export function SaleDetailModal({
                             />
                           </div>
                         </div>
-                      ) : (
-                        <div className="rounded-2xl bg-[#F5F5F5] px-3 py-3 sm:px-4">
+                      ) : null}
+                      {showTicketBlock ? (
+                        <div
+                          className={cn(
+                            "rounded-2xl bg-[#F5F5F5] px-3 py-3 sm:px-4",
+                            showInvoiceBlock && "mt-2",
+                          )}
+                        >
                           <p className="mb-3 text-[11px] font-bold tracking-[0.06em] text-neutral-700 sm:text-xs">
                             TICKET CAISSE
                           </p>
@@ -528,7 +560,7 @@ export function SaleDetailModal({
                             className="w-full flex-row gap-2 px-4 py-3 text-sm"
                           />
                         </div>
-                      )}
+                      ) : null}
                     </div>
                   ) : null}
                 </div>
@@ -558,6 +590,8 @@ export function SaleDetailModal({
       {receiptDialog ? (
         <ReceiptTicketDialog
           data={receiptDialog}
+          // Largeur du rouleau de la boutique : un 58 mm imprimé en 80 sort décalé.
+          paperWidthMm={storeFull ? thermalWidthForStore(storeFull) : 80}
           onClose={() => setReceiptDialog(null)}
         />
       ) : null}

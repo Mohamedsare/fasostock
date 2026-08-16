@@ -38,6 +38,11 @@ import {
   setSalePickupTrackingEnabled,
 } from "@/lib/features/settings/sale-pickup-tracking";
 import {
+  fetchPrintFormatChoiceEnabled,
+  peekPrintFormatChoiceEnabled,
+  setPrintFormatChoiceEnabled,
+} from "@/lib/features/settings/print-format-choice";
+import {
   fetchQuickPosPayments,
   peekQuickPosPayments,
   setQuickPosPayments,
@@ -124,6 +129,7 @@ import {
   MdInventory2,
   MdPayments,
   MdPriceChange,
+  MdPrint,
   MdReceiptLong,
   MdShoppingCart,
   MdStore,
@@ -475,6 +481,42 @@ export function SettingsScreen() {
       );
       await qc.invalidateQueries({
         queryKey: queryKeys.salePickupTrackingEnabled(companyId),
+      });
+    },
+    onError: (e) => toastMutationError("settings", e),
+  });
+
+  /*
+   * Choisir le format d'impression — désactivé par défaut.
+   *
+   * Par défaut le papier suit la caisse (ticket en caisse rapide, facture A4 en POS
+   * Facture) : c'est ce que fait déjà tout le monde, et personne ne l'a demandé
+   * autrement. Le réglage n'existe que pour le commerçant dont les clients réclament
+   * parfois l'autre document.
+   */
+  const peekPrintFormatChoice =
+    companyId.length > 0 && isOwner ? peekPrintFormatChoiceEnabled(companyId) : undefined;
+  const printFormatChoiceQ = useQuery({
+    queryKey: queryKeys.printFormatChoiceEnabled(companyId),
+    queryFn: () => fetchPrintFormatChoiceEnabled(companyId),
+    enabled: Boolean(companyId && isOwner),
+    staleTime: 30_000,
+    ...(peekPrintFormatChoice !== undefined ? { initialData: peekPrintFormatChoice } : {}),
+  });
+
+  const printFormatChoiceMut = useMutation({
+    mutationFn: async (enabled: boolean) => {
+      if (!companyId) throw new Error("Entreprise introuvable.");
+      await setPrintFormatChoiceEnabled(companyId, enabled);
+    },
+    onSuccess: async (_, enabled) => {
+      toast.success(
+        enabled
+          ? "Choix du format activé. Chaque vente peut sortir en ticket ou en facture A4."
+          : "Choix du format désactivé. L'impression suit de nouveau la caisse utilisée.",
+      );
+      await qc.invalidateQueries({
+        queryKey: queryKeys.printFormatChoiceEnabled(companyId),
       });
     },
     onError: (e) => toastMutationError("settings", e),
@@ -1086,6 +1128,66 @@ export function SettingsScreen() {
                   disabled={pickupTrackingMut.isPending}
                   onChange={(e) => {
                     void pickupTrackingMut.mutateAsync(e.target.checked);
+                  }}
+                />
+              </label>
+            </div>
+          )}
+        </FsCard>
+      ) : null}
+
+      {/* Choisir le format d'impression — owner uniquement */}
+      {isOwner && companyId ? (
+        <FsCard className="mt-5" padding="p-5">
+          <SettingsCardTitle icon={MdPrint} title="Choisir le format d'impression" />
+          <p className="mt-2 text-xs leading-relaxed text-neutral-600 sm:text-sm">
+            Aujourd&apos;hui le papier suit la caisse : ticket thermique en caisse rapide,
+            facture A4 en POS Facture. Activé, chaque vente peut sortir dans{" "}
+            <b>les deux formats</b>, sans rien changer à votre façon de vendre : après une
+            vente en caisse rapide, un bouton « Imprimer en A4 » s&apos;ajoute au ticket ; après
+            une facture A4, un bouton « Imprimer en ticket ». La page <b>Ventes</b> propose
+            alors les deux sur chaque vente déjà enregistrée.
+          </p>
+          {/*
+            Le point qui compte pour le commerçant : c'est un document de plus, pas une
+            vente de plus. Sans cette phrase, la première question au support sera
+            « est-ce que ça compte deux fois dans mon chiffre d'affaires ? ».
+          */}
+          <p className="mt-2 rounded-[10px] bg-amber-500/10 px-3 py-2 text-xs leading-relaxed text-amber-900 dark:text-amber-200">
+            À savoir : les deux impressions portent le même numéro et les mêmes montants —
+            c&apos;est la même vente, imprimée deux fois. Rien n&apos;est enregistré en
+            double, ni dans le stock, ni dans vos rapports.
+          </p>
+          {printFormatChoiceQ.isPending ? (
+            <div className="mt-4 flex justify-center py-4" role="status" aria-label="Chargement">
+              <div className="h-8 w-8 animate-spin rounded-full border-2 border-fs-accent border-t-transparent" />
+            </div>
+          ) : (
+            <div className="mt-4 space-y-0 rounded-[10px] border border-black/[0.08]">
+              <label
+                className={cn(
+                  "flex cursor-pointer items-start justify-between gap-3 px-3 py-3 sm:px-4",
+                  printFormatChoiceMut.isPending && "pointer-events-none opacity-60",
+                )}
+              >
+                <span className="min-w-0">
+                  <span className="block text-sm font-medium text-fs-text">
+                    Imprimer en A4 ou en thermique au choix
+                  </span>
+                  <span className="mt-0.5 block text-xs text-neutral-600">
+                    {printFormatChoiceQ.data
+                      ? "Le second format est proposé après la vente et sur la page Ventes."
+                      : "Désactivé : le document suit la caisse utilisée, comme aujourd'hui."}
+                  </span>
+                </span>
+                <input
+                  type="checkbox"
+                  role="switch"
+                  className="mt-1 h-5 w-9 shrink-0 cursor-pointer accent-fs-accent"
+                  checked={Boolean(printFormatChoiceQ.data)}
+                  disabled={printFormatChoiceMut.isPending}
+                  onChange={(e) => {
+                    void printFormatChoiceMut.mutateAsync(e.target.checked);
                   }}
                 />
               </label>

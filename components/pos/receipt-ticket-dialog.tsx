@@ -11,13 +11,19 @@ import {
 } from "@/lib/features/share/share-document";
 import { formatCurrencyFlutter } from "@/lib/utils/currency";
 import { messageFromUnknownError, toast } from "@/lib/toast";
+import {
+  canPrintSaleInOtherFormat,
+  printSaleInFormat,
+} from "@/lib/features/print/print-sale-format";
+import type { Store } from "@/lib/features/stores/types";
 import { useState } from "react";
-import { MdClose, MdPrint } from "react-icons/md";
+import { MdClose, MdPictureAsPdf, MdPrint } from "react-icons/md";
 
 export function ReceiptTicketDialog({
   data,
   paperWidthMm = 80,
   remotePrint,
+  a4Print,
   onClose,
 }: {
   data: ReceiptTicketData;
@@ -32,9 +38,39 @@ export function ReceiptTicketDialog({
     busy: boolean;
     onPrint: () => void;
   } | null;
+  /**
+   * Réglage propriétaire « Choisir le format d'impression ». Fourni, le client qui
+   * réclame une facture A4 après un passage en caisse rapide l'obtient au comptoir,
+   * sans ressaisir la vente. Absent (le défaut), le dialogue est celui d'avant : le
+   * document suit la caisse utilisée.
+   */
+  a4Print?: { saleId: string; store: Store } | null;
   onClose: () => void;
 }) {
   const [printing, setPrinting] = useState(false);
+  const [printingA4, setPrintingA4] = useState(false);
+
+  const canA4 = Boolean(a4Print) && canPrintSaleInOtherFormat(a4Print?.saleId);
+
+  async function handlePrintA4() {
+    if (!a4Print) return;
+    setPrintingA4(true);
+    try {
+      toast.info("Facture A4 en préparation…");
+      await printSaleInFormat({
+        saleId: a4Print.saleId,
+        store: a4Print.store,
+        format: "a4",
+      });
+      window.setTimeout(() => {
+        toast.success("Facture A4 envoyée à l'imprimante.");
+      }, 400);
+    } catch (e) {
+      toast.error(messageFromUnknownError(e, "Impossible d'imprimer la facture A4."));
+    } finally {
+      setPrintingA4(false);
+    }
+  }
 
   async function handlePrint() {
     setPrinting(true);
@@ -110,6 +146,21 @@ export function ReceiptTicketDialog({
             )}
             {remotePrint ? "Imprimer ici" : "Imprimer"}
           </button>
+          {canA4 ? (
+            <button
+              type="button"
+              disabled={printingA4}
+              onClick={() => void handlePrintA4()}
+              className="inline-flex min-w-[170px] items-center justify-center gap-2 rounded-md border border-[#E5E7EB] bg-[#F3F4F6] py-3 pl-4 pr-5 text-sm font-semibold text-[#1F2937] disabled:opacity-60"
+            >
+              {printingA4 ? (
+                <span className="h-5 w-5 animate-spin rounded-full border-2 border-[#F97316] border-t-transparent" />
+              ) : (
+                <MdPictureAsPdf className="h-5 w-5 text-[#1F2937]" aria-hidden />
+              )}
+              Imprimer en A4
+            </button>
+          ) : null}
           <SendDocumentButton
             makeBlob={() => generateReceiptThermalPdfBlob(data, { paperWidthMm })}
             filename={documentFilename("recu", data.saleNumber)}

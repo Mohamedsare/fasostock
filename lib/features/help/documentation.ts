@@ -386,6 +386,13 @@ export const DOC_GROUPS: DocGroup[] = [
           },
           {
             kind: "bullets",
+            title: "Impression",
+            items: [
+              "Choisir le format d'impression (désactivé par défaut) : par défaut le document suit la caisse — ticket thermique en caisse rapide, facture A4 en POS Facture. Activé, chaque vente peut sortir dans les deux formats, au choix, sans rien changer à votre façon de vendre.",
+            ],
+          },
+          {
+            kind: "bullets",
             title: "Modules que le propriétaire ouvre lui-même",
             items: [
               "Prix de revient — calcul du coût réel d'un arrivage.",
@@ -932,6 +939,16 @@ export const DOC_GROUPS: DocGroup[] = [
             ],
           },
           {
+            kind: "steps",
+            title: "Le client veut l'autre format (facture A4 ou ticket)",
+            items: [
+              "À activer d'abord : Paramètres › Choisir le format d'impression (propriétaire). Désactivé par défaut.",
+              "Juste après la vente, le bouton du second format est proposé sur le ticket (« Imprimer en A4 ») ou sur la facture (« Imprimer en ticket »).",
+              "Plus tard, ouvrez la vente depuis cette page : les deux blocs, FACTURE A4 et TICKET CAISSE, y sont disponibles.",
+              "Le document imprimé porte le même numéro et les mêmes montants : c'est la même vente, pas une seconde.",
+            ],
+          },
+          {
             kind: "note",
             tone: "warn",
             title: "Le stock a déjà été décompté",
@@ -971,6 +988,10 @@ export const DOC_GROUPS: DocGroup[] = [
           "pas encore livré",
           "payé non emporté",
           "marchandise en attente",
+          "imprimer en a4",
+          "imprimer en ticket",
+          "format d'impression",
+          "thermique",
         ],
       },
       {

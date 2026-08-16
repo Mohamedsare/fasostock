@@ -1,5 +1,6 @@
 "use client";
 
+import { isUndefinedColumnError } from "@/lib/features/common/optimistic-column";
 import { createClient } from "@/lib/supabase/client";
 
 /**
@@ -30,15 +31,30 @@ import { createClient } from "@/lib/supabase/client";
  * On sonde donc une fois par session, très légèrement, et on s'en souvient. Tant que la
  * colonne n'est pas là, les rapports gardent exactement le comportement qu'ils ont
  * toujours eu.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ * CE QU'UNE SONDE RATÉE NE DOIT PAS VOULOIR DIRE
+ * ─────────────────────────────────────────────────────────────────────────────
+ * Une sonde qui échoue ne prouve pas que la colonne manque : un jeton en cours de
+ * renouvellement, une 3G qui lâche, et la requête tombe tout pareil. Retenir « absente »
+ * dans ce cas-là faisait basculer marges, bénéfices et rapports sur le prix catalogue
+ * pour TOUT le reste de la session — des chiffres faux, sans rien à l'écran pour le
+ * signaler. C'est plus grave que la panne elle-même.
+ *
+ * On ne mémorise donc un verdict que lorsque la base a explicitement dit « cette colonne
+ * n'existe pas ». Toute autre erreur laisse la question ouverte : la lecture en cours se
+ * passe de `unit_cost` (repli sans conséquence, le calcul d'avant), et la sonde suivante
+ * retentera sa chance.
  */
 
-/** `undefined` = pas encore sondé. */
+/** `undefined` = pas encore tranché — ni sondé, ni sondé sans réponse claire. */
 let columnAvailable: boolean | undefined;
 let probe: Promise<boolean> | null = null;
 
 /**
  * Sonde à jouer AVANT de construire une requête qui voudrait `unit_cost`.
- * Une seule fois par session ; les appels concurrents partagent la même promesse.
+ * Les appels concurrents partagent la même promesse ; une fois le verdict rendu, il ne
+ * coûte plus rien.
  */
 export async function saleItemCostColumnAvailable(): Promise<boolean> {
   if (columnAvailable !== undefined) return columnAvailable;
@@ -50,11 +66,21 @@ export async function saleItemCostColumnAvailable(): Promise<boolean> {
       // `limit(0)` : PostgREST valide les colonnes demandées sans rapporter la moindre
       // ligne. La sonde coûte donc un aller-retour, et rien de plus.
       const { error } = await supabase.from("sale_items").select("unit_cost").limit(0);
-      columnAvailable = !error;
+      if (!error) {
+        columnAvailable = true;
+      } else if (isUndefinedColumnError(error, "unit_cost")) {
+        // Verdict franc de la base : la migration n'est pas passée. On s'en souvient.
+        columnAvailable = false;
+      }
+      // Sinon : panne passagère. `columnAvailable` reste `undefined`, donc non tranché.
     } catch {
-      columnAvailable = false;
+      /* Réseau, délai dépassé : la question reste ouverte, elle sera reposée. */
+    } finally {
+      // Libérée dans tous les cas : sans ça, une sonde non concluante resterait la
+      // réponse définitive de la session, ce qu'on cherche précisément à éviter.
+      probe = null;
     }
-    return columnAvailable;
+    return columnAvailable === true;
   })();
 
   return probe;

@@ -68,6 +68,11 @@ import {
   QUICK_POS_PAYMENTS_DEFAULT,
 } from "@/lib/features/settings/quick-pos-payments";
 import { fetchQuickPosCreditEnabled } from "@/lib/features/settings/quick-pos-credit";
+import {
+  fetchPrintFormatChoiceEnabled,
+  peekPrintFormatChoiceEnabled,
+} from "@/lib/features/settings/print-format-choice";
+import type { Store } from "@/lib/features/stores/types";
 import { playPosAddBeep } from "@/lib/utils/pos-sound";
 import { createClient } from "@/lib/supabase/client";
 import { formatCurrency } from "@/lib/utils/currency";
@@ -141,6 +146,15 @@ export function CheckoutQueueScreen() {
     sellerName: string;
     paperWidthMm: 58 | 80;
   } | null>(null);
+  /**
+   * De quoi sortir la même vente en facture A4 (réglage « Choisir le format
+   * d'impression »). Séparé de `receiptTarget`, qui n'existe que lorsque le ticket peut
+   * partir chez le vendeur : la facture, elle, s'imprime ici quoi qu'il arrive.
+   */
+  const [receiptSale, setReceiptSale] = useState<{
+    saleId: string;
+    store: Store;
+  } | null>(null);
   const [soundOn, setSoundOn] = useState(true);
   const [now, setNow] = useState(() => Date.now());
 
@@ -204,6 +218,18 @@ export function CheckoutQueueScreen() {
     enabled,
     staleTime: 5 * 60_000,
   });
+
+  /** Réglage propriétaire : le ticket encaissé ici peut aussi sortir en facture A4. */
+  const printFormatChoiceQ = useQuery({
+    queryKey: queryKeys.printFormatChoiceEnabled(companyId),
+    queryFn: () => fetchPrintFormatChoiceEnabled(companyId),
+    enabled,
+    staleTime: 60_000,
+    ...(peekPrintFormatChoiceEnabled(companyId) !== undefined
+      ? { initialData: peekPrintFormatChoiceEnabled(companyId) }
+      : {}),
+  });
+  const printFormatChoiceOn = printFormatChoiceQ.data === true;
 
   // Réglages d'encaissement de la caisse rapide : le comptoir doit proposer ICI
   // exactement ce qu'il propose LÀ-BAS, sinon le module créerait deux caisses aux
@@ -406,6 +432,7 @@ export function CheckoutQueueScreen() {
                 }
               : null,
           );
+          setReceiptSale({ saleId, store });
           setReceipt(buildReceiptTicketDataFromSale(store, sale, saleId));
         } else {
           toast.info("Vente enregistrée. Le ticket est réimprimable depuis la page Ventes.");
@@ -798,10 +825,12 @@ export function CheckoutQueueScreen() {
                 }
               : null
           }
+          a4Print={printFormatChoiceOn ? receiptSale : null}
           onClose={() => {
             if (remotePrintMut.isPending) return;
             setReceipt(null);
             setReceiptTarget(null);
+            setReceiptSale(null);
           }}
         />
       ) : null}

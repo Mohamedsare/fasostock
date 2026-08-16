@@ -10,7 +10,16 @@ import {
 import type { InvoiceA4Data } from "@/lib/features/invoices/invoice-a4-types";
 import type { InvoicePdfRequestMeta } from "@/lib/features/pdf/pdf-api-client";
 import { messageFromUnknownError, toast } from "@/lib/toast";
-import { MdDownload, MdPictureAsPdf, MdPrint } from "react-icons/md";
+import {
+  canPrintSaleInOtherFormat,
+  printSaleInFormat,
+} from "@/lib/features/print/print-sale-format";
+import {
+  MdDownload,
+  MdPictureAsPdf,
+  MdPrint,
+  MdReceiptLong,
+} from "react-icons/md";
 import { cn } from "@/lib/utils/cn";
 import { SendDocumentButton } from "@/components/ui/send-document-button";
 import {
@@ -22,14 +31,46 @@ import { formatCurrencyFlutter } from "@/lib/utils/currency";
 export function InvoicePostSaleDialog({
   data,
   pdfMeta,
+  thermalPrint,
   onClose,
 }: {
   data: InvoiceA4Data;
   pdfMeta?: InvoicePdfRequestMeta;
+  /**
+   * Réglage propriétaire « Choisir le format d'impression ». Fourni, la même vente peut
+   * aussi sortir en ticket thermique — utile quand la facture part au client et que le
+   * ticket reste au comptoir. Absent (le défaut), le dialogue est celui d'avant.
+   */
+  thermalPrint?: { saleId: string } | null;
   onClose: () => void;
 }) {
   const [previewBlob, setPreviewBlob] = useState<Blob | null>(null);
-  const [busy, setBusy] = useState<null | "view" | "print" | "download">(null);
+  const [busy, setBusy] = useState<
+    null | "view" | "print" | "download" | "thermal"
+  >(null);
+
+  const canThermal =
+    Boolean(thermalPrint) && canPrintSaleInOtherFormat(thermalPrint?.saleId);
+
+  async function handlePrintThermal() {
+    if (!thermalPrint || busy) return;
+    setBusy("thermal");
+    try {
+      toast.info("Ticket en préparation…");
+      await printSaleInFormat({
+        saleId: thermalPrint.saleId,
+        store: data.store,
+        format: "thermal",
+      });
+      window.setTimeout(() => {
+        toast.success("Ticket envoyé à l'imprimante.");
+      }, 400);
+    } catch (e) {
+      toast.error(messageFromUnknownError(e, "Impossible d'imprimer le ticket."));
+    } finally {
+      setBusy(null);
+    }
+  }
 
   async function makeBlob() {
     return generateInvoicePdfBlob(data, pdfMeta);
@@ -149,6 +190,18 @@ export function InvoicePostSaleDialog({
               })}
               className="w-full border-transparent bg-[#F97316] text-white shadow-sm hover:bg-[#ea580c]"
             />
+            {/* Second format : sur sa propre ligne, pour ne pas casser la grille 2×2. */}
+            {canThermal ? (
+              <div className="min-[340px]:col-span-2">
+                <PostSaleAction
+                  icon={<MdReceiptLong className="h-5 w-5 shrink-0" aria-hidden />}
+                  label="Imprimer en ticket"
+                  loading={busy === "thermal"}
+                  disabled={disabled}
+                  onClick={() => void handlePrintThermal()}
+                />
+              </div>
+            ) : null}
           </div>
           <button
             type="button"

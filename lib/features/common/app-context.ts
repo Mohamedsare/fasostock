@@ -3,6 +3,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { PERMISSIONS_ALL } from "@/lib/constants/permissions";
+import {
+  createOptimisticColumn,
+  isUndefinedColumnError,
+} from "@/lib/features/common/optimistic-column";
 import type { AppContextData } from "@/lib/features/permissions/access";
 import { reportHandledClientError } from "@/lib/monitoring/remote-error-logger";
 import { createClient } from "@/lib/supabase/client";
@@ -190,25 +194,21 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
  * clients, pas seulement pour ceux qui utiliseraient la nouveauté.
  *
  * On demande donc la colonne de façon optimiste, et à la première erreur « colonne
- * inconnue » on rejoue la requête sans elle, définitivement pour la session. Le module
- * concerné se comporte alors comme désactivé — exactement l'état d'avant la migration.
- * Même parade que `activity_attributes` dans `products/api.ts` (migration 00189).
+ * inconnue » on rejoue la requête sans elle. Le module concerné se comporte alors comme
+ * désactivé — exactement l'état d'avant la migration. Même parade que
+ * `activity_attributes` dans `products/api.ts` (migration 00189).
+ *
+ * Le constat expire au lieu de valoir pour toute la session : une caisse garde son onglet
+ * ouvert du matin au soir, et un refus passager de PostgREST le jour du déploiement lui
+ * cachait sinon le module jusqu'à ce que quelqu'un pense à recharger la page.
  */
-let quickSupplyColumnAvailable = true;
-
-/** 42703 = undefined_column (Postgres) ; PGRST204 = colonne absente du cache PostgREST. */
-function isUndefinedColumnError(error: unknown): boolean {
-  const e = error as { code?: string; message?: string } | null;
-  if (!e) return false;
-  if (e.code === "42703" || e.code === "PGRST204") return true;
-  return typeof e.message === "string" && e.message.includes("quick_supply_enabled");
-}
+const quickSupplyColumn = createOptimisticColumn();
 
 const COMPANY_SELECT_BASE =
   "id, name, logo_url, business_type_slug, warehouse_feature_enabled, purchases_feature_enabled, transfers_feature_enabled, store_quota_increase_enabled, ai_predictions_enabled, warehouse_kpi_show_purchase_value, warehouse_kpi_show_sale_value, accounting_module_enabled, hr_module_enabled, expiry_module_enabled, parts_module_enabled, restock_module_enabled, product_locations_enabled, product_aliases_enabled, landed_cost_enabled, custom_expenses_enabled, dual_cashier_enabled, online_store_enabled";
 
-function companySelectColumns(): string {
-  return quickSupplyColumnAvailable
+function companySelectColumns(withQuickSupply: boolean): string {
+  return withQuickSupply
     ? `${COMPANY_SELECT_BASE}, quick_supply_enabled`
     : COMPANY_SELECT_BASE;
 }
@@ -303,19 +303,22 @@ async function fetchAppContext(): Promise<AppContextData | null> {
   const primaryCompanyId = supportSession
     ? supportSession.companyId
     : pickActiveCompanyId(orderedCompanyIds);
-  const runCompanyQuery = () =>
+  const runCompanyQuery = (withQuickSupply: boolean) =>
     supabase
       .from("companies")
-      .select(companySelectColumns())
+      .select(companySelectColumns(withQuickSupply))
       .eq("id", primaryCompanyId)
       .maybeSingle();
 
-  let { data: companyRaw, error: cErr } = await runCompanyQuery();
+  // Décision lue UNE fois : c'est elle, et non l'état courant du compteur, qui autorise
+  // le second essai — garantissant qu'il n'y en aura jamais plus d'un.
+  const askedQuickSupply = quickSupplyColumn.available();
+  let { data: companyRaw, error: cErr } = await runCompanyQuery(askedQuickSupply);
   // Migration 00193 pas encore appliquée : on retire la colonne et on rejoue, plutôt
   // que de laisser l'application entière sans contexte.
-  if (cErr && quickSupplyColumnAvailable && isUndefinedColumnError(cErr)) {
-    quickSupplyColumnAvailable = false;
-    ({ data: companyRaw, error: cErr } = await runCompanyQuery());
+  if (cErr && askedQuickSupply && isUndefinedColumnError(cErr, "quick_supply_enabled")) {
+    quickSupplyColumn.markMissing();
+    ({ data: companyRaw, error: cErr } = await runCompanyQuery(false));
   }
   if (cErr) throw mapSupabaseError(cErr);
   // `select()` construit dynamiquement (colonne optionnelle) → PostgREST ne peut plus

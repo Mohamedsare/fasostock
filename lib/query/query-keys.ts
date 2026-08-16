@@ -254,6 +254,9 @@ export const queryKeys = {
   /** Réglage owner « marchandise payée non emportée » (`company_settings`). */
   salePickupTrackingEnabled: (companyId: string) =>
     ["sale-pickup-tracking", companyId] as const,
+  /** Réglage owner « choisir le format d'impression » (`company_settings`). */
+  printFormatChoiceEnabled: (companyId: string) =>
+    ["print-format-choice", companyId] as const,
   /**
    * Caisse à deux — la file des bons à encaisser. Préfixe `['pos-handoffs', companyId]`
    * pour tout invalider d'un coup après un encaissement ou une annulation.

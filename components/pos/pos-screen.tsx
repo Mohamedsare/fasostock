@@ -48,6 +48,10 @@ import { applyPromoPercent } from "@/lib/features/promotions/promo-math";
 import { defaultInvoiceUnitForProduct, INVOICE_UNITS } from "@/lib/features/pos/invoice-units";
 import { factureTabStripHeightPx } from "@/lib/utils/facture-tab-layout";
 import { fetchInvoiceTablePosEnabled } from "@/lib/features/settings/invoice-table-pos";
+import {
+  fetchPrintFormatChoiceEnabled,
+  peekPrintFormatChoiceEnabled,
+} from "@/lib/features/settings/print-format-choice";
 import { fetchQuickPosCreditEnabled } from "@/lib/features/settings/quick-pos-credit";
 import {
   fetchDualCashierSelfCheckout,
@@ -379,6 +383,22 @@ export function PosScreen({
     enabled: Boolean(companyId && mode === "a4-table" && canAccessA4Table),
     staleTime: 60_000,
   });
+
+  /*
+   * Réglage propriétaire « Choisir le format d'impression ». Coupé (le défaut), le
+   * document suit la caisse : ticket en caisse rapide, facture A4 en POS Facture.
+   * Ouvert, le dialogue d'après-vente propose aussi l'autre format.
+   */
+  const printFormatChoiceQ = useQuery({
+    queryKey: queryKeys.printFormatChoiceEnabled(companyId),
+    queryFn: () => fetchPrintFormatChoiceEnabled(companyId),
+    enabled: Boolean(companyId),
+    staleTime: 60_000,
+    ...(peekPrintFormatChoiceEnabled(companyId) !== undefined
+      ? { initialData: peekPrintFormatChoiceEnabled(companyId) }
+      : {}),
+  });
+  const printFormatChoiceOn = printFormatChoiceQ.data === true;
 
   // Vente à crédit en caisse rapide : réglage entreprise activé par le propriétaire
   // (Paramètres › « Caisse POS rapide — vente à crédit »).
@@ -2857,6 +2877,9 @@ export function PosScreen({
         <InvoicePostSaleDialog
           data={invoiceDialog.data}
           pdfMeta={{ saleId: invoiceDialog.saleId }}
+          thermalPrint={
+            printFormatChoiceOn ? { saleId: invoiceDialog.saleId } : null
+          }
           onClose={() => setInvoiceDialog(null)}
         />
       ) : null}
@@ -2864,6 +2887,11 @@ export function PosScreen({
         <ReceiptTicketDialog
           data={receiptDialog}
           paperWidthMm={thermalPaperWidthMm}
+          a4Print={
+            printFormatChoiceOn && store && receiptDialog.saleId
+              ? { saleId: receiptDialog.saleId, store }
+              : null
+          }
           onClose={() => setReceiptDialog(null)}
         />
       ) : null}

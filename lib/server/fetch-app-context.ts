@@ -1,6 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { PERMISSIONS_ALL } from "@/lib/constants/permissions";
+import {
+  createOptimisticColumn,
+  isUndefinedColumnError,
+} from "@/lib/features/common/optimistic-column";
 import type { AppContextData } from "@/lib/features/permissions/access";
 import {
   buildAccessHelpers,
@@ -13,16 +17,13 @@ import {
  * lecture — et cette garde-là répondrait « Accès réservé » sur TOUTES les pages, pour
  * tous les clients. On rejoue donc sans la colonne à la première erreur, et le module
  * se comporte comme désactivé. Même parade que côté client (`app-context.ts`).
+ *
+ * Le constat EXPIRE, et c'est capital ici : ce module est chargé une fois par processus
+ * Next, donc partagé par toutes les entreprises. Un refus passager de PostgREST — son
+ * cache de schéma, le temps qu'il recharge après un `db push` — éteignait sinon le
+ * module pour tout le monde jusqu'au prochain redémarrage du serveur.
  */
-let quickSupplyColumnAvailable = true;
-
-/** 42703 = undefined_column (Postgres) ; PGRST204 = colonne absente du cache PostgREST. */
-function isUndefinedColumnError(error: unknown): boolean {
-  const e = error as { code?: string; message?: string } | null;
-  if (!e) return false;
-  if (e.code === "42703" || e.code === "PGRST204") return true;
-  return typeof e.message === "string" && e.message.includes("quick_supply_enabled");
-}
+const quickSupplyColumn = createOptimisticColumn();
 
 const COMPANY_SELECT_BASE =
   "id, name, logo_url, business_type_slug, warehouse_feature_enabled, purchases_feature_enabled, transfers_feature_enabled, store_quota_increase_enabled, ai_predictions_enabled, warehouse_kpi_show_purchase_value, warehouse_kpi_show_sale_value, accounting_module_enabled, hr_module_enabled, expiry_module_enabled, parts_module_enabled, restock_module_enabled, product_locations_enabled, product_aliases_enabled, landed_cost_enabled, custom_expenses_enabled, dual_cashier_enabled, online_store_enabled";
@@ -37,21 +38,24 @@ export async function fetchAppContextForCompany(
   const cid = companyId.trim();
   if (!cid) return null;
 
-  const runCompanyQuery = () =>
+  const runCompanyQuery = (withQuickSupply: boolean) =>
     supabase
       .from("companies")
       .select(
-        quickSupplyColumnAvailable
+        withQuickSupply
           ? `${COMPANY_SELECT_BASE}, quick_supply_enabled`
           : COMPANY_SELECT_BASE,
       )
       .eq("id", cid)
       .maybeSingle();
 
-  let { data: companyRaw, error: cErr } = await runCompanyQuery();
-  if (cErr && quickSupplyColumnAvailable && isUndefinedColumnError(cErr)) {
-    quickSupplyColumnAvailable = false;
-    ({ data: companyRaw, error: cErr } = await runCompanyQuery());
+  // Décision lue UNE fois : c'est elle, et non l'état courant du compteur, qui autorise
+  // le second essai — garantissant qu'il n'y en aura jamais plus d'un.
+  const askedQuickSupply = quickSupplyColumn.available();
+  let { data: companyRaw, error: cErr } = await runCompanyQuery(askedQuickSupply);
+  if (cErr && askedQuickSupply && isUndefinedColumnError(cErr, "quick_supply_enabled")) {
+    quickSupplyColumn.markMissing();
+    ({ data: companyRaw, error: cErr } = await runCompanyQuery(false));
   }
   // `select()` dynamique : PostgREST ne peut plus inférer la forme de la ligne.
   const companyRow = (companyRaw ?? null) as unknown as Record<string, unknown> | null;
