@@ -425,7 +425,7 @@ export function QuickSupplyScreen() {
           title="Approvisionnement"
           subtitle="Faire entrer la marchandise achetée, et vendre tout de suite."
         />
-        <FsCard padding="p-6">
+        <FsCard className="rounded-[8px] sm:rounded-[8px]" padding="p-6">
           <div className="text-center">
             <MdLock className="mx-auto h-8 w-8 text-neutral-400" aria-hidden />
             <p className="mt-2 text-sm font-semibold text-fs-text">Accès réservé</p>
@@ -448,12 +448,12 @@ export function QuickSupplyScreen() {
       />
 
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        <div className="inline-flex rounded-[10px] border border-black/[0.08] bg-fs-card p-1">
+        <div className="inline-flex rounded-[6px] border border-black/[0.08] bg-fs-card p-1">
           <button
             type="button"
             onClick={() => setTab("new")}
             className={cn(
-              "inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold sm:text-sm",
+              "inline-flex items-center gap-1.5 rounded-[6px] px-3 py-2 text-xs font-semibold sm:text-sm",
               tab === "new" ? "bg-fs-accent text-white" : "text-neutral-700",
             )}
           >
@@ -464,7 +464,7 @@ export function QuickSupplyScreen() {
             type="button"
             onClick={() => setTab("history")}
             className={cn(
-              "inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold sm:text-sm",
+              "inline-flex items-center gap-1.5 rounded-[6px] px-3 py-2 text-xs font-semibold sm:text-sm",
               tab === "history" ? "bg-fs-accent text-white" : "text-neutral-700",
             )}
           >
@@ -476,7 +476,7 @@ export function QuickSupplyScreen() {
         {/* Où la marchandise entre. Une seule boutique : simple rappel, pas un choix. */}
         {contextStoreId == null && stores.length > 1 ? (
           <select
-            className={fsInputClass("w-auto min-w-[10rem]")}
+            className={fsInputClass("rounded-[6px] w-auto min-w-[10rem]")}
             value={storeId ?? ""}
             onChange={(e) => switchStore(e.target.value || null)}
             aria-label="Boutique de réception"
@@ -488,7 +488,7 @@ export function QuickSupplyScreen() {
             ))}
           </select>
         ) : storeName ? (
-          <span className="inline-flex items-center gap-1.5 rounded-[10px] bg-fs-surface-container px-2.5 py-1.5 text-[11px] font-semibold text-neutral-700">
+          <span className="inline-flex items-center gap-1.5 rounded-[6px] bg-fs-surface-container px-2.5 py-1.5 text-[11px] font-semibold text-neutral-700">
             <MdStorefront className="h-4 w-4" aria-hidden />
             {storeName}
           </span>
@@ -500,7 +500,7 @@ export function QuickSupplyScreen() {
       ) : (
         <>
           {lastSupply ? (
-            <FsCard className="mb-3 border-l-4 border-l-emerald-500" padding="p-3 sm:p-4">
+            <FsCard className="mb-3 border-l-4 border-l-emerald-500 rounded-[8px] sm:rounded-[8px]" padding="p-3 sm:p-4">
               <div className="flex items-start gap-2">
                 <MdCheckCircle className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" aria-hidden />
                 <div className="min-w-0 flex-1">
@@ -515,7 +515,7 @@ export function QuickSupplyScreen() {
                 <button
                   type="button"
                   onClick={() => setLastSupply(null)}
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-neutral-500"
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-[6px] text-neutral-500"
                   aria-label="Fermer"
                 >
                   <MdClose className="h-5 w-5" aria-hidden />
@@ -524,7 +524,7 @@ export function QuickSupplyScreen() {
             </FsCard>
           ) : null}
 
-          <FsCard padding="p-3 sm:p-4">
+          <FsCard className="rounded-[8px] sm:rounded-[8px]" padding="p-3 sm:p-4">
             <div className="flex items-center gap-2">
               <div className="relative min-w-0 flex-1">
                 <MdSearch
@@ -534,7 +534,7 @@ export function QuickSupplyScreen() {
                 <input
                   ref={searchRef}
                   autoFocus
-                  className={fsInputClass("h-12 pl-11 text-base")}
+                  className={fsInputClass("rounded-[6px] h-12 pl-11 text-base")}
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   onKeyDown={onSearchKeyDown}
@@ -545,7 +545,7 @@ export function QuickSupplyScreen() {
               <button
                 type="button"
                 onClick={() => setScanOpen(true)}
-                className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-[10px] border border-black/[0.08] bg-fs-card text-fs-accent"
+                className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-[6px] border border-black/[0.08] bg-fs-card text-fs-accent"
                 aria-label="Scanner un code-barres"
                 title="Scanner"
               >
@@ -566,7 +566,7 @@ export function QuickSupplyScreen() {
                     key={p.id}
                     type="button"
                     onClick={() => addProduct(p)}
-                    className="flex w-full items-center gap-3 rounded-[10px] border border-black/[0.06] bg-fs-card px-3 py-2.5 text-left active:bg-fs-surface-container"
+                    className="flex w-full items-center gap-3 rounded-[6px] border border-black/[0.06] bg-fs-card px-3 py-2.5 text-left active:bg-fs-surface-container"
                   >
                     {/*
                       La photo d'abord : on reconnaît l'emballage au premier coup d'œil,
@@ -579,9 +579,7 @@ export function QuickSupplyScreen() {
                         {p.name}
                       </span>
                       <span className="mt-0.5 block text-[11px] text-neutral-600">
-                        En stock : {p.stock} · Achat{" "}
-                        {formatCurrency(p.cataloguePurchasePrice)} · Vente{" "}
-                        {formatCurrency(p.catalogueSalePrice)}
+                        En stock : {p.stock}
                       </span>
                     </span>
                     <MdAdd className="h-5 w-5 shrink-0 text-fs-accent" aria-hidden />
@@ -591,7 +589,7 @@ export function QuickSupplyScreen() {
                   <button
                     type="button"
                     onClick={() => addNewProduct(query)}
-                    className="flex w-full items-center gap-2 rounded-[10px] border border-dashed border-fs-accent/50 bg-[color-mix(in_srgb,var(--fs-accent)_8%,transparent)] px-3 py-2.5 text-left"
+                    className="flex w-full items-center gap-2 rounded-[6px] border border-dashed border-fs-accent/50 bg-[color-mix(in_srgb,var(--fs-accent)_8%,transparent)] px-3 py-2.5 text-left"
                   >
                     <MdAdd className="h-5 w-5 shrink-0 text-fs-accent" aria-hidden />
                     <span className="min-w-0">
@@ -612,7 +610,7 @@ export function QuickSupplyScreen() {
           </FsCard>
 
           {lines.length === 0 ? (
-            <FsCard className="mt-3" padding="p-6">
+            <FsCard className="mt-3 rounded-[8px] sm:rounded-[8px]" padding="p-6">
               <div className="text-center">
                 <MdInventory2 className="mx-auto h-8 w-8 text-neutral-400" aria-hidden />
                 <p className="mt-2 text-sm font-semibold text-fs-text">
@@ -625,7 +623,7 @@ export function QuickSupplyScreen() {
               </div>
             </FsCard>
           ) : (
-            <FsCard className="mt-3" padding="p-0">
+            <FsCard className="mt-3 rounded-[8px] sm:rounded-[8px]" padding="p-0">
               <div className="flex items-center justify-between px-3 pt-3 sm:px-4">
                 <FsSectionLabel>Ce qui entre ({lines.length})</FsSectionLabel>
                 <button
@@ -652,7 +650,7 @@ export function QuickSupplyScreen() {
           {/* Facultatif, et replié : trois champs de plus entre le commerçant et sa vente
               suffisent à faire abandonner la saisie. Qui en a besoin les déplie. */}
           {lines.length > 0 ? (
-            <FsCard className="mt-3" padding="p-3 sm:p-4">
+            <FsCard className="mt-3 rounded-[8px] sm:rounded-[8px]" padding="p-3 sm:p-4">
               <button
                 type="button"
                 onClick={() => setDetailsOpen((v) => !v)}
@@ -673,7 +671,7 @@ export function QuickSupplyScreen() {
                       Chez qui ?
                     </span>
                     <input
-                      className={fsInputClass()}
+                      className={fsInputClass("rounded-[6px]")}
                       value={supplier}
                       onChange={(e) => setSupplier(e.target.value)}
                       placeholder="Ali du marché…"
@@ -684,7 +682,7 @@ export function QuickSupplyScreen() {
                       Montant payé
                     </span>
                     <input
-                      className={fsInputClass()}
+                      className={fsInputClass("rounded-[6px]")}
                       value={paidText}
                       onChange={(e) => setPaidText(e.target.value)}
                       inputMode="numeric"
@@ -696,7 +694,7 @@ export function QuickSupplyScreen() {
                       Note
                     </span>
                     <input
-                      className={fsInputClass()}
+                      className={fsInputClass("rounded-[6px]")}
                       value={note}
                       onChange={(e) => setNote(e.target.value)}
                       placeholder="2 cartons abîmés…"
@@ -724,7 +722,7 @@ export function QuickSupplyScreen() {
                   onClick={() => saveMut.mutate()}
                   disabled={saveMut.isPending || missingSalePrice}
                   className={cn(
-                    "inline-flex min-h-[52px] flex-1 items-center justify-center gap-2 rounded-[12px] px-4 text-sm font-bold text-white shadow-sm sm:flex-none sm:px-8 sm:text-base",
+                    "inline-flex min-h-[52px] flex-1 items-center justify-center gap-2 rounded-[8px] px-4 text-sm font-bold text-white shadow-sm sm:flex-none sm:px-8 sm:text-base",
                     saveMut.isPending || missingSalePrice
                       ? "bg-neutral-400"
                       : "bg-fs-accent active:scale-[0.99]",
@@ -801,13 +799,14 @@ function DraftLineRow({
   const newStock = line.currentStock == null ? line.quantity : line.currentStock + line.quantity;
   const costRose =
     line.cataloguePurchasePrice != null && line.unitCost > line.cataloguePurchasePrice;
-  /** Marge de CETTE marchandise : le seul calcul qui ait un sens sur un arrivage. */
+  /**
+   * Marge de CETTE marchandise. Calculée sur le seul prix que le commerçant a saisi :
+   * la déduire du prix habituel reviendrait à le réafficher en creux.
+   */
   const lotMargin =
     line.unitSalePrice != null && line.unitSalePrice > 0
       ? line.unitSalePrice - line.unitCost
-      : line.catalogueSalePrice != null
-        ? line.catalogueSalePrice - line.unitCost
-        : null;
+      : null;
 
   return (
     <div className="border-t border-black/[0.06] p-3 first:border-t-0 sm:p-4">
@@ -815,7 +814,7 @@ function DraftLineRow({
         <div className="min-w-0 flex-1">
           {isNew ? (
             <input
-              className={fsInputClass("h-9 text-sm font-semibold")}
+              className={fsInputClass("rounded-[6px] h-9 text-sm font-semibold")}
               value={line.label}
               onChange={(e) => onPatch({ label: e.target.value })}
               placeholder="Nom de l'article"
@@ -837,7 +836,7 @@ function DraftLineRow({
         <button
           type="button"
           onClick={onRemove}
-          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-neutral-500 hover:text-red-600"
+          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[6px] text-neutral-500 hover:text-red-600"
           aria-label={`Retirer ${line.label}`}
         >
           <MdDeleteOutline className="h-5 w-5" aria-hidden />
@@ -852,13 +851,13 @@ function DraftLineRow({
             <button
               type="button"
               onClick={() => onPatch({ quantity: Math.max(1, line.quantity - 1) })}
-              className="inline-flex h-11 w-11 items-center justify-center rounded-[10px] border border-black/[0.08] bg-fs-card text-neutral-800"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-[6px] border border-black/[0.08] bg-fs-card text-neutral-800"
               aria-label="Diminuer la quantité"
             >
               <MdRemove className="h-5 w-5" aria-hidden />
             </button>
             <input
-              className={fsInputClass("h-11 w-16 text-center text-base font-bold")}
+              className={fsInputClass("rounded-[6px] h-11 w-16 text-center text-base font-bold")}
               value={String(line.quantity)}
               inputMode="numeric"
               onChange={(e) => {
@@ -871,7 +870,7 @@ function DraftLineRow({
             <button
               type="button"
               onClick={() => onPatch({ quantity: line.quantity + 1 })}
-              className="inline-flex h-11 w-11 items-center justify-center rounded-[10px] border border-black/[0.08] bg-fs-card text-neutral-800"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-[6px] border border-black/[0.08] bg-fs-card text-neutral-800"
               aria-label="Augmenter la quantité"
             >
               <MdAdd className="h-5 w-5" aria-hidden />
@@ -892,7 +891,7 @@ function DraftLineRow({
             ref={priceRef}
             className={fsInputClass(
               cn(
-                "h-11 w-28 text-base",
+                "rounded-[6px] h-11 w-28 text-base",
                 // Un champ vide qui part à zéro rendrait la marge égale au prix de vente
                 // entier. On le signale à l'œil, sans bloquer : c'est un oubli probable,
                 // pas une faute — une marchandise offerte a bien coûté zéro.
@@ -906,11 +905,6 @@ function DraftLineRow({
             onFocus={(e) => e.currentTarget.select()}
             aria-label="Prix payé par unité pour cet arrivage"
           />
-          {line.cataloguePurchasePrice != null ? (
-            <span className="mt-1 block text-[10px] text-neutral-500">
-              catalogue {formatCurrency(line.cataloguePurchasePrice)}
-            </span>
-          ) : null}
         </label>
 
         <label className="block">
@@ -920,7 +914,7 @@ function DraftLineRow({
           <input
             className={fsInputClass(
               cn(
-                "h-11 w-28 text-base",
+                "rounded-[6px] h-11 w-28 text-base",
                 isNew && (line.unitSalePrice ?? 0) <= 0 ? "ring-1 ring-amber-500" : "",
               ),
             )}
@@ -930,9 +924,7 @@ function DraftLineRow({
                 : String(line.unitSalePrice)
             }
             inputMode="numeric"
-            placeholder={
-              line.catalogueSalePrice != null ? String(Math.round(line.catalogueSalePrice)) : "0"
-            }
+            placeholder="0"
             onChange={(e) => {
               const raw = e.target.value.trim();
               // Champ vidé sur un produit existant = « cette marchandise se vend au prix
@@ -945,12 +937,13 @@ function DraftLineRow({
             onFocus={(e) => e.currentTarget.select()}
             aria-label="Prix de vente de cette marchandise"
           />
-          {line.catalogueSalePrice != null ? (
-            <span className="mt-1 block text-[10px] text-neutral-500">
-              {line.unitSalePrice == null
-                ? `au prix habituel ${formatCurrency(line.catalogueSalePrice)}`
-                : `catalogue ${formatCurrency(line.catalogueSalePrice)}`}
-            </span>
+          {/*
+            Le sens sans le chiffre : laisser vide veut dire « au prix habituel », et
+            c'est une information indispensable. Le montant, lui, n'a rien à faire ici —
+            il ancrerait la saisie sur un prix que le commerçant vient justement revoir.
+          */}
+          {!isNew && line.unitSalePrice == null ? (
+            <span className="mt-1 block text-[10px] text-neutral-500">au prix habituel</span>
           ) : null}
         </label>
 
@@ -974,8 +967,7 @@ function DraftLineRow({
 
       {costRose ? (
         <p className="mt-1.5 text-[11px] font-semibold text-amber-700 dark:text-amber-300">
-          Payé plus cher que d&apos;habitude ({formatCurrency(line.cataloguePurchasePrice ?? 0)} →{" "}
-          {formatCurrency(line.unitCost)}). Pensez au prix de vente de cette marchandise.
+          Payé plus cher que d&apos;habitude. Pensez au prix de vente de cette marchandise.
         </p>
       ) : null}
     </div>
@@ -990,7 +982,7 @@ function HistoryTab({
 }) {
   if (query.isLoading) {
     return (
-      <FsCard padding="p-6">
+      <FsCard className="rounded-[8px] sm:rounded-[8px]" padding="p-6">
         <div className="flex justify-center">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-fs-accent border-t-transparent" />
         </div>
@@ -999,7 +991,7 @@ function HistoryTab({
   }
   if (query.isError) {
     return (
-      <FsCard padding="p-3 sm:p-4">
+      <FsCard className="rounded-[8px] sm:rounded-[8px]" padding="p-3 sm:p-4">
         <FsQueryErrorPanel error={query.error} onRetry={() => query.refetch()} />
       </FsCard>
     );
@@ -1007,7 +999,7 @@ function HistoryTab({
   const rows = query.data ?? [];
   if (rows.length === 0) {
     return (
-      <FsCard padding="p-6">
+      <FsCard className="rounded-[8px] sm:rounded-[8px]" padding="p-6">
         <div className="text-center">
           <MdHistory className="mx-auto h-8 w-8 text-neutral-400" aria-hidden />
           <p className="mt-2 text-sm font-semibold text-fs-text">Aucun arrivage</p>
@@ -1022,7 +1014,7 @@ function HistoryTab({
   return (
     <div className="space-y-3">
       {rows.map((s) => (
-        <FsCard key={s.id} padding="p-3 sm:p-4">
+        <FsCard key={s.id} className="rounded-[8px] sm:rounded-[8px]" padding="p-3 sm:p-4">
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div className="min-w-0">
               <p className="text-sm font-bold text-fs-text">
@@ -1050,12 +1042,12 @@ function HistoryTab({
             {s.lines.map((l) => (
               <div
                 key={l.id}
-                className="flex flex-wrap items-baseline justify-between gap-2 rounded-[10px] bg-fs-surface-container px-2.5 py-1.5"
+                className="flex flex-wrap items-baseline justify-between gap-2 rounded-[6px] bg-fs-surface-container px-2.5 py-1.5"
               >
                 <span className="min-w-0 text-xs font-semibold text-fs-text">
                   {l.quantity} × {l.label}
                   {l.productCreated ? (
-                    <span className="ml-1.5 rounded bg-fs-accent/15 px-1.5 py-0.5 text-[10px] font-bold text-fs-accent">
+                    <span className="ml-1.5 rounded-[3px] bg-fs-accent/15 px-1.5 py-0.5 text-[10px] font-bold text-fs-accent">
                       créé
                     </span>
                   ) : null}
@@ -1064,11 +1056,11 @@ function HistoryTab({
                     relisant un arrivage — « est-ce que ce prix s'applique encore ? ».
                   */}
                   {l.remainingQuantity > 0 ? (
-                    <span className="ml-1.5 rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-300">
+                    <span className="ml-1.5 rounded-[3px] bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-300">
                       reste {l.remainingQuantity}
                     </span>
                   ) : (
-                    <span className="ml-1.5 rounded bg-fs-surface px-1.5 py-0.5 text-[10px] font-semibold text-neutral-500">
+                    <span className="ml-1.5 rounded-[3px] bg-fs-surface px-1.5 py-0.5 text-[10px] font-semibold text-neutral-500">
                       écoulé
                     </span>
                   )}
