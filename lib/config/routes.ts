@@ -44,6 +44,11 @@ export const ROUTES = {
    * se vend dans la minute. Activé par le propriétaire dans Paramètres.
    */
   quickSupply: "/approvisionnement",
+  /**
+   * Devis & Factures : le papier qu'on établit AVANT de vendre (proposition de prix,
+   * puis facture). Activé par le propriétaire dans Paramètres.
+   */
+  saleDocuments: "/factures-devis",
   /** Module Pièces : compatibilités par modèle, équivalences, variantes — activé par la plateforme. */
   parts: "/pieces",
   /** Module Réassort : quoi recommander et en quelle quantité — actif par défaut. */

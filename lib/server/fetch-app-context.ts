@@ -24,6 +24,8 @@ import {
  * module pour tout le monde jusqu'au prochain redémarrage du serveur.
  */
 const quickSupplyColumn = createOptimisticColumn();
+/** Idem pour la migration 00201 (module « Devis & Factures »). */
+const saleDocumentsColumn = createOptimisticColumn();
 
 const COMPANY_SELECT_BASE =
   "id, name, logo_url, business_type_slug, warehouse_feature_enabled, purchases_feature_enabled, transfers_feature_enabled, store_quota_increase_enabled, ai_predictions_enabled, warehouse_kpi_show_purchase_value, warehouse_kpi_show_sale_value, accounting_module_enabled, hr_module_enabled, expiry_module_enabled, parts_module_enabled, restock_module_enabled, product_locations_enabled, product_aliases_enabled, landed_cost_enabled, custom_expenses_enabled, dual_cashier_enabled, online_store_enabled";
@@ -38,24 +40,49 @@ export async function fetchAppContextForCompany(
   const cid = companyId.trim();
   if (!cid) return null;
 
-  const runCompanyQuery = (withQuickSupply: boolean) =>
-    supabase
+  /**
+   * Chaque colonne récente est suivie SÉPARÉMENT : les migrations n'arrivent pas
+   * ensemble, et une base à jour du module Approvisionnement mais pas encore des
+   * Devis ne doit pas perdre le premier en découvrant l'absence du second.
+   */
+  const runCompanyQuery = (opts: { withQuickSupply: boolean; withSaleDocuments: boolean }) => {
+    const extra = [
+      opts.withQuickSupply ? "quick_supply_enabled" : null,
+      opts.withSaleDocuments ? "sale_documents_enabled" : null,
+    ].filter(Boolean);
+    return supabase
       .from("companies")
       .select(
-        withQuickSupply
-          ? `${COMPANY_SELECT_BASE}, quick_supply_enabled`
-          : COMPANY_SELECT_BASE,
+        extra.length > 0 ? `${COMPANY_SELECT_BASE}, ${extra.join(", ")}` : COMPANY_SELECT_BASE,
       )
       .eq("id", cid)
       .maybeSingle();
+  };
 
-  // Décision lue UNE fois : c'est elle, et non l'état courant du compteur, qui autorise
-  // le second essai — garantissant qu'il n'y en aura jamais plus d'un.
-  const askedQuickSupply = quickSupplyColumn.available();
-  let { data: companyRaw, error: cErr } = await runCompanyQuery(askedQuickSupply);
+  // Décisions lues UNE fois : ce sont elles, et non l'état courant des compteurs, qui
+  // autorisent les seconds essais — garantissant qu'il n'y en aura jamais plus d'un
+  // par colonne.
+  let askedQuickSupply = quickSupplyColumn.available();
+  let askedSaleDocuments = saleDocumentsColumn.available();
+  let { data: companyRaw, error: cErr } = await runCompanyQuery({
+    withQuickSupply: askedQuickSupply,
+    withSaleDocuments: askedSaleDocuments,
+  });
   if (cErr && askedQuickSupply && isUndefinedColumnError(cErr, "quick_supply_enabled")) {
     quickSupplyColumn.markMissing();
-    ({ data: companyRaw, error: cErr } = await runCompanyQuery(false));
+    askedQuickSupply = false;
+    ({ data: companyRaw, error: cErr } = await runCompanyQuery({
+      withQuickSupply: false,
+      withSaleDocuments: askedSaleDocuments,
+    }));
+  }
+  if (cErr && askedSaleDocuments && isUndefinedColumnError(cErr, "sale_documents_enabled")) {
+    saleDocumentsColumn.markMissing();
+    askedSaleDocuments = false;
+    ({ data: companyRaw, error: cErr } = await runCompanyQuery({
+      withQuickSupply: askedQuickSupply,
+      withSaleDocuments: false,
+    }));
   }
   // `select()` dynamique : PostgREST ne peut plus inférer la forme de la ligne.
   const companyRow = (companyRaw ?? null) as unknown as Record<string, unknown> | null;
@@ -89,6 +116,7 @@ export async function fetchAppContextForCompany(
     custom_expenses_enabled?: boolean | null;
     dual_cashier_enabled?: boolean | null;
     quick_supply_enabled?: boolean | null;
+    sale_documents_enabled?: boolean | null;
     online_store_enabled?: boolean | null;
   };
 
@@ -146,6 +174,7 @@ export async function fetchAppContextForCompany(
       customExpensesEnabled: cr.custom_expenses_enabled === true,
       dualCashierEnabled: cr.dual_cashier_enabled === true,
       quickSupplyEnabled: cr.quick_supply_enabled === true,
+      saleDocumentsEnabled: cr.sale_documents_enabled === true,
       onlineStoreEnabled: cr.online_store_enabled === true,
       // Flag évalué côté client (bouton uniquement) ; non requis pour les gardes de route serveur.
       promoAdGenerationEnabled: false,
@@ -198,6 +227,7 @@ export async function fetchAppContextForCompany(
     customExpensesEnabled: cr.custom_expenses_enabled === true,
     dualCashierEnabled: cr.dual_cashier_enabled === true,
     quickSupplyEnabled: cr.quick_supply_enabled === true,
+    saleDocumentsEnabled: cr.sale_documents_enabled === true,
     onlineStoreEnabled: cr.online_store_enabled === true,
     // Flag évalué côté client (bouton uniquement) ; non requis pour les gardes de route serveur.
     promoAdGenerationEnabled: false,

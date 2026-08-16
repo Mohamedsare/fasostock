@@ -69,6 +69,7 @@ import {
 } from "@/lib/features/settings/dual-cashier-self-checkout";
 import { setProductLocationsEnabled } from "@/lib/features/product-locations/api";
 import { setLandedCostEnabled } from "@/lib/features/landed-cost/api";
+import { setSaleDocumentsEnabled } from "@/lib/features/sale-documents/api";
 import { setProductAliasesEnabled } from "@/lib/features/products/api";
 import { setCustomExpensesEnabled } from "@/lib/features/expenses/api";
 import {
@@ -138,6 +139,7 @@ import {
   MdPayments,
   MdPriceChange,
   MdPrint,
+  MdRequestQuote,
   MdReceiptLong,
   MdShoppingCart,
   MdStore,
@@ -695,6 +697,23 @@ export function SettingsScreen() {
         enabled
           ? "Module Prix de revient activé. Ouvrez « Prix de revient » pour saisir votre premier arrivage."
           : "Module Prix de revient désactivé. Vos arrivages et l'historique des prix sont conservés.",
+      );
+      await qc.invalidateQueries({ queryKey: queryKeys.appContext });
+    },
+    onError: (e) => toastMutationError("settings", e),
+  });
+
+  const saleDocumentsEnabled = ctxQ.data?.saleDocumentsEnabled === true;
+  const saleDocumentsMut = useMutation({
+    mutationFn: async (enabled: boolean) => {
+      if (!companyId) throw new Error("Entreprise introuvable.");
+      await setSaleDocumentsEnabled(companyId, enabled);
+    },
+    onSuccess: async (_, enabled) => {
+      toast.success(
+        enabled
+          ? "Devis & Factures activé. Ouvrez « Devis & Factures » pour établir votre premier devis."
+          : "Devis & Factures désactivé. Vos devis et factures déjà établis sont conservés.",
       );
       await qc.invalidateQueries({ queryKey: queryKeys.appContext });
     },
@@ -1930,6 +1949,78 @@ export function SettingsScreen() {
               </label>
             </div>
           )}
+        </FsCard>
+      ) : null}
+
+      {/* Devis & Factures — owner uniquement */}
+      {isOwner && companyId ? (
+        <FsCard className="mt-5" padding="p-5">
+          <SettingsCardTitle icon={MdRequestQuote} title="Devis & Factures" />
+          <p className="mt-2 text-xs leading-relaxed text-neutral-600 sm:text-sm">
+            Aujourd&apos;hui l&apos;application écrit ce qui s&apos;est passé : une vente,
+            un ticket, une facture après coup. Ce module écrit ce qui n&apos;est{" "}
+            <b>pas encore arrivé</b> : le <b>devis</b> que réclament une ONG, une mairie ou
+            une société avant d&apos;engager leur dépense, puis la <b>facture</b> en bonne
+            et due forme — avec l&apos;objet, leur numéro de commande, la TVA si vous la
+            facturez, l&apos;échéance de règlement et le total en toutes lettres.
+          </p>
+          <p className="mt-2 text-xs leading-relaxed text-neutral-600 sm:text-sm">
+            Le client accepte ? Le devis devient une facture d&apos;un bouton, avec les
+            mêmes lignes et les <b>mêmes prix que ceux que vous avez promis</b>. Vous
+            pouvez y mettre des articles de votre stock comme des prestations libres
+            (« Installation sur site », « Formation ») qui n&apos;ont pas de fiche produit.
+          </p>
+          {/*
+            Les deux points qui décident de la confiance dans le module : le devis ne
+            fausse rien, et la facture ne crée pas de comptabilité parallèle. Un patron
+            doit les lire AVANT d'activer, pas les découvrir en fin de mois.
+          */}
+          <p className="mt-2 rounded-[10px] bg-amber-500/10 px-3 py-2 text-xs leading-relaxed text-amber-900 dark:text-amber-200">
+            À savoir : un <b>devis ne compte nulle part</b> — ni chiffre d&apos;affaires,
+            ni stock réservé, ni créance ; s&apos;il n&apos;aboutit pas, il n&apos;y a rien
+            à défaire. Une facture, elle, ne compte qu&apos;au moment où vous{" "}
+            <b>l&apos;émettez</b> : là seulement elle devient une vente normale, la
+            marchandise sort du stock et le solde impayé part en crédit client. Tant
+            qu&apos;elle est en brouillon, elle s&apos;imprime en « proforma ».
+          </p>
+          <div className="mt-4 space-y-0 rounded-[10px] border border-black/[0.08]">
+            <label
+              className={cn(
+                "flex cursor-pointer items-start justify-between gap-3 px-3 py-3 sm:px-4",
+                saleDocumentsMut.isPending && "pointer-events-none opacity-60",
+              )}
+            >
+              <span className="min-w-0">
+                <span className="block text-sm font-medium text-fs-text">
+                  Activer les devis et les factures
+                </span>
+                <span className="mt-0.5 block text-xs text-neutral-600">
+                  {saleDocumentsEnabled
+                    ? "Le menu « Devis & Factures » est disponible. Accordez le droit aux employés dans Employés."
+                    : "Désactivé : rien ne change dans l'application, vos ventes et vos tickets restent identiques."}
+                </span>
+              </span>
+              <input
+                type="checkbox"
+                role="switch"
+                className="mt-1 h-5 w-9 shrink-0 cursor-pointer accent-fs-accent"
+                checked={saleDocumentsEnabled}
+                disabled={saleDocumentsMut.isPending}
+                onChange={(e) => {
+                  void saleDocumentsMut.mutateAsync(e.target.checked);
+                }}
+              />
+            </label>
+          </div>
+          {saleDocumentsEnabled ? (
+            <Link
+              href={ROUTES.saleDocuments}
+              className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-fs-accent hover:underline hover:underline-offset-2"
+            >
+              Ouvrir les devis et factures
+              <ChevronRight className="h-4 w-4" aria-hidden />
+            </Link>
+          ) : null}
         </FsCard>
       ) : null}
 

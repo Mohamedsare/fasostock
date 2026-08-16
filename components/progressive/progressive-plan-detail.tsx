@@ -8,14 +8,19 @@ import {
   MdCancel,
   MdClose,
   MdDeleteForever,
+  MdDescription,
   MdEdit,
   MdInventory2,
   MdOutlineReceiptLong,
   MdPrint,
+  MdShoppingCart,
   MdUndo,
 } from "react-icons/md";
 import { queryKeys } from "@/lib/query/query-keys";
-import { listProgressiveLedger } from "@/lib/features/progressive/api";
+import {
+  listProgressiveLedger,
+  listProgressivePlanItems,
+} from "@/lib/features/progressive/api";
 import {
   eligibleItems,
   nearlyEligibleItems,
@@ -62,6 +67,8 @@ export function ProgressivePlanDetail({
   onRefund,
   onEdit,
   onConvert,
+  onConvertSelection,
+  onQuote,
   onReprint,
   onCancelPlan,
   onDeletePlan,
@@ -76,6 +83,10 @@ export function ProgressivePlanDetail({
   onRefund: () => void;
   onEdit: () => void;
   onConvert: (item: ProgressiveEligibleItem) => void;
+  /** Le client repart avec TOUTE sa sélection (vente multi-lignes). */
+  onConvertSelection: () => void;
+  /** Facture proforma A4 de la sélection (impression / PDF / envoi). */
+  onQuote: () => void;
   onReprint: (ledgerId: string) => void;
   onCancelPlan: () => void;
   /** Suppression définitive — fourni au propriétaire uniquement. */
@@ -86,6 +97,15 @@ export function ProgressivePlanDetail({
     queryFn: () => listProgressiveLedger(plan.id),
     staleTime: 10_000,
   });
+
+  const itemsQ = useQuery({
+    queryKey: queryKeys.progressivePlanItems(plan.id),
+    queryFn: () => listProgressivePlanItems(plan.id),
+    staleTime: 10_000,
+  });
+  const selection = itemsQ.data ?? [];
+  const selectionTotal = selection.reduce((acc, it) => acc + it.lineTotal, 0);
+  const selectionCovered = selection.length > 0 && plan.balance + 0.5 >= selectionTotal;
 
   const eligible = useMemo(
     () => eligibleItems({ balance: plan.balance, products, stockByProductId }),
@@ -272,6 +292,86 @@ export function ProgressivePlanDetail({
         </div>
 
         <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-4">
+          {/* Sélection du client + facture proforma */}
+          <section>
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+              <h4 className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-neutral-500">
+                <MdShoppingCart className="h-4 w-4 text-fs-accent" aria-hidden />
+                Sélection du client
+              </h4>
+              <button
+                type="button"
+                onClick={onQuote}
+                className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-fs-accent/50 px-3 text-xs font-bold text-fs-accent"
+              >
+                <MdDescription className="h-4 w-4" aria-hidden />
+                Facture A4
+              </button>
+            </div>
+
+            {itemsQ.isLoading ? (
+              <div className="flex min-h-[60px] items-center justify-center">
+                <div className="h-6 w-6 animate-spin rounded-full border-2 border-fs-accent border-t-transparent" />
+              </div>
+            ) : selection.length === 0 ? (
+              <p className="rounded-xl border border-dashed border-black/15 p-4 text-center text-xs text-neutral-500 dark:border-white/15">
+                Aucun {terms.singular} choisi. Utilisez « Modifier » pour composer la sélection
+                du client (plusieurs {terms.plural}, quantité et prix convenus).
+              </p>
+            ) : (
+              <>
+                <ul className="divide-y divide-black/[0.06] overflow-hidden rounded-xl border border-black/[0.07] dark:divide-white/10 dark:border-white/10">
+                  {selection.map((it) => (
+                    <li key={it.id} className="flex items-center gap-3 px-3 py-2">
+                      <span className="flex h-7 min-w-7 shrink-0 items-center justify-center rounded-lg bg-black/[0.05] px-1.5 text-xs font-bold text-neutral-600 dark:bg-white/10 dark:text-neutral-300">
+                        {it.quantity}×
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-fs-text">{it.label}</p>
+                        <p className="truncate text-[11px] text-neutral-500">
+                          {formatCurrency(it.unitPrice)} l&apos;unité
+                          {it.currentPrice != null &&
+                          Math.round(it.currentPrice) !== Math.round(it.unitPrice)
+                            ? ` · prix catalogue ${formatCurrency(it.currentPrice)}`
+                            : ""}
+                        </p>
+                      </div>
+                      <span className="shrink-0 text-sm font-bold tabular-nums text-fs-text">
+                        {formatCurrency(it.lineTotal)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                <div className="mt-2 flex items-baseline justify-between gap-2 rounded-lg bg-[color-mix(in_srgb,var(--fs-accent)_10%,transparent)] px-3 py-2">
+                  <span className="text-xs font-semibold text-neutral-600">
+                    Total de la sélection
+                  </span>
+                  <span className="text-base font-extrabold tabular-nums text-fs-accent">
+                    {formatCurrency(selectionTotal)}
+                  </span>
+                </div>
+                {isOpen ? (
+                  <button
+                    type="button"
+                    onClick={onConvertSelection}
+                    disabled={!selectionCovered}
+                    className="mt-2 inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-3 text-xs font-bold text-white disabled:opacity-40"
+                    title={
+                      selectionCovered
+                        ? "Enregistrer la vente de toute la sélection"
+                        : `Il manque ${formatCurrency(Math.max(0, selectionTotal - plan.balance))} pour toute la sélection`
+                    }
+                  >
+                    <MdInventory2 className="h-4 w-4" aria-hidden />
+                    {selectionCovered
+                      ? "Remettre toute la sélection au client"
+                      : `Il manque ${formatCurrency(Math.max(0, selectionTotal - plan.balance))}`}
+                  </button>
+                ) : null}
+              </>
+            )}
+          </section>
+
           {/* Articles accessibles avec l'épargne */}
           {isOpen ? (
             <section>

@@ -121,6 +121,19 @@ export async function fetchCreditRepaymentReceiptPdfBlob(
   );
 }
 
+/**
+ * Devis / facture A4 du module « Devis & Factures ».
+ *
+ * Seul l'identifiant part : le serveur relit lignes et montants de la base. La devise
+ * accompagne la demande — le rendu PDF est partagé entre requêtes et n'en a aucune.
+ */
+export async function fetchSaleDocumentPdfBlob(documentId: string): Promise<Blob> {
+  return postPdf(
+    "/api/pdf/sale-document",
+    JSON.stringify({ documentId, currencyCode: getActiveCurrency() }),
+  );
+}
+
 export async function fetchSubscriptionInvoicePdfBlob(
   requestId: string,
 ): Promise<Blob> {

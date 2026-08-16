@@ -60,6 +60,11 @@ export const P = {
   rentalManage: "rental.manage",
   /** Page Réparations (ordres de réparation garage) — owner par défaut. */
   repairsManage: "repairs.manage",
+  /**
+   * Page Devis & Factures — établir une proposition de prix et facturer.
+   * Distinct de `sales.create` : chiffrer pour une mairie n'est pas tenir la caisse.
+   */
+  saleDocumentsManage: "sale_documents.manage",
   /** Page Péremptions (DLC/DLUO) — owner par défaut ; accord explicite aux autres. */
   expiryView: "expiry.view",
   /** Page Pièces (compatibilités, équivalences, variantes) — owner par défaut. */
@@ -153,6 +158,7 @@ export const PERMISSION_LABELS_FR: Record<string, string> = {
   [P.progressiveManage]: "Gerer les achats progressifs (avances clients)",
   [P.rentalManage]: "Gerer la location (biens, baux, loyers)",
   [P.repairsManage]: "Gerer les reparations (ordres de reparation, facturation)",
+  [P.saleDocumentsManage]: "Gerer les devis et factures (etablir, envoyer, facturer)",
   [P.expiryView]: "Voir la page Peremptions (DLC/DLUO)",
   [P.partsManage]: "Gerer les pieces (compatibilites, equivalences, variantes)",
   [P.restockView]: "Voir la page Reassort (produits a recommander)",

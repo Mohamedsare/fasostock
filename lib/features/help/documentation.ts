@@ -1239,12 +1239,19 @@ export const DOC_GROUPS: DocGroup[] = [
           {
             kind: "steps",
             items: [
-              "Créez un plan : le client, l'article visé, le montant total, le rythme envisagé.",
+              "Créez un plan : le client, puis sa sélection — autant d'articles qu'il veut, avec la quantité et le prix convenu pour chacun. Le total devient son objectif.",
+              "Remettez-lui sa facture proforma A4 : bouton « Facture A4 » dans le dossier. Vous pouvez l'imprimer, l'enregistrer en PDF ou l'envoyer par WhatsApp.",
               "À chaque passage du client, enregistrez le versement. Un ticket thermique lui est remis à chaque fois.",
               "Le plan affiche en permanence le versé, le restant et l'avancement.",
               "Quand le total est atteint, le plan passe à « Prêt ».",
-              "Vous convertissez le plan en vente et remettez l'article.",
+              "Vous convertissez le plan en vente : « Remettre toute la sélection » enregistre en une fois tous les articles choisis (déstockage compris).",
             ],
+          },
+          {
+            kind: "note",
+            tone: "info",
+            title: "La facture proforma n'est pas une vente",
+            text: "Elle récapitule ce que le client a choisi et fait le point sur son épargne (déjà versé, reste à verser). Rien n'est déstocké ni réservé tant que vous n'avez pas enregistré la remise. Le document le dit noir sur blanc : c'est ce qui évite les malentendus quand un article vient à manquer.",
           },
           {
             kind: "bullets",
@@ -1327,6 +1334,74 @@ export const DOC_GROUPS: DocGroup[] = [
           },
         ],
         keywords: ["envoyer", "whatsapp", "partager", "pdf", "reçu", "transmettre"],
+      },
+      {
+        id: "sale-documents",
+        title: "Devis & Factures",
+        route: "/factures-devis",
+        tagline: "Le papier qu'on établit AVANT de vendre : on propose un prix, puis on facture.",
+        access: "Propriétaire, ou droit « Gérer les devis et factures ».",
+        activation:
+          "Désactivé par défaut. Le propriétaire l'active dans Paramètres › Devis & Factures, puis accorde le droit employé par employé dans Employés.",
+        blocks: [
+          {
+            kind: "p",
+            text: "La caisse écrit ce qui s'est passé. Cette page écrit ce qui n'est pas encore arrivé : le devis que réclament une ONG, une mairie ou une société avant d'engager leur dépense, puis la facture en bonne et due forme qu'exige leur comptabilité.",
+          },
+          {
+            kind: "bullets",
+            title: "Deux documents, deux natures",
+            items: [
+              "Le DEVIS propose un prix, valable jusqu'à une date. Il n'engage rien : pas de vente, pas de stock qui bouge, pas de créance.",
+              "La FACTURE réclame le paiement. Tant qu'elle est en brouillon elle s'imprime « proforma » ; c'est l'ÉMISSION qui la rend définitive.",
+            ],
+          },
+          {
+            kind: "steps",
+            title: "Le parcours d'une affaire",
+            items: [
+              "Créez le devis : le client (fiche du carnet ou saisie libre), l'objet, sa référence de commande, puis les lignes.",
+              "Chaque ligne est soit un article de votre stock (le prix de vente se remplit tout seul), soit une prestation libre — « Installation sur site », « Formation » — qui n'a pas de fiche produit.",
+              "Ajoutez s'il y a lieu une remise (montant ou pourcentage), la TVA, une note et vos conditions générales.",
+              "Imprimez ou envoyez le devis au client par WhatsApp. Le document passe alors en « Envoyé » tout seul.",
+              "Le client dit oui : passez le devis en « Accepté », puis cliquez sur « Transformer en facture ». Les lignes et les prix sont repris tels quels.",
+              "Vérifiez la facture, puis « Émettre » : choisissez ce que le client règle maintenant. La vente est enregistrée, le stock sort, le solde éventuel part en crédit client.",
+            ],
+          },
+          {
+            kind: "note",
+            tone: "info",
+            title: "Émettre crée une vraie vente",
+            text: "L'émission d'une facture n'ouvre pas une caisse parallèle : elle crée une vente normale. Le chiffre d'affaires, la marge, le crédit, les rapports et le tableau de bord restent une seule et même vérité. Les lignes rattachées au catalogue sortent du stock ; les prestations, non — on ne stocke pas des heures.",
+          },
+          {
+            kind: "note",
+            tone: "tip",
+            title: "Un devis ne fausse jamais vos chiffres",
+            text: "Un devis ne compte nulle part : ni chiffre d'affaires, ni stock réservé, ni créance. Vous pouvez donc en établir autant que vous voulez, y compris pour des affaires qui n'aboutiront pas — il n'y aura rien à défaire.",
+          },
+          {
+            kind: "note",
+            tone: "warn",
+            title: "Un document émis ou transformé est figé",
+            text: "Une facture émise et un devis transformé ne se modifient plus : c'est ce qui garantit que le papier remis au client dit la même chose que l'application. Pour corriger, dupliquez le document et repartez de la copie. Le devis d'origine, lui, est conservé — c'est votre preuve du prix promis si le client conteste plus tard.",
+          },
+          {
+            kind: "bullets",
+            title: "Les détails qui comptent au quotidien",
+            items: [
+              "Chaque devis a une date de validité (30 jours par défaut). Passée cette date, il se marque « expiré » automatiquement : vos prix ne vous engagent plus.",
+              "Vous pouvez chiffrer plus que votre stock — on propose souvent ce qu'on fera venir. L'émission de la facture, elle, sera refusée tant que la marchandise n'est pas entrée.",
+              "Une facture au solde impayé exige une fiche client : sans elle, personne ne pourrait relancer la créance.",
+              "Les compteurs du haut de page répondent aux trois questions du matin : combien de devis attendent une réponse, combien de factures restent à émettre, et combien d'argent reste à encaisser.",
+            ],
+          },
+        ],
+        keywords: [
+          "devis", "facture", "proforma", "cotation", "proposition", "prix",
+          "appel d'offres", "bon de commande", "TVA", "échéance", "ONG", "mairie",
+          "marché public", "client professionnel", "prestation",
+        ],
       },
     ],
   },

@@ -308,6 +308,26 @@ export async function fetchStoreLotPrices(
   }
 }
 
+/**
+ * Supprime un arrivage — réservé au super admin (la base le vérifie).
+ *
+ * `revertStock` retire du stock les unités encore dans le lot. Le choix appartient à
+ * l'écran, parce que la bonne réponse dépend de la nature de l'arrivage : une
+ * démonstration a gonflé un stock qui n'existe pas, un arrivage réel correspond à de la
+ * marchandise en rayon. Voir l'en-tête de `00200_quick_supply_delete.sql`.
+ */
+export async function deleteQuickSupply(params: {
+  supplyId: string;
+  revertStock: boolean;
+}): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase.rpc("delete_quick_supply", {
+    p_supply_id: params.supplyId,
+    p_revert_stock: params.revertStock,
+  });
+  if (error) throw error;
+}
+
 /** Propriétaire : ouvre ou ferme le module Approvisionnement pour l'entreprise. */
 export async function setQuickSupplyEnabled(
   companyId: string,

@@ -82,6 +82,32 @@ export type ProgressiveLedgerEntry = {
   createdByName: string | null;
 };
 
+/**
+ * Ligne de la sélection d'un dossier : le client choisit librement plusieurs
+ * articles, avec sa quantité et son prix négocié (RPC `progressive_plan_items_list`).
+ */
+export type ProgressivePlanItem = {
+  id: string;
+  productId: string | null;
+  /** Nom figé au moment du choix (la facture reste fidèle si le produit est renommé). */
+  label: string;
+  quantity: number;
+  unitPrice: number;
+  lineTotal: number;
+  position: number;
+  /** Prix catalogue du jour — sert à signaler un écart avec le prix négocié. */
+  currentPrice: number | null;
+  imageUrl: string | null;
+};
+
+/** Ligne envoyée au serveur lors de l'enregistrement de la sélection. */
+export type ProgressivePlanItemInput = {
+  productId: string | null;
+  label: string;
+  quantity: number;
+  unitPrice: number;
+};
+
 export type ProgressivePlanInput = {
   id?: string | null;
   companyId: string;

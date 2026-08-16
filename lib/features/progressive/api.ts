@@ -11,6 +11,8 @@ import type {
   ProgressivePaymentMethod,
   ProgressivePlan,
   ProgressivePlanInput,
+  ProgressivePlanItem,
+  ProgressivePlanItemInput,
   ProgressivePlanStatus,
 } from "./types";
 
@@ -133,6 +135,52 @@ export async function saveProgressivePlan(input: ProgressivePlanInput): Promise<
   return String(data ?? "");
 }
 
+/** Sélection d'articles du dossier (plusieurs lignes, quantité + prix négocié). */
+export async function listProgressivePlanItems(
+  planId: string,
+): Promise<ProgressivePlanItem[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("progressive_plan_items_list", {
+    p_plan_id: planId,
+  });
+  if (error) throw rpcError(error, "Chargement de la sélection impossible.");
+  return ((data ?? []) as Array<Record<string, unknown>>).map((row, index) => ({
+    id: String(row.id),
+    productId: str(row.product_id),
+    label: String(row.label ?? ""),
+    quantity: Math.max(1, Math.trunc(num(row.quantity))),
+    unitPrice: num(row.unit_price),
+    lineTotal: num(row.line_total),
+    // `sort_order` côté serveur : `position` est un mot réservé SQL.
+    position: row.sort_order != null ? Math.trunc(num(row.sort_order)) : index,
+    currentPrice: row.current_price != null ? num(row.current_price) : null,
+    imageUrl: str(row.image_url),
+  }));
+}
+
+/**
+ * Remplace la sélection du dossier. Le serveur recalcule l'objectif du dossier
+ * (= total de la sélection) : la progression et les tickets restent cohérents.
+ * Retourne le total enregistré.
+ */
+export async function saveProgressivePlanItems(params: {
+  planId: string;
+  items: ProgressivePlanItemInput[];
+}): Promise<number> {
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("progressive_plan_items_set", {
+    p_plan_id: params.planId,
+    p_items: params.items.map((it) => ({
+      product_id: it.productId,
+      label: it.label,
+      quantity: Math.max(1, Math.trunc(it.quantity)),
+      unit_price: Math.max(0, Math.round(it.unitPrice)),
+    })),
+  });
+  if (error) throw rpcError(error, "Enregistrement de la sélection impossible.");
+  return num(data);
+}
+
 function mapMovement(data: unknown): ProgressiveMovementResult {
   const row = (Array.isArray(data) ? data[0] : data) as Record<string, unknown> | null;
   return {
@@ -238,6 +286,34 @@ export async function convertProgressivePlan(params: {
     throw rpcError(
       error,
       "La remise de l'article n'a pas pu être enregistrée. Réessayez ; si le problème persiste, contactez le support.",
+    );
+  }
+  const row = (Array.isArray(data) ? data[0] : data) as Record<string, unknown> | null;
+  return {
+    saleId: String(row?.sale_id ?? ""),
+    saleNumber: String(row?.sale_number ?? ""),
+    total: num(row?.total),
+    residual: num(row?.residual),
+  };
+}
+
+/**
+ * Le client repart avec TOUTE sa sélection : une seule vente multi-lignes
+ * (déstockage de chaque article + règlements ventilés), épargne consommée et
+ * dossier clôturé — en une seule transaction serveur.
+ */
+export async function convertProgressiveSelection(
+  planId: string,
+): Promise<ProgressiveConversionResult> {
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("progressive_plan_convert_selection", {
+    p_plan_id: planId,
+    p_client_request_id: crypto.randomUUID(),
+  });
+  if (error) {
+    throw rpcError(
+      error,
+      "La remise de la sélection n'a pas pu être enregistrée. Réessayez ; si le problème persiste, contactez le support.",
     );
   }
   const row = (Array.isArray(data) ? data[0] : data) as Record<string, unknown> | null;

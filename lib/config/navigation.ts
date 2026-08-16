@@ -2,6 +2,7 @@ import type { LucideIcon } from "lucide-react";
 import {
   LayoutDashboard,
   CirclePlus,
+  FileSignature,
   Compass,
   Package,
   Puzzle,
@@ -77,6 +78,8 @@ export const NAV_ITEMS: NavItem[] = [
   // Caisse à deux : la file d'attente des paniers à encaisser (activée par le propriétaire).
   { href: ROUTES.checkoutQueue, label: "Encaissement", icon: HandCoins, iconBg: "#15803D" },
   { href: ROUTES.promotions, label: "Promotions", icon: BadgePercent, iconBg: "#DB2777" },
+  // Devis & Factures : le papier qui part chez le client avant la vente (activé par le propriétaire).
+  { href: ROUTES.saleDocuments, label: "Devis & Factures", icon: FileSignature, iconBg: "#1D4ED8" },
   { href: ROUTES.engines, label: "Vente Engins", icon: Bike, iconBg: "#DC2626" },
   { href: ROUTES.engineRegistration, label: "Immatriculation Engins", icon: IdCard, iconBg: "#B91C1C" },
   { href: ROUTES.progressive, label: "Achats Progressifs", icon: PiggyBank, iconBg: "#0D9488" },

@@ -203,14 +203,26 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
  * cachait sinon le module jusqu'à ce que quelqu'un pense à recharger la page.
  */
 const quickSupplyColumn = createOptimisticColumn();
+/** Idem pour la migration 00201 (module « Devis & Factures »). */
+const saleDocumentsColumn = createOptimisticColumn();
 
 const COMPANY_SELECT_BASE =
   "id, name, logo_url, business_type_slug, warehouse_feature_enabled, purchases_feature_enabled, transfers_feature_enabled, store_quota_increase_enabled, ai_predictions_enabled, warehouse_kpi_show_purchase_value, warehouse_kpi_show_sale_value, accounting_module_enabled, hr_module_enabled, expiry_module_enabled, parts_module_enabled, restock_module_enabled, product_locations_enabled, product_aliases_enabled, landed_cost_enabled, custom_expenses_enabled, dual_cashier_enabled, online_store_enabled";
 
-function companySelectColumns(withQuickSupply: boolean): string {
-  return withQuickSupply
-    ? `${COMPANY_SELECT_BASE}, quick_supply_enabled`
-    : COMPANY_SELECT_BASE;
+/**
+ * Chaque colonne récente est suivie SÉPARÉMENT : les migrations n'arrivent pas
+ * ensemble, et une base à jour du module Approvisionnement mais pas encore des Devis
+ * ne doit pas perdre le premier en découvrant l'absence du second.
+ */
+function companySelectColumns(opts: {
+  withQuickSupply: boolean;
+  withSaleDocuments: boolean;
+}): string {
+  const extra = [
+    opts.withQuickSupply ? "quick_supply_enabled" : null,
+    opts.withSaleDocuments ? "sale_documents_enabled" : null,
+  ].filter(Boolean);
+  return extra.length > 0 ? `${COMPANY_SELECT_BASE}, ${extra.join(", ")}` : COMPANY_SELECT_BASE;
 }
 
 async function fetchAppContext(): Promise<AppContextData | null> {
@@ -294,6 +306,7 @@ async function fetchAppContext(): Promise<AppContextData | null> {
       customExpensesEnabled: false,
       dualCashierEnabled: false,
       quickSupplyEnabled: false,
+      saleDocumentsEnabled: false,
       onlineStoreEnabled: false,
       promoAdGenerationEnabled,
     };
@@ -303,22 +316,39 @@ async function fetchAppContext(): Promise<AppContextData | null> {
   const primaryCompanyId = supportSession
     ? supportSession.companyId
     : pickActiveCompanyId(orderedCompanyIds);
-  const runCompanyQuery = (withQuickSupply: boolean) =>
+  const runCompanyQuery = (opts: { withQuickSupply: boolean; withSaleDocuments: boolean }) =>
     supabase
       .from("companies")
-      .select(companySelectColumns(withQuickSupply))
+      .select(companySelectColumns(opts))
       .eq("id", primaryCompanyId)
       .maybeSingle();
 
-  // Décision lue UNE fois : c'est elle, et non l'état courant du compteur, qui autorise
-  // le second essai — garantissant qu'il n'y en aura jamais plus d'un.
-  const askedQuickSupply = quickSupplyColumn.available();
-  let { data: companyRaw, error: cErr } = await runCompanyQuery(askedQuickSupply);
-  // Migration 00193 pas encore appliquée : on retire la colonne et on rejoue, plutôt
-  // que de laisser l'application entière sans contexte.
+  // Décisions lues UNE fois : ce sont elles, et non l'état courant des compteurs, qui
+  // autorisent les seconds essais — garantissant qu'il n'y en aura jamais plus d'un
+  // par colonne.
+  let askedQuickSupply = quickSupplyColumn.available();
+  let askedSaleDocuments = saleDocumentsColumn.available();
+  let { data: companyRaw, error: cErr } = await runCompanyQuery({
+    withQuickSupply: askedQuickSupply,
+    withSaleDocuments: askedSaleDocuments,
+  });
+  // Migration 00193 / 00201 pas encore appliquée : on retire la colonne manquante et on
+  // rejoue, plutôt que de laisser l'application entière sans contexte.
   if (cErr && askedQuickSupply && isUndefinedColumnError(cErr, "quick_supply_enabled")) {
     quickSupplyColumn.markMissing();
-    ({ data: companyRaw, error: cErr } = await runCompanyQuery(false));
+    askedQuickSupply = false;
+    ({ data: companyRaw, error: cErr } = await runCompanyQuery({
+      withQuickSupply: false,
+      withSaleDocuments: askedSaleDocuments,
+    }));
+  }
+  if (cErr && askedSaleDocuments && isUndefinedColumnError(cErr, "sale_documents_enabled")) {
+    saleDocumentsColumn.markMissing();
+    askedSaleDocuments = false;
+    ({ data: companyRaw, error: cErr } = await runCompanyQuery({
+      withQuickSupply: askedQuickSupply,
+      withSaleDocuments: false,
+    }));
   }
   if (cErr) throw mapSupabaseError(cErr);
   // `select()` construit dynamiquement (colonne optionnelle) → PostgREST ne peut plus
@@ -362,6 +392,7 @@ async function fetchAppContext(): Promise<AppContextData | null> {
       customExpensesEnabled: false,
       dualCashierEnabled: false,
       quickSupplyEnabled: false,
+      saleDocumentsEnabled: false,
       onlineStoreEnabled: false,
       promoAdGenerationEnabled,
     };
@@ -396,6 +427,7 @@ async function fetchAppContext(): Promise<AppContextData | null> {
     custom_expenses_enabled?: boolean | null;
     dual_cashier_enabled?: boolean | null;
     quick_supply_enabled?: boolean | null;
+    sale_documents_enabled?: boolean | null;
     online_store_enabled?: boolean | null;
   };
   const warehouseFeatureEnabled = cr.warehouse_feature_enabled !== false;
@@ -425,6 +457,8 @@ async function fetchAppContext(): Promise<AppContextData | null> {
   const dualCashierEnabled = cr.dual_cashier_enabled === true;
   // Approvisionnement express : additif, activé par le propriétaire dans Paramètres.
   const quickSupplyEnabled = cr.quick_supply_enabled === true;
+  // Devis & Factures : additif, activé par le propriétaire dans Paramètres.
+  const saleDocumentsEnabled = cr.sale_documents_enabled === true;
   // Boutique en ligne : additif, ouvert par la plateforme (super admin).
   const onlineStoreEnabled = cr.online_store_enabled === true;
 
@@ -484,6 +518,7 @@ async function fetchAppContext(): Promise<AppContextData | null> {
       customExpensesEnabled,
       dualCashierEnabled,
       quickSupplyEnabled,
+      saleDocumentsEnabled,
       onlineStoreEnabled,
       promoAdGenerationEnabled,
       supportSession: supportSession
@@ -581,6 +616,7 @@ async function fetchAppContext(): Promise<AppContextData | null> {
     customExpensesEnabled,
     dualCashierEnabled,
     quickSupplyEnabled,
+    saleDocumentsEnabled,
     onlineStoreEnabled,
     promoAdGenerationEnabled,
     hiddenPages,

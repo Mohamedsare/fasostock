@@ -40,6 +40,12 @@ export const queryKeys = {
   /** Module Garage — ordres de réparation d'une boutique. */
   repairOrders: (companyId: string, storeId: string | null) =>
     ["repair-orders", companyId, storeId ?? "__all__"] as const,
+  /**
+   * Module « Devis & Factures ». Préfixe `['sale-documents', companyId]` : après une
+   * conversion ou une émission, devis ET factures se rafraîchissent d'un bloc.
+   */
+  saleDocuments: (companyId: string, storeId: string | null) =>
+    ["sale-documents", companyId, storeId ?? "__all__"] as const,
   /** Module Réassort — produits à recommander + quantité conseillée. */
   restockCandidates: (params: {
     companyId: string;
@@ -111,6 +117,8 @@ export const queryKeys = {
     ["progressive-plans", params] as const,
   /** Relevé (versements / remboursements) d'un dossier d'achat progressif. */
   progressiveLedger: (planId: string) => ["progressive-ledger", planId] as const,
+  /** Sélection d'articles d'un dossier d'achat progressif (facture proforma). */
+  progressivePlanItems: (planId: string) => ["progressive-plan-items", planId] as const,
   /** Module Location — baux et leurs agrégats de règlement. */
   rentalLeases: (params: { companyId: string; storeId: string | null }) =>
     ["rental-leases", params] as const,

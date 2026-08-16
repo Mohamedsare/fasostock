@@ -19,6 +19,7 @@ import {
 } from "react-icons/md";
 
 import { PosBarcodeScannerDialog } from "@/components/pos/pos-barcode-scanner-dialog";
+import { FsConfirmDialog } from "@/components/ui/fs-confirm-dialog";
 import { ProductListThumbnail } from "@/components/products/product-list-thumbnail";
 import {
   FsCard,
@@ -32,6 +33,7 @@ import { useAppContext } from "@/lib/features/common/app-context";
 import { usePermissions } from "@/lib/features/permissions/use-permissions";
 import {
   createQuickSupply,
+  deleteQuickSupply,
   fetchSupplyCatalog,
   listQuickSupplies,
 } from "@/lib/features/quick-supply/api";
@@ -103,6 +105,7 @@ export function QuickSupplyScreen() {
   const aliasesOn = ctx.data?.productAliasesEnabled === true;
 
   const canView = h?.canQuickSupply ?? false;
+  const isSuperAdmin = ctx.data?.isSuperAdmin === true;
 
   /**
    * Vue « toutes boutiques » : il faut bien choisir où la marchandise entre. On
@@ -123,6 +126,9 @@ export function QuickSupplyScreen() {
   const [lastSupply, setLastSupply] = useState<{ number: string; units: number } | null>(null);
   /** Ligne dont le prix doit recevoir le curseur (article tout juste créé). */
   const [focusKey, setFocusKey] = useState<string | null>(null);
+  /** Arrivage que le super admin s'apprête à supprimer, et son choix sur le stock. */
+  const [deleting, setDeleting] = useState<QuickSupply | null>(null);
+  const [revertStock, setRevertStock] = useState(true);
 
   const searchRef = useRef<HTMLInputElement | null>(null);
   /**
@@ -275,8 +281,21 @@ export function QuickSupplyScreen() {
            * sous le champ, comme repère.
            */
           unitCost: 0,
-          // `null` = « je ne change pas le prix de vente de cette marchandise ».
-          unitSalePrice: null,
+          /*
+           * Le prix de vente, LUI, est prérempli avec celui du produit — l'inverse du
+           * prix payé, et pour une raison inverse.
+           *
+           * Le prix payé, le commerçant est le seul à le connaître : le préremplir
+           * reviendrait à lui souffler une réponse fausse. Le prix de vente, au
+           * contraire, a déjà une valeur juste — celle à laquelle l'article se vend
+           * aujourd'hui. La plupart des arrivages ne la changent pas ; la préremplir
+           * évite de retaper le même chiffre à chaque ligne, et montre d'un coup d'œil
+           * ce qu'on s'apprête à pratiquer.
+           *
+           * Vidé à la main, le champ retombe à `null` : « cette marchandise se vend au
+           * prix habituel », et le lot ne portera alors que le coût.
+           */
+          unitSalePrice: p.catalogueSalePrice > 0 ? p.catalogueSalePrice : null,
           cataloguePurchasePrice: p.cataloguePurchasePrice,
           catalogueSalePrice: p.catalogueSalePrice,
           currentStock: p.stock,
@@ -368,7 +387,10 @@ export function QuickSupplyScreen() {
           barcode: null,
           quantity: l.quantity,
           unitCost: l.unitCost,
-          unitSalePrice: l.unitSalePrice,
+          // Zéro n'est pas un prix de vente : c'est un champ vidé. On l'envoie en
+          // `null` pour que le lot dise « au prix habituel » plutôt que « à zéro
+          // franc », qui rendrait l'article gratuit en caisse.
+          unitSalePrice: l.unitSalePrice != null && l.unitSalePrice > 0 ? l.unitSalePrice : null,
         })),
         supplierLabel: supplier.trim() || null,
         // Champ obligatoire côté écran : la valeur saisie fait foi, zéro compris
@@ -397,6 +419,31 @@ export function QuickSupplyScreen() {
     },
     onError: (e) => toastMutationError("approvisionnement", e),
   });
+
+  const deleteMut = useMutation({
+    mutationFn: (vars: { supplyId: string; revertStock: boolean }) =>
+      deleteQuickSupply(vars),
+    onSuccess: async (_d, vars) => {
+      setDeleting(null);
+      toast.success(
+        vars.revertStock
+          ? "Arrivage supprimé, et les unités non vendues retirées du stock."
+          : "Arrivage supprimé. Le stock est inchangé.",
+      );
+      // Le lot cesse d'imposer son prix : la caisse et le catalogue de saisie doivent
+      // le savoir tout de suite, pas au prochain rechargement.
+      await qc.invalidateQueries({ queryKey: ["quick-supply", companyId] });
+      await qc.invalidateQueries({ queryKey: ["pos"] });
+      await qc.invalidateQueries({ queryKey: ["pos-supply-lots"] });
+    },
+    onError: (e) => toastMutationError("approvisionnement", e),
+  });
+
+  /** Unités encore dans les lots de cet arrivage — le chiffre que la question doit citer. */
+  const deletingRemaining = useMemo(
+    () => (deleting?.lines ?? []).reduce((sum, l) => sum + l.remainingQuantity, 0),
+    [deleting],
+  );
 
   // Le numéro de l'arrivage est attribué en base : on le relit dans l'historique pour
   // pouvoir l'annoncer (« A-17 »), sans le deviner côté application.
@@ -508,7 +555,11 @@ export function QuickSupplyScreen() {
       </div>
 
       {tab === "history" ? (
-        <HistoryTab query={historyQ} />
+        <HistoryTab
+          query={historyQ}
+          canDelete={isSuperAdmin}
+          onDelete={(supply) => setDeleting(supply)}
+        />
       ) : (
         <>
           {lastSupply ? (
@@ -788,6 +839,66 @@ export function QuickSupplyScreen() {
         onDecoded={handleScan}
         onError={(m) => toast.error(m)}
       />
+
+      {/*
+        La question sur le stock est posée ICI, avec le nombre d'unités écrit dedans,
+        parce qu'il n'existe pas de bonne réponse par défaut : un arrivage de démo a
+        gonflé un stock qui n'existe pas, un arrivage réel correspond à de la
+        marchandise en rayon. Seul l'humain devant l'écran sait lequel il supprime.
+      */}
+      <FsConfirmDialog
+        open={deleting != null}
+        tone="danger"
+        title={`Supprimer l'arrivage ${deleting?.supplyNumber ?? ""} ?`}
+        confirmLabel="Supprimer"
+        busy={deleteMut.isPending}
+        onCancel={() => setDeleting(null)}
+        onConfirm={() => {
+          if (!deleting) return;
+          deleteMut.mutate({ supplyId: deleting.id, revertStock });
+        }}
+        message={
+          <div className="space-y-3">
+            <p>
+              {deleting?.unitCount ?? 0} article(s) entrés le{" "}
+              {deleting ? timeLabel(deleting.createdAt) : ""}
+              {deleting?.createdByName ? ` par ${deleting.createdByName}` : ""}. La ligne
+              disparaîtra de l&apos;historique, et son prix cessera aussitôt de
+              s&apos;appliquer en caisse.
+            </p>
+            {deletingRemaining > 0 ? (
+              <label className="flex cursor-pointer items-start gap-2 rounded-[6px] bg-fs-surface-container px-3 py-2.5">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer accent-fs-accent"
+                  checked={revertStock}
+                  disabled={deleteMut.isPending}
+                  onChange={(e) => setRevertStock(e.target.checked)}
+                />
+                <span className="min-w-0 text-xs leading-relaxed">
+                  <span className="block font-semibold text-fs-text">
+                    Retirer aussi {deletingRemaining} unité(s) du stock
+                  </span>
+                  <span className="mt-0.5 block text-neutral-600">
+                    À cocher pour un arrivage de démonstration ou un essai : la
+                    marchandise n&apos;existe pas en rayon. À décocher si elle y est
+                    vraiment — retirer son stock rendrait l&apos;inventaire faux.
+                  </span>
+                </span>
+              </label>
+            ) : (
+              <p className="text-xs text-neutral-600">
+                Tout ce qui était entré a déjà été vendu : le stock n&apos;est pas
+                concerné.
+              </p>
+            )}
+            <p className="text-xs text-neutral-600">
+              Les mouvements de stock d&apos;origine et les bénéfices déjà calculés sur
+              les ventes ne sont pas effacés.
+            </p>
+          </div>
+        }
+      />
     </FsPage>
   );
 }
@@ -973,8 +1084,13 @@ function DraftLineRow({
 /** Historique — l'écran de contrôle : qui a fait entrer quoi, et à quel prix. */
 function HistoryTab({
   query,
+  canDelete,
+  onDelete,
 }: {
   query: ReturnType<typeof useQuery<QuickSupply[], Error>>;
+  /** Super admin uniquement — la base refuse de toute façon les autres. */
+  canDelete: boolean;
+  onDelete: (supply: QuickSupply) => void;
 }) {
   if (query.isLoading) {
     return (
@@ -1025,12 +1141,30 @@ function HistoryTab({
                 {s.storeName ? ` · ${s.storeName}` : ""}
               </p>
             </div>
-            <div className="text-right">
-              <p className="text-sm font-bold text-fs-text">{formatCurrency(s.totalCost)}</p>
-              <p className="text-[11px] text-neutral-600">
-                {s.unitCount} article(s)
-                {s.amountPaid !== s.totalCost ? ` · payé ${formatCurrency(s.amountPaid)}` : ""}
-              </p>
+            <div className="flex items-start gap-2">
+              <div className="text-right">
+                <p className="text-sm font-bold text-fs-text">{formatCurrency(s.totalCost)}</p>
+                <p className="text-[11px] text-neutral-600">
+                  {s.unitCount} article(s)
+                  {s.amountPaid !== s.totalCost ? ` · payé ${formatCurrency(s.amountPaid)}` : ""}
+                </p>
+              </div>
+              {/*
+                Réservé au super admin — nettoyer les arrivages de démonstration et les
+                essais de mise en route. Le commerçant, lui, corrige par un inventaire :
+                effacer une entrée de stock n'est pas une opération de commerce.
+              */}
+              {canDelete ? (
+                <button
+                  type="button"
+                  onClick={() => onDelete(s)}
+                  className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[6px] border border-black/[0.08] bg-fs-card text-neutral-500 hover:text-red-600"
+                  aria-label={`Supprimer l'arrivage ${s.supplyNumber}`}
+                  title="Supprimer cet arrivage"
+                >
+                  <MdDeleteOutline className="h-5 w-5" aria-hidden />
+                </button>
+              ) : null}
             </div>
           </div>
 

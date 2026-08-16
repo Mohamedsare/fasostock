@@ -21,6 +21,8 @@ import {
 } from "@/components/ui/fs-screen-primitives";
 import { FsConfirmDialog } from "@/components/ui/fs-confirm-dialog";
 import { ProgressiveConvertDialog } from "@/components/progressive/progressive-convert-dialog";
+import { ProgressiveConvertSelectionDialog } from "@/components/progressive/progressive-convert-selection-dialog";
+import { ProgressiveQuoteDialog } from "@/components/progressive/progressive-quote-dialog";
 import { ProgressiveMovementDialog } from "@/components/progressive/progressive-movement-dialog";
 import { ProgressivePlanDetail } from "@/components/progressive/progressive-plan-detail";
 import { ProgressivePlanFormDialog } from "@/components/progressive/progressive-plan-form-dialog";
@@ -125,6 +127,8 @@ export function ProgressiveScreen() {
     planId: string;
     item: ProgressiveEligibleItem;
   } | null>(null);
+  const [convertingSelection, setConvertingSelection] = useState<string | null>(null);
+  const [quotePlanId, setQuotePlanId] = useState<string | null>(null);
   const [toCancel, setToCancel] = useState<ProgressivePlan | null>(null);
   const [toDelete, setToDelete] = useState<ProgressivePlan | null>(null);
   const [actionBusy, setActionBusy] = useState(false);
@@ -197,11 +201,13 @@ export function ProgressiveScreen() {
   const detailPlan = plans.find((p) => p.id === detailId) ?? null;
   const movementPlan = plans.find((p) => p.id === movement?.planId) ?? null;
   const convertPlan = plans.find((p) => p.id === converting?.planId) ?? null;
+  const selectionPlan = plans.find((p) => p.id === convertingSelection) ?? null;
 
   function refreshAll(planId?: string) {
     void qc.invalidateQueries({ queryKey: queryKeys.progressivePlans({ companyId, storeId }) });
     if (planId) {
       void qc.invalidateQueries({ queryKey: queryKeys.progressiveLedger(planId) });
+      void qc.invalidateQueries({ queryKey: queryKeys.progressivePlanItems(planId) });
     }
   }
 
@@ -473,6 +479,8 @@ export function ProgressiveScreen() {
             setFormOpen(true);
           }}
           onConvert={(item) => setConverting({ planId: detailPlan.id, item })}
+          onConvertSelection={() => setConvertingSelection(detailPlan.id)}
+          onQuote={() => setQuotePlanId(detailPlan.id)}
           onReprint={(ledgerId) => setTicketId(ledgerId)}
           onCancelPlan={() => setToCancel(detailPlan)}
           onDeletePlan={isOwner ? () => setToDelete(detailPlan) : undefined}
@@ -512,6 +520,29 @@ export function ProgressiveScreen() {
             }
           }}
         />
+      ) : null}
+
+      {selectionPlan ? (
+        <ProgressiveConvertSelectionDialog
+          plan={selectionPlan}
+          terms={terms}
+          onClose={() => setConvertingSelection(null)}
+          onConverted={(_saleId, residual) => {
+            const planId = selectionPlan.id;
+            setConvertingSelection(null);
+            refreshAll(planId);
+            void qc.invalidateQueries({ queryKey: queryKeys.productInventory(storeId) });
+            if (residual > 0) {
+              toast.info(
+                `Reliquat de ${formatCurrency(residual)} à rembourser au client depuis le dossier.`,
+              );
+            }
+          }}
+        />
+      ) : null}
+
+      {quotePlanId ? (
+        <ProgressiveQuoteDialog planId={quotePlanId} onClose={() => setQuotePlanId(null)} />
       ) : null}
 
       {ticketId ? (

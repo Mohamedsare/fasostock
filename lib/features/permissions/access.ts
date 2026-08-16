@@ -123,6 +123,12 @@ export type AppContextData = {
    */
   quickSupplyEnabled: boolean;
   /**
+   * Module « Devis & Factures » (proposer un prix, puis facturer) — désactivé par
+   * défaut, ouvert par le PROPRIÉTAIRE dans Paramètres
+   * (`companies.sale_documents_enabled`).
+   */
+  saleDocumentsEnabled: boolean;
+  /**
    * Pages retirées du menu de CET utilisateur par le propriétaire (« help »,
    * « notifications »). Confort d'affichage, pas frontière de sécurité — voir
    * `lib/features/settings/employee-hidden-pages.ts`. Absent ⇒ rien de masqué.
@@ -318,6 +324,14 @@ export type AccessHelpers = {
    * nommément, employé par employé, depuis la page Employés.
    */
   canQuickSupply: boolean;
+  /** Module Devis & Factures ouvert par le propriétaire pour l'entreprise. */
+  saleDocumentsOn: boolean;
+  /**
+   * Page Devis & Factures : module ouvert ET propriétaire / droit dédié. Le droit
+   * (`sale_documents.manage`) n'est donné à aucun rôle : le propriétaire l'accorde
+   * nommément, pour que son commercial puisse chiffrer sans tenir la caisse.
+   */
+  canSaleDocuments: boolean;
   /** Page Aide visible. Visible par défaut ; le propriétaire peut la retirer du menu. */
   canHelp: boolean;
   /** Page Notifications visible. Idem — ne concerne pas la réception des push. */
@@ -512,6 +526,15 @@ export function buildAccessHelpers(
   const canQuickSupply =
     quickSupplyOn && (isOwner || hasPermission(P.quickSupplyCreate));
   /*
+   * Devis & Factures : additif, ouvert par le PROPRIÉTAIRE (Paramètres). Le droit est
+   * distinct de celui de la caisse — établir un devis pour une mairie n'est pas
+   * encaisser — mais l'ÉMISSION d'une facture crée une vente réelle, d'où un droit
+   * nominatif plutôt qu'un repli sur `sales.create`.
+   */
+  const saleDocumentsOn = data.saleDocumentsEnabled === true;
+  const canSaleDocuments =
+    saleDocumentsOn && (isOwner || hasPermission(P.saleDocumentsManage));
+  /*
    * Aide et Notifications : VISIBLES par défaut, et retirées seulement si le
    * propriétaire l'a demandé pour cet employé. Le sens de la liste est « ce qui est
    * masqué » et non « ce qui est permis », précisément pour que l'absence de donnée
@@ -572,6 +595,8 @@ export function buildAccessHelpers(
     canCheckoutQueue,
     quickSupplyOn,
     canQuickSupply,
+    saleDocumentsOn,
+    canSaleDocuments,
     canHelp,
     canNotifications,
     landedCostOn,
@@ -654,6 +679,7 @@ export function filterNavItemsForPermissions(
     if (href === ROUTES.expiry) return h.canExpiry;
     if (href === ROUTES.purchases) return h.canPurchases;
     if (href === ROUTES.quickSupply) return h.canQuickSupply;
+    if (href === ROUTES.saleDocuments) return h.canSaleDocuments;
     if (href === ROUTES.expenses) return h.canExpenses;
     if (href === ROUTES.warehouse) return h.canWarehouse;
     if (href === ROUTES.customers) return h.canCustomers;
@@ -740,6 +766,7 @@ const APP_SHELL_ROUTE_PREFIXES: readonly string[] = [
   ROUTES.expiry,
   ROUTES.purchases,
   ROUTES.quickSupply,
+  ROUTES.saleDocuments,
   ROUTES.expenses,
   ROUTES.warehouse,
   ROUTES.transfers,
@@ -841,6 +868,9 @@ export function canAccessPathname(
   // L'adresse tapée à la main ne la fait pas apparaître (la base refuserait de toute
   // façon l'écriture, mais mieux vaut ne pas montrer un écran qui ne servira à rien).
   if (route === ROUTES.quickSupply && !h.canQuickSupply) return false;
+  // Devis & Factures : tant que le propriétaire n'a pas ouvert le module — ou sans le
+  // droit dédié — l'adresse tapée à la main ne fait pas apparaître la page.
+  if (route === ROUTES.saleDocuments && !h.canSaleDocuments) return false;
   /*
    * Aide / Notifications retirées du menu de cet employé : un lien resté ouvert dans
    * un onglet ne doit pas rouvrir ce qu'on vient de ranger. La garde SERVEUR, elle, ne
