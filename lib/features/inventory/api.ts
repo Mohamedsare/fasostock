@@ -268,6 +268,68 @@ export async function listStockMovements(params: {
   return { rows, hasMore };
 }
 
+/** Taille d'un paquet envoyé au serveur (le plafond de la RPC est 300). */
+const BULK_ADJUST_CHUNK = 200;
+
+/**
+ * Applique une même campagne d'entrée de stock à PLUSIEURS produits d'une boutique
+ * (réglage propriétaire « Remplir le stock en un clic »).
+ *
+ * Envoi par paquets de 200 : un catalogue entier en une requête tiendrait la transaction
+ * — et donc les lignes de `store_inventory` — ouverte assez longtemps pour faire attendre
+ * la caisse, qui écrit sur les mêmes lignes à chaque vente. Chaque paquet est atomique
+ * côté serveur ; `onProgress` permet à l'écran de dire où il en est plutôt que de laisser
+ * le commerçant devant un bouton figé.
+ *
+ * Volontairement SANS file d'attente hors ligne, contrairement à `adjustStockAtomic` :
+ * une entrée groupée rejouée plus tard, sans que personne ne voie le résultat, doublerait
+ * silencieusement le stock de tout un magasin si l'utilisateur, croyant l'opération
+ * perdue, la refait.
+ */
+export async function bulkAdjustStockAtomic(params: {
+  storeId: string;
+  items: { productId: string; delta: number }[];
+  reason: string;
+  onProgress?: (done: number, total: number) => void;
+}): Promise<number> {
+  const supabase = createClient();
+
+  const items = params.items
+    .map((i) => ({ product_id: i.productId, delta: Math.trunc(i.delta) }))
+    .filter((i) => i.delta !== 0);
+  if (items.length === 0) return 0;
+
+  if (!navigator.onLine) {
+    throw new Error(
+      "Connexion internet requise pour mettre à jour plusieurs produits d'un coup.",
+    );
+  }
+
+  let applied = 0;
+  for (let i = 0; i < items.length; i += BULK_ADJUST_CHUNK) {
+    const chunk = items.slice(i, i + BULK_ADJUST_CHUNK);
+    const { data, error } = await supabase.rpc("inventory_bulk_adjust_atomic", {
+      p_store_id: params.storeId,
+      p_items: chunk,
+      p_reason: params.reason,
+    });
+    if (error) {
+      // Les paquets déjà passés sont enregistrés : le dire, sinon le commerçant
+      // recommence tout et double ce qui était déjà entré.
+      if (applied > 0) {
+        throw new Error(
+          `${applied} produit(s) déjà mis à jour, puis l'opération s'est arrêtée : ${error.message}`,
+        );
+      }
+      throw error;
+    }
+    applied += typeof data === "number" ? data : chunk.length;
+    params.onProgress?.(Math.min(i + chunk.length, items.length), items.length);
+  }
+
+  return applied;
+}
+
 export async function adjustStockAtomic(params: {
   storeId: string;
   productId: string;

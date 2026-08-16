@@ -265,6 +265,9 @@ export const queryKeys = {
   /** Réglage owner « choisir le format d'impression » (`company_settings`). */
   printFormatChoiceEnabled: (companyId: string) =>
     ["print-format-choice", companyId] as const,
+  /** Réglage owner « remplir le stock en un clic » (`company_settings`). */
+  bulkStockEntryEnabled: (companyId: string) =>
+    ["bulk-stock-entry", companyId] as const,
   /** Réglage owner « vente au nom d'un client » — client obligatoire, blocage sur dette. */
   saleCustomerPolicy: (companyId: string) =>
     ["sale-customer-policy", companyId] as const,

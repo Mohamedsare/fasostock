@@ -43,6 +43,11 @@ import {
   setPrintFormatChoiceEnabled,
 } from "@/lib/features/settings/print-format-choice";
 import {
+  fetchBulkStockEntryEnabled,
+  peekBulkStockEntryEnabled,
+  setBulkStockEntryEnabled,
+} from "@/lib/features/settings/bulk-stock-entry";
+import {
   fetchSaleCustomerPolicy,
   peekSaleCustomerPolicy,
   setSaleCustomerPolicy,
@@ -136,6 +141,7 @@ import {
   MdContactPhone,
   MdCreditCard,
   MdInventory2,
+  MdLibraryAddCheck,
   MdPayments,
   MdPriceChange,
   MdPrint,
@@ -527,6 +533,42 @@ export function SettingsScreen() {
       );
       await qc.invalidateQueries({
         queryKey: queryKeys.printFormatChoiceEnabled(companyId),
+      });
+    },
+    onError: (e) => toastMutationError("settings", e),
+  });
+
+  /*
+   * Remplir le stock en un clic — fermé par défaut.
+   *
+   * Le raccourci est puissant dans les deux sens : il remplit un magasin entier en une
+   * minute, et une quantité tapée de travers fausse le stock de tout le magasin aussi
+   * vite. Le propriétaire décide donc s'il veut ce bouton dans sa boutique ; le droit
+   * « Ajuster le stock » reste exigé par-dessus pour l'employé.
+   */
+  const peekBulkStock =
+    companyId.length > 0 && isOwner ? peekBulkStockEntryEnabled(companyId) : undefined;
+  const bulkStockQ = useQuery({
+    queryKey: queryKeys.bulkStockEntryEnabled(companyId),
+    queryFn: () => fetchBulkStockEntryEnabled(companyId),
+    enabled: Boolean(companyId && isOwner),
+    staleTime: 30_000,
+    ...(peekBulkStock !== undefined ? { initialData: peekBulkStock } : {}),
+  });
+
+  const bulkStockMut = useMutation({
+    mutationFn: async (enabled: boolean) => {
+      if (!companyId) throw new Error("Entreprise introuvable.");
+      await setBulkStockEntryEnabled(companyId, enabled);
+    },
+    onSuccess: async (_, enabled) => {
+      toast.success(
+        enabled
+          ? "Saisie groupée activée. Les cases à cocher apparaissent sur la page Stock."
+          : "Saisie groupée désactivée. Le stock s'ajuste de nouveau produit par produit.",
+      );
+      await qc.invalidateQueries({
+        queryKey: queryKeys.bulkStockEntryEnabled(companyId),
       });
     },
     onError: (e) => toastMutationError("settings", e),
@@ -1288,6 +1330,74 @@ export function SettingsScreen() {
               trop qu&apos;une boutique à l&apos;arrêt.
             </p>
           ) : null}
+        </FsCard>
+      ) : null}
+
+      {/* Remplir le stock en un clic — owner uniquement */}
+      {isOwner && companyId ? (
+        <FsCard className="mt-5" padding="p-5">
+          <SettingsCardTitle icon={MdLibraryAddCheck} title="Remplir le stock en un clic" />
+          <p className="mt-2 text-xs leading-relaxed text-neutral-600 sm:text-sm">
+            Au démarrage, votre catalogue est là mais l&apos;application affiche zéro
+            partout : il faut ouvrir chaque produit, un par un, pour entrer la quantité
+            réelle — deux cents produits, deux cents fois le même geste. Activé, la page{" "}
+            <b>Stock</b> affiche une case devant chaque produit, un bouton{" "}
+            <b>« Tout cocher »</b>, et une seule quantité appliquée à toute la sélection.
+            Chaque ligne reste modifiable avant de valider.
+          </p>
+          <p className="mt-2 text-xs leading-relaxed text-neutral-600 sm:text-sm">
+            Deux façons de faire : <b>Ajouter</b> (une livraison qui s&apos;ajoute au
+            rayon) ou <b>Mettre le stock à</b> (la quantité comptée remplace ce qui est
+            affiché). Le même écran sert donc au démarrage comme à la grosse livraison du
+            fournisseur habituel.
+          </p>
+          {/*
+            Le vrai risque n'est pas technique, il est humain : le geste est aussi rapide
+            dans le mauvais sens. Le dire ici, pas après coup au support.
+          */}
+          <p className="mt-2 rounded-[10px] bg-amber-500/10 px-3 py-2 text-xs leading-relaxed text-amber-900 dark:text-amber-200">
+            À savoir : chaque produit reçoit un mouvement de stock signé de son auteur,
+            comme un ajustement normal — rien n&apos;est invisible. Mais une quantité tapée
+            de travers part sur toute la sélection d&apos;un coup. Seuls les employés
+            ayant le droit « Ajuster le stock » voient ces cases ; pour recompter tout le
+            magasin avec la trace des écarts, passez plutôt par une session
+            d&apos;inventaire.
+          </p>
+          {bulkStockQ.isPending ? (
+            <div className="mt-4 flex justify-center py-4" role="status" aria-label="Chargement">
+              <div className="h-8 w-8 animate-spin rounded-full border-2 border-fs-accent border-t-transparent" />
+            </div>
+          ) : (
+            <div className="mt-4 space-y-0 rounded-[10px] border border-black/[0.08]">
+              <label
+                className={cn(
+                  "flex cursor-pointer items-start justify-between gap-3 px-3 py-3 sm:px-4",
+                  bulkStockMut.isPending && "pointer-events-none opacity-60",
+                )}
+              >
+                <span className="min-w-0">
+                  <span className="block text-sm font-medium text-fs-text">
+                    Cocher plusieurs produits et entrer leur stock d&apos;un coup
+                  </span>
+                  <span className="mt-0.5 block text-xs text-neutral-600">
+                    {bulkStockQ.data
+                      ? "Les cases à cocher et le bouton « Remplir le stock » sont visibles sur la page Stock."
+                      : "Désactivé : le stock s'ajuste produit par produit, comme aujourd'hui."}
+                  </span>
+                </span>
+                <input
+                  type="checkbox"
+                  role="switch"
+                  className="mt-1 h-5 w-9 shrink-0 cursor-pointer accent-fs-accent"
+                  checked={Boolean(bulkStockQ.data)}
+                  disabled={bulkStockMut.isPending}
+                  onChange={(e) => {
+                    void bulkStockMut.mutateAsync(e.target.checked);
+                  }}
+                />
+              </label>
+            </div>
+          )}
         </FsCard>
       ) : null}
 

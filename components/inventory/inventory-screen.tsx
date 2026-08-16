@@ -1,6 +1,10 @@
 "use client";
 
 import { AdjustStockDialog } from "@/components/inventory/adjust-stock-dialog";
+import {
+  BulkStockEntryDialog,
+  type BulkStockTarget,
+} from "@/components/inventory/bulk-stock-entry-dialog";
 import { ProductListThumbnail } from "@/components/products/product-list-thumbnail";
 import { StockRangeIndicator } from "@/components/products/stock-range-indicator";
 import { ProductBatchesDialog } from "@/components/products/product-batches-dialog";
@@ -15,10 +19,15 @@ import { FsHorizontalScroll } from "@/components/ui/fs-horizontal-scroll";
 import { P } from "@/lib/constants/permissions";
 import {
   adjustStockAtomic,
+  bulkAdjustStockAtomic,
   fetchInventoryScreenData,
   listStockMovements,
   setDefaultStockAlertThreshold,
 } from "@/lib/features/inventory/api";
+import {
+  fetchBulkStockEntryEnabled,
+  peekBulkStockEntryEnabled,
+} from "@/lib/features/settings/bulk-stock-entry";
 import { inventoryRowsToSpreadsheetMatrix } from "@/lib/features/inventory/csv";
 import type { InventoryRow, StockMovementRow } from "@/lib/features/inventory/types";
 import { usePermissions } from "@/lib/features/permissions/use-permissions";
@@ -47,6 +56,7 @@ import {
   MdEdit,
   MdHistory,
   MdInventory2,
+  MdLibraryAddCheck,
   MdLockOutline,
   MdSavings,
   MdSearch,
@@ -486,6 +496,107 @@ export function InventoryScreen() {
     onError: (e) => toastMutationError("inventory", e),
   });
 
+  /*
+   * « Remplir le stock en un clic » — réglage propriétaire, fermé par défaut.
+   * Le droit d'ajuster reste exigé par-dessus : le réglage ouvre un raccourci, il
+   * n'accorde aucun droit à personne.
+   */
+  const peekBulk = companyId.length > 0 ? peekBulkStockEntryEnabled(companyId) : undefined;
+  const bulkEnabledQ = useQuery({
+    queryKey: queryKeys.bulkStockEntryEnabled(companyId),
+    queryFn: () => fetchBulkStockEntryEnabled(companyId),
+    enabled: Boolean(companyId) && canAdjust,
+    staleTime: 60_000,
+    ...(peekBulk !== undefined ? { initialData: peekBulk } : {}),
+  });
+  const bulkEnabled = canAdjust && Boolean(bulkEnabledQ.data);
+
+  const [selectedIds, setSelectedIds] = useState<ReadonlySet<string>>(() => new Set());
+  const [bulkOpen, setBulkOpen] = useState(false);
+
+  /*
+   * Changement de boutique : une sélection faite ailleurs n'a plus de sens ici, et
+   * l'appliquer par mégarde remplirait le stock du mauvais magasin. Remise à zéro
+   * PENDANT le rendu (même motif que la pagination des mouvements plus haut) : dans un
+   * effet, la barre afficherait un instant « 12 produits sélectionnés » appartenant à
+   * l'autre boutique, et le bouton serait déjà cliquable.
+   */
+  const [lastSelectionStoreId, setLastSelectionStoreId] = useState(storeId);
+  if (lastSelectionStoreId !== storeId) {
+    setLastSelectionStoreId(storeId);
+    setSelectedIds(new Set());
+  }
+
+  const toggleSelected = useCallback((productId: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(productId)) next.delete(productId);
+      else next.add(productId);
+      return next;
+    });
+  }, []);
+
+  /*
+   * « Tout cocher » porte sur la LISTE FILTRÉE ENTIÈRE, pas sur la page affichée :
+   * c'est la demande d'origine (« cocher tous les produits de la boutique »), et un
+   * bouton qui n'en cocherait que vingt obligerait à recommencer page après page.
+   * Combiné aux filtres, il permet aussi le cas utile « tout ce qui est en rupture ».
+   */
+  const allFilteredSelected =
+    filteredForTable.length > 0 && filteredForTable.every((r) => selectedIds.has(r.productId));
+  const someFilteredSelected =
+    !allFilteredSelected && filteredForTable.some((r) => selectedIds.has(r.productId));
+
+  const toggleSelectAllFiltered = useCallback(() => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      const everyone = filteredForTable.every((r) => next.has(r.productId));
+      for (const r of filteredForTable) {
+        if (everyone) next.delete(r.productId);
+        else next.add(r.productId);
+      }
+      return next;
+    });
+  }, [filteredForTable]);
+
+  const bulkTargets: BulkStockTarget[] = useMemo(
+    () =>
+      rows
+        .filter((r) => selectedIds.has(r.productId))
+        .map((r) => ({
+          productId: r.productId,
+          name: r.name,
+          unit: r.unit,
+          currentQty: r.availableQuantity,
+          imageUrl: r.imageUrl,
+        })),
+    [rows, selectedIds],
+  );
+
+  const bulkMut = useMutation({
+    mutationFn: async (payload: {
+      lines: { productId: string; delta: number }[];
+      reason: string;
+    }) => {
+      if (!storeId) throw new Error("Aucune boutique sélectionnée.");
+      return bulkAdjustStockAtomic({
+        storeId,
+        items: payload.lines,
+        reason: payload.reason,
+      });
+    },
+    onSuccess: async (applied) => {
+      await qc.invalidateQueries({ queryKey: queryKeys.productInventory(storeId) });
+      await qc.invalidateQueries({ queryKey: ["stock-movements", storeId] });
+      await dataQ.refetch();
+      toast.success(`Stock mis à jour pour ${applied} produit(s)`);
+      setSelectedIds(new Set());
+      setBulkOpen(false);
+    },
+    // Pas de `toastMutationError` ici : le dialogue reste ouvert et affiche le message
+    // lui-même, avec la sélection intacte pour corriger sans tout recocher.
+  });
+
   const refreshAll = useCallback(async () => {
     await dataQ.refetch();
     if (tab === "moves") await movementsQ.refetch();
@@ -887,6 +998,56 @@ export function InventoryScreen() {
               Inventaire physique : appuyez sur l&apos;icône d&apos;un produit pour ajuster le stock (variation ou
               quantité comptée).
             </p>
+
+            {/*
+              Barre de sélection groupée — visible seulement si le propriétaire a ouvert
+              « Remplir le stock en un clic » ET si l'utilisateur a le droit d'ajuster.
+            */}
+            {bulkEnabled && tab === "stock" ? (
+              <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-[10px] border border-fs-accent/25 bg-fs-accent/[0.06] px-3 py-2.5">
+                <label className="inline-flex cursor-pointer items-center gap-2">
+                  <input
+                    type="checkbox"
+                    className="h-4.5 w-4.5 cursor-pointer accent-fs-accent"
+                    checked={allFilteredSelected}
+                    ref={(el) => {
+                      if (el) el.indeterminate = someFilteredSelected;
+                    }}
+                    onChange={toggleSelectAllFiltered}
+                    disabled={filteredForTable.length === 0}
+                    aria-label="Tout cocher"
+                  />
+                  <span className="text-sm font-semibold text-fs-text">
+                    Tout cocher ({filteredForTable.length})
+                  </span>
+                </label>
+                <span className="text-xs text-neutral-600">
+                  {selectedIds.size > 0
+                    ? `${selectedIds.size} produit(s) sélectionné(s)`
+                    : "Cochez des produits pour entrer leur stock d'un coup."}
+                </span>
+                <div className="ml-auto flex flex-wrap items-center gap-2">
+                  {selectedIds.size > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedIds(new Set())}
+                      className="rounded-lg px-3 py-2 text-sm font-semibold text-neutral-700 underline-offset-2 hover:underline"
+                    >
+                      Tout décocher
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={() => setBulkOpen(true)}
+                    disabled={selectedIds.size === 0}
+                    className="inline-flex items-center gap-2 rounded-lg bg-fs-accent px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm disabled:opacity-40"
+                  >
+                    <MdLibraryAddCheck className="h-5 w-5" aria-hidden />
+                    Remplir le stock
+                  </button>
+                </div>
+              </div>
+            ) : null}
           </div>
 
           {tab === "stock" ? (
@@ -909,6 +1070,20 @@ export function InventoryScreen() {
                     <table className="w-full min-w-[920px] border-collapse text-left text-sm">
                       <thead>
                         <tr className="border-b border-black/[0.06] bg-fs-surface-container/80">
+                          {bulkEnabled ? (
+                            <th className="w-10 px-3 py-3">
+                              <input
+                                type="checkbox"
+                                className="h-4.5 w-4.5 cursor-pointer accent-fs-accent"
+                                checked={allFilteredSelected}
+                                ref={(el) => {
+                                  if (el) el.indeterminate = someFilteredSelected;
+                                }}
+                                onChange={toggleSelectAllFiltered}
+                                aria-label="Tout cocher"
+                              />
+                            </th>
+                          ) : null}
                           <th className="px-4 py-3 font-semibold text-fs-text">Produit</th>
                           <th className="px-3 py-3 font-semibold text-fs-text">SKU</th>
                           <th className="px-3 py-3 text-right font-semibold tabular-nums text-fs-text">Qté</th>
@@ -921,7 +1096,24 @@ export function InventoryScreen() {
                       </thead>
                       <tbody>
                         {pagedStock.map((r) => (
-                            <tr key={r.productId} className="border-b border-black/[0.04]">
+                            <tr
+                              key={r.productId}
+                              className={cn(
+                                "border-b border-black/[0.04]",
+                                bulkEnabled && selectedIds.has(r.productId) && "bg-fs-accent/[0.06]",
+                              )}
+                            >
+                              {bulkEnabled ? (
+                                <td className="px-3 py-2">
+                                  <input
+                                    type="checkbox"
+                                    className="h-4.5 w-4.5 cursor-pointer accent-fs-accent"
+                                    checked={selectedIds.has(r.productId)}
+                                    onChange={() => toggleSelected(r.productId)}
+                                    aria-label={`Sélectionner ${r.name}`}
+                                  />
+                                </td>
+                              ) : null}
                               <td className="max-w-[240px] px-4 py-2">
                                 <div className="flex items-center gap-2">
                                   <ProductListThumbnail
@@ -1072,6 +1264,15 @@ export function InventoryScreen() {
             delta,
             reason,
           });
+        }}
+      />
+
+      <BulkStockEntryDialog
+        open={bulkOpen && bulkEnabled}
+        onClose={() => setBulkOpen(false)}
+        targets={bulkTargets}
+        onConfirm={async ({ lines, reason }) => {
+          await bulkMut.mutateAsync({ lines, reason });
         }}
       />
 

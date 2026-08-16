@@ -492,10 +492,17 @@ BEGIN
   FROM public.sale_documents
   WHERE id = COALESCE(NEW.document_id, OLD.document_id);
 
+  -- `v_status` est NULL quand le document a déjà disparu : c'est le cas de la
+  -- suppression en cascade, qui doit passer (la garde de suppression est portée par
+  -- la politique RLS du document, pas par ses lignes).
   IF v_status IN ('issued', 'converted', 'cancelled') THEN
     RAISE EXCEPTION 'Ce document est figé : ses lignes ne peuvent plus être modifiées.';
   END IF;
-  RETURN COALESCE(NEW, OLD);
+
+  IF TG_OP = 'DELETE' THEN
+    RETURN OLD;
+  END IF;
+  RETURN NEW;
 END;
 $$;
 
