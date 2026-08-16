@@ -318,12 +318,6 @@ export type AccessHelpers = {
    * nommément, employé par employé, depuis la page Employés.
    */
   canQuickSupply: boolean;
-  /**
-   * Prix de vente modifiable depuis l'approvisionnement. Réservé à qui peut déjà
-   * modifier un produit : faire entrer de la marchandise ne donne pas le droit de
-   * changer les prix du magasin (la base refuse aussi, cf. `create_quick_supply`).
-   */
-  canRepriceOnSupply: boolean;
   /** Page Aide visible. Visible par défaut ; le propriétaire peut la retirer du menu. */
   canHelp: boolean;
   /** Page Notifications visible. Idem — ne concerne pas la réception des push. */
@@ -517,7 +511,6 @@ export function buildAccessHelpers(
   const quickSupplyOn = data.quickSupplyEnabled === true;
   const canQuickSupply =
     quickSupplyOn && (isOwner || hasPermission(P.quickSupplyCreate));
-  const canRepriceOnSupply = isOwner || hasPermission(P.productsUpdate);
   /*
    * Aide et Notifications : VISIBLES par défaut, et retirées seulement si le
    * propriétaire l'a demandé pour cet employé. Le sens de la liste est « ce qui est
@@ -579,7 +572,6 @@ export function buildAccessHelpers(
     canCheckoutQueue,
     quickSupplyOn,
     canQuickSupply,
-    canRepriceOnSupply,
     canHelp,
     canNotifications,
     landedCostOn,

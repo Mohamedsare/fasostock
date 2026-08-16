@@ -9,6 +9,7 @@ import type {
   CreateQuickSupplyInput,
   QuickSupply,
   QuickSupplyLine,
+  SupplyLotPrice,
   SupplyProduct,
 } from "./types";
 
@@ -79,8 +80,8 @@ export async function fetchSupplyCatalog(params: {
         searchAliases: Array.isArray(aliasesRaw)
           ? aliasesRaw.map((a) => String(a ?? "").trim()).filter((a) => a.length > 0)
           : [],
-        purchasePrice: toNum(r.purchase_price),
-        salePrice: toNum(r.sale_price),
+        cataloguePurchasePrice: toNum(r.purchase_price),
+        catalogueSalePrice: toNum(r.sale_price),
         stock: stockByProduct[id] ?? 0,
         // Jointure brute : le tri par `position` se fait ici, comme `listProducts`.
         imageUrl: firstProductImageUrlFromNestedRows(r.product_images),
@@ -126,8 +127,9 @@ export async function createQuickSupply(
       unit: it.unit ?? null,
       barcode: it.barcode ?? null,
       quantity: it.quantity,
-      purchase_price: it.purchasePrice,
-      sale_price: it.salePrice,
+      // Prix DE L'ARRIVAGE : la base ne les recopiera dans aucune fiche produit.
+      unit_cost: it.unitCost,
+      unit_sale_price: it.unitSalePrice,
     })),
     p_supplier_label: input.supplierLabel,
     // `null` (et non 0) veut dire « payé comptant » : la base retient alors le coût
@@ -180,7 +182,7 @@ export async function listQuickSupplies(params: {
       const { data, error: iErr } = await supabase
         .from("quick_supply_items")
         .select(
-          "id, supply_id, label, quantity, purchase_price, previous_purchase_price, sale_price, previous_sale_price, product_created, position",
+          "id, supply_id, label, quantity, remaining_quantity, unit_cost, unit_sale_price, catalogue_purchase_price, catalogue_sale_price, product_created, position",
         )
         .in("supply_id", chunk)
         .order("supply_id", { ascending: true })
@@ -201,12 +203,13 @@ export async function listQuickSupplies(params: {
       id: String(it.id),
       label: String(it.label ?? ""),
       quantity: toNum(it.quantity),
-      purchasePrice: toNum(it.purchase_price),
-      previousPurchasePrice:
-        it.previous_purchase_price == null ? null : toNum(it.previous_purchase_price),
-      salePrice: it.sale_price == null ? null : toNum(it.sale_price),
-      previousSalePrice:
-        it.previous_sale_price == null ? null : toNum(it.previous_sale_price),
+      remainingQuantity: toNum(it.remaining_quantity),
+      unitCost: toNum(it.unit_cost),
+      unitSalePrice: it.unit_sale_price == null ? null : toNum(it.unit_sale_price),
+      cataloguePurchasePrice:
+        it.catalogue_purchase_price == null ? null : toNum(it.catalogue_purchase_price),
+      catalogueSalePrice:
+        it.catalogue_sale_price == null ? null : toNum(it.catalogue_sale_price),
       productCreated: it.product_created === true,
     });
     linesBySupply.set(key, list);
@@ -262,6 +265,47 @@ async function fetchStoreNames(storeIds: string[]): Promise<Map<string, string>>
     m.set(String(row.id), String(row.name ?? ""));
   }
   return m;
+}
+
+/**
+ * Prix imposés par les lots d'arrivage encore ouverts dans une boutique.
+ *
+ * C'est ce que la caisse superpose à son catalogue — même principe que les promotions.
+ * Une seule requête pour toute la boutique : la liste est courte par nature (seuls les
+ * lots non écoulés y figurent) et se vide toute seule à mesure qu'on vend.
+ *
+ * Ne lève jamais : un lecteur de prix en échec doit laisser la caisse vendre au prix du
+ * catalogue, jamais l'empêcher de vendre. Tant que la migration 00193 n'est pas
+ * appliquée, la fonction n'existe pas et on renvoie simplement « aucun lot ».
+ */
+export async function fetchStoreLotPrices(
+  storeId: string | null,
+): Promise<Map<string, SupplyLotPrice>> {
+  const empty = new Map<string, SupplyLotPrice>();
+  if (!storeId) return empty;
+  try {
+    const supabase = createClient();
+    const { data, error } = await supabase.rpc("quick_supply_store_lot_prices", {
+      p_store_id: storeId,
+    });
+    if (error) return empty;
+    const m = new Map<string, SupplyLotPrice>();
+    for (const row of (data ?? []) as Array<Record<string, unknown>>) {
+      const productId = String(row.product_id ?? "");
+      if (!productId) continue;
+      m.set(productId, {
+        productId,
+        supplyItemId: String(row.supply_item_id ?? ""),
+        unitSalePrice: row.unit_sale_price == null ? null : toNum(row.unit_sale_price),
+        unitCost: toNum(row.unit_cost),
+        remaining: toNum(row.remaining),
+        supplyNumber: String(row.supply_number ?? ""),
+      });
+    }
+    return m;
+  } catch {
+    return empty;
+  }
 }
 
 /** Propriétaire : ouvre ou ferme le module Approvisionnement pour l'entreprise. */

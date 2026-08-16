@@ -43,6 +43,7 @@ import {
 } from "@/lib/features/payments/payment-display";
 import { posEffectiveUnitPrice } from "@/lib/features/pos/wholesale-unit-price";
 import { listActiveStorePromotions } from "@/lib/features/promotions/api";
+import { fetchStoreLotPrices } from "@/lib/features/quick-supply/api";
 import { applyPromoPercent } from "@/lib/features/promotions/promo-math";
 import { defaultInvoiceUnitForProduct, INVOICE_UNITS } from "@/lib/features/pos/invoice-units";
 import { factureTabStripHeightPx } from "@/lib/utils/facture-tab-layout";
@@ -465,6 +466,41 @@ export function PosScreen({
     staleTime: 60_000,
     refetchInterval: mode === "quick" && !isSaleEditEntry ? 60_000 : false,
   });
+  /*
+   * Prix imposés par un arrivage encore en rayon. Même principe que les promotions
+   * ci-dessus : une lecture par boutique, superposée au catalogue.
+   *
+   * `fetchStoreLotPrices` ne lève jamais — un lecteur de prix en panne doit laisser la
+   * caisse vendre au prix du catalogue, jamais l'empêcher de vendre.
+   */
+  const lotPricesQ = useQuery({
+    queryKey: ["pos-supply-lots", companyId, storeId] as const,
+    queryFn: () => fetchStoreLotPrices(storeId),
+    enabled: Boolean(storeId && canAccess && ctx?.quickSupplyEnabled === true),
+    // Le stock d'un lot se vide pendant qu'on vend : on rafraîchit au même rythme que
+    // le stock lui-même, sinon la caisse continuerait d'annoncer un prix épuisé.
+    staleTime: 20_000,
+    refetchInterval: mode === "quick" && !isSaleEditEntry ? 15_000 : false,
+  });
+
+  /** Prix de vente d'un lot ouvert, par produit. Un lot sans prix n'y figure pas. */
+  const lotSalePriceByProductId = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const [productId, lot] of lotPricesQ.data ?? new Map()) {
+      if (lot.unitSalePrice != null && lot.unitSalePrice > 0) m.set(productId, lot.unitSalePrice);
+    }
+    return m;
+  }, [lotPricesQ.data]);
+
+  /**
+   * Prix de base d'un produit : celui de l'arrivage en cours s'il en reste, sinon celui
+   * du catalogue. Le prix de gros, lui, garde sa propre logique — c'est une décision
+   * commerciale sur le produit, sans rapport avec la caisse de marchandise du jour.
+   */
+  function baseSalePrice(productId: string, cataloguePrice: number): number {
+    return lotSalePriceByProductId.get(productId) ?? cataloguePrice;
+  }
+
   const promoPctByProductId = useMemo(() => {
     const m = new Map<string, number>();
     for (const r of promosQ.data ?? []) m.set(r.productId, r.discountPercent);
@@ -1473,7 +1509,8 @@ export function PosScreen({
     const p = products.find((x) => x.id === productId);
     if (!p) return 0;
     const base = posEffectiveUnitPrice(
-      p.sale_price,
+      // Prix de l'arrivage s'il en reste : cette marchandise-là se vend à SON prix.
+      baseSalePrice(productId, Number(p.sale_price ?? 0)),
       p.wholesale_price ?? 0,
       p.wholesale_qty ?? 0,
       quantity,
@@ -2548,7 +2585,7 @@ export function PosScreen({
                     {filtered.map((p) => {
                       const stock = stockByProductId.get(p.id) ?? 0;
                       const thumb = p.product_images?.[0]?.url ?? null;
-                      const price = Number(p.sale_price ?? 0);
+                      const price = baseSalePrice(p.id, Number(p.sale_price ?? 0));
                       const promoPct = promoPctByProductId.get(p.id) ?? 0;
                       const promoPrice = promoPct > 0 ? applyPromoPercent(price, promoPct) : price;
                       const priceLine =
@@ -2635,7 +2672,7 @@ export function PosScreen({
                   {filtered.map((p) => {
                     const stock = stockByProductId.get(p.id) ?? 0;
                     const thumb = p.product_images?.[0]?.url ?? null;
-                    const price = Number(p.sale_price ?? 0);
+                    const price = baseSalePrice(p.id, Number(p.sale_price ?? 0));
                     const promoPct = promoPctByProductId.get(p.id) ?? 0;
                     const promoPrice = promoPct > 0 ? applyPromoPercent(price, promoPct) : price;
                     const priceLine =

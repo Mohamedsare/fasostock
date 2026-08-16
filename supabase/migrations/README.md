@@ -33,3 +33,14 @@ dépasse celui du défaut.
 `00182_engine_verify_payment_details.sql` était la cinquième collision. Elle a été
 renumérotée en `00186` car elle est entièrement idempotente : qu'elle ait déjà été
 appliquée ou qu'elle ait été sautée à cause du doublon, la rejouer est sans effet de bord.
+
+`00193_pos_checkout_permission.sql` (module Caisse à deux) est la sixième : elle est née
+en même temps que `00193_quick_supply.sql`, deux fonctionnalités développées en parallèle
+ayant lu le même « dernier numéro ». Même traitement — entièrement idempotente, donc
+renumérotée en `00196`. `00194_pos_print_jobs.sql` l'a suivie en `00197` bien qu'elle
+n'entrât en collision avec rien : elle appelle `can_checkout_pos_handoffs`, créée par la
+précédente, et devait rester après elle.
+
+**Deux chantiers menés en parallèle suffisent à recréer le défaut** : le numéro se prend
+au moment d'écrire le fichier, pas au moment de le livrer. Vérifier `ls | tail -1` juste
+avant de pousser, en plus d'avant de créer.

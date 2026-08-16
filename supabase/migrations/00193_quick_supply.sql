@@ -23,9 +23,19 @@
 -- CE QUE L'ARRIVAGE FAIT, ET CE QU'IL NE FAIT PAS
 -- ─────────────────────────────────────────────────────────────────────────────
 -- IL FAIT : entrer le stock dans la boutique (`store_inventory`), écrire le mouvement
---   traçable (`stock_movements` type `purchase_in`, auteur renseigné), mettre à jour le
---   prix d'achat du produit — c'est le coût du jour, celui qui doit servir à la marge —
---   et, si besoin, CRÉER le produit qui n'existait pas encore au catalogue.
+--   traçable (`stock_movements` type `purchase_in`, auteur renseigné), enregistrer le
+--   prix payé et le prix de vente prévu POUR CET ARRIVAGE, et, si besoin, CRÉER le
+--   produit qui n'existait pas encore au catalogue.
+--
+-- IL NE TOUCHE PAS AUX PRIX DU CATALOGUE. C'est la règle centrale, et elle mérite d'être
+--   dite ici : les prix d'un arrivage sont des prix de circonstance (le grossiste
+--   habituel était fermé, le voisin a profité de l'urgence, le carton était abîmé). Les
+--   recopier dans `products` laisserait un achat de dépannage redéfinir la valeur d'une
+--   référence pour toute la boutique — faussant d'un coup la marge de tout le stock déjà
+--   présent, les rapports du mois, et le prix que le caissier lira demain. Les deux jeux
+--   de prix cohabitent donc sans jamais se mélanger (voir `quick_supply_items`).
+--   Exception unique et inévitable : un produit CRÉÉ par l'arrivage n'a pas de prix
+--   catalogue — ceux saisis deviennent les siens, sinon il entre en stock invendable.
 --
 -- IL NE FAIT PAS de dépense. Acheter de la marchandise n'appauvrit personne : l'argent
 --   se transforme en stock, il ne disparaît pas. L'écrire dans les Dépenses compterait
@@ -46,9 +56,12 @@
 --   • créer un produit qui manquait, avec son prix — un produit qu'on ne peut pas
 --     vendre sans prix ;
 --   • rien d'autre. Pas la fiche produit, pas l'ajustement libre, pas la suppression.
--- Et surtout : le PRIX DE VENTE D'UN PRODUIT EXISTANT lui reste fermé (voir plus bas).
--- C'est la ligne de partage qui compte : un employé peut faire entrer de la marchandise,
--- il ne peut pas rebaisser le prix du sac de riz avant de se servir.
+--
+-- Le fait que l'arrivage ne touche à aucun prix du catalogue règle du même coup la
+-- question qui inquiétait : l'employé saisit les prix de SON arrivage, il ne peut pas
+-- rebaisser le prix du sac de riz de toute la boutique avant de se servir. Aucun droit
+-- supplémentaire n'est donc à arbitrer sur les prix — il n'y a plus rien à protéger de
+-- ce côté-là.
 --
 -- Le droit n'est donné à aucun rôle par défaut : le propriétaire l'attribue nommément,
 -- employé par employé, depuis la page Employés.
@@ -253,9 +266,31 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_quick_supplies_client_request
  * `label` est une COPIE du nom au moment de l'entrée, comme pour les bons de caisse :
  * l'historique doit rester lisible même si le produit est renommé ensuite.
  *
- * `previous_purchase_price` garde l'ancien coût. C'est la ligne que le propriétaire
- * lit vraiment : « le carton est passé de 9 000 à 11 500 » — l'information qui décide
- * d'augmenter le prix de vente, et celle qui, si elle est fantaisiste, désigne l'auteur.
+ * ─────────────────────────────────────────────────────────────────────────────
+ * DEUX JEUX DE PRIX QU'IL NE FAUT SURTOUT PAS MÉLANGER
+ * ─────────────────────────────────────────────────────────────────────────────
+ * Les prix saisis à l'arrivage NE SONT PAS les prix du catalogue, et ne les remplacent
+ * jamais. C'est la règle centrale de ce module, et elle est inscrite ici, dans les noms
+ * des colonnes, pour qu'on ne puisse pas s'y tromper en relisant le code :
+ *
+ *   unit_cost         ce que le commerçant a PAYÉ pour cet arrivage-ci, chez ce
+ *                     vendeur-là, ce jour-là. Un prix de circonstance : le grossiste
+ *                     habituel était fermé, le voisin a profité de l'urgence, le
+ *                     carton était abîmé et négocié. Il décrit UNE caisse de
+ *                     marchandise, pas la valeur du produit.
+ *
+ *   unit_sale_price   le prix auquel le commerçant compte écouler CETTE marchandise-là.
+ *                     Là encore, propre à l'arrivage.
+ *
+ *   catalogue_purchase_price / catalogue_sale_price
+ *                     PHOTO des vrais prix du produit à l'instant de l'arrivage. Ils ne
+ *                     servent qu'à la comparaison (« payé 11 500, le catalogue dit
+ *                     9 000 »). Ce sont des témoins, jamais des valeurs de travail.
+ *
+ * `products.purchase_price` et `products.sale_price` — les VRAIS prix, ceux de la caisse
+ * et des rapports — ne sont touchés par aucune des deux, à une exception près et une
+ * seule : un produit CRÉÉ par l'arrivage n'a pas de prix catalogue, il faut bien lui en
+ * donner un, sinon il entre en stock invendable.
  */
 CREATE TABLE IF NOT EXISTS public.quick_supply_items (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -266,11 +301,14 @@ CREATE TABLE IF NOT EXISTS public.quick_supply_items (
   label text NOT NULL,
   quantity integer NOT NULL CHECK (quantity > 0),
 
-  purchase_price numeric(18, 4) NOT NULL DEFAULT 0 CHECK (purchase_price >= 0),
-  previous_purchase_price numeric(18, 4),
-  /** Prix de vente appliqué au produit par cet arrivage. NULL = prix inchangé. */
-  sale_price numeric(18, 4) CHECK (sale_price IS NULL OR sale_price >= 0),
-  previous_sale_price numeric(18, 4),
+  /** Prix payé pour CET arrivage. N'est pas le prix d'achat du produit. */
+  unit_cost numeric(18, 4) NOT NULL DEFAULT 0 CHECK (unit_cost >= 0),
+  /** Prix de vente prévu pour CETTE marchandise. N'est pas le prix de vente du produit. */
+  unit_sale_price numeric(18, 4) CHECK (unit_sale_price IS NULL OR unit_sale_price >= 0),
+
+  /** Témoins : les vrais prix du catalogue au moment de l'arrivage (comparaison seule). */
+  catalogue_purchase_price numeric(18, 4),
+  catalogue_sale_price numeric(18, 4),
 
   /** Le produit a-t-il été créé par cet arrivage ? Sert au contrôle du propriétaire. */
   product_created boolean NOT NULL DEFAULT false,
@@ -280,8 +318,13 @@ CREATE TABLE IF NOT EXISTS public.quick_supply_items (
 );
 
 COMMENT ON TABLE public.quick_supply_items IS
-  'Lignes d''un arrivage express. Conserve l''ancien prix d''achat et l''ancien prix de '
-  'vente : c''est ce que le propriétaire relit pour comprendre une marge qui bouge.';
+  'Lignes d''un arrivage express. `unit_cost` / `unit_sale_price` sont les prix DE '
+  'L''ARRIVAGE et ne remplacent jamais ceux du catalogue ; `catalogue_*` en garde la '
+  'photo au même instant, pour comparaison.';
+COMMENT ON COLUMN public.quick_supply_items.unit_cost IS
+  'Prix payé pour cet arrivage précis. À ne pas confondre avec products.purchase_price.';
+COMMENT ON COLUMN public.quick_supply_items.unit_sale_price IS
+  'Prix de vente prévu pour cette marchandise. À ne pas confondre avec products.sale_price.';
 
 CREATE INDEX IF NOT EXISTS idx_quick_supply_items_supply
   ON public.quick_supply_items(supply_id, position);
@@ -341,28 +384,6 @@ COMMENT ON FUNCTION public.can_do_quick_supply(uuid) IS
 
 GRANT EXECUTE ON FUNCTION public.can_do_quick_supply(uuid) TO authenticated;
 
-/**
- * Le prix de VENTE d'un produit déjà au catalogue est une décision commerciale du
- * patron, pas une conséquence d'une réception. Un employé à qui l'on a seulement
- * confié `quick_supply.create` ne peut donc pas le toucher : il lui faut, en plus, le
- * droit ordinaire « Modifier des produits ».
- *
- * Pour un produit qu'il CRÉE, en revanche, il faut bien fixer un prix — sinon
- * l'article entre en stock invendable, et le module rate son but.
- */
-CREATE OR REPLACE FUNCTION public.can_reprice_on_quick_supply(p_company_id uuid)
-RETURNS boolean
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-  SELECT public.is_super_admin()
-      OR public.user_is_company_owner(p_company_id)
-      OR ('products.update' = ANY(public.get_my_permission_keys(p_company_id)));
-$$;
-
-GRANT EXECUTE ON FUNCTION public.can_reprice_on_quick_supply(uuid) TO authenticated;
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 6. RLS
@@ -441,18 +462,17 @@ DECLARE
   v_product_id uuid;
   v_label text;
   v_qty int;
-  v_purchase numeric;
-  v_sale numeric;
+  v_unit_cost numeric;
+  v_unit_sale numeric;
   v_unit text;
   v_barcode text;
-  v_prev_purchase numeric;
-  v_prev_sale numeric;
+  v_cat_purchase numeric;
+  v_cat_sale numeric;
   v_created boolean;
   v_scope text;
   v_pos int := 0;
   v_units int := 0;
   v_total numeric := 0;
-  v_can_reprice boolean;
   v_shares_catalog boolean;
   v_row_count int;
 BEGIN
@@ -496,8 +516,6 @@ BEGIN
     END IF;
   END IF;
 
-  v_can_reprice := public.can_reprice_on_quick_supply(p_company_id);
-
   SELECT COALESCE(shares_company_catalog, true) INTO v_shares_catalog
   FROM public.stores WHERE id = p_store_id;
 
@@ -518,16 +536,16 @@ BEGIN
   LOOP
     v_product_id := NULLIF(v_item->>'product_id', '')::uuid;
     v_qty := (v_item->>'quantity')::int;
-    v_purchase := GREATEST(0, COALESCE((v_item->>'purchase_price')::numeric, 0));
-    v_sale := NULLIF(v_item->>'sale_price', '')::numeric;
+    v_unit_cost := GREATEST(0, COALESCE((v_item->>'unit_cost')::numeric, 0));
+    v_unit_sale := NULLIF(v_item->>'unit_sale_price', '')::numeric;
     v_created := false;
-    v_prev_purchase := NULL;
-    v_prev_sale := NULL;
+    v_cat_purchase := NULL;
+    v_cat_sale := NULL;
 
     IF v_qty IS NULL OR v_qty <= 0 THEN
       RAISE EXCEPTION 'Quantité invalide pour un article de l''arrivage.';
     END IF;
-    IF v_sale IS NOT NULL AND v_sale < 0 THEN
+    IF v_unit_sale IS NOT NULL AND v_unit_sale < 0 THEN
       RAISE EXCEPTION 'Prix de vente invalide pour un article de l''arrivage.';
     END IF;
 
@@ -537,7 +555,7 @@ BEGIN
       IF v_label IS NULL THEN
         RAISE EXCEPTION 'Nom manquant pour un nouvel article.';
       END IF;
-      IF v_sale IS NULL OR v_sale <= 0 THEN
+      IF v_unit_sale IS NULL OR v_unit_sale <= 0 THEN
         RAISE EXCEPTION 'Prix de vente obligatoire pour le nouvel article « % ».', v_label;
       END IF;
       v_unit := COALESCE(NULLIF(btrim(COALESCE(v_item->>'unit', '')), ''), 'pce');
@@ -547,7 +565,7 @@ BEGIN
         company_id, name, unit, barcode, purchase_price, sale_price, product_scope, is_active
       )
       VALUES (
-        p_company_id, v_label, v_unit, v_barcode, v_purchase, v_sale, 'both', true
+        p_company_id, v_label, v_unit, v_barcode, v_unit_cost, v_unit_sale, 'both', true
       )
       RETURNING id INTO v_product_id;
 
@@ -563,7 +581,7 @@ BEGIN
     ELSE
       -- ── Produit existant ───────────────────────────────────────────────────
       SELECT p.name, p.purchase_price, p.sale_price, COALESCE(p.product_scope, 'both')
-        INTO v_label, v_prev_purchase, v_prev_sale, v_scope
+        INTO v_label, v_cat_purchase, v_cat_sale, v_scope
       FROM public.products p
       WHERE p.id = v_product_id
         AND p.company_id = p_company_id
@@ -579,35 +597,19 @@ BEGIN
       END IF;
 
       /*
-       * Le coût du jour remplace l'ancien : c'est lui qui doit servir à calculer la
-       * marge de ce qui sera vendu maintenant. L'ancien reste lisible sur la ligne.
+       * ON NE TOUCHE À AUCUN PRIX DU CATALOGUE. Ni le prix d'achat, ni le prix de vente.
        *
-       * Sauf s'il vaut zéro. Un champ laissé vide veut dire « je ne l'ai pas saisi »,
-       * jamais « cet article ne m'a rien coûté » : écraser un prix d'achat connu par un
-       * zéro ferait apparaître une marge de 100 % sur toutes les ventes suivantes, et
-       * personne ne s'en apercevrait avant de lire un rapport faux. On garde donc
-       * l'ancien coût, et la ligne d'arrivage en porte la trace (prix à 0).
+       * C'est la règle du module, et elle mérite d'être défendue ici plutôt que dans une
+       * note : les prix d'un arrivage sont des prix de circonstance. Le grossiste
+       * habituel était fermé, le voisin a profité de l'urgence, le carton était abîmé et
+       * négocié. Les recopier dans la fiche produit reviendrait à laisser un achat de
+       * dépannage redéfinir la valeur d'une référence pour toute la boutique — et donc
+       * fausser, d'un coup, la marge affichée sur tout le stock déjà là, les rapports du
+       * mois, et le prix que le caissier lira demain.
+       *
+       * Les prix saisis restent donc sur la ligne d'arrivage, à côté de la photo des
+       * vrais prix. Le propriétaire voit l'écart, et décide — ou non — de répercuter.
        */
-      IF v_purchase > 0 THEN
-        UPDATE public.products
-        SET purchase_price = v_purchase, updated_at = now()
-        WHERE id = v_product_id;
-      END IF;
-
-      IF v_sale IS NOT NULL AND v_sale IS DISTINCT FROM v_prev_sale THEN
-        IF NOT v_can_reprice THEN
-          RAISE EXCEPTION
-            'Vous ne pouvez pas changer le prix de vente de « % ». Demandez au propriétaire.',
-            v_label;
-        END IF;
-        UPDATE public.products
-        SET sale_price = v_sale, updated_at = now()
-        WHERE id = v_product_id;
-      ELSE
-        -- Prix inchangé : on n'écrit rien sur la ligne, pour que l'historique montre
-        -- les seules vraies décisions de prix.
-        v_sale := NULL;
-      END IF;
     END IF;
 
     -- ── Entrée en stock ────────────────────────────────────────────────────────
@@ -636,19 +638,28 @@ BEGIN
     );
 
     v_pos := v_pos + 1;
+    /*
+     * La ligne EST le lot : `remaining_quantity` part de la quantité entrée et se vide
+     * au fil des ventes. `store_id` est recopié ici pour que la caisse retrouve ses
+     * lots sans jointure — c'est la requête la plus chaude du module.
+     *
+     * `unit_sale_price` peut être NULL sur un produit existant : le commerçant n'a
+     * alors rien voulu changer, et cette marchandise se vendra au prix du catalogue.
+     * Le lot existe quand même — il porte le COÛT, dont la marge a besoin.
+     */
     INSERT INTO public.quick_supply_items (
-      company_id, supply_id, product_id, label, quantity,
-      purchase_price, previous_purchase_price, sale_price, previous_sale_price,
+      company_id, supply_id, store_id, product_id, label, quantity, remaining_quantity,
+      unit_cost, unit_sale_price, catalogue_purchase_price, catalogue_sale_price,
       product_created, position
     )
     VALUES (
-      p_company_id, v_supply_id, v_product_id, v_label, v_qty,
-      v_purchase, v_prev_purchase, v_sale, v_prev_sale,
+      p_company_id, v_supply_id, p_store_id, v_product_id, v_label, v_qty, v_qty,
+      v_unit_cost, v_unit_sale, v_cat_purchase, v_cat_sale,
       v_created, v_pos
     );
 
     v_units := v_units + v_qty;
-    v_total := v_total + (v_qty * v_purchase);
+    v_total := v_total + (v_qty * v_unit_cost);
   END LOOP;
 
   UPDATE public.quick_supplies
@@ -670,8 +681,9 @@ $$;
 
 COMMENT ON FUNCTION public.create_quick_supply IS
   'Enregistre un arrivage express : entrée de stock boutique + mouvements tracés + '
-  'mise à jour du prix d''achat (+ création des produits manquants), en une seule '
-  'transaction. Ne crée ni achat, ni dette fournisseur, ni dépense.';
+  'lot au prix de l''arrivage (+ création des produits manquants), en une seule '
+  'transaction. Ne touche à aucun prix du catalogue, et ne crée ni achat, ni dette, '
+  'ni dépense.';
 
 REVOKE ALL ON FUNCTION public.create_quick_supply(
   uuid, uuid, jsonb, text, numeric, text, uuid
@@ -679,3 +691,394 @@ REVOKE ALL ON FUNCTION public.create_quick_supply(
 GRANT EXECUTE ON FUNCTION public.create_quick_supply(
   uuid, uuid, jsonb, text, numeric, text, uuid
 ) TO authenticated;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 8. LE LOT : « ce stock-là se vend à SON prix, tant qu'il en reste »
+-- ─────────────────────────────────────────────────────────────────────────────
+/*
+ * Ce que le commerçant décrit est un lot, au sens propre : une caisse de marchandise
+ * achetée à un prix, destinée à être écoulée à un autre, et qui a une fin.
+ *
+ *   « J'ai payé le sucre 650 au lieu de 600 parce que mon grossiste était fermé.
+ *     Je vends CES douze sacs-là à 800. Quand ils sont finis, on revient à 750. »
+ *
+ * Trois conséquences, et il faut les tenir toutes les trois, sinon le module ment :
+ *
+ *  1. LA CAISSE VEND AU PRIX DU LOT tant qu'il en reste. Sinon le prix saisi à
+ *     l'arrivage ne servirait à rien.
+ *  2. LA MARGE UTILISE LE COÛT DU LOT. Sinon le patron verrait un bénéfice calculé
+ *     sur 600 alors qu'il a payé 650 — un chiffre faux, et faux dans le sens qui
+ *     rassure, c'est-à-dire le pire.
+ *  3. QUAND LE LOT EST ÉPUISÉ, TOUT REVIENT AU CATALOGUE. Sans intervention, sans
+ *     que personne ait à y penser.
+ *
+ * FIFO : le plus ancien lot part le premier. C'est l'ordre dans lequel la marchandise
+ * sort réellement d'un rayon, et le seul qui ne laisse pas un vieux lot dormir
+ * indéfiniment derrière un neuf.
+ */
+
+-- La boutique, recopiée sur la ligne : la caisse interroge les lots à chaque ouverture
+-- de l'écran, et une jointure de plus sur ce chemin-là se paie en millisecondes visibles.
+ALTER TABLE public.quick_supply_items
+  ADD COLUMN IF NOT EXISTS store_id uuid REFERENCES public.stores(id) ON DELETE CASCADE;
+
+/**
+ * Ce qu'il reste du lot. Décrémenté à chaque vente, restitué à chaque annulation.
+ *
+ * Ce n'est PAS le stock : le stock vit dans `store_inventory` et se fait aussi corriger
+ * par les inventaires, les pertes, les transferts — qui, eux, ne touchent pas aux lots.
+ * Les deux peuvent donc diverger, et c'est assumé : le lot répond à « à quel prix ? »,
+ * pas à « combien en ai-je ? ». Le lecteur de prix borne d'ailleurs le restant au stock
+ * réel, pour qu'un lot fantôme ne fasse jamais prix.
+ */
+ALTER TABLE public.quick_supply_items
+  ADD COLUMN IF NOT EXISTS remaining_quantity integer NOT NULL DEFAULT 0;
+
+COMMENT ON COLUMN public.quick_supply_items.remaining_quantity IS
+  'Unités du lot pas encore vendues. Décrémenté FIFO par les ventes, restitué aux '
+  'annulations. Distinct du stock (store_inventory), que les inventaires corrigent aussi.';
+
+-- La requête de la caisse : les lots vivants d'une boutique. Index partiel — les lots
+-- ouverts sont une poignée de lignes au milieu d'un historique qui grossit chaque jour.
+CREATE INDEX IF NOT EXISTS idx_quick_supply_items_open_lots
+  ON public.quick_supply_items(store_id, product_id, created_at)
+  WHERE remaining_quantity > 0;
+
+/**
+ * Quelles unités de quelle vente sont sorties de quel lot.
+ *
+ * On pourrait s'en passer et « deviner » à l'annulation — ce serait une erreur. Une
+ * vente annulée puis supprimée restituerait deux fois, et un lot remonterait au-dessus
+ * de ce qui est réellement entré. Le lien explicite rend la restitution EXACTE et
+ * IDEMPOTENTE : on rend ce qui est écrit, puis on efface le lien ; le rejouer ne rend
+ * rien de plus.
+ *
+ * Il donne en prime la réponse à la question que le propriétaire finit toujours par
+ * poser : « ces cinq sacs vendus hier, ils venaient de quel arrivage ? »
+ */
+CREATE TABLE IF NOT EXISTS public.quick_supply_consumptions (
+  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  sale_item_id uuid NOT NULL REFERENCES public.sale_items(id) ON DELETE CASCADE,
+  supply_item_id uuid NOT NULL REFERENCES public.quick_supply_items(id) ON DELETE CASCADE,
+  quantity integer NOT NULL CHECK (quantity > 0),
+  /** Coût unitaire du lot au moment de la sortie — figé, comme tout ce qui est comptable. */
+  unit_cost numeric(18, 4) NOT NULL DEFAULT 0,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+COMMENT ON TABLE public.quick_supply_consumptions IS
+  'Quelles unités vendues sont sorties de quel lot d''arrivage. Rend la restitution '
+  'exacte et idempotente à l''annulation, et trace l''origine de la marchandise vendue.';
+
+CREATE INDEX IF NOT EXISTS idx_quick_supply_consumptions_sale_item
+  ON public.quick_supply_consumptions(sale_item_id);
+CREATE INDEX IF NOT EXISTS idx_quick_supply_consumptions_supply_item
+  ON public.quick_supply_consumptions(supply_item_id);
+
+ALTER TABLE public.quick_supply_consumptions ENABLE ROW LEVEL SECURITY;
+
+-- Lecture pour les membres de l'entreprise (via le lot dont elle dépend). Écriture :
+-- par les triggers seuls, qui sont SECURITY DEFINER — aucune policy d'écriture, donc
+-- aucune écriture directe possible depuis un client.
+DROP POLICY IF EXISTS "quick_supply_consumptions_select" ON public.quick_supply_consumptions;
+CREATE POLICY "quick_supply_consumptions_select" ON public.quick_supply_consumptions FOR SELECT USING (
+  public.is_super_admin()
+  OR EXISTS (
+    SELECT 1
+    FROM public.quick_supply_items qsi
+    WHERE qsi.id = supply_item_id
+      AND qsi.company_id IN (SELECT * FROM public.current_user_company_ids())
+  )
+);
+
+/** Coût unitaire réellement supporté sur une ligne de vente. NULL = pas de lot, coût catalogue. */
+ALTER TABLE public.sale_items
+  ADD COLUMN IF NOT EXISTS unit_cost numeric(18, 4);
+
+COMMENT ON COLUMN public.sale_items.unit_cost IS
+  'Coût unitaire réel de la ligne quand la marchandise vient d''un lot '
+  'd''approvisionnement (moyenne pondérée si plusieurs lots). NULL = aucun lot : les '
+  'rapports retombent sur products.purchase_price, comportement historique inchangé.';
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 9. Le prix en vigueur pour une boutique
+-- ─────────────────────────────────────────────────────────────────────────────
+/**
+ * Pour chaque produit ayant un lot ouvert : le prix auquel il doit se vendre ici et
+ * maintenant, et le coût correspondant.
+ *
+ * Une seule requête pour toute la boutique — la caisse la joue à l'ouverture et la
+ * superpose à son catalogue, exactement comme elle le fait déjà des promotions.
+ *
+ * `remaining` est borné par le STOCK RÉEL : un lot que l'inventaire a contredit (la
+ * marchandise a disparu, ou elle a été comptée autrement) ne doit pas continuer à
+ * imposer son prix sur du stock qui vient d'ailleurs.
+ */
+CREATE OR REPLACE FUNCTION public.quick_supply_store_lot_prices(p_store_id uuid)
+RETURNS TABLE (
+  product_id uuid,
+  supply_item_id uuid,
+  unit_sale_price numeric,
+  unit_cost numeric,
+  remaining integer,
+  supply_number text
+)
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  WITH lots AS (
+    SELECT DISTINCT ON (i.product_id)
+      i.product_id AS lot_product_id,
+      i.id AS lot_item_id,
+      i.unit_sale_price AS lot_sale_price,
+      i.unit_cost AS lot_cost,
+      i.remaining_quantity AS lot_remaining,
+      s.supply_number AS lot_number
+    FROM public.quick_supply_items i
+    JOIN public.quick_supplies s ON s.id = i.supply_id
+    WHERE i.store_id = p_store_id
+      AND i.remaining_quantity > 0
+    -- Le plus ancien d'abord : c'est le lot qui doit partir en premier.
+    ORDER BY i.product_id, i.created_at, i.position
+  )
+  SELECT
+    l.lot_product_id,
+    l.lot_item_id,
+    l.lot_sale_price,
+    l.lot_cost,
+    LEAST(l.lot_remaining, GREATEST(0, COALESCE(si.quantity, 0)))::integer,
+    l.lot_number
+  FROM lots l
+  LEFT JOIN public.store_inventory si
+    ON si.store_id = p_store_id AND si.product_id = l.lot_product_id
+  WHERE LEAST(l.lot_remaining, GREATEST(0, COALESCE(si.quantity, 0))) > 0
+    AND public.has_store_access(
+          p_store_id,
+          (SELECT s2.company_id FROM public.stores s2 WHERE s2.id = p_store_id)
+        );
+$$;
+
+COMMENT ON FUNCTION public.quick_supply_store_lot_prices(uuid) IS
+  'Prix et coût en vigueur pour chaque produit ayant un lot d''arrivage ouvert dans '
+  'cette boutique (FIFO, restant borné par le stock réel). Lu par la caisse.';
+
+REVOKE ALL ON FUNCTION public.quick_supply_store_lot_prices(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.quick_supply_store_lot_prices(uuid) TO authenticated;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 10. Consommation et restitution — branchées sur les lignes de vente
+-- ─────────────────────────────────────────────────────────────────────────────
+/*
+ * Pourquoi des TRIGGERS plutôt qu'un ajout dans `create_sale_with_stock` : il existe
+ * plusieurs chemins pour vendre (caisse rapide, facture A4, bon de la caisse à deux,
+ * resynchronisation hors ligne, modification d'une vente). Les brancher un par un,
+ * c'est en oublier un — et un chemin oublié laisse un lot qui ne se vide jamais, donc
+ * un prix qui ne redevient jamais celui du catalogue. Le trigger, lui, tient la porte
+ * par laquelle ils passent tous : `sale_items`.
+ */
+CREATE OR REPLACE FUNCTION public.quick_supply_consume_for_sale_item()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_store uuid;
+  v_left int;
+  v_take int;
+  v_from_lots int := 0;
+  v_cost_total numeric := 0;
+  v_catalogue_cost numeric := 0;
+  r RECORD;
+BEGIN
+  SELECT store_id INTO v_store FROM public.sales WHERE id = NEW.sale_id;
+  IF v_store IS NULL OR NEW.quantity IS NULL OR NEW.quantity <= 0 THEN
+    RETURN NEW;
+  END IF;
+
+  v_left := NEW.quantity;
+
+  FOR r IN
+    SELECT id, remaining_quantity, unit_cost
+    FROM public.quick_supply_items
+    WHERE store_id = v_store
+      AND product_id = NEW.product_id
+      AND remaining_quantity > 0
+    ORDER BY created_at, position
+    -- Deux caisses qui vendent le même article à la même seconde ne doivent pas se
+    -- servir deux fois dans le même lot.
+    FOR UPDATE
+  LOOP
+    EXIT WHEN v_left <= 0;
+    v_take := LEAST(v_left, r.remaining_quantity);
+
+    UPDATE public.quick_supply_items
+    SET remaining_quantity = remaining_quantity - v_take
+    WHERE id = r.id;
+
+    INSERT INTO public.quick_supply_consumptions (
+      sale_item_id, supply_item_id, quantity, unit_cost
+    )
+    VALUES (NEW.id, r.id, v_take, COALESCE(r.unit_cost, 0));
+
+    v_cost_total := v_cost_total + v_take * COALESCE(r.unit_cost, 0);
+    v_from_lots := v_from_lots + v_take;
+    v_left := v_left - v_take;
+  END LOOP;
+
+  IF v_from_lots = 0 THEN
+    -- Aucun lot : on n'écrit rien. `unit_cost` reste NULL et les rapports gardent
+    -- très exactement le comportement qu'ils ont toujours eu.
+    RETURN NEW;
+  END IF;
+
+  /*
+   * Ligne à cheval : les cinq derniers sacs du lot, plus sept du stock ordinaire. Le
+   * coût de la ligne est la moyenne pondérée des deux — c'est le seul chiffre qui rende
+   * la marge juste, et il évite de couper la ligne de vente en deux, ce que le client
+   * ne comprendrait pas sur son ticket.
+   */
+  IF v_left > 0 THEN
+    SELECT COALESCE(p.purchase_price, 0) INTO v_catalogue_cost
+    FROM public.products p WHERE p.id = NEW.product_id;
+    v_cost_total := v_cost_total + v_left * COALESCE(v_catalogue_cost, 0);
+  END IF;
+
+  UPDATE public.sale_items
+  SET unit_cost = v_cost_total / NEW.quantity
+  WHERE id = NEW.id;
+
+  RETURN NEW;
+END;
+$$;
+
+COMMENT ON FUNCTION public.quick_supply_consume_for_sale_item() IS
+  'Sort la marchandise vendue des lots d''arrivage (FIFO) et fige le coût réel de la '
+  'ligne. Sans lot ouvert : ne fait rien, sale_items.unit_cost reste NULL.';
+
+-- AFTER : la ligne existe (son `id` est référencé par la consommation), et une vente
+-- refusée plus loin dans la transaction annule tout, lots compris.
+DROP TRIGGER IF EXISTS quick_supply_consume_trigger ON public.sale_items;
+CREATE TRIGGER quick_supply_consume_trigger
+  AFTER INSERT ON public.sale_items
+  FOR EACH ROW
+  EXECUTE PROCEDURE public.quick_supply_consume_for_sale_item();
+
+/**
+ * Restitution : la marchandise revient, le lot se remplit à nouveau.
+ *
+ * Idempotent par construction — on rend ce qui est ÉCRIT dans les liens, puis on efface
+ * les liens. Une vente annulée puis supprimée ne restitue donc pas deux fois.
+ */
+CREATE OR REPLACE FUNCTION public.quick_supply_restore_for_sale_item(p_sale_item_id uuid)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  r RECORD;
+BEGIN
+  FOR r IN
+    SELECT c.id, c.supply_item_id, c.quantity
+    FROM public.quick_supply_consumptions c
+    WHERE c.sale_item_id = p_sale_item_id
+  LOOP
+    UPDATE public.quick_supply_items
+    -- Plafonné à la quantité entrée : un lot ne peut pas contenir plus que ce qui est
+    -- arrivé, quelle qu'ait été la suite d'annulations.
+    SET remaining_quantity = LEAST(quantity, remaining_quantity + r.quantity)
+    WHERE id = r.supply_item_id;
+
+    DELETE FROM public.quick_supply_consumptions WHERE id = r.id;
+  END LOOP;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.quick_supply_restore_for_sale_item(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.quick_supply_restore_for_sale_item(uuid) TO authenticated;
+
+/*
+ * Ligne de vente supprimée — cas réel : la modification d'une vente déjà encaissée
+ * efface les lignes et les réécrit. Sans ce trigger, chaque correction reconsommerait
+ * le lot sans jamais le rendre, et il se viderait tout seul.
+ *
+ * `BEFORE DELETE` : après, la cascade aurait déjà emporté les liens et il n'y aurait
+ * plus rien à rendre.
+ */
+CREATE OR REPLACE FUNCTION public.quick_supply_restore_on_sale_item_delete()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  PERFORM public.quick_supply_restore_for_sale_item(OLD.id);
+  RETURN OLD;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS quick_supply_restore_trigger ON public.sale_items;
+CREATE TRIGGER quick_supply_restore_trigger
+  BEFORE DELETE ON public.sale_items
+  FOR EACH ROW
+  EXECUTE PROCEDURE public.quick_supply_restore_on_sale_item_delete();
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 11. Annulation d'une vente : rendre aussi les lots
+-- ─────────────────────────────────────────────────────────────────────────────
+/*
+ * `cancel_sale_restore_stock` (00023, corrigée en 00168) remet le stock et passe la
+ * vente en `cancelled` — mais ne SUPPRIME pas les lignes. Sans l'ajout ci-dessous, la
+ * marchandise reviendrait en stock tout en restant décomptée du lot : les unités
+ * rendues se revendraient au prix du catalogue, et le lot s'éteindrait sans avoir été
+ * vendu. On reprend donc la fonction à l'identique — même corps qu'en 00168 — avec la
+ * seule restitution des lots en plus.
+ */
+CREATE OR REPLACE FUNCTION public.cancel_sale_restore_stock(p_sale_id uuid)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_sale record;
+  v_item record;
+  v_row_count int;
+  v_uid uuid := auth.uid();
+BEGIN
+  SELECT id, store_id, status INTO v_sale
+  FROM public.sales WHERE id = p_sale_id FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Vente non trouvée';
+  END IF;
+  IF v_sale.status != 'completed' THEN
+    RAISE EXCEPTION 'Vente déjà annulée ou non complétée';
+  END IF;
+
+  -- Restaurer le stock pour chaque ligne (atomique: UPDATE quantity = quantity + qty)
+  FOR v_item IN
+    SELECT id, product_id, quantity FROM public.sale_items WHERE sale_id = p_sale_id
+  LOOP
+    UPDATE public.store_inventory
+    SET quantity = quantity + v_item.quantity,
+        updated_at = now()
+    WHERE store_id = v_sale.store_id AND product_id = v_item.product_id;
+    GET DIAGNOSTICS v_row_count = ROW_COUNT;
+    IF v_row_count = 0 THEN
+      INSERT INTO public.store_inventory (store_id, product_id, quantity, reserved_quantity)
+      VALUES (v_sale.store_id, v_item.product_id, v_item.quantity, 0);
+    END IF;
+
+    INSERT INTO public.stock_movements (store_id, product_id, type, quantity, reference_type, reference_id, created_by, notes)
+    VALUES (v_sale.store_id, v_item.product_id, 'return_in', v_item.quantity, 'sale', p_sale_id, v_uid, 'Annulation vente');
+
+    -- Ajout 00193 : la marchandise retourne aussi dans le lot d'où elle venait.
+    PERFORM public.quick_supply_restore_for_sale_item(v_item.id);
+  END LOOP;
+
+  UPDATE public.sales SET status = 'cancelled' WHERE id = p_sale_id;
+END;
+$$;

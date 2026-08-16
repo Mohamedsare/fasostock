@@ -36,6 +36,11 @@ import {
 } from "@/lib/features/inventory/stock-alert-rules";
 import { fetchPredictionContextWithSupabase } from "@/lib/features/dashboard/prediction-context-data";
 import type { PredictionContext } from "@/lib/features/ai/prediction-types";
+import {
+  effectiveUnitCost,
+  saleItemCostColumnAvailable,
+  withSaleItemCost,
+} from "@/lib/features/quick-supply/sale-item-cost";
 
 function emptySummary(): SalesSummary {
   return { totalAmount: 0, count: 0, itemsSold: 0, margin: 0 };
@@ -103,7 +108,7 @@ async function computeSalesSummaryFromIds(
   const items = await fetchByChunks(saleIds, async (chunk, from, to) => {
     const { data, error } = await supabase
       .from("sale_items")
-      .select("sale_id, quantity, total, product:products(id, purchase_price)")
+      .select(withSaleItemCost("sale_id, quantity, total, product:products(id, purchase_price)"))
       .in("sale_id", chunk)
       .order("id", { ascending: true })
       .range(from, to);
@@ -112,6 +117,8 @@ async function computeSalesSummaryFromIds(
       sale_id?: string;
       quantity?: number;
       total?: number;
+      /** Coût figé par un lot d'arrivage. Absent = vente ordinaire, coût catalogue. */
+      unit_cost?: number | null;
       product?: { purchase_price?: number } | null;
     }>;
   });
@@ -120,7 +127,8 @@ async function computeSalesSummaryFromIds(
   for (const m of items) {
     const qty = Number(m.quantity ?? 0);
     const lineTotal = Number(m.total ?? 0);
-    const purchasePrice = Number(m.product?.purchase_price ?? 0);
+    // Coût du lot d'arrivage si la marchandise en venait, sinon prix catalogue.
+    const purchasePrice = effectiveUnitCost(m.unit_cost, m.product?.purchase_price);
     itemsSold += qty;
     margin += (lineTotal - purchasePrice * qty) * ratioFor(ratioById, m.sale_id);
   }
@@ -181,7 +189,9 @@ async function aggregateProductsFromSales(
     const { data, error } = await supabase
       .from("sale_items")
       .select(
-        "sale_id, product_id, quantity, total, product:products(id, name, purchase_price)",
+        withSaleItemCost(
+          "sale_id, product_id, quantity, total, product:products(id, name, purchase_price)",
+        ),
       )
       .in("sale_id", chunk)
       .order("id", { ascending: true })
@@ -192,6 +202,7 @@ async function aggregateProductsFromSales(
       product_id?: string;
       quantity?: number;
       total?: number;
+      unit_cost?: number | null;
       product?: { id?: string; name?: string; purchase_price?: number } | null;
     }>;
   });
@@ -203,7 +214,8 @@ async function aggregateProductsFromSales(
     const pid = m.product_id;
     if (!pid) continue;
     const name = m.product?.name ?? "—";
-    const purchasePrice = Number(m.product?.purchase_price ?? 0);
+    // Coût du lot d'arrivage si la marchandise en venait, sinon prix catalogue.
+    const purchasePrice = effectiveUnitCost(m.unit_cost, m.product?.purchase_price);
     const qty = Number(m.quantity ?? 0);
     const total = Number(m.total ?? 0);
     const r = ratioFor(ratioById, m.sale_id);
@@ -572,7 +584,7 @@ async function fetchCashRecognizedInRange(
   const costRows = await fetchByChunks(eligibleIds, async (chunk, from, to) => {
     const { data, error } = await supabase
       .from("sale_items")
-      .select("sale_id, quantity, product:products(purchase_price)")
+      .select(withSaleItemCost("sale_id, quantity, product:products(purchase_price)"))
       .in("sale_id", chunk)
       .order("id")
       .range(from, to);
@@ -580,13 +592,14 @@ async function fetchCashRecognizedInRange(
     return (data ?? []) as Array<{
       sale_id?: string;
       quantity?: number;
+      unit_cost?: number | null;
       product?: { purchase_price?: number } | null;
     }>;
   });
   for (const row of costRows) {
     if (!row.sale_id) continue;
     const qty = Number(row.quantity ?? 0);
-    const pp = Number(row.product?.purchase_price ?? 0);
+    const pp = effectiveUnitCost(row.unit_cost, row.product?.purchase_price);
     costById.set(row.sale_id, (costById.get(row.sale_id) ?? 0) + pp * qty);
   }
 
@@ -639,6 +652,11 @@ type SaleItemRow = {
   product_id: string;
   quantity: number;
   total: number;
+  /**
+   * Coût unitaire figé par un lot d'approvisionnement. Absent (ou colonne pas encore
+   * en base) = vente ordinaire : on retombe sur `product.purchase_price`.
+   */
+  unit_cost?: number | null;
   product?: {
     id?: string;
     name?: string;
@@ -704,13 +722,17 @@ async function fetchSaleItemsForSaleIds(
     const { data, error } = await supabase
       .from("sale_items")
       .select(
-        "sale_id, product_id, quantity, total, product:products(id, name, purchase_price, category_id, category:categories(id, name))",
+        withSaleItemCost(
+          "sale_id, product_id, quantity, total, product:products(id, name, purchase_price, category_id, category:categories(id, name))",
+        ),
       )
       .in("sale_id", chunk)
       .order("id")
       .range(from, to);
     if (error) throw error;
-    return (data ?? []) as SaleItemRow[];
+    // `select()` construit dynamiquement (colonne optionnelle) : PostgREST ne peut plus
+    // inférer la forme des lignes, d'où le passage par `unknown`.
+    return (data ?? []) as unknown as SaleItemRow[];
   });
 }
 
@@ -773,7 +795,7 @@ async function computeSalesSummaryFiltered(
   for (const row of filteredItems) {
     const qty = Number(row.quantity ?? 0);
     const lineTotal = Number(row.total ?? 0);
-    const purchasePrice = Number(row.product?.purchase_price ?? 0);
+    const purchasePrice = effectiveUnitCost(row.unit_cost, row.product?.purchase_price);
     itemsSold += qty;
     margin += (lineTotal - purchasePrice * qty) * ratioFor(ratioById, row.sale_id);
   }
@@ -830,7 +852,7 @@ function aggregateTopLeastFromItems(
     const pid = row.product_id;
     if (!pid) continue;
     const name = row.product?.name ?? "—";
-    const purchasePrice = Number(row.product?.purchase_price ?? 0);
+    const purchasePrice = effectiveUnitCost(row.unit_cost, row.product?.purchase_price);
     const qty = Number(row.quantity ?? 0);
     const total = Number(row.total ?? 0);
     const r = ratioFor(ratioById, row.sale_id);
@@ -976,6 +998,9 @@ export async function fetchReportsPageData(params: {
   productId: string | null;
   categoryId: string | null;
 }): Promise<ReportsPageData> {
+  // Sonde unique par session : sans elle, réclamer `sale_items.unit_cost` avant que la
+  // migration du module Approvisionnement ne soit jouée ferait échouer les rapports.
+  await saleItemCostColumnAvailable();
   const supabase = createClient();
   const {
     companyId,
@@ -1185,6 +1210,7 @@ export async function fetchTeamPerformance(params: {
   fromDate: string;
   toDate: string;
 }): Promise<TeamPerformanceData> {
+  await saleItemCostColumnAvailable();
   const supabase = createClient();
   const { companyId, storeId, fromDate, toDate } = params;
 
@@ -1283,7 +1309,7 @@ export async function fetchTeamPerformance(params: {
   const externalCostRows = await fetchByChunks(externalIds, async (chunk, from, to) => {
     const { data, error } = await supabase
       .from("sale_items")
-      .select("sale_id, quantity, product:products(purchase_price)")
+      .select(withSaleItemCost("sale_id, quantity, product:products(purchase_price)"))
       .in("sale_id", chunk)
       .order("id")
       .range(from, to);
@@ -1291,6 +1317,7 @@ export async function fetchTeamPerformance(params: {
     return (data ?? []) as Array<{
       sale_id?: string;
       quantity?: number;
+      unit_cost?: number | null;
       product?: { purchase_price?: number } | null;
     }>;
   });
@@ -1299,7 +1326,8 @@ export async function fetchTeamPerformance(params: {
     externalCost.set(
       row.sale_id,
       (externalCost.get(row.sale_id) ?? 0) +
-        Number(row.product?.purchase_price ?? 0) * Number(row.quantity ?? 0),
+        effectiveUnitCost(row.unit_cost, row.product?.purchase_price) *
+          Number(row.quantity ?? 0),
     );
   }
 
@@ -1419,7 +1447,7 @@ export async function fetchTeamPerformance(params: {
     const sellerId = sellerBySaleId.get(row.sale_id);
     const qty = Number(row.quantity ?? 0);
     const lineTotal = Number(row.total ?? 0);
-    const cost = Number(row.product?.purchase_price ?? 0) * qty;
+    const cost = effectiveUnitCost(row.unit_cost, row.product?.purchase_price) * qty;
     costBySaleId.set(row.sale_id, (costBySaleId.get(row.sale_id) ?? 0) + cost);
     if (!sellerId) continue;
     const a = ensure(sellerId);
@@ -1589,6 +1617,7 @@ export async function fetchDashboardData(params: {
   customFrom?: string | null;
   customTo?: string | null;
 }): Promise<DashboardData> {
+  await saleItemCostColumnAvailable();
   const supabase = createClient();
   const range = resolveDashboardRange({
     period: params.period,
@@ -1785,5 +1814,6 @@ export async function fetchPredictionContext(params: {
   storeId: string | null;
   storeName: string | null;
 }): Promise<PredictionContext> {
+  await saleItemCostColumnAvailable();
   return fetchPredictionContextWithSupabase(createClient(), params);
 }

@@ -9,6 +9,11 @@ import { fallbackCreatorLabel, fetchCreatorLabels } from "@/lib/features/users/c
 import { localDayEndIso, localDayStartIso } from "@/lib/utils/local-day";
 import { UserFriendlyError } from "@/lib/errors/app-error-mapper";
 import { businessRpcError } from "@/lib/errors/business-rpc-error";
+import {
+  effectiveUnitCost,
+  saleItemCostColumnAvailable,
+  withSaleItemCost,
+} from "@/lib/features/quick-supply/sale-item-cost";
 import type { SaleDeliveryState, SaleItem, SaleStatus } from "./types";
 import type { SaleCostAggregate } from "./sale-profit";
 
@@ -280,18 +285,23 @@ export async function fetchSalesCost(
   if (ids.length === 0) return out;
 
   const supabase = createClient();
+  // Sonde unique par session : la colonne `unit_cost` n'existe qu'après la migration du
+  // module Approvisionnement, et la réclamer trop tôt ferait échouer toute la page Ventes.
+  await saleItemCostColumnAvailable();
   // `fetchByChunks` traite les deux plafonds : URL d'entrée (lots de 120 ventes) et
   // lignes en sortie (un lot de 120 ventes dépasse 1000 `sale_items` dès ~9 articles
   // par ticket — les lignes perdues gonflaient le bénéfice affiché).
   const rows = await fetchByChunks(ids, async (chunk, from, to) => {
     const { data, error } = await supabase
       .from("sale_items")
-      .select("sale_id, quantity, total, product:products(purchase_price)")
+      .select(withSaleItemCost("sale_id, quantity, total, product:products(purchase_price)"))
       .in("sale_id", chunk)
       .order("id", { ascending: true })
       .range(from, to);
     if (error) throw error;
-    return (data ?? []) as Array<Record<string, unknown>>;
+    // `select()` construit dynamiquement (colonne optionnelle) : PostgREST ne peut plus
+    // inférer la forme des lignes, d'où le passage par `unknown`.
+    return (data ?? []) as unknown as Array<Record<string, unknown>>;
   });
 
   for (const raw of rows) {
@@ -301,7 +311,8 @@ export async function fetchSalesCost(
     const product = (
       Array.isArray(productRaw) ? productRaw[0] : productRaw
     ) as { purchase_price?: number | null } | null | undefined;
-    const purchasePrice = Number(product?.purchase_price ?? 0);
+    // Coût du lot d'arrivage si la marchandise en venait, sinon prix catalogue.
+    const purchasePrice = effectiveUnitCost(raw.unit_cost, product?.purchase_price);
     const quantity = Number(raw.quantity ?? 0);
     const cur = out[saleId] ?? {
       itemsTotal: 0,

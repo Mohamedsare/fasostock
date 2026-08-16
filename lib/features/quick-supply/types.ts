@@ -15,8 +15,10 @@ export type SupplyProduct = {
   barcode: string | null;
   /** Alias de recherche (« Omo » pour « savon en poudre ») — utilisés si le patron les a activés. */
   searchAliases: string[];
-  purchasePrice: number;
-  salePrice: number;
+  /** Vrai prix d'achat de la fiche produit. Jamais modifié par un arrivage. */
+  cataloguePurchasePrice: number;
+  /** Vrai prix de vente de la fiche produit. Jamais modifié par un arrivage. */
+  catalogueSalePrice: number;
   /** Stock actuel dans la boutique en cours — ce que le réceptionnaire vérifie du coin de l'œil. */
   stock: number;
   /**
@@ -30,8 +32,14 @@ export type SupplyProduct = {
 /**
  * Une ligne en cours de saisie.
  *
- * `productId === null` ⇒ produit à créer : c'est le cas de l'article rapporté du
- * marché qui n'a jamais existé au catalogue. Il n'a alors ni stock ni ancien prix.
+ * ⚠️ Les deux prix ci-dessous sont ceux de L'ARRIVAGE, jamais ceux du produit. Ils ne
+ * remplacent pas le catalogue : ils valent pour cette marchandise-là, tant qu'il en
+ * reste en rayon. Les champs `catalogue*` sont les vrais prix du produit, affichés à
+ * côté pour comparaison — jamais écrits.
+ *
+ * `productId === null` ⇒ produit à créer : l'article rapporté du marché qui n'a jamais
+ * existé au catalogue. Il n'a alors ni stock ni prix catalogue, et les prix saisis
+ * deviennent forcément les siens (c'est la seule exception à la règle).
  */
 export type SupplyDraftLine = {
   /** Clé de rendu stable, indépendante du produit (une ligne « nouveau produit » n'en a pas). */
@@ -40,12 +48,13 @@ export type SupplyDraftLine = {
   label: string;
   unit: string;
   quantity: number;
-  purchasePrice: number;
-  /** Prix de vente à appliquer. `null` = inchangé (produit existant). */
-  salePrice: number | null;
-  /** Valeurs actuelles en base, pour montrer ce qui change. */
-  currentPurchasePrice: number | null;
-  currentSalePrice: number | null;
+  /** Prix payé pour CET arrivage. */
+  unitCost: number;
+  /** Prix de vente de CETTE marchandise. `null` = vendre au prix du catalogue. */
+  unitSalePrice: number | null;
+  /** Vrais prix du produit, pour comparaison seule. `null` sur un produit à créer. */
+  cataloguePurchasePrice: number | null;
+  catalogueSalePrice: number | null;
   currentStock: number | null;
 };
 
@@ -55,8 +64,8 @@ export type CreateQuickSupplyItem = {
   unit?: string | null;
   barcode?: string | null;
   quantity: number;
-  purchasePrice: number;
-  salePrice: number | null;
+  unitCost: number;
+  unitSalePrice: number | null;
 };
 
 export type CreateQuickSupplyInput = {
@@ -76,11 +85,29 @@ export type QuickSupplyLine = {
   id: string;
   label: string;
   quantity: number;
-  purchasePrice: number;
-  previousPurchasePrice: number | null;
-  salePrice: number | null;
-  previousSalePrice: number | null;
+  /** Ce qu'il reste à vendre de ce lot. 0 = écoulé, le catalogue a repris la main. */
+  remainingQuantity: number;
+  unitCost: number;
+  unitSalePrice: number | null;
+  /** Témoins : les vrais prix du produit à l'instant de l'arrivage. */
+  cataloguePurchasePrice: number | null;
+  catalogueSalePrice: number | null;
   productCreated: boolean;
+};
+
+/**
+ * Prix imposé par un lot d'arrivage encore ouvert, pour un produit d'une boutique.
+ * Lu par la caisse et superposé au catalogue, comme les promotions.
+ */
+export type SupplyLotPrice = {
+  productId: string;
+  supplyItemId: string;
+  /** `null` = le lot ne change pas le prix de vente (il ne porte que le coût). */
+  unitSalePrice: number | null;
+  unitCost: number;
+  /** Unités encore concernées, déjà bornées par le stock réel. */
+  remaining: number;
+  supplyNumber: string;
 };
 
 /** Un arrivage enregistré, tel que relu dans l'historique. */

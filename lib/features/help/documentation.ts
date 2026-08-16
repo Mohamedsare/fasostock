@@ -811,8 +811,8 @@ export const DOC_GROUPS: DocGroup[] = [
           {
             kind: "note",
             tone: "info",
-            title: "Impression sans fenêtre à valider",
-            text: "Par sécurité, un navigateur affiche toujours la fenêtre d'impression : le vendeur devra la valider d'un clic. Pour que le ticket parte directement à l'imprimante, lancez Chrome sur le poste de vente avec l'option --kiosk-printing (à faire une seule fois, dans le raccourci du bureau). C'est le réglage habituel des postes de caisse.",
+            title: "Faire sortir le ticket sans fenêtre à valider",
+            text: "Par sécurité, un navigateur affiche toujours la fenêtre d'impression — aucune application web ne peut la supprimer d'elle-même. Deux réglages, à faire une seule fois sur le poste de vente, et le ticket sort tout seul. 1) Créez un raccourci sur le bureau vers : \"C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe\" --kiosk-printing --app=https://fasostock.com — et utilisez ce raccourci pour ouvrir FasoStock. 2) Dans Paramètres Windows › Imprimantes, définissez l'imprimante thermique comme imprimante PAR DÉFAUT et décochez « Laisser Windows gérer mon imprimante par défaut ». Ce second point est essentiel : en mode direct, Chrome envoie toujours à l'imprimante par défaut. Si c'est restée une imprimante A4, vos tickets sortiront sur des feuilles A4.",
           },
           {
             kind: "note",
@@ -1518,11 +1518,27 @@ export const DOC_GROUPS: DocGroup[] = [
             ],
           },
           {
+            kind: "note",
+            tone: "tip",
+            title: "Les prix de l'arrivage ne touchent pas à vos prix habituels",
+            text: "Vous saisissez ce que vous avez payé et ce à quoi vous voulez écouler CETTE marchandise. Ces deux prix valent pour cette caisse-là, pas pour la fiche du produit : votre prix de vente habituel et votre prix d'achat de référence restent exactement ce qu'ils étaient. C'est voulu — un achat de dépannage chez le voisin ne doit pas redéfinir la valeur d'une référence pour toute la boutique.",
+          },
+          {
+            kind: "steps",
+            title: "Ce qui se passe ensuite, en caisse",
+            items: [
+              "Tant qu'il reste de cette marchandise, la caisse la vend au prix de l'arrivage. Le caissier n'a rien à savoir : le bon prix s'affiche tout seul.",
+              "Votre bénéfice est calculé sur ce que vous avez RÉELLEMENT payé pour ces unités-là, pas sur l'ancien prix d'achat.",
+              "Quand le lot est écoulé, tout revient au prix habituel du catalogue. Sans intervention, sans rien à décocher.",
+              "Si vous laissez le prix de vente vide, la marchandise se vend au prix habituel — l'arrivage ne sert alors qu'à enregistrer le coût réel.",
+            ],
+          },
+          {
             kind: "bullets",
             title: "Ce que la page fait pour vous",
             items: [
-              "Le prix d'achat du jour remplace l'ancien : votre marge suit le vrai coût, pas celui d'il y a six mois.",
-              "L'ancien prix reste visible dans l'historique — « le carton est passé de 9 000 à 11 500 » est exactement l'information qui décide d'augmenter le prix de vente.",
+              "L'historique montre, pour chaque arrivage, ce qui reste à vendre et ce qui est écoulé — donc si le prix s'applique encore.",
+              "L'écart avec le catalogue est affiché à côté de chaque prix saisi : « payé 11 500, catalogue 9 000 ». C'est l'information qui décide d'augmenter, ou non, votre prix habituel.",
               "« Chez qui », le montant payé et une note sont facultatifs et repliés : personne ne vous les demande quand vous êtes pressé.",
               "Chaque entrée porte le nom de qui l'a faite, et apparaît dans l'historique des mouvements de stock.",
             ],
@@ -1543,7 +1559,7 @@ export const DOC_GROUPS: DocGroup[] = [
             kind: "note",
             tone: "tip",
             title: "Confier la réception sans confier le magasin",
-            text: "Cochez « Faire un approvisionnement » à un caissier dans Employés › Gestion des droits. Ce droit n'ouvre que cette page : ni la fiche produit, ni l'ajustement de stock libre, ni la suppression. Et il ne peut pas changer le prix de vente d'un article déjà au catalogue — seulement fixer celui d'un article qu'il crée.",
+            text: "Cochez « Faire un approvisionnement » à un caissier dans Employés › Gestion des droits. Ce droit n'ouvre que cette page : ni la fiche produit, ni l'ajustement de stock libre, ni la suppression. Comme un arrivage ne modifie aucun prix du catalogue, il ne peut pas non plus rebaisser le prix du sac de riz de toute la boutique : il fixe le prix d'une caisse de marchandise, qui s'éteint avec elle.",
           },
         ],
         keywords: [

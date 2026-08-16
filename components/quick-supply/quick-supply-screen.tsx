@@ -103,7 +103,6 @@ export function QuickSupplyScreen() {
   const aliasesOn = ctx.data?.productAliasesEnabled === true;
 
   const canView = h?.canQuickSupply ?? false;
-  const canReprice = h?.canRepriceOnSupply ?? false;
 
   /**
    * Vue « toutes boutiques » : il faut bien choisir où la marchandise entre. On
@@ -205,7 +204,7 @@ export function QuickSupplyScreen() {
   }, [products, query]);
 
   const totalCost = useMemo(
-    () => lines.reduce((sum, l) => sum + l.quantity * l.purchasePrice, 0),
+    () => lines.reduce((sum, l) => sum + l.quantity * l.unitCost, 0),
     [lines],
   );
   const totalUnits = useMemo(
@@ -215,7 +214,7 @@ export function QuickSupplyScreen() {
 
   /** Une ligne « nouveau produit » sans prix de vente entrerait un article invendable. */
   const missingSalePrice = useMemo(
-    () => lines.some((l) => l.productId == null && (l.salePrice ?? 0) <= 0),
+    () => lines.some((l) => l.productId == null && (l.unitSalePrice ?? 0) <= 0),
     [lines],
   );
 
@@ -243,10 +242,13 @@ export function QuickSupplyScreen() {
           label: p.name,
           unit: p.unit,
           quantity: 1,
-          purchasePrice: p.purchasePrice,
-          salePrice: null,
-          currentPurchasePrice: p.purchasePrice,
-          currentSalePrice: p.salePrice,
+          // Proposé, pas imposé : le coût catalogue est le point de départ le plus
+          // probable, et c'est justement ce que le commerçant vient corriger.
+          unitCost: p.cataloguePurchasePrice,
+          // `null` = « je ne change pas le prix de vente de cette marchandise ».
+          unitSalePrice: null,
+          cataloguePurchasePrice: p.cataloguePurchasePrice,
+          catalogueSalePrice: p.catalogueSalePrice,
           currentStock: p.stock,
         },
       ];
@@ -268,10 +270,10 @@ export function QuickSupplyScreen() {
         label,
         unit: "pce",
         quantity: 1,
-        purchasePrice: 0,
-        salePrice: 0,
-        currentPurchasePrice: null,
-        currentSalePrice: null,
+        unitCost: 0,
+        unitSalePrice: 0,
+        cataloguePurchasePrice: null,
+        catalogueSalePrice: null,
         currentStock: null,
       },
     ]);
@@ -335,8 +337,8 @@ export function QuickSupplyScreen() {
           unit: l.productId == null ? l.unit : null,
           barcode: null,
           quantity: l.quantity,
-          purchasePrice: l.purchasePrice,
-          salePrice: l.salePrice,
+          unitCost: l.unitCost,
+          unitSalePrice: l.unitSalePrice,
         })),
         supplierLabel: supplier.trim() || null,
         // Champ laissé vide = payé comptant : la base retient le coût total.
@@ -558,8 +560,9 @@ export function QuickSupplyScreen() {
                         {p.name}
                       </span>
                       <span className="mt-0.5 block text-[11px] text-neutral-600">
-                        En stock : {p.stock} · Achat {formatCurrency(p.purchasePrice)} · Vente{" "}
-                        {formatCurrency(p.salePrice)}
+                        En stock : {p.stock} · Achat{" "}
+                        {formatCurrency(p.cataloguePurchasePrice)} · Vente{" "}
+                        {formatCurrency(p.catalogueSalePrice)}
                       </span>
                     </span>
                     <MdAdd className="h-5 w-5 shrink-0 text-fs-accent" aria-hidden />
@@ -618,7 +621,6 @@ export function QuickSupplyScreen() {
                 <DraftLineRow
                   key={l.key}
                   line={l}
-                  canReprice={canReprice}
                   autoFocusPrice={focusKey === l.key}
                   onPriceFocused={() => setFocusKey(null)}
                   onPatch={(patch) => patchLine(l.key, patch)}
@@ -748,14 +750,12 @@ export function QuickSupplyScreen() {
  */
 function DraftLineRow({
   line,
-  canReprice,
   autoFocusPrice = false,
   onPriceFocused,
   onPatch,
   onRemove,
 }: {
   line: SupplyDraftLine;
-  canReprice: boolean;
   autoFocusPrice?: boolean;
   onPriceFocused?: () => void;
   onPatch: (patch: Partial<SupplyDraftLine>) => void;
@@ -773,10 +773,16 @@ function DraftLineRow({
   }, [autoFocusPrice]);
 
   const isNew = line.productId == null;
-  const showSalePrice = isNew || canReprice;
   const newStock = line.currentStock == null ? line.quantity : line.currentStock + line.quantity;
   const costRose =
-    line.currentPurchasePrice != null && line.purchasePrice > line.currentPurchasePrice;
+    line.cataloguePurchasePrice != null && line.unitCost > line.cataloguePurchasePrice;
+  /** Marge de CETTE marchandise : le seul calcul qui ait un sens sur un arrivage. */
+  const lotMargin =
+    line.unitSalePrice != null && line.unitSalePrice > 0
+      ? line.unitSalePrice - line.unitCost
+      : line.catalogueSalePrice != null
+        ? line.catalogueSalePrice - line.unitCost
+        : null;
 
   return (
     <div className="border-t border-black/[0.06] p-3 first:border-t-0 sm:p-4">
@@ -848,74 +854,95 @@ function DraftLineRow({
           </div>
         </div>
 
+        {/*
+          Les deux prix de l'arrivage. Le prix du catalogue s'affiche SOUS le champ, en
+          petit — jamais dedans : dans le champ, il se ferait prendre pour la valeur
+          saisie, et c'est très exactement la confusion à éviter.
+        */}
         <label className="block">
           <span className="mb-1 block text-[11px] font-semibold text-neutral-600">
-            Prix d&apos;achat
+            Payé / unité
           </span>
           <input
             ref={priceRef}
             className={fsInputClass("h-11 w-28 text-base")}
-            value={line.purchasePrice === 0 ? "" : String(line.purchasePrice)}
+            value={line.unitCost === 0 ? "" : String(line.unitCost)}
             inputMode="numeric"
             placeholder="0"
-            onChange={(e) => onPatch({ purchasePrice: Math.max(0, toNumber(e.target.value)) })}
+            onChange={(e) => onPatch({ unitCost: Math.max(0, toNumber(e.target.value)) })}
             onFocus={(e) => e.currentTarget.select()}
-            aria-label="Prix d'achat unitaire"
+            aria-label="Prix payé par unité pour cet arrivage"
           />
+          {line.cataloguePurchasePrice != null ? (
+            <span className="mt-1 block text-[10px] text-neutral-500">
+              catalogue {formatCurrency(line.cataloguePurchasePrice)}
+            </span>
+          ) : null}
         </label>
 
-        {showSalePrice ? (
-          <label className="block">
-            <span className="mb-1 block text-[11px] font-semibold text-neutral-600">
-              Prix de vente {isNew ? "*" : ""}
+        <label className="block">
+          <span className="mb-1 block text-[11px] font-semibold text-neutral-600">
+            Vendu / unité {isNew ? "*" : ""}
+          </span>
+          <input
+            className={fsInputClass(
+              cn(
+                "h-11 w-28 text-base",
+                isNew && (line.unitSalePrice ?? 0) <= 0 ? "ring-1 ring-amber-500" : "",
+              ),
+            )}
+            value={
+              line.unitSalePrice == null || line.unitSalePrice === 0
+                ? ""
+                : String(line.unitSalePrice)
+            }
+            inputMode="numeric"
+            placeholder={
+              line.catalogueSalePrice != null ? String(Math.round(line.catalogueSalePrice)) : "0"
+            }
+            onChange={(e) => {
+              const raw = e.target.value.trim();
+              // Champ vidé sur un produit existant = « cette marchandise se vend au prix
+              // habituel ». Ce n'est pas « prix zéro », et ce n'est pas non plus une
+              // modification du catalogue.
+              onPatch({
+                unitSalePrice: raw === "" ? (isNew ? 0 : null) : Math.max(0, toNumber(raw)),
+              });
+            }}
+            onFocus={(e) => e.currentTarget.select()}
+            aria-label="Prix de vente de cette marchandise"
+          />
+          {line.catalogueSalePrice != null ? (
+            <span className="mt-1 block text-[10px] text-neutral-500">
+              {line.unitSalePrice == null
+                ? `au prix habituel ${formatCurrency(line.catalogueSalePrice)}`
+                : `catalogue ${formatCurrency(line.catalogueSalePrice)}`}
             </span>
-            <input
-              className={fsInputClass(
-                cn(
-                  "h-11 w-28 text-base",
-                  isNew && (line.salePrice ?? 0) <= 0 ? "ring-1 ring-amber-500" : "",
-                ),
-              )}
-              value={line.salePrice == null || line.salePrice === 0 ? "" : String(line.salePrice)}
-              inputMode="numeric"
-              placeholder={
-                line.currentSalePrice != null ? String(Math.round(line.currentSalePrice)) : "0"
-              }
-              onChange={(e) => {
-                const raw = e.target.value.trim();
-                // Champ vidé sur un produit existant = « ne touche pas au prix », ce qui
-                // n'est pas la même chose que « prix zéro ».
-                onPatch({
-                  salePrice: raw === "" ? (isNew ? 0 : null) : Math.max(0, toNumber(raw)),
-                });
-              }}
-              onFocus={(e) => e.currentTarget.select()}
-              aria-label="Prix de vente"
-            />
-          </label>
-        ) : line.currentSalePrice != null ? (
-          <div>
-            <span className="mb-1 block text-[11px] font-semibold text-neutral-600">
-              Prix de vente
-            </span>
-            <p className="flex h-11 items-center text-sm font-semibold text-neutral-700">
-              {formatCurrency(line.currentSalePrice)}
-            </p>
-          </div>
-        ) : null}
+          ) : null}
+        </label>
 
         <div className="ml-auto text-right">
-          <span className="block text-[11px] font-semibold text-neutral-600">Sous-total</span>
+          <span className="block text-[11px] font-semibold text-neutral-600">Coût</span>
           <p className="text-sm font-bold text-fs-text">
-            {formatCurrency(line.quantity * line.purchasePrice)}
+            {formatCurrency(line.quantity * line.unitCost)}
           </p>
+          {lotMargin != null ? (
+            <p
+              className={cn(
+                "text-[10px] font-semibold",
+                lotMargin >= 0 ? "text-emerald-700 dark:text-emerald-400" : "text-red-600",
+              )}
+            >
+              marge {formatCurrency(lotMargin)}/u
+            </p>
+          ) : null}
         </div>
       </div>
 
       {costRose ? (
         <p className="mt-1.5 text-[11px] font-semibold text-amber-700 dark:text-amber-300">
-          Le prix d&apos;achat monte ({formatCurrency(line.currentPurchasePrice ?? 0)} →{" "}
-          {formatCurrency(line.purchasePrice)}). Pensez au prix de vente.
+          Payé plus cher que d&apos;habitude ({formatCurrency(line.cataloguePurchasePrice ?? 0)} →{" "}
+          {formatCurrency(line.unitCost)}). Pensez au prix de vente de cette marchandise.
         </p>
       ) : null}
     </div>
@@ -999,22 +1026,37 @@ function HistoryTab({
                       créé
                     </span>
                   ) : null}
+                  {/*
+                    L'état du lot, en un mot : c'est la question que le patron se pose en
+                    relisant un arrivage — « est-ce que ce prix s'applique encore ? ».
+                  */}
+                  {l.remainingQuantity > 0 ? (
+                    <span className="ml-1.5 rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-300">
+                      reste {l.remainingQuantity}
+                    </span>
+                  ) : (
+                    <span className="ml-1.5 rounded bg-fs-surface px-1.5 py-0.5 text-[10px] font-semibold text-neutral-500">
+                      écoulé
+                    </span>
+                  )}
                 </span>
                 <span className="text-[11px] text-neutral-600">
-                  achat {formatCurrency(l.purchasePrice)}
-                  {l.previousPurchasePrice != null &&
-                  l.previousPurchasePrice !== l.purchasePrice ? (
+                  payé {formatCurrency(l.unitCost)}
+                  {l.cataloguePurchasePrice != null &&
+                  l.cataloguePurchasePrice !== l.unitCost ? (
                     <span className="text-neutral-500">
                       {" "}
-                      (avant {formatCurrency(l.previousPurchasePrice)})
+                      (catalogue {formatCurrency(l.cataloguePurchasePrice)})
                     </span>
                   ) : null}
-                  {l.salePrice != null ? (
+                  {l.unitSalePrice != null ? (
                     <span className="font-semibold text-fs-text">
                       {" "}
-                      · vente {formatCurrency(l.salePrice)}
+                      · vendu {formatCurrency(l.unitSalePrice)}
                     </span>
-                  ) : null}
+                  ) : (
+                    <span className="text-neutral-500"> · au prix habituel</span>
+                  )}
                 </span>
               </div>
             ))}

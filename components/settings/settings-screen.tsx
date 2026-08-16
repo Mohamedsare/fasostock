@@ -1223,9 +1223,19 @@ export function SettingsScreen() {
           </p>
           <p className="mt-2 text-xs leading-relaxed text-neutral-600 sm:text-sm">
             L&apos;article qui n&apos;existe pas encore au catalogue se crée dans le même
-            geste, avec son prix de vente. Le prix d&apos;achat du jour remplace
-            l&apos;ancien : votre marge suit le vrai coût, et l&apos;historique garde
-            l&apos;ancien prix pour que vous voyiez ce qui a augmenté.
+            geste, avec son prix. Tant qu&apos;il reste de cette marchandise, la caisse la
+            vend au prix de l&apos;arrivage et calcule votre bénéfice sur ce que vous avez
+            réellement payé. Une fois le lot écoulé, tout revient au prix habituel.
+          </p>
+          {/*
+            Le point qui rassure vraiment un commerçant : ce qu'il a mis des mois à
+            régler ne bouge pas parce qu'il a dépanné un samedi.
+          */}
+          <p className="mt-2 text-xs leading-relaxed text-neutral-600 sm:text-sm">
+            Les prix saisis à l&apos;arrivage ne remplacent jamais ceux de vos fiches
+            produits : ils valent pour cette caisse de marchandise, pas pour la
+            référence. Un achat de dépannage chez le voisin ne redéfinit donc pas la
+            valeur d&apos;un article pour toute la boutique.
           </p>
           {/*
             Distinction à poser une fois pour toutes, sinon le propriétaire croit qu'on
