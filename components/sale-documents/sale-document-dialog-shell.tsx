@@ -52,7 +52,7 @@ export function SaleDocumentDialogShell({
             type="button"
             onClick={onClose}
             disabled={busy}
-            className="rounded-full p-2 hover:bg-black/5 disabled:opacity-50 dark:hover:bg-white/10"
+            className="rounded-md p-2 hover:bg-black/5 disabled:opacity-50 dark:hover:bg-white/10"
             aria-label="Fermer"
           >
             <MdClose className="h-5 w-5 text-fs-text" />

@@ -42,7 +42,7 @@ export function SaleDocumentStatusPill({
   return (
     <span
       className={cn(
-        "rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide",
+        "rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide",
         pillClass(status),
         className,
       )}

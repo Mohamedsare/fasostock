@@ -460,7 +460,7 @@ export function SaleDocumentsScreen() {
                     : setInvoiceFilter(f.id as InvoiceFilter)
                 }
                 className={cn(
-                  "shrink-0 whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors",
+                  "shrink-0 whitespace-nowrap rounded-md border px-3 py-1.5 text-xs font-semibold transition-colors",
                   active
                     ? "border-transparent bg-fs-accent text-white"
                     : "border-black/[0.09] bg-fs-card text-neutral-600 hover:border-fs-accent/35 dark:border-white/10 dark:text-neutral-300",
@@ -658,7 +658,7 @@ function DocumentCard({
               <span className="text-sm font-bold text-fs-text">{doc.number}</span>
               <SaleDocumentStatusPill status={doc.status} />
               {doc.convertedDocumentNumber ? (
-                <span className="inline-flex items-center gap-1 rounded-full bg-violet-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-violet-700 dark:text-violet-300">
+                <span className="inline-flex items-center gap-1 rounded-md bg-violet-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-violet-700 dark:text-violet-300">
                   <MdSwapHoriz className="h-3 w-3" aria-hidden />
                   {doc.convertedDocumentNumber}
                 </span>
