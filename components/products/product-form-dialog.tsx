@@ -31,9 +31,14 @@ import {
   type EngineUnit,
   type EngineUnitDraft,
 } from "@/lib/features/engine-units/types";
+import {
+  packagingPiecePrice,
+  packagingPriceProblem,
+  packagingTotalPrice,
+} from "@/lib/features/products/packaging-price";
 import { queryKeys } from "@/lib/query/query-keys";
 import { cn } from "@/lib/utils/cn";
-import { toNumber } from "@/lib/utils/currency";
+import { formatCurrency, toNumber } from "@/lib/utils/currency";
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MdAdd, MdAddPhotoAlternate, MdClose } from "react-icons/md";
@@ -472,6 +477,19 @@ export function ProductFormDialog({
       if (!label && !bc && !r.factor.trim() && !r.price.trim()) continue; // ligne vide ignorée
       if (!label) return "Donnez un libellé à chaque conditionnement (ex. Carton).";
       if (f < 1) return `Conditionnement « ${label} » : le nombre de pièces doit être ≥ 1.`;
+      /*
+       * Le champ « Prix » d'un conditionnement est celui du LOT ENTIER. Y saisir le
+       * prix de gros à la pièce ferait vendre le carton moins cher qu'une pièce : on
+       * refuse tout de suite, en donnant le montant attendu.
+       */
+      const packProblem = packagingPriceProblem({
+        label,
+        factor: f,
+        price: r.price.trim() ? toNumber(r.price) : null,
+        unitSalePrice: sp,
+        purchasePrice: pp,
+      });
+      if (packProblem) return packProblem;
       if (bc) {
         if (seenBarcodes.has(bc)) {
           return `Code-barres en double (« ${label} ») : chaque conditionnement doit avoir un code-barres unique.`;
@@ -1001,13 +1019,32 @@ export function ProductFormDialog({
               </p>
               <p className="mt-0.5 text-[11px] leading-relaxed text-neutral-500">
                 Paquet, carton… Indiquez le nombre de pièces, le code-barres et le
-                prix. À la caisse, scanner ce code ajoute automatiquement le bon
-                nombre de pièces. Le stock reste compté en {unitSelectValue || "pce"}.
+                prix <strong>du lot entier</strong> (pas le prix d&apos;une pièce du lot).
+                À la caisse, scanner ce code ajoute automatiquement le bon nombre de
+                pièces. Le stock reste compté en {unitSelectValue || "pce"}.
               </p>
 
               {packagings.length > 0 ? (
                 <div className="mt-2 space-y-2">
-                  {packagings.map((r) => (
+                  {packagings.map((r) => {
+                    // Aperçu live : ce que le client paie pour le lot, et ce que ça
+                    // fait à la pièce — c'est cette ligne qui rend visible une saisie
+                    // à l'envers (prix de gros à la pièce mis à la place du lot).
+                    const rowFactor = Math.max(0, Math.round(toNumber(r.factor)));
+                    const rowPrice = r.price.trim() ? toNumber(r.price) : null;
+                    const rowUnitPrice = toNumber(salePrice);
+                    const rowTotal =
+                      rowFactor >= 1
+                        ? packagingTotalPrice(rowPrice, rowFactor, rowUnitPrice)
+                        : null;
+                    const rowProblem = packagingPriceProblem({
+                      label: r.label,
+                      factor: rowFactor,
+                      price: rowPrice,
+                      unitSalePrice: rowUnitPrice,
+                      purchasePrice: toNumber(purchasePrice),
+                    });
+                    return (
                     <div
                       key={r.key}
                       className="rounded-md border border-black/[0.08] bg-fs-surface-container/40 p-2.5"
@@ -1062,7 +1099,7 @@ export function ProductFormDialog({
                         </label>
                         <label className="min-w-0 flex-1">
                           <span className="mb-1 block text-[11px] font-medium text-neutral-600">
-                            Prix (optionnel)
+                            Prix du lot entier
                           </span>
                           <input
                             value={r.price}
@@ -1070,11 +1107,27 @@ export function ProductFormDialog({
                               updatePackaging(r.key, "price", e.target.value)
                             }
                             inputMode="decimal"
-                            placeholder="Sinon nb × prix pièce"
+                            placeholder={
+                              rowFactor >= 1 && rowUnitPrice > 0
+                                ? formatCurrency(rowFactor * rowUnitPrice)
+                                : "Sinon nb × prix pièce"
+                            }
                             className={fsInputClass()}
                           />
                         </label>
                       </div>
+                      {rowTotal != null ? (
+                        <p
+                          className={cn(
+                            "mt-1.5 text-[11px] leading-relaxed",
+                            rowProblem ? "font-semibold text-red-600" : "text-neutral-500",
+                          )}
+                        >
+                          {rowProblem
+                            ? rowProblem
+                            : `1 ${r.label.trim() || "lot"} = ${rowFactor} ${unitSelectValue || "pce"} → ${formatCurrency(rowTotal)} (soit ${formatCurrency(packagingPiecePrice(rowTotal, rowFactor))} la pièce)`}
+                        </p>
+                      ) : null}
                       <label className="mt-2 block">
                         <span className="mb-1 block text-[11px] font-medium text-neutral-600">
                           Code-barres
@@ -1090,7 +1143,8 @@ export function ProductFormDialog({
                         />
                       </label>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : null}
 

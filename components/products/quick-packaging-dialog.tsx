@@ -1,6 +1,10 @@
 "use client";
 
 import { ProductListThumbnail, firstProductImageUrl } from "@/components/products/product-list-thumbnail";
+import {
+  packagingPiecePrice,
+  packagingPriceProblem,
+} from "@/lib/features/products/packaging-price";
 import { saveProductPackagings } from "@/lib/features/products/packagings-api";
 import type { ProductItem, ProductPackagingDraft } from "@/lib/features/products/types";
 import { messageFromUnknownError, toast } from "@/lib/toast";
@@ -101,12 +105,25 @@ export function QuickPackagingDialog({
   const previewPrice =
     priceNum != null ? priceNum : factorNum > 0 ? factorNum * product.sale_price : null;
 
-  const canSave = label.trim().length > 0 && factorNum >= 1;
+  /*
+   * Le prix saisi est celui du LOT ENTIER. Confondre avec le prix de gros à la pièce
+   * ferait vendre le lot moins cher qu'une seule pièce : on le dit avant d'enregistrer.
+   */
+  const priceProblem = packagingPriceProblem({
+    label,
+    factor: factorNum,
+    price: priceNum,
+    unitSalePrice: product.sale_price,
+    purchasePrice: product.purchase_price,
+  });
+
+  const canSave = label.trim().length > 0 && factorNum >= 1 && !priceProblem;
 
   const saveMut = useMutation({
     mutationFn: async () => {
       const collision = barcodeCollision(barcode, product, allProducts);
       if (collision) throw new Error(collision);
+      if (priceProblem) throw new Error(priceProblem);
 
       // État final = conditionnements existants (conservés) + le nouveau.
       const drafts: ProductPackagingDraft[] = [
@@ -234,7 +251,7 @@ export function QuickPackagingDialog({
             </div>
             <div>
               <label className="text-[11px] font-semibold uppercase tracking-wide text-neutral-500">
-                Prix (optionnel)
+                Prix du lot entier
               </label>
               <input
                 inputMode="numeric"
@@ -246,7 +263,8 @@ export function QuickPackagingDialog({
             </div>
           </div>
           <p className="-mt-2 text-[11px] text-neutral-400">
-            Prix vide = {factorNum > 0 ? "facteur × prix pièce" : "calculé automatiquement"}.
+            Prix du lot complet, pas d&apos;une pièce du lot. Vide ={" "}
+            {factorNum > 0 ? "facteur × prix pièce" : "calculé automatiquement"}.
           </p>
 
           {/* Code-barres */}
@@ -267,9 +285,11 @@ export function QuickPackagingDialog({
           <div
             className={cn(
               "rounded-md border p-3 transition-colors",
-              canSave
-                ? "border-fs-accent/30 bg-fs-accent/[0.06]"
-                : "border-black/[0.06] bg-fs-surface-container/60",
+              priceProblem
+                ? "border-red-300 bg-red-50"
+                : canSave
+                  ? "border-fs-accent/30 bg-fs-accent/[0.06]"
+                  : "border-black/[0.06] bg-fs-surface-container/60",
             )}
           >
             <div className="flex items-center gap-2">
@@ -281,12 +301,17 @@ export function QuickPackagingDialog({
                   1 {label.trim() || "conditionnement"} ={" "}
                   {factorNum > 0 ? `${factorNum} pièce${factorNum > 1 ? "s" : ""}` : "…"}
                 </p>
-                <p className="text-xs text-neutral-500">
-                  {previewPrice != null ? (
+                <p className={cn("text-xs", priceProblem ? "font-semibold text-red-700" : "text-neutral-500")}>
+                  {priceProblem ? (
+                    priceProblem
+                  ) : previewPrice != null ? (
                     <>
                       Prix de vente :{" "}
                       <span className="font-semibold text-fs-text">{formatCurrency(previewPrice)}</span>
                       {priceNum == null && factorNum > 0 ? " (auto)" : ""}
+                      {factorNum > 1
+                        ? ` — soit ${formatCurrency(packagingPiecePrice(previewPrice, factorNum))} la pièce`
+                        : ""}
                     </>
                   ) : (
                     "Renseignez le nombre de pièces."

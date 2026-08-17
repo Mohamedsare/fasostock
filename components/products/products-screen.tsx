@@ -25,6 +25,10 @@ import {
 import { adjustStockAtomic } from "@/lib/features/inventory/api";
 import { useProductLocationMap } from "@/lib/features/product-locations/use-product-locations";
 import { createProductBatch } from "@/lib/features/products/batches-api";
+import {
+  packagingPiecePrice,
+  packagingPriceProblem,
+} from "@/lib/features/products/packaging-price";
 import { saveProductPackagings } from "@/lib/features/products/packagings-api";
 import { saveEngineUnits } from "@/lib/features/engine-units/api";
 import {
@@ -748,18 +752,45 @@ export function ProductsScreen() {
                             .sort((a, b) => a.position - b.position)
                             .map((pk) => {
                               const effPrice = pk.price ?? pk.factor * p.sale_price;
+                              /* Un lot moins cher qu'une pièce = prix saisi à l'envers.
+                                 Signalé en rouge ici pour être repéré sans ouvrir la fiche. */
+                              const problem = packagingPriceProblem({
+                                label: pk.label,
+                                factor: pk.factor,
+                                price: pk.price ?? null,
+                                unitSalePrice: p.sale_price,
+                                purchasePrice: p.purchase_price,
+                              });
                               return (
                                 <span
                                   key={pk.id}
-                                  className="inline-flex items-center gap-1 rounded bg-fs-surface-container px-1.5 py-0.5 text-[10px] font-medium text-neutral-600"
-                                  title={`${pk.label} = ${pk.factor} pièce${pk.factor > 1 ? "s" : ""}${
-                                    pk.barcode ? ` · code-barres ${pk.barcode}` : ""
-                                  }`}
+                                  className={cn(
+                                    "inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium",
+                                    problem
+                                      ? "bg-red-100 text-red-700"
+                                      : "bg-fs-surface-container text-neutral-600",
+                                  )}
+                                  title={
+                                    problem ??
+                                    `${pk.label} = ${pk.factor} pièce${pk.factor > 1 ? "s" : ""} · ${formatCurrency(
+                                      packagingPiecePrice(effPrice, pk.factor),
+                                    )} la pièce${pk.barcode ? ` · code-barres ${pk.barcode}` : ""}`
+                                  }
                                 >
-                                  <MdInventory2 className="h-3 w-3 shrink-0 text-fs-accent" aria-hidden />
-                                  <span className="font-semibold text-fs-text">{pk.label}</span>
-                                  <span className="text-neutral-400">×{pk.factor}</span>
-                                  <span className="text-neutral-500">{formatCurrency(effPrice)}</span>
+                                  <MdInventory2
+                                    className={cn(
+                                      "h-3 w-3 shrink-0",
+                                      problem ? "text-red-600" : "text-fs-accent",
+                                    )}
+                                    aria-hidden
+                                  />
+                                  <span className={cn("font-semibold", problem ? "" : "text-fs-text")}>
+                                    {pk.label}
+                                  </span>
+                                  <span className={problem ? "" : "text-neutral-400"}>×{pk.factor}</span>
+                                  <span className={problem ? "" : "text-neutral-500"}>
+                                    {formatCurrency(effPrice)}
+                                  </span>
                                 </span>
                               );
                             })}

@@ -26,6 +26,7 @@ import {
   fetchStoreBestSellerQty,
   updateCompletedPosSale,
 } from "@/lib/features/pos/api";
+import { packagingPiecePrice } from "@/lib/features/products/packaging-price";
 import { productNameMatches } from "@/lib/features/products/search-aliases";
 import {
   cancelPosHandoff,
@@ -3061,7 +3062,12 @@ export function PosScreen({
                           <span className="min-w-0">
                             <span className="block text-sm font-bold text-fs-text">{pk.label}</span>
                             <span className="block text-[11px] text-neutral-500">
+                              {/* Équivalent à la pièce : le vendeur voit immédiatement
+                                  si le lot est mal tarifé (moins cher qu'une pièce). */}
                               {pk.factor} {cp.unit || "pce"}
+                              {pk.factor > 1
+                                ? ` · ${formatCurrency(packagingPiecePrice(packTotal, pk.factor))} /${cp.unit || "pce"}`
+                                : ""}
                             </span>
                           </span>
                           <span className="text-sm font-extrabold text-fs-accent">
