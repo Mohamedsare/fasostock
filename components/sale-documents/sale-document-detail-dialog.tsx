@@ -102,7 +102,7 @@ export function SaleDocumentDetailDialog({
         busy={busyAction}
       >
         {/* ── En-tête : statut et ce qu'il veut dire ─────────────────── */}
-        <div className="rounded-xl border border-black/[0.07] bg-fs-surface-container/50 p-3 dark:border-white/10">
+        <div className="rounded-md border border-black/[0.07] bg-fs-surface-container/50 p-3 dark:border-white/10">
           <div className="flex flex-wrap items-center gap-2">
             <SaleDocumentStatusPill status={doc.status} />
             {locked ? (
@@ -119,7 +119,7 @@ export function SaleDocumentDetailDialog({
           {isQuote && expiresIn != null && (doc.status === "draft" || doc.status === "sent") ? (
             <p
               className={cn(
-                "mt-2 rounded-lg px-2.5 py-1.5 text-[11px] font-medium",
+                "mt-2 rounded-md px-2.5 py-1.5 text-[11px] font-medium",
                 expiresIn < 0
                   ? "bg-red-500/10 text-red-700 dark:text-red-300"
                   : expiresIn <= 7
@@ -138,7 +138,7 @@ export function SaleDocumentDetailDialog({
 
         {/* ── Filiation entre documents ──────────────────────────────── */}
         {doc.sourceDocumentNumber || doc.convertedDocumentNumber || doc.saleNumber ? (
-          <div className="rounded-xl border border-black/[0.07] p-3 text-xs dark:border-white/10">
+          <div className="rounded-md border border-black/[0.07] p-3 text-xs dark:border-white/10">
             {doc.sourceDocumentNumber ? (
               <p className="text-neutral-600 dark:text-neutral-400">
                 Établie à partir du devis <b className="text-fs-text">{doc.sourceDocumentNumber}</b>.
@@ -189,7 +189,7 @@ export function SaleDocumentDetailDialog({
         </div>
 
         {/* ── Lignes ─────────────────────────────────────────────────── */}
-        <div className="overflow-hidden rounded-xl border border-black/[0.07] dark:border-white/10">
+        <div className="overflow-hidden rounded-md border border-black/[0.07] dark:border-white/10">
           <div className="border-b border-black/[0.07] bg-fs-surface-container/50 px-3 py-2 dark:border-white/10">
             <h3 className="text-xs font-bold uppercase tracking-wide text-neutral-500">
               {doc.lines.length} ligne{doc.lines.length > 1 ? "s" : ""}
@@ -226,7 +226,7 @@ export function SaleDocumentDetailDialog({
         </div>
 
         {/* ── Totaux ─────────────────────────────────────────────────── */}
-        <div className="rounded-xl border border-black/[0.07] bg-fs-surface-container/50 p-3 dark:border-white/10">
+        <div className="rounded-md border border-black/[0.07] bg-fs-surface-container/50 p-3 dark:border-white/10">
           <Kv label="Montant hors remise" value={formatCurrency(doc.subtotal)} />
           {doc.discount > 0 ? (
             <Kv label="Remise accordée" value={`− ${formatCurrency(doc.discount)}`} />
@@ -263,7 +263,7 @@ export function SaleDocumentDetailDialog({
         </div>
 
         {(doc.notes ?? doc.terms) ? (
-          <div className="rounded-xl border border-black/[0.07] p-3 dark:border-white/10">
+          <div className="rounded-md border border-black/[0.07] p-3 dark:border-white/10">
             {doc.notes ? (
               <p className="whitespace-pre-line text-xs leading-relaxed text-neutral-600 dark:text-neutral-400">
                 {doc.notes}
@@ -311,7 +311,7 @@ export function SaleDocumentDetailDialog({
                   : `Bonjour, voici votre facture ${doc.number} d'un montant de ${formatCurrency(doc.total)}.`
               }
               phone={doc.customerPhone}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-black/[0.1] px-3 py-2 text-xs font-semibold text-fs-text hover:border-fs-accent/40 dark:border-white/10"
+              className="inline-flex items-center gap-1.5 rounded-md border border-black/[0.1] px-3 py-2 text-xs font-semibold text-fs-text hover:border-fs-accent/40 dark:border-white/10"
               onSent={() => {
                 // Envoyer un devis, c'est le remettre au client : le statut suit le geste
                 // au lieu d'attendre qu'on pense à le changer à la main.
@@ -368,7 +368,7 @@ export function SaleDocumentDetailDialog({
                   type="button"
                   disabled={busyAction || doc.lines.length === 0}
                   onClick={onConvert}
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-fs-accent px-3 py-2 text-xs font-semibold text-white disabled:opacity-60"
+                  className="inline-flex items-center gap-1.5 rounded-md bg-fs-accent px-3 py-2 text-xs font-semibold text-white disabled:opacity-60"
                 >
                   <MdSwapHoriz className="h-4 w-4" aria-hidden />
                   Transformer en facture
@@ -380,7 +380,7 @@ export function SaleDocumentDetailDialog({
                   type="button"
                   disabled={busyAction || doc.lines.length === 0}
                   onClick={onIssue}
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-fs-accent px-3 py-2 text-xs font-semibold text-white disabled:opacity-60"
+                  className="inline-flex items-center gap-1.5 rounded-md bg-fs-accent px-3 py-2 text-xs font-semibold text-white disabled:opacity-60"
                 >
                   <MdCheckCircle className="h-4 w-4" aria-hidden />
                   Émettre la facture
@@ -392,7 +392,7 @@ export function SaleDocumentDetailDialog({
                   type="button"
                   disabled={busyAction}
                   onClick={onDelete}
-                  className="ml-auto rounded-xl px-3 py-2 text-xs font-semibold text-neutral-500 hover:text-red-600 disabled:opacity-60"
+                  className="ml-auto rounded-md px-3 py-2 text-xs font-semibold text-neutral-500 hover:text-red-600 disabled:opacity-60"
                 >
                   Supprimer
                 </button>
@@ -436,7 +436,7 @@ function ActionButton({
       type="button"
       disabled={busy}
       onClick={onClick}
-      className="inline-flex items-center gap-1.5 rounded-xl border border-black/[0.1] px-3 py-2 text-xs font-semibold text-fs-text hover:border-fs-accent/40 disabled:opacity-60 dark:border-white/10"
+      className="inline-flex items-center gap-1.5 rounded-md border border-black/[0.1] px-3 py-2 text-xs font-semibold text-fs-text hover:border-fs-accent/40 disabled:opacity-60 dark:border-white/10"
     >
       <Icon className="h-4 w-4" aria-hidden />
       {label}
@@ -446,7 +446,7 @@ function ActionButton({
 
 function InfoCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="overflow-hidden rounded-xl border border-black/[0.07] dark:border-white/10">
+    <div className="overflow-hidden rounded-md border border-black/[0.07] dark:border-white/10">
       <div className="border-b border-black/[0.07] bg-fs-surface-container/50 px-3 py-2 dark:border-white/10">
         <h3 className="text-xs font-bold uppercase tracking-wide text-neutral-500">{title}</h3>
       </div>

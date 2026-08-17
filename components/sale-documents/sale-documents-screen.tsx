@@ -366,7 +366,7 @@ export function SaleDocumentsScreen() {
     return (
       <FsPage>
         <FsScreenHeader title="Devis & Factures" />
-        <FsCard padding="p-5">
+        <FsCard className="rounded-md sm:rounded-md" padding="p-5">
           <div className="flex items-start gap-3">
             <MdLock className="mt-0.5 h-5 w-5 shrink-0 text-neutral-400" aria-hidden />
             <div>
@@ -409,7 +409,7 @@ export function SaleDocumentsScreen() {
       </div>
 
       {/* Onglets Devis / Factures */}
-      <div className="mt-3 flex gap-1.5 rounded-xl border border-black/[0.07] bg-fs-card p-1 dark:border-white/10">
+      <div className="mt-3 flex gap-1.5 rounded-md border border-black/[0.07] bg-fs-card p-1 dark:border-white/10">
         {(
           [
             { id: "quote" as const, label: `Devis (${quotes.length})` },
@@ -421,7 +421,7 @@ export function SaleDocumentsScreen() {
             type="button"
             onClick={() => setTab(t.id)}
             className={cn(
-              "flex-1 rounded-lg px-3 py-2 text-sm font-semibold transition-colors",
+              "flex-1 rounded-md px-3 py-2 text-sm font-semibold transition-colors",
               tab === t.id
                 ? "bg-fs-accent text-white"
                 : "text-neutral-600 hover:text-fs-accent dark:text-neutral-300",
@@ -442,7 +442,7 @@ export function SaleDocumentsScreen() {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className={fsInputClass("pl-9")}
+            className={fsInputClass("rounded-md pl-9")}
             placeholder="Numéro, client, objet…"
             aria-label="Rechercher un document"
           />
@@ -475,7 +475,7 @@ export function SaleDocumentsScreen() {
           type="button"
           onClick={() => setCreating(tab)}
           disabled={!storeId}
-          className="fs-touch-target ml-auto hidden shrink-0 items-center gap-1.5 rounded-xl bg-fs-accent px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60 min-[720px]:inline-flex"
+          className="fs-touch-target ml-auto hidden shrink-0 items-center gap-1.5 rounded-md bg-fs-accent px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60 min-[720px]:inline-flex"
         >
           <MdAdd className="h-4 w-4" aria-hidden />
           {isQuoteTab ? "Nouveau devis" : "Nouvelle facture"}
@@ -493,7 +493,7 @@ export function SaleDocumentsScreen() {
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-fs-accent border-t-transparent" />
         </div>
       ) : visible.length === 0 ? (
-        <FsCard className="mt-3" padding="p-6">
+        <FsCard className="mt-3 rounded-md sm:rounded-md" padding="p-6">
           <div className="text-center">
             <MdDescription className="mx-auto h-8 w-8 text-neutral-300" aria-hidden />
             <p className="mt-2 text-sm font-semibold text-fs-text">
@@ -607,7 +607,7 @@ function Tile({
   return (
     <div
       className={cn(
-        "rounded-xl border bg-fs-card p-3 shadow-sm",
+        "rounded-md border bg-fs-card p-3 shadow-sm",
         tone === "accent"
           ? "border-fs-accent/25"
           : tone === "warn"
@@ -646,11 +646,11 @@ function DocumentCard({
   const locked = isSaleDocumentLocked(doc.status);
 
   return (
-    <FsCard padding="p-0">
+    <FsCard className="rounded-md sm:rounded-md" padding="p-0">
       <button
         type="button"
         onClick={onOpen}
-        className="w-full rounded-2xl p-3 text-left transition-colors hover:bg-black/[0.02] sm:p-4 dark:hover:bg-white/[0.03]"
+        className="w-full rounded-md p-3 text-left transition-colors hover:bg-black/[0.02] sm:p-4 dark:hover:bg-white/[0.03]"
       >
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div className="min-w-0 flex-1">

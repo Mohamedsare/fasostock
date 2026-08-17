@@ -333,7 +333,7 @@ export function SaleDocumentEditorDialog({
             type="button"
             disabled={busy}
             onClick={submit}
-            className="fs-touch-target w-full rounded-xl bg-fs-accent px-5 py-3 text-sm font-semibold text-white disabled:opacity-60 min-[560px]:w-auto"
+            className="fs-touch-target w-full rounded-md bg-fs-accent px-5 py-3 text-sm font-semibold text-white disabled:opacity-60 min-[560px]:w-auto"
           >
             {busy ? "Enregistrement…" : isEdit ? "Enregistrer" : `Créer le ${isQuote ? "devis" : "brouillon"}`}
           </button>
@@ -341,7 +341,7 @@ export function SaleDocumentEditorDialog({
       }
     >
       {error ? (
-        <p className="flex items-start gap-2 rounded-lg bg-red-500/10 px-3 py-2 text-xs font-medium leading-relaxed text-red-700 dark:text-red-300">
+        <p className="flex items-start gap-2 rounded-md bg-red-500/10 px-3 py-2 text-xs font-medium leading-relaxed text-red-700 dark:text-red-300">
           <MdWarningAmber className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
           {error}
         </p>
@@ -367,7 +367,7 @@ export function SaleDocumentEditorDialog({
             <input
               value={input.customerName}
               onChange={(e) => set("customerName", e.target.value)}
-              className={fsInputClass()}
+              className={fsInputClass("rounded-md")}
               placeholder="Mairie de Ouagadougou"
             />
           </SaleDocumentField>
@@ -376,7 +376,7 @@ export function SaleDocumentEditorDialog({
             <input
               value={input.customerPhone}
               onChange={(e) => set("customerPhone", e.target.value)}
-              className={fsInputClass()}
+              className={fsInputClass("rounded-md")}
               inputMode="tel"
               placeholder="70 00 00 00"
             />
@@ -386,7 +386,7 @@ export function SaleDocumentEditorDialog({
             <input
               value={input.customerEmail}
               onChange={(e) => set("customerEmail", e.target.value)}
-              className={fsInputClass()}
+              className={fsInputClass("rounded-md")}
               inputMode="email"
               placeholder="achats@exemple.bf"
             />
@@ -399,7 +399,7 @@ export function SaleDocumentEditorDialog({
             <input
               value={input.customerTaxId}
               onChange={(e) => set("customerTaxId", e.target.value)}
-              className={fsInputClass()}
+              className={fsInputClass("rounded-md")}
             />
           </SaleDocumentField>
 
@@ -407,7 +407,7 @@ export function SaleDocumentEditorDialog({
             <input
               value={input.customerAddress}
               onChange={(e) => set("customerAddress", e.target.value)}
-              className={fsInputClass()}
+              className={fsInputClass("rounded-md")}
               placeholder="Secteur 15, Ouagadougou"
             />
           </SaleDocumentField>
@@ -425,7 +425,7 @@ export function SaleDocumentEditorDialog({
             <input
               value={input.subject}
               onChange={(e) => set("subject", e.target.value)}
-              className={fsInputClass()}
+              className={fsInputClass("rounded-md")}
             />
           </SaleDocumentField>
 
@@ -436,7 +436,7 @@ export function SaleDocumentEditorDialog({
             <input
               value={input.clientReference}
               onChange={(e) => set("clientReference", e.target.value)}
-              className={fsInputClass()}
+              className={fsInputClass("rounded-md")}
             />
           </SaleDocumentField>
 
@@ -445,7 +445,7 @@ export function SaleDocumentEditorDialog({
               type="date"
               value={input.issueDate}
               onChange={(e) => set("issueDate", e.target.value)}
-              className={fsInputClass()}
+              className={fsInputClass("rounded-md")}
             />
           </SaleDocumentField>
 
@@ -458,7 +458,7 @@ export function SaleDocumentEditorDialog({
                 type="date"
                 value={input.validUntil ?? ""}
                 onChange={(e) => set("validUntil", e.target.value || null)}
-                className={fsInputClass()}
+                className={fsInputClass("rounded-md")}
               />
             </SaleDocumentField>
           ) : (
@@ -470,7 +470,7 @@ export function SaleDocumentEditorDialog({
                 type="date"
                 value={input.dueDate ?? ""}
                 onChange={(e) => set("dueDate", e.target.value || null)}
-                className={fsInputClass()}
+                className={fsInputClass("rounded-md")}
               />
             </SaleDocumentField>
           )}
@@ -483,7 +483,7 @@ export function SaleDocumentEditorDialog({
         hint="Un article du stock, ou une prestation libre qui n'a pas de fiche produit."
       >
         {lines.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-black/[0.12] p-5 text-center dark:border-white/15">
+          <div className="rounded-md border border-dashed border-black/[0.12] p-5 text-center dark:border-white/15">
             <p className="text-sm font-semibold text-fs-text">Aucune ligne pour l&apos;instant</p>
             <p className="mt-1 text-xs text-neutral-500">
               Ajoutez ce que vous proposez : des articles de votre stock, des prestations, ou
@@ -512,7 +512,7 @@ export function SaleDocumentEditorDialog({
           <button
             type="button"
             onClick={addProductLine}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-black/[0.1] px-3 py-2 text-xs font-semibold text-fs-text hover:border-fs-accent/40 dark:border-white/10"
+            className="inline-flex items-center gap-1.5 rounded-md border border-black/[0.1] px-3 py-2 text-xs font-semibold text-fs-text hover:border-fs-accent/40 dark:border-white/10"
           >
             <MdAddShoppingCart className="h-4 w-4" aria-hidden />
             Article du stock
@@ -520,7 +520,7 @@ export function SaleDocumentEditorDialog({
           <button
             type="button"
             onClick={addFreeLine}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-black/[0.1] px-3 py-2 text-xs font-semibold text-fs-text hover:border-fs-accent/40 dark:border-white/10"
+            className="inline-flex items-center gap-1.5 rounded-md border border-black/[0.1] px-3 py-2 text-xs font-semibold text-fs-text hover:border-fs-accent/40 dark:border-white/10"
           >
             <MdNoteAdd className="h-4 w-4" aria-hidden />
             Prestation / ligne libre
@@ -528,7 +528,7 @@ export function SaleDocumentEditorDialog({
         </div>
 
         {shortStock.length > 0 ? (
-          <p className="mt-3 flex items-start gap-2 rounded-lg bg-amber-500/10 px-3 py-2 text-[11px] leading-relaxed text-amber-900 dark:text-amber-200">
+          <p className="mt-3 flex items-start gap-2 rounded-md bg-amber-500/10 px-3 py-2 text-[11px] leading-relaxed text-amber-900 dark:text-amber-200">
             <MdInventory2 className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
             <span>
               Vous chiffrez plus que votre stock : {shortStock.join(", ")}. C&apos;est
@@ -548,7 +548,7 @@ export function SaleDocumentEditorDialog({
               onChange={(e) =>
                 set("discountKind", e.target.value === "percent" ? "percent" : "amount")
               }
-              className={fsInputClass()}
+              className={fsInputClass("rounded-md")}
             >
               <option value="amount">Montant fixe</option>
               <option value="percent">Pourcentage</option>
@@ -561,7 +561,7 @@ export function SaleDocumentEditorDialog({
             <input
               value={String(input.discountValue)}
               onChange={(e) => set("discountValue", Math.max(0, toNumber(e.target.value)))}
-              className={fsInputClass()}
+              className={fsInputClass("rounded-md")}
               inputMode="decimal"
             />
           </SaleDocumentField>
@@ -575,13 +575,13 @@ export function SaleDocumentEditorDialog({
               onChange={(e) =>
                 set("taxRate", Math.min(Math.max(0, toNumber(e.target.value)), 100))
               }
-              className={fsInputClass()}
+              className={fsInputClass("rounded-md")}
               inputMode="decimal"
             />
           </SaleDocumentField>
         </div>
 
-        <div className="mt-3 rounded-xl border border-black/[0.07] bg-fs-surface-container/50 p-3 dark:border-white/10">
+        <div className="mt-3 rounded-md border border-black/[0.07] bg-fs-surface-container/50 p-3 dark:border-white/10">
           <TotalRow label="Montant hors remise" value={formatCurrency(totals.subtotal)} />
           {totals.discount > 0 ? (
             <TotalRow label="Remise accordée" value={`− ${formatCurrency(totals.discount)}`} tone="warn" />
@@ -615,7 +615,7 @@ export function SaleDocumentEditorDialog({
             <textarea
               value={input.notes}
               onChange={(e) => set("notes", e.target.value)}
-              className={fsInputClass("min-h-[72px] resize-y")}
+              className={fsInputClass("rounded-md min-h-[72px] resize-y")}
               rows={3}
             />
           </SaleDocumentField>
@@ -627,7 +627,7 @@ export function SaleDocumentEditorDialog({
             <textarea
               value={input.terms}
               onChange={(e) => set("terms", e.target.value)}
-              className={fsInputClass("min-h-[72px] resize-y")}
+              className={fsInputClass("rounded-md min-h-[72px] resize-y")}
               rows={3}
             />
           </SaleDocumentField>
@@ -659,7 +659,7 @@ function LineEditor({
   const lineTotal = saleDocumentLineTotal(line);
 
   return (
-    <div className="rounded-xl border border-black/[0.08] bg-fs-card p-3 dark:border-white/10">
+    <div className="rounded-md border border-black/[0.08] bg-fs-card p-3 dark:border-white/10">
       <div className="flex items-center justify-between gap-2">
         <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-neutral-400">
           <MdDragHandle className="h-3.5 w-3.5" aria-hidden />
@@ -670,7 +670,7 @@ function LineEditor({
             type="button"
             onClick={() => onMove(-1)}
             disabled={index === 0}
-            className="rounded-lg px-2 py-1 text-xs font-semibold text-neutral-500 hover:text-fs-accent disabled:opacity-30"
+            className="rounded-md px-2 py-1 text-xs font-semibold text-neutral-500 hover:text-fs-accent disabled:opacity-30"
             aria-label="Monter la ligne"
           >
             ↑
@@ -679,7 +679,7 @@ function LineEditor({
             type="button"
             onClick={() => onMove(1)}
             disabled={index === total - 1}
-            className="rounded-lg px-2 py-1 text-xs font-semibold text-neutral-500 hover:text-fs-accent disabled:opacity-30"
+            className="rounded-md px-2 py-1 text-xs font-semibold text-neutral-500 hover:text-fs-accent disabled:opacity-30"
             aria-label="Descendre la ligne"
           >
             ↓
@@ -687,7 +687,7 @@ function LineEditor({
           <button
             type="button"
             onClick={onRemove}
-            className="rounded-lg p-1.5 text-neutral-400 hover:text-red-600"
+            className="rounded-md p-1.5 text-neutral-400 hover:text-red-600"
             aria-label={`Supprimer la ligne ${index + 1}`}
           >
             <MdDelete className="h-4 w-4" aria-hidden />
@@ -717,7 +717,7 @@ function LineEditor({
           <input
             value={line.label}
             onChange={(e) => onChange({ label: e.target.value })}
-            className={fsInputClass()}
+            className={fsInputClass("rounded-md")}
             placeholder="Installation et mise en service"
           />
         </SaleDocumentField>
@@ -726,7 +726,7 @@ function LineEditor({
           <input
             value={line.description}
             onChange={(e) => onChange({ description: e.target.value })}
-            className={fsInputClass()}
+            className={fsInputClass("rounded-md")}
             placeholder="Référence, dimensions, coloris…"
           />
         </SaleDocumentField>
@@ -739,7 +739,7 @@ function LineEditor({
             <input
               value={String(line.quantity)}
               onChange={(e) => onChange({ quantity: Math.max(0, toNumber(e.target.value)) })}
-              className={fsInputClass()}
+              className={fsInputClass("rounded-md")}
               inputMode="decimal"
             />
           </SaleDocumentField>
@@ -748,7 +748,7 @@ function LineEditor({
             <input
               value={line.unit}
               onChange={(e) => onChange({ unit: e.target.value })}
-              className={fsInputClass()}
+              className={fsInputClass("rounded-md")}
               placeholder="u"
             />
           </SaleDocumentField>
@@ -757,7 +757,7 @@ function LineEditor({
             <input
               value={String(line.unitPrice)}
               onChange={(e) => onChange({ unitPrice: Math.max(0, toNumber(e.target.value)) })}
-              className={fsInputClass()}
+              className={fsInputClass("rounded-md")}
               inputMode="decimal"
             />
           </SaleDocumentField>
@@ -770,7 +770,7 @@ function LineEditor({
                   discountPercent: Math.min(Math.max(0, toNumber(e.target.value)), 100),
                 })
               }
-              className={fsInputClass()}
+              className={fsInputClass("rounded-md")}
               inputMode="decimal"
             />
           </SaleDocumentField>

@@ -33,7 +33,7 @@ export function SaleDocumentDialogShell({
     >
       <div
         className={cn(
-          "flex max-h-[92vh] w-full flex-col rounded-t-2xl bg-fs-card shadow-2xl min-[560px]:rounded-2xl",
+          "flex max-h-[92vh] w-full flex-col rounded-t-lg bg-fs-card shadow-2xl min-[560px]:rounded-lg",
           maxWidth,
         )}
         role="dialog"

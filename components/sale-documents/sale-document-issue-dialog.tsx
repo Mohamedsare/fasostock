@@ -72,7 +72,7 @@ export function SaleDocumentIssueDialog({
           type="button"
           disabled={busy || doc.total <= 0 || blockedByCredit}
           onClick={() => onConfirm({ payments: paid > 0 ? [{ method, amount: paid }] : [] })}
-          className="fs-touch-target w-full rounded-xl bg-fs-accent py-3 text-sm font-semibold text-white disabled:opacity-60"
+          className="fs-touch-target w-full rounded-md bg-fs-accent py-3 text-sm font-semibold text-white disabled:opacity-60"
         >
           {busy
             ? "Émission…"
@@ -83,7 +83,7 @@ export function SaleDocumentIssueDialog({
       }
     >
       {/* Ce que l'émission déclenche, dit avant le clic. */}
-      <p className="flex items-start gap-2 rounded-lg bg-sky-500/10 px-3 py-2 text-[11px] leading-relaxed text-sky-800 dark:text-sky-300">
+      <p className="flex items-start gap-2 rounded-md bg-sky-500/10 px-3 py-2 text-[11px] leading-relaxed text-sky-800 dark:text-sky-300">
         <MdInfo className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
         <span>
           En émettant, cette facture devient une <b>vente enregistrée</b> : elle comptera
@@ -92,7 +92,7 @@ export function SaleDocumentIssueDialog({
         </span>
       </p>
 
-      <div className="rounded-xl border border-black/[0.07] bg-fs-surface-container/50 p-3 dark:border-white/10">
+      <div className="rounded-md border border-black/[0.07] bg-fs-surface-container/50 p-3 dark:border-white/10">
         <Row label="Montant hors remise" value={formatCurrency(doc.subtotal)} />
         {doc.discount > 0 ? (
           <Row label="Remise" value={`− ${formatCurrency(doc.discount)}`} tone="warn" />
@@ -107,7 +107,7 @@ export function SaleDocumentIssueDialog({
       </div>
 
       {stockLines > 0 ? (
-        <p className="flex items-start gap-2 rounded-lg bg-neutral-500/10 px-3 py-2 text-[11px] leading-relaxed text-neutral-700 dark:text-neutral-300">
+        <p className="flex items-start gap-2 rounded-md bg-neutral-500/10 px-3 py-2 text-[11px] leading-relaxed text-neutral-700 dark:text-neutral-300">
           <MdInventory2 className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
           <span>
             {stockLines} ligne{stockLines > 1 ? "s" : ""} sortiront du stock.
@@ -132,7 +132,7 @@ export function SaleDocumentIssueDialog({
                 type="button"
                 onClick={() => setMethod(m.id)}
                 className={cn(
-                  "inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl border px-2 py-2 text-xs font-semibold transition-colors",
+                  "inline-flex flex-1 items-center justify-center gap-1.5 rounded-md border px-2 py-2 text-xs font-semibold transition-colors",
                   method === m.id
                     ? "border-transparent bg-fs-accent text-white"
                     : "border-black/[0.1] bg-fs-card text-neutral-600 hover:border-fs-accent/40 dark:border-white/10 dark:text-neutral-300",
@@ -151,7 +151,7 @@ export function SaleDocumentIssueDialog({
           <input
             value={amountText}
             onChange={(e) => setAmountText(e.target.value)}
-            className={fsInputClass()}
+            className={fsInputClass("rounded-md")}
             inputMode="decimal"
           />
         </SaleDocumentField>
@@ -160,7 +160,7 @@ export function SaleDocumentIssueDialog({
       {remaining > 0 ? (
         <div
           className={cn(
-            "flex items-start gap-2 rounded-lg px-3 py-2 text-[11px] leading-relaxed",
+            "flex items-start gap-2 rounded-md px-3 py-2 text-[11px] leading-relaxed",
             blockedByCredit
               ? "bg-red-500/10 text-red-700 dark:text-red-300"
               : "bg-amber-500/10 text-amber-900 dark:text-amber-200",
