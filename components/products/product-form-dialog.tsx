@@ -33,9 +33,15 @@ import {
 } from "@/lib/features/engine-units/types";
 import {
   packagingPiecePrice,
+  packagingPriceFromInput,
+  packagingPriceInputValue,
   packagingPriceProblem,
   packagingTotalPrice,
 } from "@/lib/features/products/packaging-price";
+import {
+  fetchPackagingPricePerPiece,
+  peekPackagingPricePerPiece,
+} from "@/lib/features/settings/packaging-price-mode";
 import { queryKeys } from "@/lib/query/query-keys";
 import { cn } from "@/lib/utils/cn";
 import { formatCurrency, toNumber } from "@/lib/utils/currency";
@@ -288,6 +294,46 @@ export function ProductFormDialog({
   );
   const [removedPackagingIds, setRemovedPackagingIds] = useState<string[]>([]);
 
+  /*
+   * Mode de saisie du prix de conditionnement (réglage propriétaire) : « prix du lot
+   * entier » par défaut, « prix d'une pièce du lot » si le propriétaire l'a ouvert.
+   * La base stocke toujours le total ; seul ce formulaire parle l'autre langue.
+   */
+  const peekPkgMode =
+    companyId.length > 0 ? peekPackagingPricePerPiece(companyId) : undefined;
+  const packagingPerPieceQ = useQuery({
+    queryKey: queryKeys.packagingPricePerPiece(companyId),
+    queryFn: () => fetchPackagingPricePerPiece(companyId),
+    enabled: Boolean(companyId),
+    staleTime: 60_000,
+    ...(peekPkgMode !== undefined ? { initialData: peekPkgMode } : {}),
+  });
+  const packagingPerPiece = packagingPerPieceQ.data === true;
+
+  /*
+   * Les lignes existantes ont été initialisées avec le total enregistré (le réglage
+   * n'était pas encore connu). Dès qu'il arrive, on ramène à la pièce — uniquement les
+   * lignes que personne n'a touchées entre-temps, pour ne jamais réécrire une saisie
+   * en cours.
+   */
+  const packagingModeAppliedRef = useRef(false);
+  useEffect(() => {
+    if (packagingModeAppliedRef.current) return;
+    if (packagingPerPieceQ.data === undefined) return;
+    packagingModeAppliedRef.current = true;
+    if (packagingPerPieceQ.data !== true) return;
+    const stored = initial?.product_packagings ?? [];
+    if (stored.length === 0) return;
+    setPackagings((rows) =>
+      rows.map((r) => {
+        const src = stored.find((p) => p.id === r.id);
+        if (!src || src.price == null) return r;
+        if (r.price !== String(src.price) || r.factor !== String(src.factor)) return r;
+        return { ...r, price: packagingPriceInputValue(src.price, src.factor, true) };
+      }),
+    );
+  }, [packagingPerPieceQ.data, initial]);
+
   const addPackaging = useCallback(() => {
     setPackagings((rows) => [
       ...rows,
@@ -485,9 +531,14 @@ export function ProductFormDialog({
       const packProblem = packagingPriceProblem({
         label,
         factor: f,
-        price: r.price.trim() ? toNumber(r.price) : null,
+        price: packagingPriceFromInput(
+          r.price.trim() ? toNumber(r.price) : null,
+          f,
+          packagingPerPiece,
+        ),
         unitSalePrice: sp,
         purchasePrice: pp,
+        perPiece: packagingPerPiece,
       });
       if (packProblem) return packProblem;
       if (bc) {
@@ -600,12 +651,19 @@ export function ProductFormDialog({
         if (r.id) droppedExistingIds.push(r.id);
         continue;
       }
+      const rowFactor = Math.max(1, Math.round(toNumber(r.factor)) || 1);
       cleanPackagings.push({
         id: r.id,
         label,
         barcode: r.barcode.trim(),
-        factor: Math.max(1, Math.round(toNumber(r.factor)) || 1),
-        price: r.price.trim() ? Math.max(0, toNumber(r.price)) : null,
+        factor: rowFactor,
+        // Ce qui part en base est TOUJOURS le prix du lot entier, quel que soit le
+        // mode de saisie choisi par le propriétaire.
+        price: packagingPriceFromInput(
+          r.price.trim() ? toNumber(r.price) : null,
+          rowFactor,
+          packagingPerPiece,
+        ),
       });
     }
     // Engins : une ligne existante vidée de son châssis est traitée comme retirée.
@@ -1018,8 +1076,17 @@ export function ProductFormDialog({
                 Conditionnements
               </p>
               <p className="mt-0.5 text-[11px] leading-relaxed text-neutral-500">
-                Paquet, carton… Indiquez le nombre de pièces, le code-barres et le
-                prix <strong>du lot entier</strong> (pas le prix d&apos;une pièce du lot).
+                Paquet, carton… Indiquez le nombre de pièces, le code-barres et le prix{" "}
+                {packagingPerPiece ? (
+                  <>
+                    <strong>d&apos;une pièce du lot</strong> — le prix du lot entier est
+                    calculé pour vous.
+                  </>
+                ) : (
+                  <>
+                    <strong>du lot entier</strong> (pas le prix d&apos;une pièce du lot).
+                  </>
+                )}{" "}
                 À la caisse, scanner ce code ajoute automatiquement le bon nombre de
                 pièces. Le stock reste compté en {unitSelectValue || "pce"}.
               </p>
@@ -1031,7 +1098,11 @@ export function ProductFormDialog({
                     // fait à la pièce — c'est cette ligne qui rend visible une saisie
                     // à l'envers (prix de gros à la pièce mis à la place du lot).
                     const rowFactor = Math.max(0, Math.round(toNumber(r.factor)));
-                    const rowPrice = r.price.trim() ? toNumber(r.price) : null;
+                    const rowPrice = packagingPriceFromInput(
+                      r.price.trim() ? toNumber(r.price) : null,
+                      Math.max(1, rowFactor),
+                      packagingPerPiece,
+                    );
                     const rowUnitPrice = toNumber(salePrice);
                     const rowTotal =
                       rowFactor >= 1
@@ -1043,6 +1114,7 @@ export function ProductFormDialog({
                       price: rowPrice,
                       unitSalePrice: rowUnitPrice,
                       purchasePrice: toNumber(purchasePrice),
+                      perPiece: packagingPerPiece,
                     });
                     return (
                     <div
@@ -1099,7 +1171,9 @@ export function ProductFormDialog({
                         </label>
                         <label className="min-w-0 flex-1">
                           <span className="mb-1 block text-[11px] font-medium text-neutral-600">
-                            Prix du lot entier
+                            {packagingPerPiece
+                              ? "Prix d'une pièce du lot"
+                              : "Prix du lot entier"}
                           </span>
                           <input
                             value={r.price}
@@ -1108,9 +1182,13 @@ export function ProductFormDialog({
                             }
                             inputMode="decimal"
                             placeholder={
-                              rowFactor >= 1 && rowUnitPrice > 0
-                                ? formatCurrency(rowFactor * rowUnitPrice)
-                                : "Sinon nb × prix pièce"
+                              packagingPerPiece
+                                ? rowUnitPrice > 0
+                                  ? `Moins que ${formatCurrency(rowUnitPrice)}`
+                                  : "Prix de gros à la pièce"
+                                : rowFactor >= 1 && rowUnitPrice > 0
+                                  ? formatCurrency(rowFactor * rowUnitPrice)
+                                  : "Sinon nb × prix pièce"
                             }
                             className={fsInputClass()}
                           />

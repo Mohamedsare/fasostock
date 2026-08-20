@@ -168,7 +168,13 @@ GRANT EXECUTE ON FUNCTION public.progressive_plan_items_set(uuid, jsonb) TO auth
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 4. RPC : lire la sélection d'un dossier (avec le prix catalogue du jour)
+--
+-- DROP préalable : une première version de ce script nommait la colonne de sortie
+-- `position` (mot réservé SQL). `CREATE OR REPLACE` refuse de renommer une colonne
+-- de retour — le DROP rend le fichier rejouable même sur une base qui l'aurait déjà.
 -- ─────────────────────────────────────────────────────────────────────────────
+DROP FUNCTION IF EXISTS public.progressive_plan_items_list(uuid);
+
 CREATE OR REPLACE FUNCTION public.progressive_plan_items_list(p_plan_id uuid)
 RETURNS TABLE (
   id uuid,

@@ -268,6 +268,9 @@ export const queryKeys = {
   /** Réglage owner « remplir le stock en un clic » (`company_settings`). */
   bulkStockEntryEnabled: (companyId: string) =>
     ["bulk-stock-entry", companyId] as const,
+  /** Réglage owner « prix du conditionnement à la pièce » (`company_settings`). */
+  packagingPricePerPiece: (companyId: string) =>
+    ["packaging-price-per-piece", companyId] as const,
   /** Réglage owner « vente au nom d'un client » — client obligatoire, blocage sur dette. */
   saleCustomerPolicy: (companyId: string) =>
     ["sale-customer-policy", companyId] as const,

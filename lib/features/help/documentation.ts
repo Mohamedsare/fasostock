@@ -534,6 +534,16 @@ export const DOC_GROUPS: DocGroup[] = [
           },
           {
             kind: "bullets",
+            title: "Le prix d'un conditionnement",
+            items: [
+              "Par défaut, le champ « Prix » demande le prix du LOT ENTIER : un carton de 10 pièces vendu 3 500 la pièce se saisit 35 000.",
+              "Le propriétaire peut renverser cela dans Paramètres › « Prix du conditionnement à la pièce » : le champ demande alors le prix d'une seule pièce du lot, et l'application multiplie elle-même.",
+              "Dans les deux cas, la ligne sous le champ affiche le prix du lot ET le prix à la pièce avant que vous validiez : vérifiez-la, c'est elle qui dit ce que le client paiera.",
+              "Un lot moins cher qu'une pièce, ou vendu sous votre prix d'achat, est refusé à l'enregistrement : c'est presque toujours un prix à la pièce saisi à la place du prix du lot.",
+            ],
+          },
+          {
+            kind: "bullets",
             title: "Autres noms (alias de recherche)",
             items: [
               "Jusqu'à vingt noms alternatifs par produit : nom local, marque, référence, abréviation, faute d'orthographe courante.",

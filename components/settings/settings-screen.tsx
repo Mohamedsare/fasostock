@@ -48,6 +48,11 @@ import {
   setBulkStockEntryEnabled,
 } from "@/lib/features/settings/bulk-stock-entry";
 import {
+  fetchPackagingPricePerPiece,
+  peekPackagingPricePerPiece,
+  setPackagingPricePerPiece,
+} from "@/lib/features/settings/packaging-price-mode";
+import {
   fetchSaleCustomerPolicy,
   peekSaleCustomerPolicy,
   setSaleCustomerPolicy,
@@ -141,6 +146,7 @@ import {
   MdContactPhone,
   MdCreditCard,
   MdInventory2,
+  MdAllInbox,
   MdLibraryAddCheck,
   MdPayments,
   MdPriceChange,
@@ -569,6 +575,42 @@ export function SettingsScreen() {
       );
       await qc.invalidateQueries({
         queryKey: queryKeys.bulkStockEntryEnabled(companyId),
+      });
+    },
+    onError: (e) => toastMutationError("settings", e),
+  });
+
+  /*
+   * Prix du conditionnement à la pièce — fermé par défaut.
+   *
+   * Le commerçant annonce son gros « à la pièce » (« le carton, c'est 3 500 la pièce »),
+   * alors que la base stocke le prix du lot entier. Ouvert, le champ parle sa langue et
+   * l'application fait la multiplication ; fermé, on demande le prix du lot, comme avant.
+   * Dans les deux cas, ce qui part en base est identique — seule la saisie change.
+   */
+  const peekPkgPriceMode =
+    companyId.length > 0 && isOwner ? peekPackagingPricePerPiece(companyId) : undefined;
+  const packagingPriceModeQ = useQuery({
+    queryKey: queryKeys.packagingPricePerPiece(companyId),
+    queryFn: () => fetchPackagingPricePerPiece(companyId),
+    enabled: Boolean(companyId && isOwner),
+    staleTime: 30_000,
+    ...(peekPkgPriceMode !== undefined ? { initialData: peekPkgPriceMode } : {}),
+  });
+
+  const packagingPriceModeMut = useMutation({
+    mutationFn: async (enabled: boolean) => {
+      if (!companyId) throw new Error("Entreprise introuvable.");
+      await setPackagingPricePerPiece(companyId, enabled);
+    },
+    onSuccess: async (_, enabled) => {
+      toast.success(
+        enabled
+          ? "Saisie à la pièce activée. Le champ demande le prix d'une pièce du lot."
+          : "Saisie à la pièce désactivée. Le champ demande de nouveau le prix du lot entier.",
+      );
+      await qc.invalidateQueries({
+        queryKey: queryKeys.packagingPricePerPiece(companyId),
       });
     },
     onError: (e) => toastMutationError("settings", e),
@@ -2266,6 +2308,66 @@ export function SettingsScreen() {
               <ChevronRight className="h-4 w-4" aria-hidden />
             </Link>
           ) : null}
+        </FsCard>
+      ) : null}
+
+      {/* Prix du conditionnement : lot entier ou à la pièce — owner uniquement */}
+      {isOwner && companyId ? (
+        <FsCard className="mt-5" padding="p-5">
+          <SettingsCardTitle icon={MdAllInbox} title="Prix du conditionnement à la pièce" />
+          <p className="mt-2 text-xs leading-relaxed text-neutral-600 sm:text-sm">
+            Quand vous ajoutez un <b>conditionnement</b> à un produit (carton, paquet,
+            sachet…), l&apos;application demande aujourd&apos;hui le prix du{" "}
+            <b>lot entier</b> : un carton de 10 pièces à 3 500 la pièce se saisit 35 000.
+            Or au marché, le prix s&apos;annonce à la pièce — « le carton, c&apos;est 3 500 la
+            pièce » — et c&apos;est ce chiffre-là qui finit dans le champ, ce qui fait vendre
+            le carton entier à 3 500.
+          </p>
+          <p className="mt-2 text-xs leading-relaxed text-neutral-600 sm:text-sm">
+            Activé, le champ demande le <b>prix d&apos;une pièce du lot</b> et
+            l&apos;application multiplie elle-même par le nombre de pièces. Vous tapez 3 500,
+            elle enregistre 35 000 et l&apos;affiche sous le champ avant que vous validiez.
+          </p>
+          <p className="mt-2 rounded-[10px] bg-fs-accent/10 px-3 py-2 text-xs leading-relaxed text-fs-text">
+            Ce réglage ne change que la <b>saisie</b>. Le prix encaissé à la caisse, les
+            tickets, les factures et vos conditionnements déjà enregistrés restent
+            identiques — vous pouvez donc l&apos;activer et le désactiver sans rien casser.
+          </p>
+          {packagingPriceModeQ.isPending ? (
+            <div className="mt-4 flex justify-center py-4" role="status" aria-label="Chargement">
+              <div className="h-8 w-8 animate-spin rounded-full border-2 border-fs-accent border-t-transparent" />
+            </div>
+          ) : (
+            <div className="mt-4 space-y-0 rounded-[10px] border border-black/[0.08]">
+              <label
+                className={cn(
+                  "flex cursor-pointer items-start justify-between gap-3 px-3 py-3 sm:px-4",
+                  packagingPriceModeMut.isPending && "pointer-events-none opacity-60",
+                )}
+              >
+                <span className="min-w-0">
+                  <span className="block text-sm font-medium text-fs-text">
+                    Saisir le prix d&apos;une pièce du lot, pas celui du lot entier
+                  </span>
+                  <span className="mt-0.5 block text-xs text-neutral-600">
+                    {packagingPriceModeQ.data
+                      ? "Le champ demande le prix d'une pièce ; le prix du lot est calculé automatiquement."
+                      : "Désactivé : le champ demande le prix du lot entier (nb de pièces × prix pièce)."}
+                  </span>
+                </span>
+                <input
+                  type="checkbox"
+                  role="switch"
+                  className="mt-1 h-5 w-9 shrink-0 cursor-pointer accent-fs-accent"
+                  checked={Boolean(packagingPriceModeQ.data)}
+                  disabled={packagingPriceModeMut.isPending}
+                  onChange={(e) => {
+                    void packagingPriceModeMut.mutateAsync(e.target.checked);
+                  }}
+                />
+              </label>
+            </div>
+          )}
         </FsCard>
       ) : null}
 

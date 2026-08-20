@@ -3,14 +3,20 @@
 import { ProductListThumbnail, firstProductImageUrl } from "@/components/products/product-list-thumbnail";
 import {
   packagingPiecePrice,
+  packagingPriceFromInput,
   packagingPriceProblem,
 } from "@/lib/features/products/packaging-price";
+import {
+  fetchPackagingPricePerPiece,
+  peekPackagingPricePerPiece,
+} from "@/lib/features/settings/packaging-price-mode";
+import { queryKeys } from "@/lib/query/query-keys";
 import { saveProductPackagings } from "@/lib/features/products/packagings-api";
 import type { ProductItem, ProductPackagingDraft } from "@/lib/features/products/types";
 import { messageFromUnknownError, toast } from "@/lib/toast";
 import { formatCurrency } from "@/lib/utils/currency";
 import { cn } from "@/lib/utils/cn";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { MdCheck, MdClose, MdInventory2, MdQrCode2 } from "react-icons/md";
 
@@ -101,20 +107,41 @@ export function QuickPackagingDialog({
     [product.product_packagings],
   );
 
-  /** Prix effectif prévisualisé : prix dédié saisi, sinon facteur × prix pièce. */
+  /*
+   * Mode de saisie choisi par le propriétaire : prix du lot entier (défaut) ou prix
+   * d'une pièce du lot. Ce qui est enregistré reste le total dans les deux cas.
+   */
+  const peekPkgMode =
+    companyId.length > 0 ? peekPackagingPricePerPiece(companyId) : undefined;
+  const perPieceQ = useQuery({
+    queryKey: queryKeys.packagingPricePerPiece(companyId),
+    queryFn: () => fetchPackagingPricePerPiece(companyId),
+    enabled: Boolean(companyId),
+    staleTime: 60_000,
+    ...(peekPkgMode !== undefined ? { initialData: peekPkgMode } : {}),
+  });
+  const perPiece = perPieceQ.data === true;
+
+  /** Prix du LOT prévisualisé : saisie convertie, sinon facteur × prix pièce. */
   const previewPrice =
-    priceNum != null ? priceNum : factorNum > 0 ? factorNum * product.sale_price : null;
+    priceNum != null
+      ? packagingPriceFromInput(priceNum, Math.max(1, factorNum), perPiece)
+      : factorNum > 0
+        ? factorNum * product.sale_price
+        : null;
 
   /*
-   * Le prix saisi est celui du LOT ENTIER. Confondre avec le prix de gros à la pièce
-   * ferait vendre le lot moins cher qu'une seule pièce : on le dit avant d'enregistrer.
+   * Ce qui est enregistré est le prix du LOT ENTIER. Un lot moins cher qu'une pièce
+   * (prix de gros saisi dans un champ qui attend le total) ou une vente à perte se
+   * disent ici, avant l'enregistrement.
    */
   const priceProblem = packagingPriceProblem({
     label,
     factor: factorNum,
-    price: priceNum,
+    price: priceNum != null ? previewPrice : null,
     unitSalePrice: product.sale_price,
     purchasePrice: product.purchase_price,
+    perPiece,
   });
 
   const canSave = label.trim().length > 0 && factorNum >= 1 && !priceProblem;
@@ -138,7 +165,7 @@ export function QuickPackagingDialog({
           label: label.trim(),
           barcode: barcode.trim(),
           factor: Math.max(1, factorNum),
-          price: priceNum,
+          price: packagingPriceFromInput(priceNum, Math.max(1, factorNum), perPiece),
         },
       ];
       await saveProductPackagings(companyId, product.id, drafts, []);
@@ -251,20 +278,28 @@ export function QuickPackagingDialog({
             </div>
             <div>
               <label className="text-[11px] font-semibold uppercase tracking-wide text-neutral-500">
-                Prix du lot entier
+                {perPiece ? "Prix d'une pièce du lot" : "Prix du lot entier"}
               </label>
               <input
                 inputMode="numeric"
                 value={price}
                 onChange={(e) => setPrice(e.target.value.replace(/[^\d\s.,]/g, ""))}
-                placeholder={factorNum > 0 ? formatCurrency(factorNum * product.sale_price) : "auto"}
+                placeholder={
+                  perPiece
+                    ? formatCurrency(product.sale_price)
+                    : factorNum > 0
+                      ? formatCurrency(factorNum * product.sale_price)
+                      : "auto"
+                }
                 className="mt-1.5 min-h-11 w-full rounded-md border border-black/10 bg-white px-3 text-sm font-bold text-fs-text outline-none focus:border-fs-accent focus:ring-2 focus:ring-fs-accent/20"
               />
             </div>
           </div>
           <p className="-mt-2 text-[11px] text-neutral-400">
-            Prix du lot complet, pas d&apos;une pièce du lot. Vide ={" "}
-            {factorNum > 0 ? "facteur × prix pièce" : "calculé automatiquement"}.
+            {perPiece
+              ? "Prix d'une seule pièce du lot ; le prix du lot est calculé pour vous."
+              : "Prix du lot complet, pas d'une pièce du lot."}{" "}
+            Vide = {factorNum > 0 ? "facteur × prix pièce" : "calculé automatiquement"}.
           </p>
 
           {/* Code-barres */}
