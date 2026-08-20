@@ -875,8 +875,13 @@ export function canAccessPathname(
   if (route === ROUTES.restock && !h.restockModuleOn) return false;
   // Emplacements : tant que le propriétaire n'a pas activé le module, l'URL directe
   // ne mène nulle part non plus.
-  // Conditionnements : fermée par le propriétaire = fermée aussi à l'adresse tapée.
-  if (route === ROUTES.packagings && !h.canPackagings) return false;
+  /*
+   * Conditionnements : on exige ici le droit CATALOGUE, pas le drapeau d'activation.
+   * Le drapeau décide de l'entrée de menu ; s'il est fermé, la page s'ouvre quand même
+   * et explique elle-même où l'activer. Un cadenas rouge sur une page que le
+   * propriétaire vient justement de chercher ne lui apprendrait rien.
+   */
+  if (route === ROUTES.packagings && !h.canProducts) return false;
   if (route === ROUTES.productLocations && !h.productLocationsOn) return false;
   // Prix de revient : idem — le module touche aux prix, l'URL directe ne le contourne pas.
   if (route === ROUTES.landedCost && !h.landedCostOn) return false;

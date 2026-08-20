@@ -100,7 +100,8 @@ export function PackagingsScreen() {
   const storeId = ctx.data?.storeId ?? null;
   const pageOn = h?.packagingsPageOn ?? false;
   const canView = h?.canPackagings ?? false;
-  const canEdit = (h?.isOwner ?? false) || hasPermission(P.productsUpdate);
+  const isOwner = h?.isOwner ?? false;
+  const canEdit = isOwner || hasPermission(P.productsUpdate);
 
   const [q, setQ] = useState("");
   const [categoryId, setCategoryId] = useState("");
@@ -213,13 +214,33 @@ export function PackagingsScreen() {
           subtitle="Ce que contient chaque carton, paquet ou sachet — et son prix"
         />
         <FsCard padding="p-8">
-          <div className="flex flex-col items-center justify-center gap-4 text-center">
+          <div className="flex flex-col items-center justify-center gap-3 text-center">
             <MdLock className="h-12 w-12 text-neutral-500" aria-hidden />
-            <p className="max-w-md text-sm leading-relaxed text-neutral-600">
-              {pageOn
-                ? "Vous n'avez pas accès à cette section."
-                : "La page Conditionnements n'est pas activée. Le propriétaire peut l'ouvrir dans Paramètres."}
-            </p>
+            {pageOn ? (
+              <p className="max-w-md text-sm leading-relaxed text-neutral-600">
+                Vous n&apos;avez pas accès à cette section : le droit de voir le
+                catalogue est nécessaire.
+              </p>
+            ) : (
+              <>
+                <p className="text-sm font-semibold text-fs-text">
+                  Cette page n&apos;est pas encore activée
+                </p>
+                <p className="max-w-md text-sm leading-relaxed text-neutral-600">
+                  {isOwner
+                    ? "Ouvrez-la dans Paramètres › « Page Conditionnements ». Elle apparaîtra alors dans le menu."
+                    : "Le propriétaire peut l'ouvrir dans Paramètres › « Page Conditionnements »."}
+                </p>
+                {isOwner ? (
+                  <Link
+                    href={ROUTES.settings}
+                    className="mt-1 inline-flex items-center gap-2 rounded-lg bg-fs-accent px-4 py-2.5 text-sm font-semibold text-white shadow-sm"
+                  >
+                    Ouvrir les Paramètres
+                  </Link>
+                ) : null}
+              </>
+            )}
           </div>
         </FsCard>
       </FsPage>
