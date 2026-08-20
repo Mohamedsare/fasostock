@@ -53,6 +53,11 @@ export const ROUTES = {
   parts: "/pieces",
   /** Module Réassort : quoi recommander et en quelle quantité — actif par défaut. */
   restock: "/reassort",
+  /**
+   * Conditionnements : la page où l'on remplit, d'un seul écran, ce que contient
+   * chaque paquet/carton et à quel prix il se vend.
+   */
+  packagings: "/conditionnements",
   /** Module Emplacements : où se trouve physiquement un produit — activé par le propriétaire. */
   productLocations: "/emplacements",
   /** Module Prix de revient : frais d'approche répartis sur un arrivage — activé par le propriétaire. */

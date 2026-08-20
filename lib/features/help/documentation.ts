@@ -561,6 +561,46 @@ export const DOC_GROUPS: DocGroup[] = [
         keywords: ["articles", "catalogue", "fiche", "prix", "csv", "import", "conditionnement", "alias"],
       },
       {
+        id: "packagings",
+        title: "Conditionnements",
+        route: "/conditionnements",
+        tagline: "Remplir carton, paquet et sachet pour tout le catalogue, d'un seul écran.",
+        access: "À activer par le propriétaire dans Paramètres. Ensuite : visible par qui voit les produits ; modifier demande « Modifier des produits ».",
+        blocks: [
+          {
+            kind: "p",
+            text: "Renseigner les conditionnements produit par produit, dans chaque fiche, décourage au trentième article. Cette page prend le problème dans l'autre sens : la liste complète du catalogue, et l'éditeur qui s'ouvre sous la ligne du produit — sans jamais quitter la page. Elle est fermée par défaut : le propriétaire l'ouvre dans Paramètres › « Page Conditionnements », et la refermer ne supprime aucun lot déjà enregistré.",
+          },
+          {
+            kind: "bullets",
+            title: "Remplir un produit",
+            items: [
+              "Touchez « Remplir » (produit sans conditionnement) ou « Modifier » : l'éditeur s'ouvre juste en dessous.",
+              "Un tap sur « Carton », « Sachet », « Paquet »… crée la ligne et met le curseur sur le nombre de pièces.",
+              "Entrez le nombre de pièces, le prix, et le code-barres du carton si vous en avez un : scanner ce code en caisse ajoutera tout le lot d'un coup.",
+              "La ligne sous chaque saisie annonce le résultat : « 1 Carton = 12 pce → 42 000 (soit 3 500 le pce) ». Un seul bouton enregistre tout le produit.",
+            ],
+          },
+          {
+            kind: "bullets",
+            title: "Les filtres, pour ne rien oublier",
+            items: [
+              "« À remplir » : les produits qui se vendent encore seulement à la pièce — votre liste de travail au démarrage.",
+              "« Déjà faits » : ceux qui ont au moins un conditionnement.",
+              "« Prix à revoir » : les lots moins chers qu'une pièce ou vendus sous le prix d'achat. Ce filtre n'apparaît que s'il y a quelque chose à corriger.",
+              "La recherche accepte aussi le code-barres d'un carton : tapez-le pour retomber sur le produit.",
+            ],
+          },
+          {
+            kind: "note",
+            tone: "tip",
+            title: "Le bon réflexe",
+            text: "Au démarrage, filtrez sur « À remplir » et descendez la liste : chaque produit traité disparaît du filtre. Vous voyez le travail avancer, et vous savez quand il est fini.",
+          },
+        ],
+        keywords: ["conditionnement", "carton", "paquet", "sachet", "gros", "lot", "prix"],
+      },
+      {
         id: "barcodes",
         title: "Code Barre",
         route: "/barcodes",

@@ -29,6 +29,7 @@ import {
   packagingPiecePrice,
   packagingPriceProblem,
 } from "@/lib/features/products/packaging-price";
+import { findPackagingBarcodeCollision } from "@/lib/features/products/packaging-barcodes";
 import { saveProductPackagings } from "@/lib/features/products/packagings-api";
 import { saveEngineUnits } from "@/lib/features/engine-units/api";
 import {
@@ -43,7 +44,6 @@ import type { AccessHelpers } from "@/lib/features/permissions/access";
 import type {
   ProductFormSavePayload,
   ProductItem,
-  ProductPackagingDraft,
 } from "@/lib/features/products/types";
 import { ProductFormDialog } from "@/components/products/product-form-dialog";
 import { ProductBatchesDialog } from "@/components/products/product-batches-dialog";
@@ -101,43 +101,6 @@ import { messageFromUnknownError, toast } from "@/lib/toast";
 import { ensureStringNumberMap } from "@/lib/utils/string-number-map";
 
 const PAGE_SIZE = 20;
-
-/**
- * Détecte un code-barres de conditionnement déjà utilisé ailleurs (autre produit,
- * son conditionnement, ou la pièce du produit courant). Évite qu'un scan tombe sur
- * le mauvais produit. Retourne le message d'erreur, ou `null` si tout est bon.
- */
-function findPackagingBarcodeCollision(
-  products: ProductItem[],
-  selfProductId: string | null,
-  selfMainBarcode: string,
-  packagings: ProductPackagingDraft[],
-): string | null {
-  const norm = (s: string | null | undefined) => (s ?? "").trim().toLowerCase();
-  const selfMain = norm(selfMainBarcode);
-  const taken = new Map<string, string>(); // code-barres → nom du produit propriétaire
-  for (const p of products) {
-    if (p.id === selfProductId) continue;
-    const b = norm(p.barcode);
-    if (b) taken.set(b, p.name);
-    for (const pk of p.product_packagings ?? []) {
-      const pb = norm(pk.barcode);
-      if (pb && !taken.has(pb)) taken.set(pb, p.name);
-    }
-  }
-  for (const d of packagings) {
-    const b = norm(d.barcode);
-    if (!b) continue;
-    if (b === selfMain) {
-      return `Le conditionnement « ${d.label} » a le même code-barres que la pièce de ce produit.`;
-    }
-    const owner = taken.get(b);
-    if (owner) {
-      return `Code-barres du conditionnement « ${d.label} » déjà utilisé par « ${owner} ».`;
-    }
-  }
-  return null;
-}
 
 /** Aligné sur `ProductsPageProvider.defaultStockThreshold` / tuile Flutter. */
 const DEFAULT_STOCK_THRESHOLD = 5;
@@ -1170,12 +1133,12 @@ export function ProductsScreen() {
           onSubmit={async (payload) => {
             // Garde anti-collision de codes-barres de conditionnement (avant écriture).
             if (payload.packagings.length > 0) {
-              const collision = findPackagingBarcodeCollision(
+              const collision = findPackagingBarcodeCollision({
                 products,
-                editing?.id ?? null,
-                payload.input.barcode,
-                payload.packagings,
-              );
+                selfProductId: editing?.id ?? null,
+                selfMainBarcode: payload.input.barcode,
+                drafts: payload.packagings,
+              });
               if (collision) {
                 toast.error(collision);
                 return;

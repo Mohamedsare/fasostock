@@ -10,6 +10,7 @@ import {
   fetchPackagingPricePerPiece,
   peekPackagingPricePerPiece,
 } from "@/lib/features/settings/packaging-price-mode";
+import { findPackagingBarcodeCollision } from "@/lib/features/products/packaging-barcodes";
 import { queryKeys } from "@/lib/query/query-keys";
 import { saveProductPackagings } from "@/lib/features/products/packagings-api";
 import type { ProductItem, ProductPackagingDraft } from "@/lib/features/products/types";
@@ -45,36 +46,6 @@ function toPrice(v: string): number | null {
   if (t === "") return null;
   const n = Number.parseFloat(t);
   return Number.isFinite(n) && n >= 0 ? n : null;
-}
-
-/**
- * Détecte un code-barres déjà utilisé (autre produit, leur conditionnement, la pièce
- * du produit courant ou l'un de ses conditionnements existants). Message ou null.
- */
-function barcodeCollision(
-  barcode: string,
-  product: ProductItem,
-  allProducts: ProductItem[],
-): string | null {
-  const norm = (s: string | null | undefined) => (s ?? "").trim().toLowerCase();
-  const b = norm(barcode);
-  if (!b) return null;
-  if (b === norm(product.barcode)) {
-    return "Ce code-barres est déjà celui de la pièce (unité) de ce produit.";
-  }
-  for (const pk of product.product_packagings ?? []) {
-    if (norm(pk.barcode) === b) {
-      return `Ce code-barres est déjà utilisé par le conditionnement « ${pk.label} ».`;
-    }
-  }
-  for (const p of allProducts) {
-    if (p.id === product.id) continue;
-    if (norm(p.barcode) === b) return `Code-barres déjà utilisé par « ${p.name} ».`;
-    for (const pk of p.product_packagings ?? []) {
-      if (norm(pk.barcode) === b) return `Code-barres déjà utilisé par « ${p.name} ».`;
-    }
-  }
-  return null;
 }
 
 /**
@@ -148,7 +119,17 @@ export function QuickPackagingDialog({
 
   const saveMut = useMutation({
     mutationFn: async () => {
-      const collision = barcodeCollision(barcode, product, allProducts);
+      const collision = findPackagingBarcodeCollision({
+        products: allProducts,
+        selfProductId: product.id,
+        selfMainBarcode: product.barcode ?? "",
+        // Les conditionnements existants comptent : deux d'entre eux ne peuvent pas
+        // porter le même code, et le nouveau ne peut pas reprendre le leur.
+        drafts: [
+          ...existing.map((pk) => ({ label: pk.label, barcode: pk.barcode ?? "" })),
+          { label: label.trim() || "conditionnement", barcode: barcode.trim() },
+        ],
+      });
       if (collision) throw new Error(collision);
       if (priceProblem) throw new Error(priceProblem);
 

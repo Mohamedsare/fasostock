@@ -129,6 +129,12 @@ export type AppContextData = {
    */
   saleDocumentsEnabled: boolean;
   /**
+   * Page « Conditionnements » (remplir carton/paquet pour tout le catalogue d'un seul
+   * écran) — désactivée par défaut, ouverte par le PROPRIÉTAIRE dans Paramètres
+   * (`companies.packagings_page_enabled`).
+   */
+  packagingsPageEnabled: boolean;
+  /**
    * Pages retirées du menu de CET utilisateur par le propriétaire (« help »,
    * « notifications »). Confort d'affichage, pas frontière de sécurité — voir
    * `lib/features/settings/employee-hidden-pages.ts`. Absent ⇒ rien de masqué.
@@ -295,6 +301,10 @@ export type AccessHelpers = {
   restockModuleOn: boolean;
   /** Page Réassort : module actif ET propriétaire / permission dédiée. */
   canRestock: boolean;
+  /** Page Conditionnements ouverte par le propriétaire pour l'entreprise. */
+  packagingsPageOn: boolean;
+  /** Page Conditionnements : page ouverte ET droit de voir le catalogue. */
+  canPackagings: boolean;
   /** Module Emplacements ouvert par le propriétaire pour l'entreprise. */
   productLocationsOn: boolean;
   /** Page Emplacements : module ouvert ET propriétaire / permission dédiée. */
@@ -475,6 +485,13 @@ export function buildAccessHelpers(
   const canRestock = restockModuleOn && (isOwner || hasPermission(P.restockView));
   // Emplacements : additif, mais ouvert par le PROPRIÉTAIRE lui-même (Paramètres),
   // pas par la plateforme. Rien n'apparaît tant qu'il ne l'a pas activé.
+  /*
+   * Conditionnements : additive, ouverte par le PROPRIÉTAIRE (Paramètres). Pas de
+   * droit dédié — la page n'écrit que ce que la fiche produit écrit déjà : qui peut
+   * voir le catalogue la voit, qui peut modifier un produit peut y modifier un lot.
+   */
+  const packagingsPageOn = data.packagingsPageEnabled === true;
+  const canPackagings = packagingsPageOn && canProducts;
   const productLocationsOn = data.productLocationsEnabled === true;
   const canProductLocations =
     productLocationsOn && (isOwner || hasPermission(P.productLocationsManage));
@@ -586,6 +603,8 @@ export function buildAccessHelpers(
     canParts,
     restockModuleOn,
     canRestock,
+    packagingsPageOn,
+    canPackagings,
     productLocationsOn,
     canProductLocations,
     productAliasesOn,
@@ -656,6 +675,9 @@ export function filterNavItemsForPermissions(
     if (href === ROUTES.products) return h.canProducts;
     if (href === ROUTES.parts) return h.canParts;
     if (href === ROUTES.restock) return h.canRestock;
+    // Conditionnements : page additive, ouverte par le propriétaire. Ensuite, même
+    // porte que le catalogue (modifier un lot demande en plus `products.update`).
+    if (href === ROUTES.packagings) return h.canPackagings;
     if (href === ROUTES.productLocations) return h.canProductLocations;
     if (href === ROUTES.landedCost) return h.canLandedCost;
     if (href === ROUTES.onlineStore) return h.canOnlineStore;
@@ -853,6 +875,8 @@ export function canAccessPathname(
   if (route === ROUTES.restock && !h.restockModuleOn) return false;
   // Emplacements : tant que le propriétaire n'a pas activé le module, l'URL directe
   // ne mène nulle part non plus.
+  // Conditionnements : fermée par le propriétaire = fermée aussi à l'adresse tapée.
+  if (route === ROUTES.packagings && !h.canPackagings) return false;
   if (route === ROUTES.productLocations && !h.productLocationsOn) return false;
   // Prix de revient : idem — le module touche aux prix, l'URL directe ne le contourne pas.
   if (route === ROUTES.landedCost && !h.landedCostOn) return false;

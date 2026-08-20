@@ -26,6 +26,8 @@ import {
 const quickSupplyColumn = createOptimisticColumn();
 /** Idem pour la migration 00201 (module « Devis & Factures »). */
 const saleDocumentsColumn = createOptimisticColumn();
+/** Idem pour la migration 00203 (page « Conditionnements »). */
+const packagingsPageColumn = createOptimisticColumn();
 
 const COMPANY_SELECT_BASE =
   "id, name, logo_url, business_type_slug, warehouse_feature_enabled, purchases_feature_enabled, transfers_feature_enabled, store_quota_increase_enabled, ai_predictions_enabled, warehouse_kpi_show_purchase_value, warehouse_kpi_show_sale_value, accounting_module_enabled, hr_module_enabled, expiry_module_enabled, parts_module_enabled, restock_module_enabled, product_locations_enabled, product_aliases_enabled, landed_cost_enabled, custom_expenses_enabled, dual_cashier_enabled, online_store_enabled";
@@ -45,10 +47,15 @@ export async function fetchAppContextForCompany(
    * ensemble, et une base à jour du module Approvisionnement mais pas encore des
    * Devis ne doit pas perdre le premier en découvrant l'absence du second.
    */
-  const runCompanyQuery = (opts: { withQuickSupply: boolean; withSaleDocuments: boolean }) => {
+  const runCompanyQuery = (opts: {
+    withQuickSupply: boolean;
+    withSaleDocuments: boolean;
+    withPackagingsPage: boolean;
+  }) => {
     const extra = [
       opts.withQuickSupply ? "quick_supply_enabled" : null,
       opts.withSaleDocuments ? "sale_documents_enabled" : null,
+      opts.withPackagingsPage ? "packagings_page_enabled" : null,
     ].filter(Boolean);
     return supabase
       .from("companies")
@@ -64,9 +71,11 @@ export async function fetchAppContextForCompany(
   // par colonne.
   let askedQuickSupply = quickSupplyColumn.available();
   let askedSaleDocuments = saleDocumentsColumn.available();
+  let askedPackagingsPage = packagingsPageColumn.available();
   let { data: companyRaw, error: cErr } = await runCompanyQuery({
     withQuickSupply: askedQuickSupply,
     withSaleDocuments: askedSaleDocuments,
+    withPackagingsPage: askedPackagingsPage,
   });
   if (cErr && askedQuickSupply && isUndefinedColumnError(cErr, "quick_supply_enabled")) {
     quickSupplyColumn.markMissing();
@@ -74,6 +83,7 @@ export async function fetchAppContextForCompany(
     ({ data: companyRaw, error: cErr } = await runCompanyQuery({
       withQuickSupply: false,
       withSaleDocuments: askedSaleDocuments,
+      withPackagingsPage: askedPackagingsPage,
     }));
   }
   if (cErr && askedSaleDocuments && isUndefinedColumnError(cErr, "sale_documents_enabled")) {
@@ -82,6 +92,16 @@ export async function fetchAppContextForCompany(
     ({ data: companyRaw, error: cErr } = await runCompanyQuery({
       withQuickSupply: askedQuickSupply,
       withSaleDocuments: false,
+      withPackagingsPage: askedPackagingsPage,
+    }));
+  }
+  if (cErr && askedPackagingsPage && isUndefinedColumnError(cErr, "packagings_page_enabled")) {
+    packagingsPageColumn.markMissing();
+    askedPackagingsPage = false;
+    ({ data: companyRaw, error: cErr } = await runCompanyQuery({
+      withQuickSupply: askedQuickSupply,
+      withSaleDocuments: askedSaleDocuments,
+      withPackagingsPage: false,
     }));
   }
   // `select()` dynamique : PostgREST ne peut plus inférer la forme de la ligne.
@@ -117,6 +137,7 @@ export async function fetchAppContextForCompany(
     dual_cashier_enabled?: boolean | null;
     quick_supply_enabled?: boolean | null;
     sale_documents_enabled?: boolean | null;
+    packagings_page_enabled?: boolean | null;
     online_store_enabled?: boolean | null;
   };
 
@@ -175,6 +196,7 @@ export async function fetchAppContextForCompany(
       dualCashierEnabled: cr.dual_cashier_enabled === true,
       quickSupplyEnabled: cr.quick_supply_enabled === true,
       saleDocumentsEnabled: cr.sale_documents_enabled === true,
+      packagingsPageEnabled: cr.packagings_page_enabled === true,
       onlineStoreEnabled: cr.online_store_enabled === true,
       // Flag évalué côté client (bouton uniquement) ; non requis pour les gardes de route serveur.
       promoAdGenerationEnabled: false,
@@ -228,6 +250,7 @@ export async function fetchAppContextForCompany(
     dualCashierEnabled: cr.dual_cashier_enabled === true,
     quickSupplyEnabled: cr.quick_supply_enabled === true,
     saleDocumentsEnabled: cr.sale_documents_enabled === true,
+    packagingsPageEnabled: cr.packagings_page_enabled === true,
     onlineStoreEnabled: cr.online_store_enabled === true,
     // Flag évalué côté client (bouton uniquement) ; non requis pour les gardes de route serveur.
     promoAdGenerationEnabled: false,

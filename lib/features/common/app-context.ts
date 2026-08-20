@@ -205,6 +205,8 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
 const quickSupplyColumn = createOptimisticColumn();
 /** Idem pour la migration 00201 (module « Devis & Factures »). */
 const saleDocumentsColumn = createOptimisticColumn();
+/** Idem pour la migration 00203 (page « Conditionnements »). */
+const packagingsPageColumn = createOptimisticColumn();
 
 const COMPANY_SELECT_BASE =
   "id, name, logo_url, business_type_slug, warehouse_feature_enabled, purchases_feature_enabled, transfers_feature_enabled, store_quota_increase_enabled, ai_predictions_enabled, warehouse_kpi_show_purchase_value, warehouse_kpi_show_sale_value, accounting_module_enabled, hr_module_enabled, expiry_module_enabled, parts_module_enabled, restock_module_enabled, product_locations_enabled, product_aliases_enabled, landed_cost_enabled, custom_expenses_enabled, dual_cashier_enabled, online_store_enabled";
@@ -217,10 +219,12 @@ const COMPANY_SELECT_BASE =
 function companySelectColumns(opts: {
   withQuickSupply: boolean;
   withSaleDocuments: boolean;
+  withPackagingsPage: boolean;
 }): string {
   const extra = [
     opts.withQuickSupply ? "quick_supply_enabled" : null,
     opts.withSaleDocuments ? "sale_documents_enabled" : null,
+    opts.withPackagingsPage ? "packagings_page_enabled" : null,
   ].filter(Boolean);
   return extra.length > 0 ? `${COMPANY_SELECT_BASE}, ${extra.join(", ")}` : COMPANY_SELECT_BASE;
 }
@@ -307,6 +311,7 @@ async function fetchAppContext(): Promise<AppContextData | null> {
       dualCashierEnabled: false,
       quickSupplyEnabled: false,
       saleDocumentsEnabled: false,
+      packagingsPageEnabled: false,
       onlineStoreEnabled: false,
       promoAdGenerationEnabled,
     };
@@ -316,7 +321,11 @@ async function fetchAppContext(): Promise<AppContextData | null> {
   const primaryCompanyId = supportSession
     ? supportSession.companyId
     : pickActiveCompanyId(orderedCompanyIds);
-  const runCompanyQuery = (opts: { withQuickSupply: boolean; withSaleDocuments: boolean }) =>
+  const runCompanyQuery = (opts: {
+    withQuickSupply: boolean;
+    withSaleDocuments: boolean;
+    withPackagingsPage: boolean;
+  }) =>
     supabase
       .from("companies")
       .select(companySelectColumns(opts))
@@ -328,9 +337,11 @@ async function fetchAppContext(): Promise<AppContextData | null> {
   // par colonne.
   let askedQuickSupply = quickSupplyColumn.available();
   let askedSaleDocuments = saleDocumentsColumn.available();
+  let askedPackagingsPage = packagingsPageColumn.available();
   let { data: companyRaw, error: cErr } = await runCompanyQuery({
     withQuickSupply: askedQuickSupply,
     withSaleDocuments: askedSaleDocuments,
+    withPackagingsPage: askedPackagingsPage,
   });
   // Migration 00193 / 00201 pas encore appliquée : on retire la colonne manquante et on
   // rejoue, plutôt que de laisser l'application entière sans contexte.
@@ -340,6 +351,7 @@ async function fetchAppContext(): Promise<AppContextData | null> {
     ({ data: companyRaw, error: cErr } = await runCompanyQuery({
       withQuickSupply: false,
       withSaleDocuments: askedSaleDocuments,
+      withPackagingsPage: askedPackagingsPage,
     }));
   }
   if (cErr && askedSaleDocuments && isUndefinedColumnError(cErr, "sale_documents_enabled")) {
@@ -348,6 +360,16 @@ async function fetchAppContext(): Promise<AppContextData | null> {
     ({ data: companyRaw, error: cErr } = await runCompanyQuery({
       withQuickSupply: askedQuickSupply,
       withSaleDocuments: false,
+      withPackagingsPage: askedPackagingsPage,
+    }));
+  }
+  if (cErr && askedPackagingsPage && isUndefinedColumnError(cErr, "packagings_page_enabled")) {
+    packagingsPageColumn.markMissing();
+    askedPackagingsPage = false;
+    ({ data: companyRaw, error: cErr } = await runCompanyQuery({
+      withQuickSupply: askedQuickSupply,
+      withSaleDocuments: askedSaleDocuments,
+      withPackagingsPage: false,
     }));
   }
   if (cErr) throw mapSupabaseError(cErr);
@@ -393,6 +415,7 @@ async function fetchAppContext(): Promise<AppContextData | null> {
       dualCashierEnabled: false,
       quickSupplyEnabled: false,
       saleDocumentsEnabled: false,
+      packagingsPageEnabled: false,
       onlineStoreEnabled: false,
       promoAdGenerationEnabled,
     };
@@ -428,6 +451,7 @@ async function fetchAppContext(): Promise<AppContextData | null> {
     dual_cashier_enabled?: boolean | null;
     quick_supply_enabled?: boolean | null;
     sale_documents_enabled?: boolean | null;
+    packagings_page_enabled?: boolean | null;
     online_store_enabled?: boolean | null;
   };
   const warehouseFeatureEnabled = cr.warehouse_feature_enabled !== false;
@@ -459,6 +483,8 @@ async function fetchAppContext(): Promise<AppContextData | null> {
   const quickSupplyEnabled = cr.quick_supply_enabled === true;
   // Devis & Factures : additif, activé par le propriétaire dans Paramètres.
   const saleDocumentsEnabled = cr.sale_documents_enabled === true;
+  // Page Conditionnements : additive, ouverte par le propriétaire dans Paramètres.
+  const packagingsPageEnabled = cr.packagings_page_enabled === true;
   // Boutique en ligne : additif, ouvert par la plateforme (super admin).
   const onlineStoreEnabled = cr.online_store_enabled === true;
 
@@ -519,6 +545,7 @@ async function fetchAppContext(): Promise<AppContextData | null> {
       dualCashierEnabled,
       quickSupplyEnabled,
       saleDocumentsEnabled,
+      packagingsPageEnabled,
       onlineStoreEnabled,
       promoAdGenerationEnabled,
       supportSession: supportSession
@@ -617,6 +644,7 @@ async function fetchAppContext(): Promise<AppContextData | null> {
     dualCashierEnabled,
     quickSupplyEnabled,
     saleDocumentsEnabled,
+    packagingsPageEnabled,
     onlineStoreEnabled,
     promoAdGenerationEnabled,
     hiddenPages,
