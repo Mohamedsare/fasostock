@@ -454,6 +454,7 @@ export function ProgressiveScreen() {
         storeName={store?.name ?? ""}
         terms={terms}
         products={products}
+        stockByProductId={stockByProductId}
         editing={editing}
         onSaved={(planId, isNew) => {
           refreshAll(planId);

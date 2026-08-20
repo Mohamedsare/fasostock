@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   MdAdd,
+  MdChecklist,
   MdClose,
   MdDelete,
   MdInfoOutline,
@@ -11,7 +12,7 @@ import {
   MdShoppingCart,
 } from "react-icons/md";
 import { fsInputClass } from "@/components/ui/fs-screen-primitives";
-import { FsSearchSelect } from "@/components/ui/fs-search-select";
+import { ProgressiveProductPickerDialog } from "@/components/progressive/progressive-product-picker-dialog";
 import {
   listProgressivePlanItems,
   saveProgressivePlan,
@@ -62,6 +63,7 @@ export function ProgressivePlanFormDialog({
   storeName,
   terms,
   products,
+  stockByProductId,
   editing,
   onSaved,
 }: {
@@ -72,6 +74,8 @@ export function ProgressivePlanFormDialog({
   storeName: string;
   terms: ProgressiveTerms;
   products: ProductItem[];
+  /** Stock de la boutique — affiché en face de chaque article à cocher. */
+  stockByProductId?: Map<string, number>;
   editing: ProgressivePlan | null;
   /** `planId` du dossier enregistré ; `isNew` pour enchaîner sur le 1er versement. */
   onSaved: (planId: string, isNew: boolean) => void;
@@ -84,7 +88,7 @@ export function ProgressivePlanFormDialog({
   const [targetAmount, setTargetAmount] = useState("");
   const [notes, setNotes] = useState("");
   const [items, setItems] = useState<DraftItem[]>([]);
-  const [picker, setPicker] = useState("");
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   // Sélection déjà enregistrée (modification d'un dossier existant).
   const existingItemsQ = useQuery({
@@ -103,7 +107,7 @@ export function ProgressivePlanFormDialog({
     setAddress(editing?.clientAddress ?? "");
     setTargetAmount(editing?.targetAmount != null ? String(Math.round(editing.targetAmount)) : "");
     setNotes(editing?.notes ?? "");
-    setPicker("");
+    setPickerOpen(false);
     setItems([]);
   }, [open, editing]);
 
@@ -128,41 +132,36 @@ export function ProgressivePlanFormDialog({
     [products],
   );
 
-  const productOptions = useMemo(
-    () => [
-      { id: "", name: `— Ajouter un ${terms.singular} —` },
-      ...sellable.map((p) => ({
-        id: p.id,
-        name: `${p.name} · ${formatCurrency(Number(p.sale_price ?? 0))}`,
-      })),
-    ],
-    [sellable, terms.singular],
+  const selectedProductIds = useMemo(
+    () => items.map((it) => it.productId).filter(Boolean),
+    [items],
   );
 
-  function addProduct(productId: string) {
-    if (!productId) return;
-    const product = sellable.find((p) => p.id === productId);
-    if (!product) return;
+  /**
+   * Applique la sélection cochée dans le sélecteur multiple. Les lignes déjà
+   * présentes gardent leur quantité et leur prix négocié ; les articles
+   * décochés sortent du dossier.
+   */
+  function applySelection(productIds: string[]) {
     setItems((prev) => {
-      // Déjà dans la sélection : on incrémente plutôt que d'empiler un doublon.
-      const existing = prev.find((it) => it.productId === productId);
-      if (existing) {
-        return prev.map((it) =>
-          it.key === existing.key ? { ...it, quantity: it.quantity + 1 } : it,
-        );
-      }
-      return [
-        ...prev,
-        {
+      const keep = new Set(productIds);
+      const kept = prev.filter((it) => !it.productId || keep.has(it.productId));
+      const already = new Set(kept.map((it) => it.productId));
+      const added: DraftItem[] = [];
+      for (const id of productIds) {
+        if (already.has(id)) continue;
+        const product = sellable.find((p) => p.id === id);
+        if (!product) continue;
+        added.push({
           key: newKey(),
-          productId,
+          productId: id,
           label: product.name,
           quantity: 1,
           unitPrice: String(Math.round(Number(product.sale_price ?? 0))),
-        },
-      ];
+        });
+      }
+      return [...kept, ...added];
     });
-    setPicker("");
   }
 
   function patchItem(key: string, patch: Partial<DraftItem>) {
@@ -314,18 +313,21 @@ export function ProgressivePlanFormDialog({
             </div>
             <p className="mb-2 flex items-start gap-1.5 text-xs text-neutral-600">
               <MdInfoOutline className="mt-px h-4 w-4 shrink-0 text-fs-accent" aria-hidden />
-              Choisissez tous les {terms.plural} que le client veut, avec la quantité et le
-              prix convenu pour chacun. Le total devient son objectif — et sa facture
-              proforma A4.
+              Cochez tous les {terms.plural} que le client veut — autant qu&apos;il en faut —
+              puis ajustez la quantité et le prix convenu de chaque ligne. Le total devient
+              son objectif, et sa facture proforma A4.
             </p>
 
-            <FsSearchSelect
-              value={picker}
-              options={productOptions}
-              onChange={addProduct}
-              placeholder={`— Ajouter un ${terms.singular} —`}
-              ariaLabel={`Ajouter un ${terms.singular} à la sélection`}
-            />
+            <button
+              type="button"
+              onClick={() => setPickerOpen(true)}
+              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-fs-accent/40 bg-[color-mix(in_srgb,var(--fs-accent)_8%,transparent)] px-3 text-sm font-bold text-fs-accent"
+            >
+              <MdChecklist className="h-5 w-5" aria-hidden />
+              {items.length > 0
+                ? `Modifier la sélection (${items.length})`
+                : `Choisir les ${terms.plural}`}
+            </button>
 
             {items.length > 0 ? (
               <ul className="mt-3 space-y-2">
@@ -472,6 +474,16 @@ export function ProgressivePlanFormDialog({
           </button>
         </div>
       </div>
+
+      <ProgressiveProductPickerDialog
+        open={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        products={sellable}
+        stockByProductId={stockByProductId}
+        selectedIds={selectedProductIds}
+        terms={terms}
+        onConfirm={applySelection}
+      />
     </div>
   );
 }
