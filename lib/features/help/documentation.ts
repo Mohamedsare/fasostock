@@ -609,6 +609,26 @@ export const DOC_GROUPS: DocGroup[] = [
             ],
           },
           {
+            kind: "bullets",
+            title: "Aller vite sur tout le catalogue",
+            items: [
+              "« Enregistrer et suivant » passe directement au produit suivant à remplir : on descend la liste sans jamais revenir à la souris.",
+              "Sur un produit vide, un bandeau propose de reprendre le lot du produit précédent (« Carton ×12 · 42 000 ») — pratique quand toute une gamme a le même carton.",
+              "Raccourcis clavier : Ctrl + Entrée enregistre, Échap referme.",
+              "La barre de progression indique le pourcentage du catalogue déjà renseigné.",
+            ],
+          },
+          {
+            kind: "bullets",
+            title: "Exporter en PDF pour vérifier",
+            items: [
+              "Le bouton « Exporter en PDF » produit une feuille de vérification : chaque produit avec son prix de détail, puis chaque lot avec son contenu, le prix du lot entier et le prix ramené à une pièce.",
+              "Le pourcentage en fin de ligne dit combien la pièce coûte de moins (ou de plus) qu'au détail — c'est ce qui permet de relire cent références en diagonale.",
+              "Les lots impossibles sont surlignés en rouge et marqués « à vérifier ».",
+              "Le PDF reprend exactement ce qui est affiché : filtrez d'abord (catégorie, « Prix à revoir »…), le document le rappelle en en-tête.",
+            ],
+          },
+          {
             kind: "note",
             tone: "tip",
             title: "Le bon réflexe",
