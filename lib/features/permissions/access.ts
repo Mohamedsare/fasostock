@@ -767,6 +767,10 @@ const APP_SHELL_ROUTE_PREFIXES: readonly string[] = [
   ROUTES.dashboard,
   ROUTES.tradeWorkspace,
   ROUTES.products,
+  // Conditionnements : page du catalogue au même titre que Produits. Sans cette
+  // ligne, la garde de route la refuse à TOUT LE MONDE — drapeau ouvert ou non —
+  // car la liste ci-dessous est une liste blanche, pas une liste d'exceptions.
+  ROUTES.packagings,
   ROUTES.parts,
   ROUTES.restock,
   ROUTES.productLocations,
