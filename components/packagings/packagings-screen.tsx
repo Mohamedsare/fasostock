@@ -1,6 +1,10 @@
 "use client";
 
-import { PackagingRowsEditor } from "@/components/packagings/packaging-rows-editor";
+import {
+  PackagingRowsEditor,
+  type SavedLot,
+} from "@/components/packagings/packaging-rows-editor";
+import { downloadPackagingsPdf } from "@/lib/features/packagings/packagings-pdf";
 import { ProductListThumbnail } from "@/components/products/product-list-thumbnail";
 import { FsPullToRefresh } from "@/components/ui/fs-pull-to-refresh";
 import {
@@ -31,6 +35,7 @@ import {
 import { filterByStoreCatalog } from "@/lib/features/stores/store-catalog";
 import { useStoreCatalog } from "@/lib/features/stores/use-store-catalog";
 import { queryKeys } from "@/lib/query/query-keys";
+import { messageFromUnknownError, toast } from "@/lib/toast";
 import { cn } from "@/lib/utils/cn";
 import { formatCurrency } from "@/lib/utils/currency";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -42,6 +47,7 @@ import {
   MdEdit,
   MdInventory2,
   MdLock,
+  MdPictureAsPdf,
   MdSearch,
   MdWarningAmber,
 } from "react-icons/md";
@@ -108,6 +114,9 @@ export function PackagingsScreen() {
   const [filter, setFilter] = useState<Filter>("all");
   const [visible, setVisible] = useState(PAGE_SIZE);
   const [openId, setOpenId] = useState<string | null>(null);
+  /** Lots du dernier produit enregistré : proposés en un tap sur le suivant. */
+  const [lastLots, setLastLots] = useState<SavedLot[] | null>(null);
+  const [exporting, setExporting] = useState(false);
 
   const productsQ = useQuery({
     queryKey: queryKeys.products(companyId),
@@ -185,6 +194,59 @@ export function PackagingsScreen() {
     setVisible(PAGE_SIZE);
   }
   const shown = filtered.slice(0, shownCount);
+
+  /**
+   * Produit suivant à traiter dans la liste affichée. On saute ceux qui ont déjà un
+   * lot : la file de travail, c'est ce qui manque — sauf si le filtre courant dit le
+   * contraire (« Déjà faits », « Prix à revoir »), auquel cas on suit simplement
+   * l'ordre de la liste.
+   */
+  function nextProductId(afterId: string): string | null {
+    const idx = filtered.findIndex((p) => p.id === afterId);
+    if (idx < 0) return null;
+    const rest = filtered.slice(idx + 1);
+    if (filter === "todo" || filter === "all") {
+      const todo = rest.find((p) => packagingsOf(p).length === 0);
+      if (todo) return todo.id;
+    }
+    return rest[0]?.id ?? null;
+  }
+
+  const scopeLabel = [
+    filter === "todo"
+      ? "À remplir"
+      : filter === "done"
+        ? "Déjà faits"
+        : filter === "issues"
+          ? "Prix à revoir"
+          : "Tous les produits",
+    categoryId
+      ? (categoriesQ.data ?? []).find((c) => c.id === categoryId)?.name ?? "Catégorie"
+      : null,
+    q.trim() ? `« ${q.trim()} »` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+  async function exportPdf() {
+    if (exporting || filtered.length === 0) return;
+    setExporting(true);
+    try {
+      await downloadPackagingsPdf({
+        companyId,
+        companyName: ctx.data?.companyName ?? "",
+        companyLogoUrl: ctx.data?.companyLogoUrl ?? null,
+        storeName: ctx.data?.stores.find((st) => st.id === storeId)?.name ?? "",
+        scopeLabel,
+        products: filtered,
+      });
+      toast.success("PDF enregistré.");
+    } catch (e) {
+      toast.error(messageFromUnknownError(e, "Export PDF impossible."));
+    } finally {
+      setExporting(false);
+    }
+  }
 
   async function refreshAll() {
     await Promise.all([
@@ -265,13 +327,28 @@ export function PackagingsScreen() {
               </p>
             </div>
           </div>
-          <Link
-            href={ROUTES.products}
-            className="inline-flex shrink-0 items-center gap-2 rounded-lg bg-fs-surface-container px-3.5 py-2.5 text-sm font-semibold text-fs-text shadow-sm ring-1 ring-black/[0.06]"
-          >
-            <MdInventory2 className="h-5 w-5" aria-hidden />
-            Catalogue
-          </Link>
+          <div className="flex flex-wrap gap-2 min-[560px]:shrink-0 min-[560px]:justify-end">
+            <button
+              type="button"
+              onClick={() => void exportPdf()}
+              disabled={exporting || filtered.length === 0}
+              className="inline-flex items-center gap-2 rounded-lg bg-fs-accent px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm disabled:opacity-40"
+            >
+              {exporting ? (
+                <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/60 border-t-transparent" />
+              ) : (
+                <MdPictureAsPdf className="h-5 w-5" aria-hidden />
+              )}
+              {exporting ? "Préparation…" : "Exporter en PDF"}
+            </button>
+            <Link
+              href={ROUTES.products}
+              className="inline-flex items-center gap-2 rounded-lg bg-fs-surface-container px-3.5 py-2.5 text-sm font-semibold text-fs-text shadow-sm ring-1 ring-black/[0.06]"
+            >
+              <MdInventory2 className="h-5 w-5" aria-hidden />
+              Catalogue
+            </Link>
+          </div>
         </div>
 
         {/* Où en est le catalogue : le chiffre qui dit s'il reste du travail. */}
@@ -309,6 +386,29 @@ export function PackagingsScreen() {
               </p>
             </div>
           </div>
+          {/* Voir le travail avancer : c'est ce qui fait finir une liste de 200 articles. */}
+          {counts.total > 0 ? (
+            <div className="mt-3">
+              <div
+                className="h-2 w-full overflow-hidden rounded-full bg-fs-surface-container"
+                role="progressbar"
+                aria-valuemin={0}
+                aria-valuemax={counts.total}
+                aria-valuenow={counts.done}
+                aria-label="Produits ayant un conditionnement"
+              >
+                <div
+                  className="h-full rounded-full bg-fs-accent transition-[width] duration-500"
+                  style={{ width: `${Math.round((counts.done / counts.total) * 100)}%` }}
+                />
+              </div>
+              <p className="mt-1.5 text-[11px] text-neutral-600">
+                {counts.todo === 0
+                  ? "Tout le catalogue est renseigné."
+                  : `${Math.round((counts.done / counts.total) * 100)} % du catalogue renseigné — ${counts.todo} produit${counts.todo > 1 ? "s" : ""} à remplir.`}
+              </p>
+            </div>
+          ) : null}
         </FsCard>
 
         <FsCard padding="p-0" className="mt-4 overflow-hidden rounded-[10px] sm:rounded-[10px]">
@@ -391,7 +491,22 @@ export function PackagingsScreen() {
                 const open = openId === p.id;
                 return (
                   <li key={p.id} className="px-3 py-3 sm:px-5">
-                    <div className="flex items-start gap-3">
+                    {/*
+                      Toute la ligne ouvre l'éditeur : sur un téléphone tenu d'une main,
+                      viser un bouton de 32 px en bout de ligne est le geste qui rate.
+                    */}
+                    <div
+                      className="flex cursor-pointer items-start gap-3"
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setOpenId(open ? null : p.id)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          setOpenId(open ? null : p.id);
+                        }
+                      }}
+                    >
                       <ProductListThumbnail
                         imageUrl={firstProductImageUrl(p)}
                         className="h-11 w-11 rounded-lg"
@@ -455,7 +570,7 @@ export function PackagingsScreen() {
 
                       <button
                         type="button"
-                        onClick={() => setOpenId(open ? null : p.id)}
+                        tabIndex={-1}
                         className={cn(
                           "inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold",
                           open
@@ -478,9 +593,15 @@ export function PackagingsScreen() {
                           allProducts={productsQ.data ?? []}
                           perPiece={perPiece}
                           canEdit={canEdit}
+                          template={packagingsOf(p).length === 0 ? lastLots : null}
+                          hasNext={nextProductId(p.id) != null}
                           onClose={() => setOpenId(null)}
-                          onSaved={async () => {
-                            setOpenId(null);
+                          onSaved={async (saved, goNext) => {
+                            // Le suivant est choisi AVANT le rafraîchissement : une fois
+                            // la liste rechargée, ce produit peut avoir quitté le filtre.
+                            const next = goNext ? nextProductId(p.id) : null;
+                            setLastLots(saved.length > 0 ? saved : null);
+                            setOpenId(next);
                             await qc.invalidateQueries({
                               queryKey: queryKeys.products(companyId),
                             });

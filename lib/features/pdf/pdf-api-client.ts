@@ -140,6 +140,30 @@ export async function fetchSubscriptionInvoicePdfBlob(
   return postPdf("/api/pdf/subscription-invoice", JSON.stringify({ requestId }));
 }
 
+/**
+ * Feuille de vérification des conditionnements. Les lignes partent telles qu'elles
+ * sont affichées (filtres compris) : le document doit montrer ce que l'utilisateur
+ * avait sous les yeux, pas une autre lecture de la base.
+ */
+export async function fetchPackagingsPdfBlob(data: {
+  companyId: string;
+  companyName: string;
+  companyLogoUrl?: string | null;
+  storeName: string;
+  scopeLabel: string;
+  items: unknown[];
+}): Promise<Blob> {
+  return postPdf(
+    "/api/pdf/packagings",
+    JSON.stringify({
+      ...data,
+      generatedAtIso: new Date().toISOString(),
+      // Le rendu serveur est partagé entre requêtes : il n'a aucune devise ambiante.
+      currencyCode: getActiveCurrency(),
+    }),
+  );
+}
+
 export async function fetchStoreProductsPdfBlob(data: {
   companyId: string;
   storeId?: string | null;

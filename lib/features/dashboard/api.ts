@@ -18,6 +18,7 @@ import type {
   CategorySales,
   DashboardData,
   ExpensesSummary,
+  PaymentMixEntry,
   PurchasesSummary,
   ReportsPageData,
   SalesByDay,
@@ -29,6 +30,10 @@ import type {
   TeamPerformanceData,
   TopProduct,
 } from "@/lib/features/dashboard/types";
+import {
+  paymentDisplay,
+  type PaymentDisplayKind,
+} from "@/lib/features/payments/payment-display";
 import { countLowStockAlerts } from "@/lib/features/inventory/stock-alert-count";
 import {
   effectiveStockAlertThreshold,
@@ -519,8 +524,11 @@ async function fetchCashRecognizedInRange(
   /** Part de la recette provenant du remboursement de crédits d'anciennes ventes (créées AVANT la période). */
   creditRepayments: number;
   byDay: Map<string, { revenue: number; margin: number }>;
+  /** Même recette, ventilée par moyen de paiement (Σ montants = `revenue`). */
+  paymentMix: PaymentMixEntry[];
 }> {
   const byDay = new Map<string, { revenue: number; margin: number }>();
+  const emptyMix: PaymentMixEntry[] = [];
 
   // 1) Paiements réels encaissés sur la période (RLS = entreprise courante).
   // Paginé : c'est la recette caisse du tableau de bord. Une boutique encaisse plus de
@@ -529,7 +537,9 @@ async function fetchCashRecognizedInRange(
   const { data: payRows, error: pErr } = await fetchAllPages((from, to) =>
     supabase
       .from("sale_payments")
-      .select("sale_id, amount, method, created_at")
+      // `reference` porte l'opérateur mobile money (Orange / Moov / Wave) : il n'a pas
+      // de colonne dédiée en base, cf. `payment-display.ts`.
+      .select("sale_id, amount, method, reference, created_at")
       .neq("method", "other")
       .gte("created_at", localDayStartIso(fromDate))
       .lte("created_at", localDayEndIso(toDate))
@@ -540,15 +550,20 @@ async function fetchCashRecognizedInRange(
   const payments = ((payRows ?? []) as Array<{
     sale_id?: string;
     amount?: number;
+    method?: string;
+    reference?: string | null;
     created_at?: string;
   }>)
     .filter((r) => r.sale_id)
     .map((r) => ({
       saleId: String(r.sale_id),
       amount: Number(r.amount ?? 0),
+      method: String(r.method ?? ""),
+      reference: r.reference ?? null,
       createdAt: String(r.created_at ?? ""),
     }));
-  if (payments.length === 0) return { revenue: 0, margin: 0, creditRepayments: 0, byDay };
+  if (payments.length === 0)
+    return { revenue: 0, margin: 0, creditRepayments: 0, byDay, paymentMix: emptyMix };
 
   const saleIds = [...new Set(payments.map((p) => p.saleId))];
 
@@ -576,7 +591,8 @@ async function fetchCashRecognizedInRange(
     const ms = row.created_at ? Date.parse(row.created_at) : NaN;
     saleCreatedMsById.set(row.id, Number.isFinite(ms) ? ms : 0);
   }
-  if (eligible.size === 0) return { revenue: 0, margin: 0, creditRepayments: 0, byDay };
+  if (eligible.size === 0)
+    return { revenue: 0, margin: 0, creditRepayments: 0, byDay, paymentMix: emptyMix };
 
   // 3) Coût des ventes éligibles → ratio de marge par vente.
   const costById = new Map<string, number>();
@@ -612,6 +628,9 @@ async function fetchCashRecognizedInRange(
   let revenue = 0;
   let margin = 0;
   let creditRepayments = 0;
+  // Ventilation par moyen de paiement, alimentée dans la MÊME boucle (donc filtrée par
+  // les mêmes ventes éligibles) : la somme des lignes égale toujours `revenue`.
+  const mixByKind = new Map<PaymentDisplayKind, { label: string; amount: number; count: number }>();
   for (const p of payments) {
     if (!eligible.has(p.saleId)) continue;
     const total = totalById.get(p.saleId) ?? 0;
@@ -621,6 +640,11 @@ async function fetchCashRecognizedInRange(
     const mar = p.amount * marginRatio;
     revenue += rev;
     margin += mar;
+    const disp = paymentDisplay({ method: p.method, reference: p.reference });
+    const mix = mixByKind.get(disp.kind) ?? { label: disp.label, amount: 0, count: 0 };
+    mix.amount += rev;
+    mix.count += 1;
+    mixByKind.set(disp.kind, mix);
     const saleMs = saleCreatedMsById.get(p.saleId) ?? 0;
     const payMs = p.createdAt ? Date.parse(p.createdAt) : NaN;
     if (saleMs > 0 && Number.isFinite(payMs) && payMs - saleMs > REPAYMENT_GAP_MS) {
@@ -634,7 +658,10 @@ async function fetchCashRecognizedInRange(
       byDay.set(day, cur);
     }
   }
-  return { revenue, margin, creditRepayments, byDay };
+  const paymentMix: PaymentMixEntry[] = [...mixByKind.entries()]
+    .map(([kind, v]) => ({ kind, label: v.label, amount: v.amount, count: v.count }))
+    .sort((a, b) => b.amount - a.amount);
+  return { revenue, margin, creditRepayments, byDay, paymentMix };
 }
 
 /** Ratio de reconnaissance d'une vente (défaut 1 si inconnu). */
@@ -1804,6 +1831,8 @@ export async function fetchDashboardData(params: {
     dayExpenses,
     dayCreditRepayments: cashDay.creditRepayments,
     periodCreditRepayments: cashRange.creditRepayments,
+    dayPaymentMix: cashDay.paymentMix,
+    periodPaymentMix: cashRange.paymentMix,
   };
 }
 

@@ -50,6 +50,10 @@ import {
   fetchInvoiceTablePosEnabled,
   peekInvoiceTablePosEnabled,
 } from "@/lib/features/settings/invoice-table-pos";
+import {
+  fetchDashboardPaymentMixEnabled,
+  peekDashboardPaymentMixEnabled,
+} from "@/lib/features/settings/dashboard-payment-mix";
 import { activityUiTerms } from "@/lib/features/activity/activity-profiles";
 import { PharmacyExpiryCard } from "@/components/dashboard/pharmacy-expiry-card";
 import { formatCurrency } from "@/lib/utils/currency";
@@ -170,6 +174,21 @@ export function DashboardScreen() {
     hasPermission(P.salesInvoiceA4Table) &&
     canInvoiceA4 &&
     (invoiceTableDashQ.data ?? false);
+
+  /*
+    Réglage owner « Détail des encaissements ». Coupé par défaut : sans lui, le tableau
+    de bord n'affiche aucun volet supplémentaire. Le `peek` évite que le volet apparaisse
+    une seconde après le reste de la page.
+  */
+  const peekPaymentMix =
+    companyId.length > 0 ? peekDashboardPaymentMixEnabled(companyId) : undefined;
+  const paymentMixQ = useQuery({
+    queryKey: queryKeys.dashboardPaymentMixEnabled(companyId),
+    queryFn: () => fetchDashboardPaymentMixEnabled(companyId),
+    enabled: !!companyId,
+    staleTime: 60_000,
+    ...(peekPaymentMix !== undefined ? { initialData: peekPaymentMix } : {}),
+  });
 
   useEffect(() => {
     if (scope === "store" && stores.length === 0) setScope("company");
@@ -337,6 +356,7 @@ export function DashboardScreen() {
             canFactureTab={canFactureTab}
             isFetching={dashQ.isFetching}
             isPlaceholderData={dashQ.isPlaceholderData}
+            paymentMixEnabled={paymentMixQ.data ?? false}
           />
         ) : null}
       </FsPage>

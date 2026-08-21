@@ -251,6 +251,9 @@ export const queryKeys = {
     ["pos-cart-settings", mode === "quick" ? "quick" : "a4"] as const,
   invoiceTablePosEnabled: (companyId: string) =>
     ["invoice-table-pos", companyId] as const,
+  /** Réglage owner « détail des encaissements » du tableau de bord (`company_settings`). */
+  dashboardPaymentMixEnabled: (companyId: string) =>
+    ["dashboard-payment-mix", companyId] as const,
   /** Réglage owner « vente à crédit en caisse rapide » (`company_settings`). */
   quickPosCreditEnabled: (companyId: string) =>
     ["quick-pos-credit", companyId] as const,

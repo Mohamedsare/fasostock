@@ -50,6 +50,7 @@ import {
   DashboardLineChart,
   DashboardPieChart,
 } from "@/components/dashboard/dashboard-charts";
+import { PaymentMixPanel } from "@/components/dashboard/payment-mix-panel";
 import { FsHorizontalScroll } from "@/components/ui/fs-horizontal-scroll";
 import { getDefaultDateRange } from "@/lib/features/dashboard/date-range";
 
@@ -521,6 +522,8 @@ export type OwnerDashboardUiProps = {
   canFactureTab: boolean;
   isFetching: boolean;
   isPlaceholderData: boolean;
+  /** Réglage owner « Détail des encaissements » — volet repliable sous les cartes. */
+  paymentMixEnabled: boolean;
 };
 
 export function OwnerDashboardUi(props: OwnerDashboardUiProps) {
@@ -555,6 +558,7 @@ export function OwnerDashboardUi(props: OwnerDashboardUiProps) {
     canFactureTab,
     isFetching,
     isPlaceholderData,
+    paymentMixEnabled,
   } = props;
 
   const router = useRouter();
@@ -638,6 +642,8 @@ export function OwnerDashboardUi(props: OwnerDashboardUiProps) {
     }
   })();
   const daySuffix = isSelectedToday ? "aujourd'hui" : `le ${dayShort}`;
+  /** Variante complément de nom : « les encaissements DU jour / DU 20/07 ». */
+  const dayOfSuffix = isSelectedToday ? "du jour" : `du ${dayShort}`;
 
   /**
    * `isPlaceholderData` = les chiffres affichés appartiennent encore à la sélection
@@ -889,6 +895,22 @@ export function OwnerDashboardUi(props: OwnerDashboardUiProps) {
                 );
               })()
             : null}
+
+          {/*
+            Extension repliable du bandeau du jour. Réglage coupé ⇒ rien n'est rendu :
+            le bandeau reste identique à ce qu'il a toujours été.
+          */}
+          {paymentMixEnabled ? (
+            <PaymentMixPanel
+              title={`Détail des encaissements ${dayOfSuffix}`}
+              entries={d.dayPaymentMix ?? []}
+              total={d.daySalesSummary.totalAmount}
+              loading={dayFiguresStale}
+              storageKey="fs.dashboard.paymentMix.day"
+              emptyLabel={`Aucun encaissement ${daySuffix}.`}
+            />
+          ) : null}
+
           <div className="mt-3">
             <button
               type="button"
@@ -1259,6 +1281,18 @@ export function OwnerDashboardUi(props: OwnerDashboardUiProps) {
             href={helpers.canInventory ? ROUTES.inventory : reportsHref}
           />
         </div>
+
+        {/* Extension repliable des tuiles KPI — même volet, portée PÉRIODE. */}
+        {paymentMixEnabled ? (
+          <PaymentMixPanel
+            title="Détail des encaissements de la période"
+            entries={d.periodPaymentMix ?? []}
+            total={d.salesSummary.totalAmount}
+            loading={isPlaceholderData}
+            storageKey="fs.dashboard.paymentMix.period"
+            emptyLabel="Aucun encaissement sur cette période."
+          />
+        ) : null}
 
         {/* Graphiques (2 colonnes) */}
         <div

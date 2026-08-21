@@ -1,3 +1,5 @@
+import type { PaymentDisplayKind } from "@/lib/features/payments/payment-display";
+
 export type SalesSummary = {
   totalAmount: number;
   count: number;
@@ -36,6 +38,23 @@ export type StockWatchSample = {
   storeName?: string;
 };
 
+/**
+ * Une ligne du volet « Détail des encaissements » : combien d'argent est réellement
+ * entré par ce moyen de paiement, et en combien de règlements.
+ *
+ * `kind` vient de `paymentDisplay` — l'opérateur mobile money n'a pas de colonne en
+ * base, il est déduit de `sale_payments.reference` (cf. `payment-display.ts`). Un
+ * paiement mobile money sans opérateur reconnaissable retombe sur `mobile_money`.
+ * Les lignes `method = 'other'` (solde laissé à crédit) sont exclues : aucun argent
+ * n'a été encaissé, la somme des lignes égale donc exactement le CA encaissé affiché.
+ */
+export type PaymentMixEntry = {
+  kind: PaymentDisplayKind;
+  label: string;
+  amount: number;
+  count: number;
+};
+
 export type DashboardData = {
   salesSummary: SalesSummary;
   ticketAverage: number;
@@ -64,6 +83,15 @@ export type DashboardData = {
   dayCreditRepayments: number;
   /** Logique caisse : part de l'encaissé de la PÉRIODE provenant de crédits d'anciennes ventes. */
   periodCreditRepayments: number;
+  /**
+   * Ventilation par moyen de paiement de l'encaissé du JOUR sélectionné, triée du
+   * montant le plus fort au plus faible. Σ des montants = `daySalesSummary.totalAmount`.
+   * Toujours calculée (aucune requête de plus) ; c'est l'affichage qui est optionnel
+   * — volet « Détail des encaissements », ouvert par le propriétaire dans Paramètres.
+   */
+  dayPaymentMix: PaymentMixEntry[];
+  /** Idem pour la PÉRIODE. Σ des montants = `salesSummary.totalAmount`. */
+  periodPaymentMix: PaymentMixEntry[];
 };
 
 /** Aligné `StockAlerts` / `getStockAlerts` (Flutter `reports_offline_repository.dart`). */

@@ -15,8 +15,15 @@ import { messageFromUnknownError, toast } from "@/lib/toast";
 import { cn } from "@/lib/utils/cn";
 import { formatCurrency, toNumber } from "@/lib/utils/currency";
 import { useMutation } from "@tanstack/react-query";
-import { useRef, useState } from "react";
-import { MdAdd, MdCheck, MdClose, MdQrCode2 } from "react-icons/md";
+import { useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import {
+  MdAdd,
+  MdArrowForward,
+  MdCheck,
+  MdClose,
+  MdContentCopy,
+  MdQrCode2,
+} from "react-icons/md";
 
 /** Types proposés en un tap — mêmes libellés que la fiche produit. */
 const PACKAGING_LABELS = [
@@ -36,6 +43,9 @@ const PACKAGING_LABELS = [
 
 /** Contenus courants : le geste le plus fréquent tient alors en deux taps. */
 const FACTOR_PRESETS = [6, 10, 12, 20, 24, 25, 50, 100] as const;
+
+/** Ce qu'un produit vient d'enregistrer — sert de modèle au produit suivant. */
+export type SavedLot = { label: string; factor: number; total: number };
 
 type Row = {
   key: string;
@@ -78,6 +88,8 @@ export function PackagingRowsEditor({
   allProducts,
   perPiece,
   canEdit,
+  template,
+  hasNext,
   onClose,
   onSaved,
 }: {
@@ -86,8 +98,12 @@ export function PackagingRowsEditor({
   allProducts: ProductItem[];
   perPiece: boolean;
   canEdit: boolean;
+  /** Lots du dernier produit enregistré : repris en un tap (« Carton ×12 » en série). */
+  template?: SavedLot[] | null;
+  /** Vrai s'il reste un produit à remplir après celui-ci (bouton « Suivant »). */
+  hasNext: boolean;
   onClose: () => void;
-  onSaved: () => void;
+  onSaved: (saved: SavedLot[], goNext: boolean) => void;
 }) {
   const [rows, setRows] = useState<Row[]>(() => {
     const existing = rowsFromProduct(product, perPiece);
@@ -108,6 +124,37 @@ export function PackagingRowsEditor({
    */
   const factorInputs = useRef(new Map<string, HTMLInputElement | null>());
 
+  /**
+   * Remplir cent produits se fait au clavier : Échap referme, Ctrl (ou ⌘) + Entrée
+   * enregistre sans aller chercher le bouton. Les touches seules restent libres —
+   * on tape des chiffres dans ces champs.
+   */
+  function onKeyDown(e: ReactKeyboardEvent<HTMLDivElement>) {
+    if (e.key === "Escape") {
+      e.stopPropagation();
+      onClose();
+      return;
+    }
+    if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && canEdit && !saveMut.isPending) {
+      e.preventDefault();
+      saveMut.mutate(false);
+    }
+  }
+
+  /** Reprend les lots du produit précédent (même carton, même contenu, même prix). */
+  function applyTemplate(lots: SavedLot[]) {
+    setRows(
+      lots.map((l) => ({
+        key: newKey(),
+        label: l.label,
+        factor: String(l.factor),
+        price: packagingPriceInputValue(l.total, l.factor, perPiece),
+        barcode: "",
+      })),
+    );
+    setError(null);
+  }
+
   function update(key: string, field: keyof Omit<Row, "key" | "id">, value: string) {
     setRows((rs) => rs.map((r) => (r.key === key ? { ...r, [field]: value } : r)));
     setError(null);
@@ -127,7 +174,7 @@ export function PackagingRowsEditor({
   }
 
   const saveMut = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (goNext: boolean) => {
       const drafts: ProductPackagingDraft[] = [];
       const dropped = [...removedIds];
       for (const r of rows) {
@@ -166,21 +213,30 @@ export function PackagingRowsEditor({
       });
       if (collision) throw new Error(collision);
       await saveProductPackagings(companyId, product.id, drafts, dropped);
-      return drafts.length;
+      const saved: SavedLot[] = drafts.map((d) => ({
+        label: d.label,
+        factor: d.factor,
+        total: packagingTotalPrice(d.price, d.factor, product.sale_price),
+      }));
+      return { saved, goNext };
     },
-    onSuccess: (count) => {
+    onSuccess: ({ saved, goNext }) => {
+      const count = saved.length;
       toast.success(
         count === 0
           ? `${product.name} : plus aucun conditionnement.`
           : `${product.name} : ${count} conditionnement${count > 1 ? "s" : ""} enregistré${count > 1 ? "s" : ""}.`,
       );
-      onSaved();
+      onSaved(saved, goNext);
     },
     onError: (e) => setError(messageFromUnknownError(e)),
   });
 
   return (
-    <div className="rounded-[10px] border border-fs-accent/25 bg-fs-accent/[0.04] p-3 sm:p-4">
+    <div
+      className="rounded-[10px] border border-fs-accent/25 bg-fs-accent/[0.04] p-3 sm:p-4"
+      onKeyDown={onKeyDown}
+    >
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <p className="text-sm font-semibold text-fs-text">Lots de « {product.name} »</p>
         <p className="text-[11px] text-neutral-600">
@@ -188,6 +244,26 @@ export function PackagingRowsEditor({
           {perPiece ? "prix demandé à la pièce du lot" : "prix demandé pour le lot entier"}
         </p>
       </div>
+
+      {/*
+        Le même carton revient sur des dizaines de références (« Carton ×12 » sur toute
+        une gamme). Le reproposer en un tap évite de retaper type, contenu et prix.
+      */}
+      {canEdit && template && template.length > 0 ? (
+        <button
+          type="button"
+          onClick={() => applyTemplate(template)}
+          className="mt-3 inline-flex flex-wrap items-center gap-1.5 rounded-lg border border-fs-accent/40 bg-fs-card px-3 py-2 text-left text-xs font-semibold text-fs-accent"
+        >
+          <MdContentCopy className="h-4 w-4 shrink-0" aria-hidden />
+          Reprendre le précédent :
+          <span className="font-bold">
+            {template
+              .map((l) => `${l.label} ×${l.factor} · ${formatCurrency(l.total)}`)
+              .join("  ·  ")}
+          </span>
+        </button>
+      ) : null}
 
       <div className="mt-3 space-y-3">
         {rows.map((r) => {
@@ -353,28 +429,45 @@ export function PackagingRowsEditor({
         </p>
       ) : null}
 
-      <div className="mt-3 flex gap-2">
+      <div className="mt-3 flex flex-wrap gap-2">
         <button
           type="button"
           onClick={onClose}
-          className="inline-flex min-h-11 flex-1 items-center justify-center rounded-lg border border-black/10 bg-fs-card text-sm font-semibold text-neutral-700"
+          className="inline-flex min-h-11 flex-1 basis-[120px] items-center justify-center rounded-lg border border-black/10 bg-fs-card text-sm font-semibold text-neutral-700"
         >
           Fermer
         </button>
         <button
           type="button"
           disabled={!canEdit || saveMut.isPending}
-          onClick={() => saveMut.mutate()}
-          className="inline-flex min-h-11 flex-[1.4] items-center justify-center gap-2 rounded-lg bg-fs-accent text-sm font-bold text-white disabled:opacity-50"
+          onClick={() => saveMut.mutate(false)}
+          className="inline-flex min-h-11 flex-1 basis-[140px] items-center justify-center gap-2 rounded-lg border border-fs-accent/40 bg-fs-card text-sm font-bold text-fs-accent disabled:opacity-50"
+        >
+          <MdCheck className="h-5 w-5" aria-hidden />
+          Enregistrer
+        </button>
+        {/*
+          Le geste utile n'est pas « enregistrer », c'est « enregistrer et passer au
+          suivant » : c'est lui qui permet de descendre une liste de deux cents
+          articles sans jamais revenir à la souris.
+        */}
+        <button
+          type="button"
+          disabled={!canEdit || saveMut.isPending || !hasNext}
+          onClick={() => saveMut.mutate(true)}
+          className="inline-flex min-h-11 flex-[1.6] basis-[190px] items-center justify-center gap-2 rounded-lg bg-fs-accent text-sm font-bold text-white disabled:opacity-50"
         >
           {saveMut.isPending ? (
             <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/60 border-t-transparent" />
           ) : (
-            <MdCheck className="h-5 w-5" aria-hidden />
+            <MdArrowForward className="h-5 w-5" aria-hidden />
           )}
-          {saveMut.isPending ? "Enregistrement…" : "Enregistrer"}
+          {saveMut.isPending ? "Enregistrement…" : "Enregistrer et suivant"}
         </button>
       </div>
+      <p className="mt-2 text-[11px] text-neutral-500">
+        Raccourcis : <b>Ctrl + Entrée</b> enregistre, <b>Échap</b> referme.
+      </p>
     </div>
   );
 }
