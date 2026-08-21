@@ -24,7 +24,10 @@ export const maxDuration = 60;
  */
 const IMAGE_FETCH_CONCURRENCY = 6;
 const MAX_EMBEDDED_IMAGES = 400;
-const MAX_EMBEDDED_TOTAL_BYTES = 12_000_000;
+// 8 Mo : mesuré, un HTML de cette taille s'imprime en ~3 s sur Chrome local.
+// Chromium serverless étant nettement plus lent, la marge sous les 20 s de
+// `setContent` reste confortable. Une vignette pèse ~20 Ko : ~350 photos.
+const MAX_EMBEDDED_TOTAL_BYTES = 8_000_000;
 
 type Body = {
   companyId: string;
