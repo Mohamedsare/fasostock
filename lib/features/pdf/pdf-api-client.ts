@@ -164,6 +164,26 @@ export async function fetchPackagingsPdfBlob(data: {
   );
 }
 
+/**
+ * Journal des mouvements d'une journée du dépôt. Heures et libellés partent déjà
+ * formatés : le rendu serveur est partagé entre requêtes et n'a ni fuseau ni devise.
+ */
+export async function fetchWarehouseMovementsPdfBlob(data: {
+  companyId: string;
+  companyName: string;
+  companyLogoUrl?: string | null;
+  warehouseName: string;
+  dayLabel: string;
+  generatedLabel: string;
+  scopeLabel: string | null;
+  rows: unknown[];
+}): Promise<Blob> {
+  return postPdf(
+    "/api/pdf/warehouse-movements",
+    JSON.stringify({ ...data, currencyCode: getActiveCurrency() }),
+  );
+}
+
 export async function fetchStoreProductsPdfBlob(data: {
   companyId: string;
   storeId?: string | null;

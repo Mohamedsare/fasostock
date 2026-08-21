@@ -11,6 +11,7 @@ import {
   listWarehouseDispatchInvoices,
   listWarehouseInventory,
   listWarehouseMovements,
+  listWarehouseMovementsForDay,
   listWarehouses,
   searchWarehouseDispatchLinesByProduct,
   warehouseUpdateDispatchInvoice,
@@ -20,6 +21,7 @@ import { listCustomers } from "@/lib/features/customers/api";
 import { listProducts } from "@/lib/features/products/api";
 import { listStores as listStoresFull } from "@/lib/features/stores/api";
 import { downloadStoreProductsPdf } from "@/lib/features/stores/generate-store-products-pdf";
+import { fetchWarehouseMovementsPdfBlob } from "@/lib/features/pdf/pdf-api-client";
 import { productThumbUrl } from "@/lib/utils/product-thumb-url";
 import type { Warehouse, WarehouseDispatchInvoiceSummary, WarehouseDispatchLineHit, WarehouseMovement, WarehouseStockLine } from "@/lib/features/warehouse/types";
 import { WAREHOUSE_PACKAGING_LABELS } from "@/lib/features/warehouse/types";
@@ -198,6 +200,59 @@ function statusColor(s: TransferStatus): string {
   }
 }
 
+/** Jour local au format `yyyy-mm-dd`, celui qu'attend `<input type="date">`. */
+function todayLocalDay(): string {
+  const d = new Date();
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+/**
+ * Bornes `[00:00, lendemain 00:00[` du jour local, en instants ISO.
+ *
+ * `created_at` est un `timestamptz` : découper la journée dans la requête
+ * supposerait un fuseau que la base n'a pas. On la découpe donc ici, où le
+ * fuseau de l'utilisateur est connu — et `setDate(+1)` traverse correctement
+ * un éventuel changement d'heure.
+ */
+function localDayRangeIso(day: string): { fromIso: string; toIso: string } | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(day);
+  if (!m) return null;
+  const from = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 0, 0, 0, 0);
+  if (Number.isNaN(from.getTime())) return null;
+  const to = new Date(from);
+  to.setDate(to.getDate() + 1);
+  return { fromIso: from.toISOString(), toIso: to.toISOString() };
+}
+
+/** « lundi 21 août 2026 » — l'en-tête du journal imprimé. */
+function formatDayLong(day: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(day);
+  if (!m) return day;
+  try {
+    return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).toLocaleDateString("fr-FR", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+  } catch {
+    return day;
+  }
+}
+
+function formatHm(iso: string): string {
+  try {
+    return new Date(iso).toLocaleTimeString("fr-FR", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
+  } catch {
+    return "—";
+  }
+}
+
 function formatDt(iso: string) {
   try {
     return new Date(iso).toLocaleString("fr-FR", {
@@ -303,6 +358,8 @@ export function WarehouseScreen() {
   const [dispatchProductSearch, setDispatchProductSearch] = useState("");
   const [dispatchProductSearchDebounced, setDispatchProductSearchDebounced] = useState("");
   const [exportingProductsPdf, setExportingProductsPdf] = useState(false);
+  const [movDay, setMovDay] = useState<string>(() => todayLocalDay());
+  const [movExportBusy, setMovExportBusy] = useState<null | "print" | "download">(null);
 
   const [transferDetailId, setTransferDetailId] = useState<string | null>(null);
   const [dispatchDetailId, setDispatchDetailId] = useState<string | null>(null);
@@ -632,6 +689,91 @@ export function WarehouseScreen() {
   function storeName(id: string | null) {
     if (!id) return "—";
     return stores.find((s) => s.id === id)?.name ?? id.slice(0, 8);
+  }
+
+  /**
+   * Journal des mouvements d'une journée, imprimé ou téléchargé.
+   *
+   * La lecture est refaite pour le jour demandé plutôt que filtrée sur ce qui est
+   * déjà à l'écran : la liste affichée est plafonnée (500 lignes, 2000 en recherche)
+   * et produirait un journal amputé sans le dire. Si une recherche est active, elle
+   * est reportée sur la journée — le papier doit correspondre à ce qui est affiché,
+   * et le document le mentionne en clair.
+   */
+  async function exportMovementsDay(mode: "print" | "download") {
+    if (movExportBusy || !companyId) return;
+    const range = localDayRangeIso(movDay);
+    if (!range) {
+      toast.error("Choisissez une date valide.");
+      return;
+    }
+    setMovExportBusy(mode);
+    try {
+      const dayMovements = await listWarehouseMovementsForDay({
+        companyId,
+        warehouseId: activeWarehouseId,
+        fromIso: range.fromIso,
+        toIso: range.toIso,
+      });
+      const term = movSearchTerm.toLowerCase();
+      const rows = term
+        ? dayMovements.filter(
+            (m) =>
+              (m.productName ?? "").toLowerCase().includes(term) ||
+              (m.productSku ?? "").toLowerCase().includes(term),
+          )
+        : dayMovements;
+      if (rows.length === 0) {
+        toast.info(
+          term
+            ? `Aucun mouvement pour « ${movSearchTerm} » le ${formatDayLong(movDay)}.`
+            : `Aucun mouvement le ${formatDayLong(movDay)}.`,
+        );
+        return;
+      }
+      const blob = await fetchWarehouseMovementsPdfBlob({
+        companyId,
+        companyName: companyName || "Entreprise",
+        companyLogoUrl,
+        warehouseName: activeWarehouseName,
+        dayLabel: formatDayLong(movDay),
+        generatedLabel: new Date().toLocaleString("fr-FR"),
+        scopeLabel: term ? `recherche « ${movSearchTerm} »` : null,
+        rows: rows.map((m) => ({
+          time: m.createdAt ? formatHm(m.createdAt) : "—",
+          productName: m.productName ?? "Produit",
+          sku: m.productSku,
+          isEntry: m.movementKind === "entry",
+          quantity: m.quantity,
+          packagingLabel: WAREHOUSE_PACKAGING_LABELS[m.packagingType] ?? m.packagingType,
+          packsQuantity: m.packsQuantity,
+          unitCost: m.unitCost,
+          reference: refLabel(m),
+          author: m.createdByLabel,
+        })),
+      });
+      if (mode === "print") {
+        printInvoicePdf(blob);
+        toast.success(
+          "Fenêtre d'impression lancée. Si rien ne sort, utilisez Ctrl+P dans l'onglet PDF.",
+        );
+      } else {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `mouvements-depot-${movDay}.pdf`;
+        a.rel = "noopener";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        toast.success(`Journal du ${formatDayLong(movDay)} téléchargé.`);
+      }
+    } catch (e) {
+      toastMutationError("warehouse-movements-day-pdf", e);
+    } finally {
+      setMovExportBusy(null);
+    }
   }
 
   async function exportWarehouseProductsPdf() {
@@ -1432,6 +1574,10 @@ export function WarehouseScreen() {
               companyId={companyId}
               voidingId={voidingId}
               onVoid={confirmVoidFromMovement}
+              day={movDay}
+              setDay={setMovDay}
+              exportBusy={movExportBusy}
+              onExportDay={exportMovementsDay}
             />
             </div>
           ) : null}
@@ -2403,6 +2549,10 @@ function MouvementsTab({
   companyId,
   voidingId,
   onVoid,
+  day,
+  setDay,
+  exportBusy,
+  onExportDay,
 }: {
   movSlice: WarehouseMovement[];
   movSafePage: number;
@@ -2415,6 +2565,10 @@ function MouvementsTab({
   companyId: string;
   voidingId: string | null;
   onVoid: (m: WarehouseMovement) => void;
+  day: string;
+  setDay: (v: string) => void;
+  exportBusy: null | "print" | "download";
+  onExportDay: (mode: "print" | "download") => void;
 }) {
   const hasSearch = search.trim().length > 0;
   const searchBar = (
@@ -2441,10 +2595,73 @@ function MouvementsTab({
     </div>
   );
 
+  const busy = exportBusy != null;
+  /**
+   * Export du journal d'une journée.
+   *
+   * Rendu au-dessus de la liste **y compris quand elle est vide** : le cas le plus
+   * courant est justement d'imprimer une journée passée, alors que l'écran ne
+   * montre que les mouvements récents.
+   */
+  const dayExportBar = (
+    <div className="overflow-hidden rounded-xl border border-blue-200 bg-white shadow-sm">
+      <div className="flex items-center gap-2 bg-gradient-to-r from-[#2563EB] to-[#1E3A8A] px-3.5 py-2 text-white">
+        <MdPictureAsPdf className="h-4 w-4 shrink-0" aria-hidden />
+        <span className="text-[11px] font-extrabold uppercase tracking-[0.14em]">
+          Journal d&apos;une journée
+        </span>
+      </div>
+      <div className="flex flex-wrap items-end gap-2.5 bg-gradient-to-b from-blue-50/70 to-white p-3.5">
+        <label className="flex min-w-[170px] flex-1 flex-col gap-1">
+          <span className="text-[10px] font-extrabold uppercase tracking-wider text-blue-900/60">
+            Date à imprimer
+          </span>
+          <input
+            type="date"
+            value={day}
+            max={todayLocalDay()}
+            onChange={(e) => setDay(e.target.value)}
+            aria-label="Date des mouvements à imprimer"
+            className="h-11 w-full rounded-lg border border-blue-200 bg-white px-3 text-sm font-bold text-blue-950 outline-none transition-colors focus:border-[#2563EB]"
+          />
+        </label>
+        <button
+          type="button"
+          onClick={() => onExportDay("print")}
+          disabled={busy}
+          className="inline-flex h-11 min-w-[124px] flex-1 items-center justify-center gap-2 rounded-lg bg-[#2563EB] px-4 text-sm font-bold text-white shadow-sm transition-colors hover:bg-[#1D4ED8] disabled:opacity-50"
+        >
+          <MdPrint className="h-[18px] w-[18px] shrink-0" aria-hidden />
+          {exportBusy === "print" ? "Préparation…" : "Imprimer"}
+        </button>
+        <button
+          type="button"
+          onClick={() => onExportDay("download")}
+          disabled={busy}
+          className="inline-flex h-11 min-w-[124px] flex-1 items-center justify-center gap-2 rounded-lg border border-blue-300 bg-white px-4 text-sm font-bold text-[#1D4ED8] transition-colors hover:bg-blue-50 disabled:opacity-50"
+        >
+          <MdDownload className="h-[18px] w-[18px] shrink-0" aria-hidden />
+          {exportBusy === "download" ? "Préparation…" : "Télécharger"}
+        </button>
+      </div>
+      <p className="border-t border-blue-100 bg-white px-3.5 py-2 text-[11px] leading-relaxed text-neutral-600">
+        Toutes les entrées et sorties de la journée choisie, avec les totaux et
+        l&apos;auteur de chaque écriture.
+        {hasSearch ? (
+          <span className="font-semibold text-[#1D4ED8]">
+            {" "}
+            La recherche « {search.trim()} » sera appliquée au document.
+          </span>
+        ) : null}
+      </p>
+    </div>
+  );
+
   // Aucun mouvement du tout (hors recherche) : conserver l'état vide d'origine.
   if (movementsLen === 0 && !hasSearch) {
     return (
       <div className="space-y-3">
+        {dayExportBar}
         {searchBar}
         <div className="pb-8 pt-12 text-center sm:pt-16">
           <MdSwapHoriz className="mx-auto h-12 w-12 text-neutral-300" />
@@ -2460,6 +2677,7 @@ function MouvementsTab({
   if (movementsLen === 0) {
     return (
       <div className="space-y-3">
+        {dayExportBar}
         {searchBar}
         <div className="pb-8 pt-10 text-center">
           <MdSearch className="mx-auto h-10 w-10 text-neutral-300" />
@@ -2476,6 +2694,7 @@ function MouvementsTab({
 
   return (
     <div className="space-y-3 pb-6">
+      {dayExportBar}
       {searchBar}
       <FsHorizontalScroll className="rounded-lg border border-black/6 bg-fs-card">
         <table className="w-full min-w-[1120px] border-collapse text-left text-[13px] [&_thead_th]:whitespace-nowrap [&_tbody_td]:whitespace-nowrap">

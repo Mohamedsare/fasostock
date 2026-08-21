@@ -6,7 +6,6 @@ import {
 } from "@/lib/server/pdf/packagings-html";
 import { createClient } from "@/lib/supabase/server";
 import {
-  isAllowedPdfEmbedImageUrl,
   requireAuthUser,
   userBelongsToCompany,
 } from "@/lib/server/api-auth";
@@ -77,10 +76,10 @@ export async function POST(req: Request) {
     }
 
     const companyLogoUrl = json.companyLogoUrl == null ? null : String(json.companyLogoUrl);
+    // Un logo non conforme ne doit pas empêcher la feuille de sortir :
+    // `remoteImageToDataUrl` refait le contrôle d'origine et renvoie `null`, on
+    // imprime alors sans logo plutôt que de renvoyer une erreur au caissier.
     const supabasePublicUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
-    if (companyLogoUrl && !isAllowedPdfEmbedImageUrl(companyLogoUrl, supabasePublicUrl)) {
-      return NextResponse.json({ error: "URL de logo non autorisée." }, { status: 400 });
-    }
 
     const html = renderPackagingsHtml({
       companyName: String(json.companyName ?? ""),

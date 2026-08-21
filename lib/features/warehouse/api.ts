@@ -174,6 +174,51 @@ export async function listWarehouseMovements(
   return rows.map((r) => mapMovement(r, labelByUser));
 }
 
+/**
+ * Tous les mouvements d'une journée, pour l'impression du journal du dépôt.
+ *
+ * Volontairement séparé de `listWarehouseMovements` : celui-ci plafonne à 200 lignes
+ * pour alimenter l'écran, ce qui produirait un journal amputé sans le dire. Ici on
+ * pagine — un jour d'arrivage dépasse facilement les 1000 lignes de PostgREST.
+ *
+ * Les bornes arrivent en instants ISO calculés par l'appelant à partir du jour local :
+ * `created_at` est un `timestamptz`, et découper la journée côté serveur supposerait
+ * un fuseau que la base n'a pas.
+ */
+export async function listWarehouseMovementsForDay(params: {
+  companyId: string;
+  warehouseId?: string | null;
+  fromIso: string;
+  toIso: string;
+}): Promise<WarehouseMovement[]> {
+  const supabase = createClient();
+  const { data, error } = await fetchAllPages((from, to) => {
+    let q = supabase.from("warehouse_movements").select(movSelect);
+    if (params.warehouseId) {
+      q = q.eq("warehouse_id", params.warehouseId);
+    } else {
+      q = q.eq("company_id", params.companyId);
+    }
+    return q
+      .gte("created_at", params.fromIso)
+      .lt("created_at", params.toIso)
+      // `id` en second critère : plusieurs écritures partagent la même seconde
+      // (une facture dépôt en produit une par ligne), et sans clé départageante
+      // une page pourrait répéter une ligne en en perdant une autre.
+      .order("created_at", { ascending: true })
+      .order("id", { ascending: true })
+      .range(from, to);
+  });
+  if (error) throw mapSupabaseError(error);
+
+  const rows = (data ?? []) as Record<string, unknown>[];
+  const creatorIds = rows
+    .map((r) => (r.created_by != null ? String(r.created_by) : null))
+    .filter((id): id is string => Boolean(id));
+  const labelByUser = await fetchCreatorLabels(supabase, creatorIds);
+  return rows.map((r) => mapMovement(r, labelByUser));
+}
+
 export async function warehouseRegisterManualEntry(params: {
   companyId: string;
   productId: string;
