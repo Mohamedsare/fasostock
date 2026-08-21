@@ -28,8 +28,11 @@ export function renderStoreProductsHtml(data: {
       <td class="num-cell">${String(idx + 1).padStart(2, "0")}</td>
       <td class="thumb-cell">
         ${
-          (it.imageSrc ?? it.imageUrl)
-            ? `<img src="${tx(it.imageSrc ?? it.imageUrl ?? "")}" alt="${tx(it.name)}" class="thumb" />`
+          // Uniquement l'image déjà embarquée : laisser passer une URL distante
+          // obligerait Chromium à aller la chercher pendant le rendu, et une
+          // seule image lente fait expirer l'impression de tout le document.
+          it.imageSrc
+            ? `<img src="${tx(it.imageSrc)}" alt="${tx(it.name)}" class="thumb" />`
             : `<div class="thumb placeholder">Aucune image</div>`
         }
       </td>

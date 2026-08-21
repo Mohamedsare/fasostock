@@ -20,6 +20,7 @@ import { listCustomers } from "@/lib/features/customers/api";
 import { listProducts } from "@/lib/features/products/api";
 import { listStores as listStoresFull } from "@/lib/features/stores/api";
 import { downloadStoreProductsPdf } from "@/lib/features/stores/generate-store-products-pdf";
+import { productThumbUrl } from "@/lib/utils/product-thumb-url";
 import type { Warehouse, WarehouseDispatchInvoiceSummary, WarehouseDispatchLineHit, WarehouseMovement, WarehouseStockLine } from "@/lib/features/warehouse/types";
 import { WAREHOUSE_PACKAGING_LABELS } from "@/lib/features/warehouse/types";
 import {
@@ -646,9 +647,12 @@ export function WarehouseScreen() {
         .filter((p) => (depotStockByProductId.get(p.id) ?? 0) > 0)
         .map((p) => ({
           name: p.name,
+          // Vignette (320 px) et non la photo (1024 px) : la case du PDF fait
+          // 95x56 px, et le serveur inline chaque image en base64 — c'est le
+          // poids cumulé qui faisait échouer l'export.
           imageUrl:
             p.product_images && p.product_images.length > 0
-              ? p.product_images[0]?.url ?? null
+              ? productThumbUrl(p.product_images[0]?.url ?? null)
               : null,
         }));
       await downloadStoreProductsPdf({

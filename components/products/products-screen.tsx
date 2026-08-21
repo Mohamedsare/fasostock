@@ -282,6 +282,14 @@ export function ProductsScreen() {
     onSuccess: async (_, vars) => {
       await qc.invalidateQueries({ queryKey: queryKeys.products(companyId) });
       await qc.invalidateQueries({ queryKey: queryKeys.productSkus(companyId) });
+      // Inventaire en cours : un produit renommé doit apparaître sous son nouveau nom
+      // dans le comptage (boutique et dépôt), sans attendre l'expiration du cache.
+      await qc.invalidateQueries({
+        predicate: (q) =>
+          Array.isArray(q.queryKey) &&
+          typeof q.queryKey[0] === "string" &&
+          q.queryKey[0].includes("inventory-session"),
+      });
       // Motos identifiées : la fiche produit et le choix de l'engin à la vente
       // doivent voir les châssis qui viennent d'être saisis.
       if (engineUnitsOn) {

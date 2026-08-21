@@ -46,19 +46,30 @@ export function InventoryCountScreen({ sessionId }: { sessionId: string }) {
   const canDoInventory = isOwner || hasPermission(P.inventoryManage);
   const companyId = ctx?.companyId ?? "";
 
-  // Miniatures produit — chargées en direct (pas dans le snapshot de session).
-  const imagesQ = useQuery({
+  /*
+   * Produits en direct — miniatures ET nom courant. Le nom est figé dans le snapshot de
+   * session : si quelqu'un corrige le libellé d'un produit pendant le comptage, la ligne
+   * doit suivre, sinon la personne qui compte cherche le nouveau nom et ne le trouve pas.
+   * La base fait de même (trigger `sync_open_inventory_session_product_name`) ; ici on
+   * l'affiche sans attendre le prochain rechargement.
+   */
+  const liveProductsQ = useQuery({
     queryKey: ["inventory-session-images", companyId] as const,
     queryFn: async () => {
       const products = await listProducts(companyId);
-      const m = new Map<string, string | null>();
-      for (const p of products) m.set(p.id, firstProductImageUrl(p));
-      return m;
+      const images = new Map<string, string | null>();
+      const names = new Map<string, string>();
+      for (const p of products) {
+        images.set(p.id, firstProductImageUrl(p));
+        if (p.name?.trim()) names.set(p.id, p.name.trim());
+      }
+      return { images, names };
     },
     enabled: !!companyId,
     staleTime: 60_000,
   });
-  const imageMap = imagesQ.data;
+  const imageMap = liveProductsQ.data?.images;
+  const liveNames = liveProductsQ.data?.names;
 
   const sessionKey = ["inventory-session", sessionId] as const;
   const itemsKey = ["inventory-session-items", sessionId] as const;
@@ -102,7 +113,26 @@ export function InventoryCountScreen({ sessionId }: { sessionId: string }) {
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [confirm, setConfirm] = useState<"validate" | "cancel" | "reopen" | null>(null);
 
-  const items = useMemo(() => itemsQ.data ?? [], [itemsQ.data]);
+  // Nom courant prioritaire sur le nom snapshoté, puis reclassement alphabétique
+  // (le serveur trie sur le snapshot : un produit renommé se retrouverait mal placé).
+  const namesUpdatedAt = liveProductsQ.dataUpdatedAt;
+  const itemsUpdatedAt = itemsQ.dataUpdatedAt;
+  const items = useMemo(() => {
+    const raw = itemsQ.data ?? [];
+    // Le snapshot serveur est déjà mis à jour par le trigger : ne le corriger avec le
+    // catalogue local que si celui-ci a été chargé APRÈS, sinon un cache un peu vieux
+    // réafficherait l'ancien nom.
+    if (!liveNames || namesUpdatedAt < itemsUpdatedAt) return raw;
+    let renamed = false;
+    const merged = raw.map((it) => {
+      const live = liveNames.get(it.productId);
+      if (!live || live === it.productName) return it;
+      renamed = true;
+      return { ...it, productName: live };
+    });
+    if (!renamed) return raw;
+    return merged.sort((a, b) => a.productName.localeCompare(b.productName, "fr"));
+  }, [itemsQ.data, liveNames, namesUpdatedAt, itemsUpdatedAt]);
 
   const stats = useMemo(() => {
     let counted = 0;

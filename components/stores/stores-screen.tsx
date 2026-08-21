@@ -34,6 +34,7 @@ import { useAppContext } from "@/lib/features/common/app-context";
 import { fetchStoresPageData } from "@/lib/features/stores/api";
 import { listProducts, listStoreInventory } from "@/lib/features/products/api";
 import { downloadStoreProductsPdf } from "@/lib/features/stores/generate-store-products-pdf";
+import { productThumbUrl } from "@/lib/utils/product-thumb-url";
 import type { Store } from "@/lib/features/stores/types";
 import { usePermissions } from "@/lib/features/permissions/use-permissions";
 import { queryKeys } from "@/lib/query/query-keys";
@@ -391,9 +392,12 @@ function StoreCard({
         .filter((p) => (stockMap[p.id] ?? 0) > 0)
         .map((p) => ({
           name: p.name,
+          // Vignette (320 px) et non la photo (1024 px) : la case du PDF fait
+          // 95x56 px, et le serveur inline chaque image en base64 — c'est le
+          // poids cumulé qui faisait échouer l'export.
           imageUrl:
             p.product_images && p.product_images.length > 0
-              ? p.product_images[0]?.url ?? null
+              ? productThumbUrl(p.product_images[0]?.url ?? null)
               : null,
         }));
       await downloadStoreProductsPdf({
