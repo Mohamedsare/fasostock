@@ -1667,11 +1667,17 @@ export const DOC_GROUPS: DocGroup[] = [
             rows: [
               ["Tableau de bord", "L'état du dépôt et sa valeur (au prix d'achat, au prix de vente, selon ce qui est ouvert)."],
               ["Stock dépôt", "Les quantités présentes au dépôt, filtrables (tout, bas, correct)."],
-              ["Mouvements", "Entrées et sorties du dépôt, avec leur auteur."],
+              ["Mouvements", "Entrées et sorties du dépôt, avec leur auteur. Le journal d'une journée s'imprime ou se télécharge en PDF."],
               ["Transfert", "Envoyer de la marchandise du dépôt vers une boutique."],
               ["Historiques des bons", "Les bons émis, à retrouver et rééditer."],
               ["Inventaire", "Le comptage physique du dépôt, avec écarts et validation."],
             ],
+          },
+          {
+            kind: "note",
+            tone: "info",
+            title: "Imprimer les mouvements d'une journée",
+            text: "Dans l'onglet Mouvements, choisissez une date puis « Imprimer » ou « Télécharger ». Le PDF reprend toutes les entrées et sorties du jour choisi, leurs totaux et l'auteur de chaque écriture — de quoi faire signer le responsable du dépôt ou classer la journée. Il couvre la journée entière, même si l'écran n'affiche que les mouvements récents. Si une recherche produit est en cours, elle s'applique aussi au document et y est mentionnée.",
           },
           {
             kind: "note",
