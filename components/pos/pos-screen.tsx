@@ -2524,20 +2524,20 @@ export function PosScreen({
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
                   <Link
                     href={`${ROUTES.sales}?store=${encodeURIComponent(storeId)}`}
-                    className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-[#F97316] text-white shadow-sm transition hover:opacity-95"
+                    className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-[#F97316] text-white shadow-sm transition hover:opacity-95"
                     aria-label="Retour aux ventes"
                   >
-                    <MdArrowBack className="h-5 w-5" aria-hidden />
+                    <MdArrowBack className="h-[18px] w-[18px]" aria-hidden />
                   </Link>
-                  <div className="relative min-h-[55px] min-w-0 flex-1">
+                  <div className="relative min-h-10 min-w-0 flex-1">
                     <MdSearch
-                      className="pointer-events-none absolute left-3 top-1/2 z-[1] h-6 w-6 -translate-y-1/2 text-[#F97316]"
+                      className="pointer-events-none absolute left-2.5 top-1/2 z-[1] h-5 w-5 -translate-y-1/2 text-[#F97316]"
                       aria-hidden
                     />
                     <input
                       className={fsInputClass(
                         // Même cause que caisse rapide : `fsInputClass` → `sm:px-3` écrase `pl-*` au breakpoint sm.
-                        "h-[55px] w-full rounded-md border-[#E5E7EB] bg-white py-2 pl-12 pr-3 text-sm leading-snug text-[#1F2937] placeholder:text-[#1F2937]/50 sm:pl-12 sm:pr-3",
+                        "h-10 w-full rounded-md border-[#E5E7EB] bg-white py-1.5 pl-9 pr-3 text-[13px] leading-snug text-[#1F2937] placeholder:text-[#1F2937]/50 sm:pl-9 sm:pr-3",
                       )}
                       value={search}
                       onChange={(e) => {
@@ -2558,7 +2558,7 @@ export function PosScreen({
                   <div className="flex shrink-0 items-center gap-2">
                     <select
                       className={fsInputClass(
-                        "h-12 w-[140px] min-w-0 shrink-0 rounded-md border-[#E5E7EB] bg-white px-2 py-1.5 text-sm text-[#1F2937] min-[600px]:w-[180px]",
+                        "h-10 w-[120px] min-w-0 shrink-0 rounded-md border-[#E5E7EB] bg-white px-2 py-1.5 text-[13px] text-[#1F2937] min-[600px]:w-[150px]",
                       )}
                       value={
                         customerId && customers.some((c) => c.id === customerId)
@@ -2580,19 +2580,19 @@ export function PosScreen({
                       title="Créer un client"
                       aria-label="Créer un client"
                       onClick={() => setCustomerCreateOpen(true)}
-                      className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-[#F97316] text-white shadow-sm transition hover:opacity-95"
+                      className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-[#F97316] text-white shadow-sm transition hover:opacity-95"
                     >
-                      <MdPersonAdd className="h-[22px] w-[22px]" aria-hidden />
+                      <MdPersonAdd className="h-[19px] w-[19px]" aria-hidden />
                     </button>
                     <button
                       type="button"
                       onClick={() => void handleRefreshPos()}
                       disabled={posQ.isFetching}
-                      className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md text-[#1F2937]/70 transition hover:bg-black/5 disabled:opacity-50"
+                      className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-[#1F2937]/70 transition hover:bg-black/5 disabled:opacity-50"
                       aria-label="Actualiser catalogue et stock"
                     >
                       <MdRefresh
-                        className={cn("h-6 w-6", posQ.isFetching && "animate-spin")}
+                        className={cn("h-5 w-5", posQ.isFetching && "animate-spin")}
                         aria-hidden
                       />
                     </button>
@@ -2664,11 +2664,11 @@ export function PosScreen({
               className={cn(
                 "shrink-0 overflow-y-hidden",
                 mode === "a4-table"
-                  ? "h-12 px-3 py-0"
+                  ? "h-10 px-3 py-0"
                   : "px-3 py-1 sm:px-4",
               )}
             >
-              <div className={cn("flex w-max items-center", mode === "a4-table" ? "gap-2" : "gap-1.5")}>
+              <div className="flex w-max items-center gap-1.5">
                 <CategoryChip
                   label="Tous"
                   selected={categoryId === null}
@@ -3285,7 +3285,7 @@ function CategoryChip({
   label: string;
   selected: boolean;
   onClick: () => void;
-  /** `pos_main_area.dart` strip : FilterChip padding horizontal 14, vertical 10, texte 14px. */
+  /** `pos_main_area.dart` strip, resserré : padding horizontal 10, vertical 6, texte 13px. */
   variant?: "default" | "factureTab";
 }) {
   const tab = variant === "factureTab";
@@ -3296,7 +3296,7 @@ function CategoryChip({
       className={cn(
         "shrink-0 font-semibold transition-colors",
         tab
-          ? "rounded-md px-3.5 py-2.5 text-sm"
+          ? "rounded-md px-2.5 py-1.5 text-[13px]"
           : "rounded-sm px-2 py-0.5 text-[11px] min-[600px]:rounded-md min-[600px]:px-2.5 min-[600px]:text-xs",
         selected
           ? "border-2 border-[#F97316] bg-[#F97316] text-white"
