@@ -2604,16 +2604,16 @@ function MouvementsTab({
    * montre que les mouvements récents.
    */
   const dayExportBar = (
-    <div className="overflow-hidden rounded-xl border border-blue-200 bg-white shadow-sm">
-      <div className="flex items-center gap-2 bg-gradient-to-r from-[#2563EB] to-[#1E3A8A] px-3.5 py-2 text-white">
-        <MdPictureAsPdf className="h-4 w-4 shrink-0" aria-hidden />
-        <span className="text-[11px] font-extrabold uppercase tracking-[0.14em]">
+    <div className="overflow-hidden rounded-md border border-black/10 bg-fs-card">
+      <div className="flex items-center gap-2 border-b border-black/6 bg-fs-surface-low px-3.5 py-2">
+        <MdPictureAsPdf className="h-4 w-4 shrink-0 text-fs-accent" aria-hidden />
+        <span className="text-[11px] font-extrabold uppercase tracking-[0.12em] text-fs-text">
           Journal d&apos;une journée
         </span>
       </div>
-      <div className="flex flex-wrap items-end gap-2.5 bg-gradient-to-b from-blue-50/70 to-white p-3.5">
+      <div className="flex flex-wrap items-end gap-2.5 p-3.5">
         <label className="flex min-w-[170px] flex-1 flex-col gap-1">
-          <span className="text-[10px] font-extrabold uppercase tracking-wider text-blue-900/60">
+          <span className="text-[10px] font-extrabold uppercase tracking-wider text-neutral-500">
             Date à imprimer
           </span>
           <input
@@ -2622,14 +2622,14 @@ function MouvementsTab({
             max={todayLocalDay()}
             onChange={(e) => setDay(e.target.value)}
             aria-label="Date des mouvements à imprimer"
-            className="h-11 w-full rounded-lg border border-blue-200 bg-white px-3 text-sm font-bold text-blue-950 outline-none transition-colors focus:border-[#2563EB]"
+            className="h-11 w-full rounded-md border border-black/10 bg-fs-card px-3 text-sm font-bold text-fs-text outline-none transition-colors focus:border-fs-accent"
           />
         </label>
         <button
           type="button"
           onClick={() => onExportDay("print")}
           disabled={busy}
-          className="inline-flex h-11 min-w-[124px] flex-1 items-center justify-center gap-2 rounded-lg bg-[#2563EB] px-4 text-sm font-bold text-white shadow-sm transition-colors hover:bg-[#1D4ED8] disabled:opacity-50"
+          className="inline-flex h-11 min-w-[124px] flex-1 items-center justify-center gap-2 rounded-md bg-[#F97316] px-4 text-sm font-bold text-white shadow-sm transition-colors hover:bg-[#ea6c10] active:opacity-90 disabled:opacity-50"
         >
           <MdPrint className="h-[18px] w-[18px] shrink-0" aria-hidden />
           {exportBusy === "print" ? "Préparation…" : "Imprimer"}
@@ -2638,17 +2638,17 @@ function MouvementsTab({
           type="button"
           onClick={() => onExportDay("download")}
           disabled={busy}
-          className="inline-flex h-11 min-w-[124px] flex-1 items-center justify-center gap-2 rounded-lg border border-blue-300 bg-white px-4 text-sm font-bold text-[#1D4ED8] transition-colors hover:bg-blue-50 disabled:opacity-50"
+          className="inline-flex h-11 min-w-[124px] flex-1 items-center justify-center gap-2 rounded-md border border-[#F97316]/45 bg-fs-card px-4 text-sm font-bold text-[#EA580C] transition-colors hover:bg-[#F97316]/10 active:opacity-90 disabled:opacity-50"
         >
           <MdDownload className="h-[18px] w-[18px] shrink-0" aria-hidden />
           {exportBusy === "download" ? "Préparation…" : "Télécharger"}
         </button>
       </div>
-      <p className="border-t border-blue-100 bg-white px-3.5 py-2 text-[11px] leading-relaxed text-neutral-600">
+      <p className="border-t border-black/6 px-3.5 py-2 text-[11px] leading-relaxed text-neutral-600">
         Toutes les entrées et sorties de la journée choisie, avec les totaux et
         l&apos;auteur de chaque écriture.
         {hasSearch ? (
-          <span className="font-semibold text-[#1D4ED8]">
+          <span className="font-semibold text-fs-accent">
             {" "}
             La recherche « {search.trim()} » sera appliquée au document.
           </span>
