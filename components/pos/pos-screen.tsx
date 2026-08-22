@@ -47,7 +47,10 @@ import { listActiveStorePromotions } from "@/lib/features/promotions/api";
 import { fetchStoreLotPrices } from "@/lib/features/quick-supply/api";
 import { applyPromoPercent } from "@/lib/features/promotions/promo-math";
 import { defaultInvoiceUnitForProduct, INVOICE_UNITS } from "@/lib/features/pos/invoice-units";
-import { factureTabStripHeightPx } from "@/lib/utils/facture-tab-layout";
+import {
+  FACTURE_TAB_SPLIT_PX,
+  factureTabStripHeightPx,
+} from "@/lib/utils/facture-tab-layout";
 import { fetchInvoiceTablePosEnabled } from "@/lib/features/settings/invoice-table-pos";
 import {
   fetchPrintFormatChoiceEnabled,
@@ -581,27 +584,44 @@ export function PosScreen({
   /** Hauteur grille 2 rangées — `PosProductTwoRowHorizontalStrip` Flutter. */
   const factureStripGridH = stripCol1900 ? 332 : stripCol1400 ? 304 : 282;
 
+  /**
+   * Facture (tableau) sur grand écran : catalogue à gauche (grille verticale
+   * plein écran), tableau du panier à droite. Le bandeau horizontal de 250 px
+   * ne montrait qu'une demi-rangée de vignettes — impossible de chercher un
+   * produit sans scroller dans un cadre minuscule.
+   */
+  const factureSplitW = useMediaQuery(`(min-width: ${FACTURE_TAB_SPLIT_PX}px)`);
+  const factureSplit = mode === "a4-table" && factureSplitW;
+
   const factureTabBodyRef = useRef<HTMLDivElement>(null);
+  const factureTabCardRef = useRef<HTMLDivElement>(null);
   const [factureTabStripH, setFactureTabStripH] = useState(250);
 
   useLayoutEffect(() => {
-    if (mode !== "a4-table" || !store || posQ.isLoading || posQ.isError) return;
+    if (mode !== "a4-table" || factureSplit || !store || posQ.isLoading || posQ.isError)
+      return;
     const el = factureTabBodyRef.current;
     if (!el) return;
     const update = () => {
       const h = el.getBoundingClientRect().height;
       const w = typeof window !== "undefined" ? window.innerWidth : 1200;
-      setFactureTabStripH(factureTabStripHeightPx(h, w));
+      // Hauteur réelle de la carte (recherche + catégories + 2 rangées) : le
+      // bandeau se dimensionne dessus au lieu d'un ratio arbitraire, sinon les
+      // vignettes sont coupées. `+10` = marges verticales autour de la carte.
+      const card = factureTabCardRef.current;
+      const content = card ? card.scrollHeight + 10 : 0;
+      setFactureTabStripH(factureTabStripHeightPx(h, w, content));
     };
     update();
     const ro = new ResizeObserver(() => update());
     ro.observe(el);
+    if (factureTabCardRef.current) ro.observe(factureTabCardRef.current);
     window.addEventListener("resize", update);
     return () => {
       ro.disconnect();
       window.removeEventListener("resize", update);
     };
-  }, [mode, store, posQ.isLoading, posQ.isError]);
+  }, [mode, factureSplit, store, posQ.isLoading, posQ.isError]);
 
   /**
    * Module Emplacements — rappel « où aller chercher l'article » sur les vignettes
@@ -2393,7 +2413,9 @@ export function PosScreen({
           className={cn(
             "flex min-h-0 flex-1",
             mode === "a4-table"
-              ? "flex-col overflow-hidden"
+              ? factureSplit
+                ? "flex-row overflow-hidden"
+                : "flex-col overflow-hidden"
               : "flex-col min-[900px]:flex-row min-[900px]:overflow-hidden",
           )}
         >
@@ -2405,10 +2427,16 @@ export function PosScreen({
             className={cn(
               "flex min-w-0 flex-col bg-white",
               mode === "a4-table"
-                ? "min-h-0 shrink-0 overflow-hidden"
+                ? factureSplit
+                  ? "min-h-0 flex-1 overflow-hidden"
+                  : "min-h-0 shrink-0 overflow-hidden"
                 : "min-h-0 min-[900px]:flex-[65] flex-1",
             )}
-            style={mode === "a4-table" ? { height: factureTabStripH } : undefined}
+            style={
+              mode === "a4-table" && !factureSplit
+                ? { height: factureTabStripH }
+                : undefined
+            }
           >
             <div
               className={cn(
@@ -2418,24 +2446,36 @@ export function PosScreen({
               <div
                 className={cn(
                   mode === "a4-table"
-                    ? "min-h-0 flex-1 overflow-x-hidden overflow-y-auto [scrollbar-width:thin]"
+                    ? factureSplit
+                      ? "flex min-h-0 flex-1 flex-col overflow-hidden"
+                      : "min-h-0 flex-1 overflow-x-hidden overflow-y-auto [scrollbar-width:thin]"
                     : "contents",
                 )}
               >
                 <div
-                  className={cn(mode === "a4-table" ? "px-3 pb-0 pt-2" : "contents")}
+                  className={cn(
+                    mode === "a4-table"
+                      ? factureSplit
+                        ? "flex min-h-0 flex-1 flex-col px-3 pb-3 pt-2"
+                        : "px-3 pb-0 pt-2"
+                      : "contents",
+                  )}
                 >
                   <div
+                    ref={mode === "a4-table" ? factureTabCardRef : undefined}
                     className={cn(
                       mode === "a4-table"
-                        ? "overflow-hidden rounded-lg border border-[#E5E7EB]/80 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.06)]"
+                        ? cn(
+                            "overflow-hidden rounded-lg border border-[#E5E7EB]/80 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.06)]",
+                            factureSplit && "flex min-h-0 flex-1 flex-col",
+                          )
                         : "contents",
                     )}
                   >
             <div
               className={cn(
                 mode === "a4-table"
-                  ? "px-3 pb-2 pt-2.5"
+                  ? "shrink-0 px-3 pb-2 pt-2.5"
                   : "px-3 pb-1.5 pt-1.5 sm:px-4",
               )}
             >
@@ -2652,10 +2692,16 @@ export function PosScreen({
             <div
               className={cn(
                 mode === "a4-table"
-                  ? "flex min-h-0 shrink-0 flex-col overflow-hidden px-3 pb-3 pt-1"
+                  ? factureSplit
+                    ? "@container min-h-0 flex-1 overflow-y-auto px-3 pb-3 pt-1"
+                    : "flex min-h-0 shrink-0 flex-col overflow-hidden px-3 pb-3 pt-1"
                   : "min-h-0 flex-1 px-3 sm:px-4 pb-28 min-[900px]:pb-4 @container overflow-y-auto",
               )}
-              style={mode === "a4-table" ? { height: factureStripGridH } : undefined}
+              style={
+                mode === "a4-table" && !factureSplit
+                  ? { height: factureStripGridH }
+                  : undefined
+              }
             >
               {filtered.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16">
@@ -2671,7 +2717,7 @@ export function PosScreen({
                         : "Aucun produit actif"}
                   </p>
                 </div>
-              ) : mode === "a4-table" ? (
+              ) : mode === "a4-table" && !factureSplit ? (
                 <FsHorizontalScroll className="min-h-0 flex-1 overflow-y-hidden">
                   <div
                     className="grid h-full min-h-0 grid-flow-col grid-rows-2 content-start gap-2.5 px-3 py-1"
@@ -2774,15 +2820,23 @@ export function PosScreen({
                       stock >= 0
                         ? `${formatCurrency(promoPrice)} · ${stock}`
                         : formatCurrency(promoPrice);
+                    // Facture (tableau) : rupture = vignette inerte, comme dans le
+                    // bandeau horizontal — on ne facture pas ce qu'on n'a pas.
+                    const blocked = mode === "a4-table" && stock <= 0;
                     return (
                       <button
                         key={p.id}
                         type="button"
-                        onClick={() => onPickProduct(p, thumb)}
+                        disabled={blocked}
+                        onClick={() => {
+                          if (!blocked) onPickProduct(p, thumb);
+                        }}
                         className={cn(
                           "relative flex min-h-0 w-full min-w-0 flex-col items-center overflow-hidden rounded-md bg-white px-2 py-1.5 text-center transition active:scale-[0.98]",
                           "aspect-[0.82] @[400px]:aspect-[0.88] @[600px]:aspect-[0.93]",
-                          "border border-[#F97316]/35 shadow-[0_1px_6px_rgba(249,115,22,0.08)]",
+                          blocked
+                            ? "border border-[#E5E7EB] opacity-45"
+                            : "border border-[#F97316]/35 shadow-[0_1px_6px_rgba(249,115,22,0.08)]",
                         )}
                       >
                         {p.prescription_required ? (
@@ -2866,9 +2920,10 @@ export function PosScreen({
           {mode === "a4-table" ? (
             <div
               className={cn(
-                "flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border-t border-[#E5E7EB]",
-                "bg-[#F3F4F6]",
-                "px-3 pt-2.5 pb-3 min-[900px]:px-4 min-[900px]:pt-3 min-[900px]:pb-4",
+                "flex min-h-0 min-w-0 flex-col overflow-hidden bg-[#F3F4F6]",
+                factureSplit
+                  ? "w-[520px] shrink-0 border-l border-[#E5E7EB] px-4 pb-4 pt-3 min-[1400px]:w-[600px] min-[1900px]:w-[680px]"
+                  : "flex-1 border-t border-[#E5E7EB] px-3 pt-2.5 pb-3 min-[900px]:px-4 min-[900px]:pt-3 min-[900px]:pb-4",
               )}
             >
               {cartPanel}

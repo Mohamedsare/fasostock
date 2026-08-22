@@ -7,6 +7,13 @@ export const FACTURE_TAB_DESKTOP_PX = 900;
 export const FACTURE_TAB_WIDE_STEP1_PX = 1400;
 export const FACTURE_TAB_WIDE_STEP2_PX = 1900;
 
+/**
+ * À partir de cette largeur, la facture (tableau) passe en deux colonnes :
+ * catalogue plein écran à gauche, tableau du panier à droite. En dessous, le
+ * catalogue reste un bandeau horizontal posé au-dessus du panier.
+ */
+export const FACTURE_TAB_SPLIT_PX = 1100;
+
 /** Bandeau 2 rangées seul : `pos_product_grid.dart` `PosProductTwoRowHorizontalStrip`. */
 export function factureTabProductStripInnerHeightPx(viewportWidth: number): number {
   if (viewportWidth >= FACTURE_TAB_WIDE_STEP2_PX) return 332;
@@ -22,28 +29,31 @@ export function factureTabStripColumnWidthPx(viewportWidth: number): number {
 }
 
 /**
- * `Breakpoints.factureTabStripHeight` — cible ~1/9 de h, plafond 32 % de h,
- * plancher selon largeur (téléphone / tablette / bureau).
+ * Hauteur du bandeau produits en disposition empilée (écran étroit).
+ *
+ * La règle Flutter d'origine visait ~1/9 de la hauteur : sur un écran de bureau
+ * cela donnait un cadre de 250 px pour un contenu de plus de 400 px (recherche +
+ * catégories + deux rangées de vignettes), donc des produits coupés en deux et un
+ * mini-scroll interne. On part maintenant de la hauteur réelle du contenu
+ * (`contentHeight`, mesurée dans le DOM) : le bandeau montre les vignettes en
+ * entier tant qu'il reste de la place, sans jamais dépasser 55 % de l'écran pour
+ * que le panier garde de quoi travailler.
  */
 export function factureTabStripHeightPx(
   usableHeight: number,
   viewportWidth: number,
+  contentHeight = 0,
 ): number {
   const h = usableHeight;
   if (h <= 0) return 220;
-  const ninth = h / 9;
-  const maxStrip = h * 0.32;
   const w = viewportWidth;
-  const isPhoneNarrow = Number.isFinite(w) && w < FACTURE_TAB_TABLET_PX;
-  const minStrip = isPhoneNarrow
-    ? 200
-    : Number.isFinite(w) && w < FACTURE_TAB_DESKTOP_PX
-      ? 230
-      : 250;
-  if (maxStrip <= minStrip) {
-    return maxStrip;
-  }
-  if (ninth <= minStrip) return minStrip;
-  if (ninth >= maxStrip) return maxStrip;
-  return ninth;
+  const minStrip =
+    Number.isFinite(w) && w < FACTURE_TAB_TABLET_PX
+      ? 200
+      : Number.isFinite(w) && w < FACTURE_TAB_DESKTOP_PX
+        ? 230
+        : 250;
+  const maxStrip = h * 0.55;
+  if (maxStrip <= minStrip) return Math.min(minStrip, h);
+  return Math.min(Math.max(minStrip, contentHeight), maxStrip);
 }
