@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import {
+  MdAdd,
   MdAddShoppingCart,
   MdDelete,
   MdDragHandle,
@@ -483,49 +484,75 @@ export function SaleDocumentEditorDialog({
         hint="Un article du stock, ou une prestation libre qui n'a pas de fiche produit."
       >
         {lines.length === 0 ? (
-          <div className="rounded-md border border-dashed border-black/[0.12] p-5 text-center dark:border-white/15">
-            <p className="text-sm font-semibold text-fs-text">Aucune ligne pour l&apos;instant</p>
-            <p className="mt-1 text-xs text-neutral-500">
+          /*
+            Premier ajout : le choix « article » / « prestation » n'est pas cosmétique —
+            il décide si la ligne sortira du stock à l'émission. On l'explique DANS le
+            choix, au moment où il se pose, plutôt que dans une note que personne ne lit.
+          */
+          <div className="rounded-md border border-dashed border-black/[0.14] p-4 dark:border-white/15">
+            <p className="text-center text-sm font-semibold text-fs-text">
+              Aucune ligne pour l&apos;instant
+            </p>
+            <p className="mx-auto mt-1 max-w-md text-center text-xs leading-relaxed text-neutral-500">
               Ajoutez ce que vous proposez : des articles de votre stock, des prestations, ou
               les deux sur le même document.
             </p>
+            <div className="mt-4 grid gap-2.5 min-[560px]:grid-cols-2">
+              <AddLineChoice
+                variant="card"
+                icon={MdAddShoppingCart}
+                tone="stock"
+                title="Article du stock"
+                description="Choisi dans votre catalogue : prix repris automatiquement, et sortie de stock à l'émission."
+                onClick={addProductLine}
+              />
+              <AddLineChoice
+                variant="card"
+                icon={MdNoteAdd}
+                tone="service"
+                title="Prestation / ligne libre"
+                description="Libellé et prix saisis à la main. Aucune fiche produit, aucun stock touché."
+                onClick={addFreeLine}
+              />
+            </div>
           </div>
         ) : (
-          <div className="space-y-2.5">
-            {lines.map((line, index) => (
-              <LineEditor
-                key={index}
-                line={line}
-                index={index}
-                total={lines.length}
-                productOptions={productOptions}
-                onPickProduct={(id) => pickProduct(index, id)}
-                onChange={(patch) => updateLine(index, patch)}
-                onRemove={() => removeLine(index)}
-                onMove={(dir) => moveLine(index, dir)}
-              />
-            ))}
-          </div>
-        )}
+          <>
+            <div className="space-y-2.5">
+              {lines.map((line, index) => (
+                <LineEditor
+                  key={index}
+                  line={line}
+                  index={index}
+                  total={lines.length}
+                  productOptions={productOptions}
+                  onPickProduct={(id) => pickProduct(index, id)}
+                  onChange={(patch) => updateLine(index, patch)}
+                  onRemove={() => removeLine(index)}
+                  onMove={(dir) => moveLine(index, dir)}
+                />
+              ))}
+            </div>
 
-        <div className="mt-3 flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={addProductLine}
-            className="inline-flex items-center gap-1.5 rounded-md border border-black/[0.1] px-3 py-2 text-xs font-semibold text-fs-text hover:border-fs-accent/40 dark:border-white/10"
-          >
-            <MdAddShoppingCart className="h-4 w-4" aria-hidden />
-            Article du stock
-          </button>
-          <button
-            type="button"
-            onClick={addFreeLine}
-            className="inline-flex items-center gap-1.5 rounded-md border border-black/[0.1] px-3 py-2 text-xs font-semibold text-fs-text hover:border-fs-accent/40 dark:border-white/10"
-          >
-            <MdNoteAdd className="h-4 w-4" aria-hidden />
-            Prestation / ligne libre
-          </button>
-        </div>
+            {/* Lignes déjà saisies : la distinction est acquise, on rend la main. */}
+            <div className="mt-2.5 grid gap-2 min-[560px]:grid-cols-2">
+              <AddLineChoice
+                variant="compact"
+                icon={MdAddShoppingCart}
+                tone="stock"
+                title="Article du stock"
+                onClick={addProductLine}
+              />
+              <AddLineChoice
+                variant="compact"
+                icon={MdNoteAdd}
+                tone="service"
+                title="Prestation / ligne libre"
+                onClick={addFreeLine}
+              />
+            </div>
+          </>
+        )}
 
         {shortStock.length > 0 ? (
           <p className="mt-3 flex items-start gap-2 rounded-md bg-amber-500/10 px-3 py-2 text-[11px] leading-relaxed text-amber-900 dark:text-amber-200">
@@ -634,6 +661,82 @@ export function SaleDocumentEditorDialog({
         </div>
       </SaleDocumentSection>
     </SaleDocumentDialogShell>
+  );
+}
+
+/**
+ * Bouton d'ajout de ligne.
+ *
+ * Deux tailles pour un même geste : la carte explicative tant que le document est vide
+ * (le commerçant doit comprendre ce qui distingue un article d'une prestation — l'un
+ * sort du stock, l'autre non), puis la version compacte une fois la première ligne
+ * posée. À ce stade la distinction est acquise, et répéter l'explication sous chaque
+ * ligne encombrerait une saisie déjà longue.
+ */
+function AddLineChoice({
+  variant,
+  icon: Icon,
+  tone,
+  title,
+  description,
+  onClick,
+}: {
+  variant: "card" | "compact";
+  icon: typeof MdNoteAdd;
+  /** `stock` = sort de l'inventaire ; `service` = n'y touche jamais. */
+  tone: "stock" | "service";
+  title: string;
+  description?: string;
+  onClick: () => void;
+}) {
+  const tint =
+    tone === "stock"
+      ? "bg-sky-500/12 text-sky-600 dark:text-sky-400"
+      : "bg-violet-500/12 text-violet-600 dark:text-violet-400";
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "group flex w-full items-center gap-3 rounded-md border border-dashed border-black/[0.14] bg-fs-card text-left transition-colors",
+        "hover:border-fs-accent hover:bg-fs-accent/[0.04] focus-visible:border-fs-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fs-accent/25",
+        "dark:border-white/15 dark:hover:bg-fs-accent/[0.08]",
+        variant === "card" ? "items-start p-3" : "px-3 py-2.5",
+      )}
+    >
+      <span
+        className={cn(
+          "flex shrink-0 items-center justify-center rounded-md transition-transform group-hover:scale-105",
+          tint,
+          variant === "card" ? "h-9 w-9" : "h-7 w-7",
+        )}
+      >
+        <Icon className={variant === "card" ? "h-5 w-5" : "h-4 w-4"} aria-hidden />
+      </span>
+
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-semibold text-fs-text">{title}</span>
+        {description ? (
+          <span className="mt-0.5 block text-[11px] leading-relaxed text-neutral-500">
+            {description}
+          </span>
+        ) : null}
+      </span>
+
+      {/* Le « + » dit que le bouton AJOUTE, sans allonger le libellé. */}
+      <span
+        className={cn(
+          "flex shrink-0 items-center justify-center rounded-md border border-black/[0.09] text-neutral-400 transition-colors",
+          "group-hover:border-fs-accent group-hover:bg-fs-accent group-hover:text-white",
+          "dark:border-white/[0.12]",
+          variant === "card" ? "h-6 w-6" : "h-5 w-5",
+        )}
+        aria-hidden
+      >
+        <MdAdd className={variant === "card" ? "h-4 w-4" : "h-3.5 w-3.5"} />
+      </span>
+    </button>
   );
 }
 
