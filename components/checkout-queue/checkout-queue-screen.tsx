@@ -20,6 +20,7 @@ import {
   MdPayments,
   MdPerson,
   MdPointOfSale,
+  MdRecordVoiceOver,
   MdReceiptLong,
   MdSchedule,
   MdVolumeOff,
@@ -83,7 +84,15 @@ import {
   SaleBlockedError,
 } from "@/lib/features/credit/customer-debt-guard";
 import { playPosAddBeep } from "@/lib/utils/pos-sound";
-import { armVoicePriming, primeVoice, speakFr } from "@/lib/utils/pos-voice";
+import {
+  armVoicePriming,
+  getVoiceUri,
+  primeVoice,
+  setVoiceUri,
+  speakFr,
+  subscribeVoices,
+  type VoiceOption,
+} from "@/lib/utils/pos-voice";
 import { amountToFrenchWords } from "@/lib/utils/number-to-french-words";
 import { createClient } from "@/lib/supabase/client";
 import { formatCurrency } from "@/lib/utils/currency";
@@ -111,6 +120,10 @@ const SOUND_PREF_KEY = "fs_checkout_queue_sound";
  * par-dessus se perd dans le bip.
  */
 const SPEAK_DELAY_MS = 420;
+
+/** Phrase d'essai du sélecteur de voix : un vrai montant, pas « test 1 2 3 » — c'est la
+ *  lecture des nombres qui distingue une bonne voix d'une voix robotique. */
+const VOICE_SAMPLE = "Vente de douze mille cinq cents francs CFA à encaisser.";
 
 /**
  * Ce que dit la caisse à l'arrivée d'un ou plusieurs bons.
@@ -198,6 +211,13 @@ export function CheckoutQueueScreen() {
     store: Store;
   } | null>(null);
   const [soundOn, setSoundOn] = useState(true);
+  /**
+   * Voix françaises de CET appareil. La qualité d'une annonce dépend entièrement de ce
+   * qui est installé sur le poste : le caissier doit pouvoir écouter et choisir, sinon il
+   * subit la voix que le navigateur a mise en premier — souvent la plus métallique.
+   */
+  const [voices, setVoices] = useState<VoiceOption[]>([]);
+  const [voiceUri, setVoiceUriState] = useState("");
   const [now, setNow] = useState(() => Date.now());
 
   /** Identité courante : sert à dire « c'est vous » plutôt que d'afficher votre nom. */
@@ -432,6 +452,20 @@ export function CheckoutQueueScreen() {
      « Son » : le premier geste venu, quel qu'il soit, sert d'amorce. */
   useEffect(() => armVoicePriming(), []);
 
+  useEffect(() => {
+    setVoiceUriState(getVoiceUri());
+    return subscribeVoices(setVoices);
+  }, []);
+
+  /** Change la voix ET la fait entendre aussitôt : on choisit une voix à l'oreille, pas
+   *  sur un nom de fichier. Le clic sert au passage d'autorisation pour parler. */
+  function chooseVoice(uri: string) {
+    setVoiceUriState(uri);
+    setVoiceUri(uri);
+    primeVoice();
+    speakFr(VOICE_SAMPLE);
+  }
+
   function invalidateQueue() {
     void qc.invalidateQueries({ queryKey: ["pos-handoffs", companyId] });
   }
@@ -599,7 +633,7 @@ export function CheckoutQueueScreen() {
       playPosAddBeep();
       // Test audible : le caissier sait tout de suite si SON appareil sait parler
       // (silence = pas de voix française installée, le bip fera seul le travail).
-      window.setTimeout(() => speakFr("Annonce vocale activée."), SPEAK_DELAY_MS);
+      window.setTimeout(() => speakFr(VOICE_SAMPLE), SPEAK_DELAY_MS);
     }
   }
 
@@ -651,6 +685,27 @@ export function CheckoutQueueScreen() {
           )}
           {soundOn ? "Son activé" : "Son coupé"}
         </button>
+        {/* Le sélecteur n'apparaît que là où il y a un choix à faire : sur un téléphone
+            qui n'a qu'une voix française, il n'aurait rien à proposer. */}
+        {soundOn && voices.length > 1 ? (
+          <label className="flex shrink-0 items-center gap-1.5 text-xs font-semibold text-neutral-600">
+            <MdRecordVoiceOver className="h-4 w-4 shrink-0" aria-hidden />
+            <span className="sr-only">Voix de l&apos;annonce</span>
+            <select
+              className={fsInputClass("h-9 w-auto max-w-[10rem] rounded-sm py-0 text-xs sm:py-0 sm:text-xs")}
+              value={voiceUri}
+              onChange={(e) => chooseVoice(e.target.value)}
+              title={"Voix de l’annonce — le choix est propre à cet appareil"}
+            >
+              <option value="">Voix automatique</option>
+              {voices.map((v) => (
+                <option key={v.uri} value={v.uri}>
+                  {v.premium ? `${v.label} ★` : v.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
       </div>
 
       {/* Trois chiffres, et rien de plus : combien attendent, pour combien, depuis

@@ -981,6 +981,17 @@ export const DOC_GROUPS: DocGroup[] = [
             title: "La caisse annonce le montant à voix haute",
             text: "Après les deux bips, la page dit « Vente de douze mille cinq cents francs CFA à encaisser » : le caissier connaît le montant sans quitter son client des yeux. La voix est celle de l'appareil ; si le français n'y est pas installé, seuls les bips se font entendre. Sur téléphone et tablette, touchez une fois l'écran après avoir ouvert la page — sans ce geste, le navigateur interdit à la page de parler. Le bouton « Son activé » coupe les bips et la voix ensemble.",
           },
+          {
+            kind: "steps",
+            title: "Obtenir une voix agréable à écouter",
+            items: [
+              "La liste déroulante à côté du bouton « Son » propose les voix françaises installées sur CE poste. Chaque changement se fait entendre aussitôt : choisissez à l'oreille. Une étoile ★ signale les voix de dernière génération, les plus naturelles.",
+              "Le réglage appartient à l'appareil, pas au compte : le poste de caisse et le téléphone du propriétaire peuvent avoir des voix différentes.",
+              "Pas de liste ou voix métallique sur Android : Paramètres du téléphone › Système › Langues › Synthèse vocale. Choisissez « Services de synthèse vocale Google », puis « Installer les données vocales » et téléchargez le français. Rouvrez la page.",
+              "Sur ordinateur, Microsoft Edge offre les voix les plus naturelles (Denise, Henri) sans rien installer. Sur Chrome, choisissez « Google français » dans la liste.",
+              "Sur iPhone et iPad, Réglages › Accessibilité › Contenu énoncé › Voix › Français : téléchargez une voix « Améliorée » ou « Premium », puis rouvrez la page.",
+            ],
+          },
         ],
         keywords: [
           "caisse à deux",

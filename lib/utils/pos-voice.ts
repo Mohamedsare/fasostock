@@ -7,8 +7,9 @@
  * l'écran pour le savoir. La phrase lui donne le montant sans qu'il quitte son client des
  * yeux — le bip reste devant elle pour attirer l'attention, la voix suit.
  *
- * Voix du navigateur (`speechSynthesis`) : aucun fichier audio, aucune requête réseau,
- * donc utilisable en connexion faible comme le reste de la caisse.
+ * Voix du navigateur (`speechSynthesis`) : aucun fichier audio à héberger, aucun service
+ * payant, et la qualité suit celle de l'appareil — elle s'améliore toute seule avec les
+ * mises à jour du téléphone.
  *
  * **La voix n'est jamais garantie** : sur Android, le français dépend d'un moteur de
  * synthèse et d'un pack de langue installés sur l'appareil ; l'iPhone exige en plus un
@@ -16,8 +17,20 @@
  * ici — l'appelant a déjà fait son bip, qui reste le signal fiable.
  */
 
+/** Voix proposée au choix du caissier. On ne sort pas l'objet natif du module : React ne
+ *  doit pas garder en état des objets du navigateur qui se recréent à chaque chargement. */
+export type VoiceOption = {
+  /** Identifiant stable, mémorisé sur l'appareil. */
+  uri: string;
+  /** Nom court, débarrassé du « - French (France) » que collent les navigateurs. */
+  label: string;
+  /** Voix de génération récente (neurale / Google / Siri) : nettement plus naturelle. */
+  premium: boolean;
+};
+
+const VOICE_PREF_KEY = "fs_voice_uri";
+
 let unsupported = false;
-let cachedVoice: SpeechSynthesisVoice | null = null;
 let primed = false;
 
 function synth(): SpeechSynthesis | null {
@@ -31,27 +44,82 @@ function synth(): SpeechSynthesis | null {
 }
 
 /**
- * Voix française installée, ou `null`.
+ * Qualité présumée d'une voix, d'après son nom.
  *
- * On refuse de parler avec une voix d'une autre langue : un moteur anglais lit « Vente de
- * douze mille » de façon incompréhensible, ce qui est pire que le silence (le caissier
- * croirait à une panne). Sans voix française, seul le bip annonce le bon.
+ * Il n'existe aucune API pour demander « la meilleure voix » : le navigateur renvoie une
+ * liste à plat où la voix robotique d'origine côtoie une voix neurale. Le nom est le seul
+ * indice, et il est stable chez tous les éditeurs — d'où ce classement, écrit une fois
+ * ici plutôt que laissé au hasard du premier élément de la liste.
  *
- * Préférence à une voix *locale* : les voix « serveur » de Chrome passent par le réseau,
- * donc muettes ou en retard sur une connexion faible.
+ * Le classement prime sur « voix locale ou voix réseau » : sur un PC, la meilleure voix
+ * française (« Google français », « Microsoft Denise Online (Natural) ») passe justement
+ * par le réseau. La page interroge déjà le serveur toutes les 4 secondes ; et si la voix
+ * réseau échoue, {@link speakFr} rebascule sur une voix locale.
  */
-function pickFrenchVoice(s: SpeechSynthesis): SpeechSynthesisVoice | null {
-  if (cachedVoice) return cachedVoice;
-  let voices: SpeechSynthesisVoice[] = [];
+function voiceScore(v: SpeechSynthesisVoice): number {
+  const name = `${v.name} ${v.voiceURI}`.toLowerCase();
+  let score = 0;
+  // Voix neurales Microsoft (Edge) : ce qui se fait de mieux gratuitement aujourd'hui.
+  if (name.includes("natural") || name.includes("neural")) score += 100;
+  // Siri (iPhone récent) et voix Apple « améliorées » à télécharger dans Accessibilité.
+  if (name.includes("siri")) score += 90;
+  if (name.includes("enhanced") || name.includes("premium")) score += 70;
+  // Moteur Google (Android, Chrome) : très correct, et le cas le plus fréquent ici.
+  if (name.includes("google")) score += 60;
+  // Voix « compactes » d'Apple et eSpeak : intelligibles mais métalliques. En dernier.
+  if (name.includes("compact")) score -= 60;
+  if (name.includes("espeak") || name.includes("eloquence")) score -= 80;
+  // Français de France : l'accent attendu au Burkina, en Guinée, au Mali. Le français
+  // canadien reste proposé, mais après.
+  if (/^fr[-_]fr/i.test(v.lang)) score += 15;
+  if (v.default) score += 5;
+  return score;
+}
+
+/** Nom lisible : « Microsoft Denise Online (Natural) - French (France) » → « Denise ». */
+function shortLabel(v: SpeechSynthesisVoice): string {
+  let s = v.name
+    .replace(/\s*-\s*(French|Français)\s*\([^)]*\)\s*$/i, "")
+    .replace(/^Microsoft\s+/i, "")
+    .replace(/\s*Online\s*/i, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (/^fr[-_]ca/i.test(v.lang)) s += " (Canada)";
+  return s || v.name;
+}
+
+/** Voix françaises installées, la meilleure d'abord. */
+function frenchVoices(s: SpeechSynthesis): SpeechSynthesisVoice[] {
+  let all: SpeechSynthesisVoice[] = [];
   try {
-    voices = s.getVoices();
+    all = s.getVoices();
+  } catch {
+    return [];
+  }
+  return all
+    .filter((v) => /^fr/i.test(v.lang))
+    .sort((a, b) => voiceScore(b) - voiceScore(a) || a.name.localeCompare(b.name, "fr"));
+}
+
+function savedVoiceUri(): string | null {
+  try {
+    return localStorage.getItem(VOICE_PREF_KEY);
   } catch {
     return null;
   }
-  const fr = voices.filter((v) => /^fr/i.test(v.lang));
-  if (fr.length === 0) return null;
-  cachedVoice = fr.find((v) => v.localService) ?? fr[0]!;
-  return cachedVoice;
+}
+
+/** Voix retenue : celle choisie par le caissier si elle est toujours là, la mieux classée
+ *  sinon. Une voix disparue (mise à jour du système) ne doit pas rendre la caisse muette. */
+function chosenVoice(s: SpeechSynthesis): SpeechSynthesisVoice | null {
+  const list = frenchVoices(s);
+  if (list.length === 0) return null;
+  const saved = savedVoiceUri();
+  if (saved) {
+    const hit = list.find((v) => v.voiceURI === saved || v.name === saved);
+    if (hit) return hit;
+  }
+  return list[0]!;
 }
 
 /**
@@ -80,6 +148,70 @@ function whenVoicesReady(s: SpeechSynthesis, run: () => void): void {
 }
 
 /**
+ * Liste des voix françaises, pour le sélecteur de la page Encaissement.
+ *
+ * Rappelle le callback quand le navigateur complète sa liste (Chrome la charge après le
+ * premier rendu, Android l'enrichit quand un pack de langue arrive). Retourne le
+ * nettoyage attendu par `useEffect`.
+ */
+export function subscribeVoices(cb: (voices: VoiceOption[]) => void): () => void {
+  const s = synth();
+  if (!s) {
+    cb([]);
+    return () => {};
+  }
+  const publish = () => {
+    cb(
+      frenchVoices(s).map((v) => ({
+        uri: v.voiceURI || v.name,
+        label: shortLabel(v),
+        premium: voiceScore(v) >= 60,
+      })),
+    );
+  };
+  publish();
+  try {
+    s.addEventListener("voiceschanged", publish);
+  } catch {
+    /* pas d'événement : la liste initiale fera l'affaire */
+  }
+  return () => {
+    try {
+      s.removeEventListener("voiceschanged", publish);
+    } catch {
+      /* rien à retirer */
+    }
+  };
+}
+
+/** Voix choisie sur CET appareil (chaque poste a ses propres voix installées). */
+export function getVoiceUri(): string {
+  return savedVoiceUri() ?? "";
+}
+
+export function setVoiceUri(uri: string): void {
+  try {
+    if (uri) localStorage.setItem(VOICE_PREF_KEY, uri);
+    else localStorage.removeItem(VOICE_PREF_KEY);
+  } catch {
+    /* préférence non persistée : la meilleure voix détectée sera reprise */
+  }
+}
+
+function utter(text: string, voice: SpeechSynthesisVoice): SpeechSynthesisUtterance {
+  const u = new window.SpeechSynthesisUtterance(text);
+  u.voice = voice;
+  u.lang = voice.lang;
+  /* Débit à peine sous la normale et hauteur naturelle : une annonce de caisse doit être
+     comprise du premier coup, à travers le bruit et sans que le caissier la fasse
+     répéter. Accélérer une voix de synthèse est ce qui la fait sonner « robot ». */
+  u.rate = 0.97;
+  u.pitch = 1;
+  u.volume = 1;
+  return u;
+}
+
+/**
  * Dit une phrase courte en français. Sans effet si l'appareil n'a pas de voix française.
  *
  * Une annonce en cours est coupée : quand deux bons tombent coup sur coup, le caissier a
@@ -89,16 +221,24 @@ export function speakFr(text: string): void {
   const s = synth();
   if (!s) return;
   const say = () => {
-    const voice = pickFrenchVoice(s);
+    const voice = chosenVoice(s);
     if (!voice) return;
     try {
       s.cancel();
       s.resume(); // iOS met la synthèse en pause dès que la page passe en arrière-plan
-      const u = new window.SpeechSynthesisUtterance(text);
-      u.voice = voice;
-      u.lang = voice.lang;
-      u.rate = 1.05; // à peine plus vif que la lecture par défaut, qui traîne
-      u.volume = 1;
+      const u = utter(text, voice);
+      /* Repli : les meilleures voix passent souvent par le réseau. Si l'une d'elles
+         échoue (connexion coupée au mauvais moment), on redit la phrase avec une voix
+         installée sur l'appareil plutôt que de laisser le caissier sans montant. */
+      u.onerror = () => {
+        const local = frenchVoices(s).find((v) => v.localService && v !== voice);
+        if (!local) return;
+        try {
+          s.speak(utter(text, local));
+        } catch {
+          /* plus rien à tenter : le bip a déjà annoncé le bon */
+        }
+      };
       s.speak(u);
     } catch {
       /* voix indisponible : le bip a déjà annoncé le bon */
@@ -133,7 +273,7 @@ export function primeVoice(): void {
     s.resume();
     const u = new window.SpeechSynthesisUtterance(" ");
     u.volume = 0;
-    const v = pickFrenchVoice(s);
+    const v = chosenVoice(s);
     if (v) {
       u.voice = v;
       u.lang = v.lang;
