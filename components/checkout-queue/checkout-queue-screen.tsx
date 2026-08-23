@@ -83,6 +83,8 @@ import {
   SaleBlockedError,
 } from "@/lib/features/credit/customer-debt-guard";
 import { playPosAddBeep } from "@/lib/utils/pos-sound";
+import { armVoicePriming, primeVoice, speakFr } from "@/lib/utils/pos-voice";
+import { amountToFrenchWords } from "@/lib/utils/number-to-french-words";
 import { createClient } from "@/lib/supabase/client";
 import { formatCurrency } from "@/lib/utils/currency";
 import { messageFromUnknownError, toast } from "@/lib/toast";
@@ -103,6 +105,37 @@ import {
  */
 const QUEUE_POLL_MS = 4000;
 const SOUND_PREF_KEY = "fs_checkout_queue_sound";
+
+/**
+ * Délai avant la phrase parlée : les deux bips durent ~360 ms, et une voix qui démarre
+ * par-dessus se perd dans le bip.
+ */
+const SPEAK_DELAY_MS = 420;
+
+/**
+ * Ce que dit la caisse à l'arrivée d'un ou plusieurs bons.
+ *
+ * Le montant est donné **en toutes lettres**, avec la fonction déjà utilisée pour le
+ * « montant en lettres » des factures : la synthèse vocale lit correctement « douze mille
+ * cinq cents », là où « 12 500 FCFA » lui fait épeler le symbole et hésiter sur les
+ * milliers. La devise suit celle de l'entreprise (franc CFA, guinéen, rwandais…).
+ *
+ * Phrase courte, montant seul : le caissier a déjà la carte sous les yeux pour le reste,
+ * et une annonce longue est encore en train de parler quand le bon suivant tombe.
+ */
+function announceSentence(fresh: PosHandoff[]): string {
+  if (fresh.length === 1) {
+    return `Vente de ${lowerFirst(amountToFrenchWords(fresh[0]!.total))} à encaisser.`;
+  }
+  const total = fresh.reduce((sum, x) => sum + x.total, 0);
+  return `${fresh.length} ventes à encaisser, ${lowerFirst(amountToFrenchWords(total))}.`;
+}
+
+/** Minuscule sur la seule première lettre : `CFA` doit rester en capitales, sans quoi la
+ *  voix lit « sfa » au lieu d'épeler le sigle. */
+function lowerFirst(s: string): string {
+  return s.charAt(0).toLowerCase() + s.slice(1);
+}
 
 function startOfTodayIso(): string {
   const d = new Date();
@@ -362,6 +395,10 @@ export function CheckoutQueueScreen() {
    * Le caissier ne fixe pas son écran : il rend la monnaie, il range, il parle au client.
    * Sans le son, un bon peut attendre plusieurs minutes à trente centimètres de lui. Deux
    * bips (et non un) pour ne pas confondre avec le bip d'ajout au panier de la caisse.
+   *
+   * Puis la voix donne le montant. Le bip garde la première place : il perce le bruit
+   * d'une boutique bien mieux qu'une parole, et il reste le seul signal sur les appareils
+   * sans voix française installée — là, `speakFr` ne fait simplement rien.
    */
   const knownIds = useRef<Set<string> | null>(null);
   useEffect(() => {
@@ -374,9 +411,12 @@ export function CheckoutQueueScreen() {
     const fresh = pendingQ.data.filter((x) => !knownIds.current!.has(x.id));
     knownIds.current = ids;
     if (fresh.length === 0) return;
+    const timers: number[] = [];
     if (soundOn) {
       playPosAddBeep();
-      window.setTimeout(() => playPosAddBeep(), 220);
+      timers.push(window.setTimeout(() => playPosAddBeep(), 220));
+      const sentence = announceSentence(fresh);
+      timers.push(window.setTimeout(() => speakFr(sentence), SPEAK_DELAY_MS));
     }
     const first = fresh[0]!;
     toast.info(
@@ -384,7 +424,13 @@ export function CheckoutQueueScreen() {
         ? `Bon ${first.number} · ${formatCurrency(first.total)} — ${first.createdByName ?? "un collègue"}`
         : `${fresh.length} nouveaux bons à encaisser.`,
     );
+    return () => timers.forEach((t) => window.clearTimeout(t));
   }, [pendingQ.data, soundOn]);
+
+  /* La voix ne s'autorise qu'après un geste sur la page (règle des navigateurs, iPhone en
+     tête). Le son étant actif par défaut, on ne peut pas attendre un clic sur le bouton
+     « Son » : le premier geste venu, quel qu'il soit, sert d'amorce. */
+  useEffect(() => armVoicePriming(), []);
 
   function invalidateQueue() {
     void qc.invalidateQueries({ queryKey: ["pos-handoffs", companyId] });
@@ -547,7 +593,14 @@ export function CheckoutQueueScreen() {
     } catch {
       /* préférence non persistée : sans conséquence */
     }
-    if (next) playPosAddBeep();
+    if (next) {
+      // Dans le geste : c'est ici que le navigateur accorde le droit de parler.
+      primeVoice();
+      playPosAddBeep();
+      // Test audible : le caissier sait tout de suite si SON appareil sait parler
+      // (silence = pas de voix française installée, le bip fera seul le travail).
+      window.setTimeout(() => speakFr("Annonce vocale activée."), SPEAK_DELAY_MS);
+    }
   }
 
   if (!permLoading && !canView) {
