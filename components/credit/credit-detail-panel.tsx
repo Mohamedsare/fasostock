@@ -382,6 +382,9 @@ export function CreditDetailPanel({
       <FsConfirmDialog
         open={!!payToDelete}
         tone="danger"
+        // Le panneau de détail est en z-[75] : sans cela la confirmation s'ouvre DERRIÈRE lui,
+        // à moitié masquée, et le bouton de confirmation devient inatteignable.
+        overlayClassName="z-[96]"
         title="Annuler cet encaissement ?"
         confirmLabel={delPayMut.isPending ? "Annulation…" : "Annuler l'encaissement"}
         cancelLabel="Retour"

@@ -17,6 +17,7 @@ export function FsConfirmDialog({
   cancelLabel = "Annuler",
   tone = "default",
   busy = false,
+  overlayClassName,
   onCancel,
   onConfirm,
 }: {
@@ -27,13 +28,18 @@ export function FsConfirmDialog({
   cancelLabel?: string;
   tone?: "default" | "danger";
   busy?: boolean;
+  /** Ex. `z-[96]` quand la confirmation s'ouvre par-dessus un panneau ou un autre modal. */
+  overlayClassName?: string;
   onCancel: () => void;
   onConfirm: () => void;
 }) {
   if (!open) return null;
   return (
     <div
-      className="fixed inset-0 z-[70] flex items-center justify-center bg-black/45 p-4"
+      className={cn(
+        "fixed inset-0 flex items-center justify-center bg-black/45 p-4",
+        overlayClassName ?? "z-[70]",
+      )}
       role="alertdialog"
       aria-modal="true"
       aria-label={title}
