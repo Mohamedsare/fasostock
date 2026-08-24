@@ -295,6 +295,26 @@ export async function appendSalePayment(params: {
   return { paymentId, createdAtIso };
 }
 
+/**
+ * Annule (supprime) un encaissement de crédit. Propriétaire / super admin uniquement,
+ * et jamais la ligne `method = 'other'` : celle-ci n'est pas un paiement, c'est la dette.
+ * La suppression est tracée dans le journal d'audit côté serveur.
+ */
+export async function deleteSalePayment(params: {
+  paymentId: string;
+  reason?: string | null;
+}): Promise<void> {
+  if (!navigator.onLine) {
+    throw new Error("L'annulation d'un encaissement nécessite une connexion internet.");
+  }
+  const supabase = createClient();
+  const { error } = await supabase.rpc("delete_sale_payment", {
+    p_payment_id: params.paymentId,
+    p_reason: params.reason?.trim() || null,
+  });
+  if (error) throw error;
+}
+
 export async function updateSaleCreditMeta(params: {
   saleId: string;
   creditDueAt: string | null;

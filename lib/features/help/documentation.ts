@@ -1964,12 +1964,27 @@ export const DOC_GROUPS: DocGroup[] = [
           },
           {
             kind: "note",
+            tone: "tip",
+            title: "Annuler un encaissement saisi en double",
+            text: "L'écran met une seconde à répondre, le vendeur revalide, et le même remboursement est enregistré deux fois : la dette du client s'éteint alors qu'il doit encore. Ouvrez le détail du crédit, puis la corbeille au bout de la ligne fautive dans « Historique des paiements ». Réservé au propriétaire : un caissier ne peut pas effacer la trace d'un encaissement. La ligne de mise à crédit (« à crédit »), elle, n'est pas un paiement et ne se supprime pas. La suppression est enregistrée dans le journal d'audit avec votre nom, le montant et le motif que vous saisissez.",
+          },
+          {
+            kind: "note",
             tone: "warn",
             title: "Le crédit n'est pas du bénéfice",
             text: "Tant qu'il n'est pas remboursé, il ne compte ni dans votre chiffre d'affaires ni dans votre marge sur le tableau de bord et les rapports. Ce choix diverge des règles comptables SYSCOHADA, qui reconnaissent le produit à la facturation. Il est assumé : il vous montre l'argent que vous avez réellement, pas celui qu'on vous promet.",
           },
         ],
-        keywords: ["crédit", "créance", "dette client", "remboursement", "encours", "recouvrement"],
+        keywords: [
+          "crédit",
+          "créance",
+          "dette client",
+          "remboursement",
+          "encours",
+          "recouvrement",
+          "annuler encaissement",
+          "paiement en double",
+        ],
       },
       {
         id: "expenses",

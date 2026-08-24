@@ -2,10 +2,11 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, isToday, isYesterday, parseISO } from "date-fns";
+import { FsConfirmDialog } from "@/components/ui/fs-confirm-dialog";
 import {
   fsInputClass,
 } from "@/components/ui/fs-screen-primitives";
-import { fetchCreditSaleDetail, updateSaleCreditMeta } from "@/lib/features/credit/api";
+import { deleteSalePayment, fetchCreditSaleDetail, updateSaleCreditMeta } from "@/lib/features/credit/api";
 import {
   CREDIT_AMOUNT_EPS,
   creditLineStatus,
@@ -28,7 +29,7 @@ import {
 import { P } from "@/lib/constants/permissions";
 import { usePermissions } from "@/lib/features/permissions/use-permissions";
 import { useAppContext } from "@/lib/features/common/app-context";
-import { MdChevronLeft, MdChevronRight, MdClose } from "react-icons/md";
+import { MdChevronLeft, MdChevronRight, MdClose, MdDeleteOutline } from "react-icons/md";
 import { useEffect, useMemo, useState } from "react";
 import { CreditQuickPayDialog } from "./credit-quick-pay-dialog";
 import type { CreditSaleRow } from "@/lib/features/credit/types";
@@ -59,6 +60,15 @@ export function CreditDetailPanel({
   const [dueStr, setDueStr] = useState("");
   const [internalNote, setInternalNote] = useState("");
   const [paymentsPage, setPaymentsPage] = useState(0);
+  // Annulation d'un encaissement : réservée au propriétaire (voir migration 00205).
+  const isOwner = ctx.data?.roleSlug === "owner";
+  const [payToDelete, setPayToDelete] = useState<{
+    id: string;
+    amount: number;
+    method: string;
+    createdAt: string;
+  } | null>(null);
+  const [deleteReason, setDeleteReason] = useState("");
 
   const q = useQuery({
     queryKey: ["credit-sale-detail", saleId],
@@ -108,6 +118,21 @@ export function CreditDetailPanel({
     onSuccess: async () => {
       toast.success("Échéance / notes enregistrées.");
       await qc.invalidateQueries({ queryKey: cq });
+      await q.refetch();
+    },
+    onError: (e) => toast.error(messageFromUnknownError(e)),
+  });
+
+  const delPayMut = useMutation({
+    mutationFn: () =>
+      deleteSalePayment({ paymentId: payToDelete!.id, reason: deleteReason }),
+    onSuccess: async () => {
+      toast.success("Encaissement annulé.");
+      setPayToDelete(null);
+      setDeleteReason("");
+      await qc.invalidateQueries({ queryKey: cq });
+      await qc.invalidateQueries({ queryKey: ["credit-repayments"] });
+      await qc.invalidateQueries({ queryKey: ["credit-granted"] });
       await q.refetch();
     },
     onError: (e) => toast.error(messageFromUnknownError(e)),
@@ -261,6 +286,28 @@ export function CreditDetailPanel({
                           >
                             {isBooking ? "à crédit" : `+${formatCurrency(p.amount)}`}
                           </span>
+                          {/* Le double-encaissement (validation répétée au comptoir) n'a
+                              aucune autre porte de sortie : seul le propriétaire l'ouvre,
+                              et jamais sur la ligne de mise à crédit. */}
+                          {isOwner && !isBooking ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setDeleteReason("");
+                                setPayToDelete({
+                                  id: p.id,
+                                  amount: Number(p.amount ?? 0),
+                                  method: p.method,
+                                  createdAt: p.created_at,
+                                });
+                              }}
+                              title="Annuler cet encaissement"
+                              aria-label="Annuler cet encaissement"
+                              className="-mr-1 shrink-0 rounded-md p-1.5 text-neutral-400 hover:bg-red-500/10 hover:text-red-600"
+                            >
+                              <MdDeleteOutline className="h-4 w-4" aria-hidden />
+                            </button>
+                          ) : null}
                         </li>
                       );
                     })}
@@ -332,6 +379,49 @@ export function CreditDetailPanel({
           </div>
         </div>
       </div>
+      <FsConfirmDialog
+        open={!!payToDelete}
+        tone="danger"
+        title="Annuler cet encaissement ?"
+        confirmLabel={delPayMut.isPending ? "Annulation…" : "Annuler l'encaissement"}
+        cancelLabel="Retour"
+        busy={delPayMut.isPending}
+        onCancel={() => {
+          if (delPayMut.isPending) return;
+          setPayToDelete(null);
+          setDeleteReason("");
+        }}
+        onConfirm={() => {
+          if (!delPayMut.isPending) delPayMut.mutate();
+        }}
+        message={
+          payToDelete ? (
+            <div className="space-y-3">
+              <p>
+                <span className="font-bold text-fs-text">{formatCurrency(payToDelete.amount)}</span>{" "}
+                · {paymentMethodLabel(payToDelete.method)} ·{" "}
+                {formatOperationDateTime(payToDelete.createdAt)}
+              </p>
+              <p>
+                La dette du client remontera d&apos;autant, et le reçu déjà remis ne
+                correspondra plus. À n&apos;utiliser que pour corriger une saisie en double
+                ou une erreur de montant — la suppression est enregistrée dans le journal
+                d&apos;audit à votre nom.
+              </p>
+              <div>
+                <label className="block text-xs text-neutral-500">Motif (recommandé)</label>
+                <input
+                  className={fsInputClass("mt-1 w-full")}
+                  value={deleteReason}
+                  onChange={(e) => setDeleteReason(e.target.value)}
+                  placeholder="Ex. saisie en double"
+                  disabled={delPayMut.isPending}
+                />
+              </div>
+            </div>
+          ) : null
+        }
+      />
       <CreditQuickPayDialog
         key={saleId ?? "credit-detail-pay"}
         sale={sale as CreditSaleRow | null}
