@@ -14,6 +14,7 @@ import {
 } from "@/lib/features/invoices/invoice-a4-helpers";
 import { escapeHtml } from "./escape-html";
 import { bytesToImageDataUrl } from "./image-data-url";
+import { TABLE_PAGINATION_CSS } from "./table-pagination-css";
 
 /** Texte PDF Flutter + échappement HTML (XSS). */
 function tx(s: string): string {
@@ -291,7 +292,7 @@ function totalsBlock(data: InvoiceA4Data, currency: string, primaryCss: string):
     if (statutHtml) rows.push(statutHtml);
   }
 
-  return `<div class="tot-wrap">${rows.join("")}</div>`;
+  return `<div class="tot-wrap no-break">${rows.join("")}</div>`;
 }
 
 function customerBlock(data: InvoiceA4Data): string {
@@ -344,6 +345,7 @@ export function renderInvoiceA4Html(data: InvoiceA4Data): string {
   return `<!DOCTYPE html>
 <html lang="fr"><head><meta charset="utf-8"/>
 <style>
+${TABLE_PAGINATION_CSS}
   * { box-sizing: border-box; }
   html {
     height: 100%;
@@ -739,7 +741,7 @@ function model3Reglement(data: InvoiceA4Data, currency: string): string {
   if (due && resteDu >= 0.01) {
     rows.push(`<div class="m3-reg-due">${tx(`Solde à régler avant le ${due}`)}</div>`);
   }
-  return `<div class="m3-reg">${rows.join("")}</div>`;
+  return `<div class="m3-reg no-break">${rows.join("")}</div>`;
 }
 
 export function renderInvoiceA4Model3Html(data: InvoiceA4Data): string {
@@ -766,6 +768,7 @@ export function renderInvoiceA4Model3Html(data: InvoiceA4Data): string {
   return `<!DOCTYPE html>
 <html lang="fr"><head><meta charset="utf-8"/>
 <style>
+${TABLE_PAGINATION_CSS}
   * { box-sizing: border-box; }
   html { height: 100%; }
   body {
@@ -845,7 +848,7 @@ export function renderInvoiceA4Model3Html(data: InvoiceA4Data): string {
     ${model3Table(data, currency)}
     ${model3Reglement(data, currency)}
     <div class="m3-amount">${amountLine}</div>
-    <div class="m3-sign">
+    <div class="m3-sign no-break">
       <div class="m3-sign-title">${txUpper(signerTitle)}</div>
       ${signerName ? `<div class="m3-sign-name">${txUpper(signerName)}</div>` : ""}
       <div class="m3-sign-space"></div>

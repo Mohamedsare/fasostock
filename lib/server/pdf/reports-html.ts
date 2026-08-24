@@ -2,6 +2,7 @@ import type { ReportsPageData } from "@/lib/features/dashboard/types";
 import { sanitizeForPdf } from "@/lib/features/invoices/invoice-a4-helpers";
 import { formatCurrency } from "@/lib/utils/currency";
 import { escapeHtml } from "./escape-html";
+import { TABLE_PAGINATION_CSS } from "./table-pagination-css";
 
 function tx(s: string): string {
   return escapeHtml(sanitizeForPdf(s));
@@ -126,6 +127,7 @@ export function renderReportsHtml(
   return `<!DOCTYPE html>
 <html lang="fr"><head><meta charset="utf-8"/>
 <style>
+${TABLE_PAGINATION_CSS}
   * { box-sizing: border-box; }
   body {
     font-family: system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;

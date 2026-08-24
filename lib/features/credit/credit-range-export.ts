@@ -2,11 +2,10 @@
 
 /** Type seulement — voir `spreadsheet-export-pro` : ExcelJS est chargé au clic, pas au rendu. */
 import type ExcelJSTypes from "exceljs";
-import { format, parseISO } from "date-fns";
-import { fr } from "date-fns/locale";
 import { writeProDataTable, safeSheetName, colName } from "@/lib/utils/spreadsheet-export-pro";
 import { paymentMethodLabel } from "@/lib/features/receipt/build-receipt-ticket-data";
 import type { CreditGrantedRow, CreditRepaymentRow } from "./api";
+import { formatOperationDateTime, formatOperationTime } from "@/lib/utils/operation-datetime";
 
 type Cell = string | number | null;
 
@@ -16,7 +15,9 @@ const SUBTITLE_COLOR = "FF6B7280";
 /** « 14:32 » sur un jour unique, « 05/08 14:32 » sur une période multi-jours. */
 function stamp(iso: string, singleDay: boolean): string {
   try {
-    return format(parseISO(iso), singleDay ? "HH:mm" : "dd/MM HH:mm");
+    return singleDay
+      ? formatOperationTime(iso)
+      : `${formatOperationDateTime(iso).slice(0, 5)} ${formatOperationTime(iso)}`;
   } catch {
     return "";
   }
@@ -76,7 +77,7 @@ export async function exportCreditRangeXlsx(params: {
   const { from, to, rangeLabel, companyName, storeLabel, granted, repaid } = params;
 
   const dayLabel = rangeLabel;
-  const generatedAt = format(new Date(), "dd/MM/yyyy HH:mm", { locale: fr });
+  const generatedAt = formatOperationDateTime(new Date());
   const singleDay = from === to;
 
   const grantedTotal = granted.reduce((n, r) => n + r.creditGranted, 0);

@@ -6,6 +6,7 @@ import { mapProgressiveQuoteRow } from "@/lib/features/progressive/quote-types";
 import { progressiveTerms } from "@/lib/features/progressive/progressive-terms";
 import { createClient } from "@/lib/supabase/server";
 import { requireAuthUser } from "@/lib/server/api-auth";
+import { resolveServerTimeZone } from "@/lib/server/company-timezone";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -52,21 +53,25 @@ export async function POST(req: Request) {
       process.env.NEXT_PUBLIC_SUPABASE_URL,
     );
 
+    const tz = await resolveServerTimeZone(supabase);
     const now = new Date();
     const html = renderProgressiveQuoteHtml({
       ...quote,
       logoDataUrl,
       dateLabel: now.toLocaleDateString("fr-FR", {
+        timeZone: tz,
         day: "2-digit",
         month: "2-digit",
         year: "numeric",
       }),
       timeLabel: now.toLocaleTimeString("fr-FR", {
+        timeZone: tz,
         hour: "2-digit",
         minute: "2-digit",
         hour12: false,
       }),
       openedLabel: quote.createdAt.toLocaleDateString("fr-FR", {
+        timeZone: tz,
         day: "2-digit",
         month: "2-digit",
         year: "numeric",

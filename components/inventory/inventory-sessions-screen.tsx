@@ -33,12 +33,14 @@ import {
   MdReplay,
   MdStorefront,
 } from "react-icons/md";
+import { getActiveTimeZone } from "@/lib/utils/operation-datetime";
 
 function fmtDate(iso: string | null): string {
   if (!iso) return "—";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "—";
   return d.toLocaleDateString("fr-FR", {
+    timeZone: getActiveTimeZone(),
     day: "2-digit",
     month: "short",
     year: "numeric",

@@ -3,6 +3,7 @@
 import { AppPresenceReporter } from "@/components/presence/app-presence-reporter";
 import { OfflineStrip } from "@/components/offline/offline-strip";
 import { CompanyCurrencyLoader } from "@/components/providers/company-currency-loader";
+import { CompanyTimeZoneLoader } from "@/components/providers/company-timezone-loader";
 import { AppShellSkeleton } from "@/components/layout/app-shell-skeleton";
 import { LoadingExperience } from "@/components/loading/loading-experience";
 import { AppSidebar } from "@/components/layout/app-sidebar";
@@ -27,6 +28,8 @@ import { usePermissions } from "@/lib/features/permissions/use-permissions";
 import { useDesktopNav } from "@/lib/hooks/use-media-query";
 import { signOutAndRedirect } from "@/lib/auth/sign-out-client";
 import { cn } from "@/lib/utils/cn";
+import { timeZoneLabelOf } from "@/lib/config/timezones";
+import { formatOperationTimeWithSeconds, getActiveTimeZone } from "@/lib/utils/operation-datetime";
 import {
   ChevronDown,
   Clock3,
@@ -221,21 +224,9 @@ export function AppShell({ children, userEmail }: AppShellProps) {
   useEffect(() => {
     const tick = () => {
       const now = new Date();
-      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      const locale =
-        typeof navigator !== "undefined" && navigator.language
-          ? navigator.language
-          : "fr-FR";
-      setClock(
-        new Intl.DateTimeFormat(locale, {
-          timeZone: tz,
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-        }).format(now),
-      );
+      setClock(formatOperationTimeWithSeconds(now));
       setClockIso(now.toISOString());
-      setClockTitle(`Heure locale · ${tz}`);
+      setClockTitle(`Heure de ${timeZoneLabelOf(getActiveTimeZone())} · ${getActiveTimeZone()}`);
     };
     tick();
     const t = setInterval(tick, 1000);
@@ -369,6 +360,7 @@ export function AppShell({ children, userEmail }: AppShellProps) {
       <OfflineStrip />
       {/* Rend active la devise de l'entreprise pour tous les montants affichés. */}
       <CompanyCurrencyLoader />
+      <CompanyTimeZoneLoader />
       <div className="flex min-h-0 flex-1 overflow-hidden">
         {isDesktop ? (
           <AppSidebar

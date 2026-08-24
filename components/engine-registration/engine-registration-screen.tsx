@@ -34,10 +34,12 @@ import {
   MdTaskAlt,
   MdWarningAmber,
 } from "react-icons/md";
+import { getActiveTimeZone } from "@/lib/utils/operation-datetime";
 
 function formatDate(iso: string): string {
   try {
     return new Date(iso).toLocaleDateString("fr-FR", {
+      timeZone: getActiveTimeZone(),
       day: "2-digit",
       month: "2-digit",
       year: "numeric",

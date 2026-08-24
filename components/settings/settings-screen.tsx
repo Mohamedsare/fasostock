@@ -95,6 +95,13 @@ import {
 } from "@/lib/features/settings/product-locations-pos";
 import { queryKeys } from "@/lib/query/query-keys";
 import { currencyOf, SUPPORTED_CURRENCIES } from "@/lib/config/currencies";
+import { SUPPORTED_TIME_ZONES, timeZoneLabelOf } from "@/lib/config/timezones";
+import {
+  fetchCompanyTimeZone,
+  peekCompanyTimeZone,
+  setCompanyTimeZone,
+} from "@/lib/features/settings/company-timezone";
+import { formatOperationTimeWithSeconds } from "@/lib/utils/operation-datetime";
 import {
   fetchCompanyCurrency,
   fetchCompanyCurrencyLocked,
@@ -155,6 +162,7 @@ import {
   MdAllInbox,
   MdLibraryAddCheck,
   MdPayments,
+  MdSchedule,
   MdPieChart,
   MdPriceChange,
   MdPrint,
@@ -791,6 +799,42 @@ export function SettingsScreen() {
     },
     onError: (e) => toastMutationError("settings", e),
   });
+
+  /* Fuseau horaire de l'entreprise — owner uniquement, librement modifiable. */
+  const peekTimeZone =
+    companyId.length > 0 && isOwner ? peekCompanyTimeZone(companyId) : undefined;
+  const timeZoneQ = useQuery({
+    queryKey: ["company-timezone", companyId],
+    queryFn: () => fetchCompanyTimeZone(companyId),
+    enabled: Boolean(companyId && isOwner),
+    staleTime: 30_000,
+    ...(peekTimeZone !== undefined ? { initialData: peekTimeZone } : {}),
+  });
+
+  const timeZoneMut = useMutation({
+    mutationFn: async (id: string) => {
+      if (!companyId) throw new Error("Entreprise introuvable.");
+      await setCompanyTimeZone(companyId, id);
+    },
+    onSuccess: async (_, id) => {
+      toast.success(`Fuseau horaire enregistré : ${timeZoneLabelOf(id)}.`);
+      await qc.invalidateQueries({ queryKey: ["company-timezone", companyId] });
+      // Toute l'app affiche des heures et borne des journées : on rafraîchit d'un bloc,
+      // comme pour la devise.
+      await qc.invalidateQueries();
+    },
+    onError: (e) => toastMutationError("settings", e),
+  });
+
+  /* Aperçu vivant : le propriétaire vérifie d'un coup d'œil que l'heure est la bonne. */
+  const [tzPreview, setTzPreview] = useState(() => formatOperationTimeWithSeconds(new Date()));
+  useEffect(() => {
+    const t = setInterval(
+      () => setTzPreview(formatOperationTimeWithSeconds(new Date())),
+      1000,
+    );
+    return () => clearInterval(t);
+  }, []);
 
   const productLocationsEnabled = ctxQ.data?.productLocationsEnabled === true;
   const productLocationsMut = useMutation({
@@ -1819,6 +1863,53 @@ export function SettingsScreen() {
               <ChevronRight className="h-4 w-4" aria-hidden />
             </Link>
           ) : null}
+        </FsCard>
+      ) : null}
+
+      {/* Fuseau horaire de l'entreprise — owner uniquement */}
+      {isOwner && companyId ? (
+        <FsCard className="mt-5" padding="p-5">
+          <SettingsCardTitle icon={MdSchedule} title="Fuseau horaire" />
+          <p className="mt-2 text-xs leading-relaxed text-neutral-600 sm:text-sm">
+            L&apos;heure de votre pays, utilisée partout : heure imprimée sur les tickets et
+            les factures, historique des ventes, et surtout le découpage des journées dans
+            vos rapports. Elle ne dépend pas du réglage de chaque ordinateur.
+          </p>
+
+          {timeZoneQ.isPending ? (
+            <div className="mt-4 flex justify-center py-4" role="status" aria-label="Chargement">
+              <div className="h-8 w-8 animate-spin rounded-full border-2 border-fs-accent border-t-transparent" />
+            </div>
+          ) : (
+            <div className="mt-4 rounded-[10px] border border-black/[0.08] px-3 py-3 sm:px-4">
+              <label className="block text-sm font-medium text-fs-text" htmlFor="company-timezone">
+                Pays / fuseau de votre commerce
+              </label>
+              <select
+                id="company-timezone"
+                className="mt-2 w-full rounded-[10px] border border-black/[0.12] bg-white px-3 py-2 text-sm text-fs-text disabled:opacity-60"
+                value={timeZoneQ.data ?? "Africa/Ouagadougou"}
+                disabled={timeZoneMut.isPending}
+                onChange={(e) => {
+                  void timeZoneMut.mutateAsync(e.target.value);
+                }}
+              >
+                {SUPPORTED_TIME_ZONES.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.label} — {t.offsetLabel}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-2 text-sm font-medium text-fs-text">
+                Il est actuellement <span className="tabular-nums">{tzPreview}</span> chez vous.
+              </p>
+              <p className="mt-2 text-xs leading-relaxed text-neutral-600">
+                Si cette heure ne correspond pas à celle de votre montre, choisissez le bon
+                pays ci-dessus. Vos ventes déjà enregistrées ne sont pas modifiées : elles
+                s&apos;afficheront simplement à la bonne heure.
+              </p>
+            </div>
+          )}
         </FsCard>
       ) : null}
 

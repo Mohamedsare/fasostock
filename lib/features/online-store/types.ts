@@ -145,6 +145,8 @@ export type PublicOrderTracking = {
   shopSlug: string | null;
   shopPhone: string | null;
   items: Array<{ name: string; quantity: number; unitPrice: number; total: number }>;
+  /** Fuseau du commerce : le client final n'a aucun moyen de le deviner. */
+  timeZone: string;
 };
 
 export const ONLINE_ORDER_STATUS_LABELS: Record<OnlineOrderStatus, string> = {

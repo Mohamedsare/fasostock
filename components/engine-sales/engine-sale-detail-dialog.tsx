@@ -32,6 +32,7 @@ import {
   MdPayments,
   MdPrint,
 } from "react-icons/md";
+import { getActiveTimeZone } from "@/lib/utils/operation-datetime";
 
 function wheelsLabel(w: EngineWheels | null): string {
   return w === 2 ? "2 roues" : w === 3 ? "3 roues" : "—";
@@ -54,6 +55,7 @@ function paymentMethodLabel(m: string): string {
 function formatPaymentDate(iso: string): string {
   try {
     return new Date(iso).toLocaleString("fr-FR", {
+      timeZone: getActiveTimeZone(),
       day: "2-digit",
       month: "2-digit",
       year: "numeric",

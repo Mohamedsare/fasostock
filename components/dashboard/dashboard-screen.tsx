@@ -70,6 +70,7 @@ import {
   FsScreenHeader,
   FsSectionLabel,
 } from "@/components/ui/fs-screen-primitives";
+import { operationTodayYmd } from "@/lib/utils/operation-datetime";
 
 function getDashboardFallbackRoute(h: AccessHelpers): string {
   if (h.canSales) return ROUTES.sales;
@@ -108,7 +109,7 @@ export function DashboardScreen() {
   const [customFrom, setCustomFrom] = useState<string | null>(null);
   const [customTo, setCustomTo] = useState<string | null>(null);
   const [selectedDay, setSelectedDay] = useState(() =>
-    format(new Date(), "yyyy-MM-dd"),
+    operationTodayYmd(),
   );
 
   const companyId = ctx.data?.companyId ?? "";
@@ -521,14 +522,14 @@ export function DashboardScreen() {
                   <input
                     type="date"
                     value={selectedDay}
-                    max={format(new Date(), "yyyy-MM-dd")}
+                    max={operationTodayYmd()}
                     onChange={(e) => setSelectedDay(e.target.value)}
                     className="min-w-0 flex-1 rounded-lg border border-black/[0.12] px-2 py-2 text-sm"
                   />
                   <button
                     type="button"
                     onClick={() =>
-                      setSelectedDay(format(new Date(), "yyyy-MM-dd"))
+                      setSelectedDay(operationTodayYmd())
                     }
                     className="shrink-0 rounded-lg border border-black/[0.1] px-3 py-2 text-sm font-medium text-[var(--fs-accent)]"
                   >

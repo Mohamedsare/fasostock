@@ -26,6 +26,7 @@ import {
   MdTrendingUp,
   MdWorkspacePremium,
 } from "react-icons/md";
+import { getActiveTimeZone } from "@/lib/utils/operation-datetime";
 
 type SortKey =
   | "revenue"
@@ -84,6 +85,7 @@ function formatShortDateTime(iso: string | null): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "—";
   return d.toLocaleString("fr-FR", {
+    timeZone: getActiveTimeZone(),
     day: "2-digit",
     month: "short",
     hour: "2-digit",
@@ -94,7 +96,8 @@ function formatShortDateTime(iso: string | null): string {
 function formatDayLabel(ymd: string): string {
   const d = new Date(`${ymd}T12:00:00`);
   if (Number.isNaN(d.getTime())) return ymd;
-  return d.toLocaleDateString("fr-FR", { day: "2-digit", month: "short" });
+  return d.toLocaleDateString("fr-FR", {
+    timeZone: getActiveTimeZone(), day: "2-digit", month: "short" });
 }
 
 function metricValue(c: CashierPerformance, key: SortKey): number {

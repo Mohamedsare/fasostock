@@ -53,6 +53,7 @@ import {
 import { PaymentMixPanel } from "@/components/dashboard/payment-mix-panel";
 import { FsHorizontalScroll } from "@/components/ui/fs-horizontal-scroll";
 import { getDefaultDateRange } from "@/lib/features/dashboard/date-range";
+import { operationTodayYmd } from "@/lib/utils/operation-datetime";
 
 /** Aligné sur `--fs-accent` / `globals.css`. */
 const OWNER_ACCENT = "#E85D2C";
@@ -633,7 +634,7 @@ export function OwnerDashboardUi(props: OwnerDashboardUiProps) {
 
   // Libellés du bandeau « jour » : « aujourd'hui » si la date choisie EST aujourd'hui,
   // sinon la date sélectionnée (ex. « le 20/07 ») — évite d'écrire « aujourd'hui » sur un jour passé.
-  const isSelectedToday = selectedDay === format(new Date(), "yyyy-MM-dd");
+  const isSelectedToday = selectedDay === operationTodayYmd();
   const dayShort = (() => {
     try {
       return format(parseISO(selectedDay), "dd/MM", { locale: fr });
@@ -771,7 +772,7 @@ export function OwnerDashboardUi(props: OwnerDashboardUiProps) {
               <input
                 type="date"
                 value={selectedDay}
-                max={format(new Date(), "yyyy-MM-dd")}
+                max={operationTodayYmd()}
                 onChange={(e) =>
                   startTransition(() => setSelectedDay(e.target.value))
                 }
@@ -781,7 +782,7 @@ export function OwnerDashboardUi(props: OwnerDashboardUiProps) {
                 type="button"
                 onClick={() =>
                   startTransition(() =>
-                    setSelectedDay(format(new Date(), "yyyy-MM-dd")),
+                    setSelectedDay(operationTodayYmd()),
                   )
                 }
                 className="min-h-9 shrink-0 rounded-lg bg-fs-card px-3 py-1.5 text-xs font-bold text-[var(--owner-accent)] ring-1 ring-black/8 touch-manipulation min-[900px]:text-xs dark:ring-white/12"

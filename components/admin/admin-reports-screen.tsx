@@ -25,9 +25,10 @@ import { formatCurrency } from "@/lib/utils/currency";
 import type { ReportsPageData } from "@/lib/features/dashboard/types";
 import { downloadProSpreadsheet } from "@/lib/utils/spreadsheet-export-pro";
 import { useQuery } from "@tanstack/react-query";
-import { endOfMonth, endOfYear, format, startOfMonth, startOfYear, subDays } from "date-fns";
+import { endOfMonth, endOfYear, startOfMonth, startOfYear, subDays } from "date-fns";
 import { useMemo, useState } from "react";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { formatOperationDateTime } from "@/lib/utils/operation-datetime";
 
 type RangePreset = "today" | "7d" | "30d" | "month" | "year" | "custom";
 type ViewMode = "platform" | "company" | "store";
@@ -239,7 +240,7 @@ export function AdminReportsScreen() {
       subscriptionStatus: sub?.status ?? "none",
       adoption,
       churnRisk: risk,
-      lastActivity: agg?.lastActivity ? format(new Date(agg.lastActivity), "dd/MM/yyyy") : "—",
+      lastActivity: agg?.lastActivity ? formatOperationDateTime(agg.lastActivity).slice(0, 10) : "—",
       action: risk >= 70 ? "Relancer immédiatement" : risk >= 45 ? "Accompagner" : "Maintenir",
     };
   });
@@ -427,7 +428,7 @@ export function AdminReportsScreen() {
 
       const blob = await fetchReportsPdfBlob(pdfData, {
         title: "Rapports & Intelligence Décisionnelle — Super Admin",
-        subtitle: `Période: ${rangePreset} • Mode: ${viewMode} • Généré le ${format(new Date(), "dd/MM/yyyy HH:mm")}`,
+        subtitle: `Période: ${rangePreset} • Mode: ${viewMode} • Généré le ${formatOperationDateTime(new Date())}`,
       }, { asPlatformAdmin: true });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");

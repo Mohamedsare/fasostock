@@ -1,4 +1,5 @@
 import type { RentalLease } from "./types";
+import { getActiveTimeZone } from "@/lib/utils/operation-datetime";
 
 /** `YYYY-MM-DD` d'une date locale (les colonnes `date` Postgres n'ont pas de fuseau). */
 export function toIsoDate(d: Date): string {
@@ -12,6 +13,7 @@ export function formatDateFr(iso: string | null | undefined): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "—";
   return new Intl.DateTimeFormat("fr-FR", {
+    timeZone: getActiveTimeZone(),
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
@@ -23,7 +25,8 @@ export function formatMonthFr(iso: string | null | undefined): string {
   if (!iso) return "—";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "—";
-  return new Intl.DateTimeFormat("fr-FR", { month: "long", year: "numeric" }).format(d);
+  return new Intl.DateTimeFormat("fr-FR", {
+    timeZone: getActiveTimeZone(), month: "long", year: "numeric" }).format(d);
 }
 
 /** Écart en jours entre une date et aujourd'hui (positif = dans le passé). */

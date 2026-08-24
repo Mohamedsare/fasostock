@@ -8,6 +8,7 @@ import {
 import { requireAuthUser } from "@/lib/server/api-auth";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
+import { resolveServerTimeZone } from "@/lib/server/company-timezone";
 
 export const runtime = "nodejs";
 /* L'envoi différé se poursuit après la réponse : la fonction doit vivre jusque-là. */
@@ -42,6 +43,8 @@ export async function POST(req: Request) {
   const auth = await requireAuthUser(supabase);
   if (!auth.ok) return auth.response;
   const userId = auth.user.id;
+  // Lu AVANT le `after()` : la requête y est déjà close, la session n'est plus lisible.
+  const tz = await resolveServerTimeZone(supabase);
 
   after(async () => {
     if (delaySeconds > 0) {
@@ -58,7 +61,7 @@ export async function POST(req: Request) {
         url: "/notifications",
         type: "test",
       });
-      await recordOutcome(userId, describeResult(result, sentAt, delaySeconds));
+      await recordOutcome(userId, describeResult(result, sentAt, delaySeconds, tz));
     } catch (e) {
       const msg =
         e instanceof PushNotConfiguredError
@@ -77,8 +80,10 @@ function describeResult(
   result: PushSendResult,
   sentAt: Date,
   delaySeconds: number,
+  tz: string,
 ): string {
-  const heure = sentAt.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  const heure = sentAt.toLocaleTimeString("fr-FR", {
+    timeZone: tz, hour: "2-digit", minute: "2-digit", second: "2-digit" });
   if (result.attempted === 0) {
     return `Aucun appareil abonné au moment du test (${heure}). Activez les notifications sur l’appareil concerné.`;
   }

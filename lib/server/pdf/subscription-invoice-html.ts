@@ -1,4 +1,8 @@
 import { escapeHtml } from "./escape-html";
+// Facture émise par FasoStock lui-même : elle est datée au fuseau de la plateforme,
+// pas à celui du client. Ce n'est donc pas un oubli si le réglage entreprise ne s'y applique pas.
+import { PLATFORM_TIMEZONE } from "@/lib/email/platform-config";
+import { TABLE_PAGINATION_CSS } from "./table-pagination-css";
 
 export type SubscriptionInvoiceData = {
   invoiceNumber: string;
@@ -31,6 +35,7 @@ function fmtDate(iso: string | null): string {
   if (!iso) return "—";
   try {
     return new Date(iso).toLocaleDateString("fr-FR", {
+      timeZone: PLATFORM_TIMEZONE,
       day: "2-digit",
       month: "long",
       year: "numeric",
@@ -63,6 +68,7 @@ export function renderSubscriptionInvoiceHtml(d: SubscriptionInvoiceData): strin
 <head>
 <meta charset="utf-8" />
 <style>
+${TABLE_PAGINATION_CSS}
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { font-family: "Segoe UI", Roboto, Arial, sans-serif; color: #1f2937; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .page { position: relative; }

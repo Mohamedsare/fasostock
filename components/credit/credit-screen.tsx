@@ -3,14 +3,7 @@
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, type ComponentType } from "react";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  differenceInCalendarDays,
-  format,
-  isToday,
-  isYesterday,
-  parseISO,
-  subMonths,
-} from "date-fns";
+import { parseISO, subMonths } from "date-fns";
 import {
   MdAccountBalanceWallet,
   MdCalendarToday,
@@ -81,11 +74,7 @@ import { messageFromUnknownError, toast } from "@/lib/toast";
 import { creditSalesToSpreadsheetMatrix } from "@/lib/features/credit/csv";
 import { downloadProSpreadsheet } from "@/lib/utils/spreadsheet-export-pro";
 import { cn } from "@/lib/utils/cn";
-import {
-  formatOperationCalendarDayYmd,
-  formatOperationDateTime,
-  formatOperationNowDateFull,
-} from "@/lib/utils/operation-datetime";
+import { formatOperationCalendarDayYmd, formatOperationDateTime, formatOperationNowDateFull, operationYmd, isOperationToday, isOperationYesterday, operationCalendarDaysBetween, operationTodayYmd } from "@/lib/utils/operation-datetime";
 import { CreditCashedInDialog } from "./credit-cashed-in-dialog";
 import { CreditDetailPanel } from "./credit-detail-panel";
 import { CreditRepaymentsPanel } from "./credit-repayments-panel";
@@ -168,7 +157,7 @@ function humanDispatchNote(note: string | null, totalAmount: number): string | n
 }
 
 function toIsoDate(d: Date): string {
-  return format(d, "yyyy-MM-dd");
+  return operationYmd(d);
 }
 
 function formatDateFr(ymd: string) {
@@ -180,10 +169,10 @@ function lastPaymentLabel(iso: string | null): { text: string; today: boolean } 
   if (!iso) return null;
   const d = parseISO(iso);
   if (Number.isNaN(d.getTime())) return null;
-  if (isToday(d)) return { text: "Aujourd'hui", today: true };
-  if (isYesterday(d)) return { text: "Hier", today: false };
-  const days = differenceInCalendarDays(new Date(), d);
-  const dm = format(d, "dd/MM");
+  if (isOperationToday(d)) return { text: "Aujourd'hui", today: true };
+  if (isOperationYesterday(d)) return { text: "Hier", today: false };
+  const days = operationCalendarDaysBetween(operationYmd(d), operationTodayYmd());
+  const dm = formatOperationDateTime(d).slice(0, 5);
   return { text: days > 0 ? `${dm} · il y a ${days} j` : dm, today: false };
 }
 

@@ -103,6 +103,7 @@ import {
   awaitPrintJob,
   createPosPrintJob,
 } from "@/lib/features/dual-cashier/print-jobs";
+import { getActiveTimeZone } from "@/lib/utils/operation-datetime";
 
 /**
  * Rythme de rafraîchissement de la file.
@@ -160,7 +161,8 @@ function timeLabel(iso: string | null): string {
   if (!iso) return "—";
   const d = new Date(iso);
   if (!Number.isFinite(d.getTime())) return "—";
-  return d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+  return d.toLocaleTimeString("fr-FR", {
+    timeZone: getActiveTimeZone(), hour: "2-digit", minute: "2-digit" });
 }
 
 /** Couleurs de l'attente — la file se lit de loin, sans lire les heures. */

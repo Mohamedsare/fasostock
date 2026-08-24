@@ -6,6 +6,7 @@ import { formatCurrency } from "@/lib/utils/currency";
 import { cn } from "@/lib/utils/cn";
 import { useEffect, useState } from "react";
 import { MdClose, MdErrorOutline } from "react-icons/md";
+import { getActiveTimeZone } from "@/lib/utils/operation-datetime";
 
 function statusLabel(s: PurchaseDetail["status"]) {
   switch (s) {
@@ -111,6 +112,7 @@ export function PurchaseDetailDialog({
                 {(() => {
                   try {
                     return new Date(p.createdAt).toLocaleString("fr-FR", {
+                      timeZone: getActiveTimeZone(),
                       day: "2-digit",
                       month: "2-digit",
                       year: "numeric",

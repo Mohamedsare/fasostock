@@ -2,6 +2,7 @@ import { escapeHtml } from "@/lib/server/pdf/escape-html";
 import { formatCurrencyFlutter } from "@/lib/utils/currency";
 import { amountToFrenchWords } from "@/lib/utils/number-to-french-words";
 import type { SaleDocumentPdfData } from "@/lib/features/sale-documents/pdf-types";
+import { TABLE_PAGINATION_CSS } from "./table-pagination-css";
 
 /**
  * Devis / facture A4.
@@ -130,6 +131,7 @@ export function renderSaleDocumentHtml(data: SaleDocumentRenderInput): string {
   return `<!doctype html>
 <html lang="fr"><head><meta charset="utf-8" />
 <style>
+${TABLE_PAGINATION_CSS}
   * { box-sizing: border-box; }
   @page { size: A4; margin: 0; }
   body { margin: 0; font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif; color: #1f2937; font-size: 12px; }
@@ -280,12 +282,12 @@ export function renderSaleDocumentHtml(data: SaleDocumentRenderInput): string {
         <p class="note">${disclaimer}</p>
         ${data.notes ? `<p class="note" style="margin-top:6px">${escapeHtml(data.notes)}</p>` : ""}
         ${data.terms ? `<div class="terms">${escapeHtml(data.terms)}</div>` : ""}
-        <div class="sign">
-          <div class="sign-box">
+        <div class="sign no-break">
+          <div class="sign-box no-break">
             <div class="sign-lbl">${isQuote ? "Le client (bon pour accord)" : "Le client"}</div>
             <div class="sign-space"></div>
           </div>
-          <div class="sign-box">
+          <div class="sign-box no-break">
             <div class="sign-lbl">${escapeHtml(
               data.signerTitle || (data.signerName ? "" : "Le responsable"),
             )}${data.signerName ? ` ${escapeHtml(data.signerName)}` : ""}</div>
@@ -294,7 +296,7 @@ export function renderSaleDocumentHtml(data: SaleDocumentRenderInput): string {
         </div>
       </div>
 
-      <div class="totals">
+      <div class="totals no-break">
         ${totalsRows}
         <div class="t-total"><span>${isQuote ? "TOTAL DEVIS" : "NET À PAYER"}</span><span>${escapeHtml(money(data.total, currency))}</span></div>
         ${paymentRows}

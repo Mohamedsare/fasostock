@@ -27,6 +27,7 @@ import {
 import { queryKeys } from "@/lib/query/query-keys";
 import { formatCurrency } from "@/lib/utils/currency";
 import { cn } from "@/lib/utils/cn";
+import { operationTodayYmd } from "@/lib/utils/operation-datetime";
 
 /** Icône du menu correspondant à une destination (cohérence visuelle avec la barre latérale). */
 function iconForHref(href: string) {
@@ -45,7 +46,7 @@ export function TradeWorkspaceScreen() {
   const businessType = getBusinessTypeBySlug(businessTypeSlug);
   const Icon = businessType?.icon;
 
-  const today = useMemo(() => format(new Date(), "yyyy-MM-dd"), []);
+  const today = useMemo(() => operationTodayYmd(), []);
   const todayLabel = useMemo(
     () => format(new Date(), "EEEE d MMMM yyyy", { locale: fr }),
     [],

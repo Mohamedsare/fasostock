@@ -141,6 +141,7 @@ import {
   MdTableChart,
   MdTwoWheeler,
 } from "react-icons/md";
+import { getActiveTimeZone } from "@/lib/utils/operation-datetime";
 
 export type PosMode = "quick" | "a4" | "a4-table";
 /**
@@ -218,7 +219,7 @@ function formatCreditDueLabel(yyyyMmDd: string): string | null {
   if (!raw) return null;
   const d = new Date(`${raw}T12:00:00`);
   if (Number.isNaN(d.getTime())) return null;
-  return d.toLocaleDateString("fr-FR");
+  return d.toLocaleDateString("fr-FR", { timeZone: getActiveTimeZone() });
 }
 
 function isBoutiqueScope(scope: string | null | undefined): boolean {
@@ -288,7 +289,8 @@ export function PosScreen({
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const router = useRouter();
   const [clock, setClock] = useState(() =>
-    new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }),
+    new Date().toLocaleTimeString("fr-FR", {
+      timeZone: getActiveTimeZone(), hour: "2-digit", minute: "2-digit" }),
   );
 
   const isWide = useMediaQuery("(min-width: 900px)");
@@ -314,7 +316,8 @@ export function PosScreen({
   });
   useEffect(() => {
     const t = setInterval(() => {
-      setClock(new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }));
+      setClock(new Date().toLocaleTimeString("fr-FR", {
+        timeZone: getActiveTimeZone(), hour: "2-digit", minute: "2-digit" }));
     }, 1000);
     return () => clearInterval(t);
   }, []);

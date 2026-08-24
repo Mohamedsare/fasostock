@@ -1,6 +1,7 @@
 import { currencySymbolOf } from "@/lib/config/currencies";
 import { formatCurrencyFlutter, getActiveCurrency } from "@/lib/utils/currency";
 import type { ReceiptTicketData } from "./receipt-ticket-types";
+import { getActiveTimeZone } from "@/lib/utils/operation-datetime";
 
 /** Aligné sur `ReceiptTicketLayout` Flutter (`receipt_ticket_layout.dart`). */
 export const RECEIPT_SEP_LONG =
@@ -36,6 +37,7 @@ export function truncateName(name: string, maxLen: number): string {
 
 export function formatDateStrFr(d: Date): string {
   return new Intl.DateTimeFormat("fr-FR", {
+    timeZone: getActiveTimeZone(),
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
@@ -44,6 +46,7 @@ export function formatDateStrFr(d: Date): string {
 
 export function formatTimeStrFr(d: Date): string {
   return new Intl.DateTimeFormat("fr-FR", {
+    timeZone: getActiveTimeZone(),
     hour: "2-digit",
     minute: "2-digit",
   }).format(d);

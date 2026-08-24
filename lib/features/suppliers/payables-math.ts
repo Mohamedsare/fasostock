@@ -4,6 +4,7 @@ import type {
   SupplierAgingBuckets,
   SupplierInvoice,
 } from "./types";
+import { getActiveTimeZone } from "@/lib/utils/operation-datetime";
 
 /** Reste à payer d'une dette (0 si annulée). */
 export function invoiceDue(inv: SupplierInvoice): number {
@@ -146,6 +147,7 @@ export function formatDayFr(iso: string | null): string {
   if (Number.isNaN(d.getTime())) return "—";
   const sameYear = d.getFullYear() === new Date().getFullYear();
   return d.toLocaleDateString("fr-FR", {
+    timeZone: getActiveTimeZone(),
     day: "numeric",
     month: "short",
     year: sameYear ? undefined : "numeric",
@@ -157,6 +159,7 @@ export function formatDateTimeFr(iso: string | null): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "—";
   return `${formatDayFr(iso)} · ${d.toLocaleTimeString("fr-FR", {
+    timeZone: getActiveTimeZone(),
     hour: "2-digit",
     minute: "2-digit",
   })}`;

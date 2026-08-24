@@ -6,6 +6,7 @@ import {
   truncateName,
 } from "@/lib/features/receipt/receipt-ticket-format";
 import type { ReceiptTicketData } from "@/lib/features/receipt/receipt-ticket-types";
+import { getActiveTimeZone } from "@/lib/utils/operation-datetime";
 
 /**
  * Ticket remis au client pour une vente encaissée **hors ligne**.
@@ -75,6 +76,7 @@ function buildProvisionalTicketHtml(
     : "";
 
   const dateLabel = data.date.toLocaleString("fr-FR", {
+    timeZone: getActiveTimeZone(),
     day: "2-digit",
     month: "2-digit",
     year: "numeric",

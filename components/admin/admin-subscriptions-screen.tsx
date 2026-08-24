@@ -14,8 +14,9 @@ import { subscriptionPaymentLabel } from "@/lib/features/subscription/types";
 import { formatCurrency } from "@/lib/utils/currency";
 import { messageFromUnknownError, toast } from "@/lib/toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { format } from "date-fns";
 import { useMemo, useState } from "react";
+import { getActiveTimeZone } from "@/lib/utils/operation-datetime";
+import { operationYmd } from "@/lib/utils/operation-datetime";
 
 type EditState = Record<
   string,
@@ -31,7 +32,7 @@ type EditState = Record<
 function toDateInput(v: string | null): string {
   if (!v) return "";
   try {
-    return format(new Date(v), "yyyy-MM-dd");
+    return operationYmd(v);
   } catch {
     return "";
   }
@@ -204,7 +205,7 @@ export function AdminSubscriptionsScreen() {
                       <p className="text-xs text-slate-500">
                         {r.planName ?? "Pro"} ·{" "}
                         {r.billingInterval === "year" ? "Annuel" : "Mensuel"} ·{" "}
-                        {new Date(r.createdAt).toLocaleDateString("fr-FR")}
+                        {new Date(r.createdAt).toLocaleDateString("fr-FR", { timeZone: getActiveTimeZone() })}
                       </p>
                     </div>
                     <div className="shrink-0 rounded-xl bg-slate-900 px-3 py-1.5 text-right">

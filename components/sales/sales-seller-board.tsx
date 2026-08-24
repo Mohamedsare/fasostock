@@ -9,6 +9,7 @@ import { formatCurrency } from "@/lib/utils/currency";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { MdGroups, MdInsights, MdSchedule } from "react-icons/md";
+import { formatOperationDateTimeMedium, formatOperationTime } from "@/lib/utils/operation-datetime";
 
 function dayLabel(ymd: string): string {
   const d = new Date(`${ymd}T12:00:00`);
@@ -20,7 +21,7 @@ function timeLabel(iso: string | null): string {
   if (!iso) return "—";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "—";
-  return format(d, "d MMM 'à' HH:mm", { locale: fr });
+  return `${formatOperationDateTimeMedium(d).replace(/,.*$/, "")} à ${formatOperationTime(d)}`;
 }
 
 /** Ligne de classement : un vendeur, sa part du total, cliquable pour filtrer. */

@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireAuthUser, userBelongsToCompany } from "@/lib/server/api-auth";
 import { getAppBaseUrl } from "@/lib/email/app-url";
 import { engineSaleVerifyPath } from "@/lib/config/routes";
+import { resolveServerTimeZone } from "@/lib/server/company-timezone";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -66,18 +67,22 @@ export async function GET(req: Request) {
 
     const total = Number(s.total ?? 0);
 
+    const tz = await resolveServerTimeZone(supabase);
     const createdAt = new Date(String(s.created_at));
     const dateLabel = createdAt.toLocaleDateString("fr-FR", {
+      timeZone: tz,
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
     });
     const timeLabel = createdAt.toLocaleTimeString("fr-FR", {
+      timeZone: tz,
       hour: "2-digit",
       minute: "2-digit",
       hour12: false,
     });
     const dateLongLabel = createdAt.toLocaleDateString("fr-FR", {
+      timeZone: tz,
       day: "numeric",
       month: "long",
       year: "numeric",

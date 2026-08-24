@@ -2,6 +2,7 @@ import { escapeHtml } from "@/lib/server/pdf/escape-html";
 import { formatCurrencyFlutter } from "@/lib/utils/currency";
 import { amountToFrenchWords } from "@/lib/utils/number-to-french-words";
 import type { ProgressiveQuoteData } from "@/lib/features/progressive/quote-types";
+import { TABLE_PAGINATION_CSS } from "./table-pagination-css";
 
 /**
  * Facture PROFORMA A4 d'un dossier d'achat progressif.
@@ -75,6 +76,7 @@ export function renderProgressiveQuoteHtml(data: ProgressiveQuoteRenderInput): s
   return `<!doctype html>
 <html lang="fr"><head><meta charset="utf-8" />
 <style>
+${TABLE_PAGINATION_CSS}
   * { box-sizing: border-box; }
   @page { size: A4; margin: 0; }
   body { margin: 0; font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif; color: #1f2937; font-size: 12px; }
@@ -197,19 +199,19 @@ export function renderProgressiveQuoteHtml(data: ProgressiveQuoteRenderInput): s
           Les prix indiqués sont ceux convenus à la date d'établissement du présent
           document et peuvent évoluer. Chaque versement donne lieu à un reçu numéroté.
         </p>
-        <div class="sign">
-          <div class="sign-box">
+        <div class="sign no-break">
+          <div class="sign-box no-break">
             <div class="sign-lbl">Le client (lu et approuvé)</div>
             <div class="sign-space"></div>
           </div>
-          <div class="sign-box">
+          <div class="sign-box no-break">
             <div class="sign-lbl">${escapeHtml(data.signerName || data.storeName || "Le vendeur")}</div>
             <div class="sign-space"></div>
           </div>
         </div>
       </div>
 
-      <div class="totals">
+      <div class="totals no-break">
         <div class="t-total"><span>TOTAL SÉLECTION</span><span>${escapeHtml(money(total, currency))}</span></div>
         <div class="t-line"><span>Déjà versé (épargne)</span><span>${escapeHtml(money(paid, currency))}</span></div>
         <div class="t-line t-rest"><span>Reste à verser</span><span>${escapeHtml(money(remaining, currency))}</span></div>

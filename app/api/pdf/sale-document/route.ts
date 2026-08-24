@@ -5,6 +5,7 @@ import { remoteImageToDataUrl } from "@/lib/server/pdf/remote-image-data-url";
 import { mapSaleDocumentPdfRow } from "@/lib/features/sale-documents/pdf-types";
 import { createClient } from "@/lib/supabase/server";
 import { requireAuthUser } from "@/lib/server/api-auth";
+import { resolveServerTimeZone } from "@/lib/server/company-timezone";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,11 +14,12 @@ export const maxDuration = 60;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** Date SQL (`2026-08-16`) → « 16/08/2026 ». Le serveur PDF n'a pas de locale ambiante. */
-function frDate(iso: string | null): string | null {
+function frDate(iso: string | null, tz: string): string | null {
   if (!iso) return null;
-  const d = new Date(`${iso}T00:00:00`);
+  const d = new Date(`${iso}T00:00:00Z`);
   if (Number.isNaN(d.getTime())) return null;
-  return d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
+  return d.toLocaleDateString("fr-FR", {
+    timeZone: tz, day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
 /**
@@ -60,12 +62,13 @@ export async function POST(req: Request) {
       process.env.NEXT_PUBLIC_SUPABASE_URL,
     );
 
+    const tz = await resolveServerTimeZone(supabase);
     const html = renderSaleDocumentHtml({
       ...doc,
       logoDataUrl,
-      issueDateLabel: frDate(doc.issueDate) ?? doc.issueDate,
-      validUntilLabel: frDate(doc.validUntil),
-      dueDateLabel: frDate(doc.dueDate),
+      issueDateLabel: frDate(doc.issueDate, tz) ?? doc.issueDate,
+      validUntilLabel: frDate(doc.validUntil, tz),
+      dueDateLabel: frDate(doc.dueDate, tz),
     });
 
     const buf = await htmlToPdfBufferA4Resilient(html);

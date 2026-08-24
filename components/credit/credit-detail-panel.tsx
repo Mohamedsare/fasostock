@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { format, isToday, isYesterday, parseISO } from "date-fns";
+import { parseISO } from "date-fns";
 import { FsConfirmDialog } from "@/components/ui/fs-confirm-dialog";
 import {
   fsInputClass,
@@ -22,10 +22,7 @@ import { paymentMethodLabel } from "@/lib/features/receipt/build-receipt-ticket-
 import { messageFromUnknownError, toast } from "@/lib/toast";
 import { cn } from "@/lib/utils/cn";
 import { formatCurrency } from "@/lib/utils/currency";
-import {
-  formatOperationDateTime,
-  formatOperationDateTimeMedium,
-} from "@/lib/utils/operation-datetime";
+import { formatOperationDateTime, formatOperationDateTimeMedium, operationYmd, isOperationToday, isOperationYesterday } from "@/lib/utils/operation-datetime";
 import { P } from "@/lib/constants/permissions";
 import { usePermissions } from "@/lib/features/permissions/use-permissions";
 import { useAppContext } from "@/lib/features/common/app-context";
@@ -37,7 +34,7 @@ import type { CreditSaleRow } from "@/lib/features/credit/types";
 const PAYMENTS_PAGE_SIZE = 15;
 
 function isoDateInput(d: Date): string {
-  return format(d, "yyyy-MM-dd");
+  return operationYmd(d);
 }
 
 export function CreditDetailPanel({
@@ -245,8 +242,8 @@ export function CreditDetailPanel({
                         (!Number.isFinite(saleMs) || !Number.isFinite(payMs) || payMs - saleMs > 10_000);
                       const d = parseISO(p.created_at);
                       const valid = !Number.isNaN(d.getTime());
-                      const today = valid && isToday(d);
-                      const yest = valid && isYesterday(d);
+                      const today = valid && isOperationToday(d);
+                      const yest = valid && isOperationYesterday(d);
                       return (
                         <li
                           key={p.id}
@@ -382,9 +379,6 @@ export function CreditDetailPanel({
       <FsConfirmDialog
         open={!!payToDelete}
         tone="danger"
-        // Le panneau de détail est en z-[75] : sans cela la confirmation s'ouvre DERRIÈRE lui,
-        // à moitié masquée, et le bouton de confirmation devient inatteignable.
-        overlayClassName="z-[96]"
         title="Annuler cet encaissement ?"
         confirmLabel={delPayMut.isPending ? "Annulation…" : "Annuler l'encaissement"}
         cancelLabel="Retour"

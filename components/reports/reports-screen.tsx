@@ -79,6 +79,7 @@ import {
   MdWarningAmber,
   MdWidgets,
 } from "react-icons/md";
+import { getActiveTimeZone } from "@/lib/utils/operation-datetime";
 
 type Period = "today" | "week" | "month" | "custom";
 type Tab = "overview" | "team" | "products" | "stock";
@@ -93,6 +94,7 @@ function formatDateFr(ymd: string) {
   const d = new Date(`${ymd}T12:00:00`);
   if (Number.isNaN(d.getTime())) return ymd;
   return d.toLocaleDateString("fr-FR", {
+    timeZone: getActiveTimeZone(),
     day: "2-digit",
     month: "short",
     year: "numeric",
@@ -103,7 +105,8 @@ function formatDateFr(ymd: string) {
 function formatDateCompact(ymd: string) {
   const d = new Date(`${ymd}T12:00:00`);
   if (Number.isNaN(d.getTime())) return ymd;
-  return d.toLocaleDateString("fr-FR", { day: "2-digit", month: "short" });
+  return d.toLocaleDateString("fr-FR", {
+    timeZone: getActiveTimeZone(), day: "2-digit", month: "short" });
 }
 
 function pctDelta(cur: number, prev: number): number | null {

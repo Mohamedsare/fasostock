@@ -1,6 +1,7 @@
 import { escapeCsv } from "@/lib/utils/csv";
 import type { ProSheetCell } from "@/lib/utils/spreadsheet-export-pro";
 import type { PurchaseListItem } from "./types";
+import { getActiveTimeZone } from "@/lib/utils/operation-datetime";
 
 const PURCHASE_HEADERS = [
   "Date",
@@ -29,6 +30,7 @@ export function purchasesToSpreadsheetMatrix(rows: PurchaseListItem[]): {
 function formatPurchaseDateFr(isoLike: string): string {
   try {
     return new Date(isoLike).toLocaleString("fr-FR", {
+      timeZone: getActiveTimeZone(),
       day: "2-digit",
       month: "2-digit",
       year: "numeric",

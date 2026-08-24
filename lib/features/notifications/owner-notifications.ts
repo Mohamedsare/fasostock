@@ -12,6 +12,7 @@ import { listPurchases } from "@/lib/features/purchases/api";
 import { listSales } from "@/lib/features/sales/api";
 import { formatCurrency } from "@/lib/utils/currency";
 import { format, subDays } from "date-fns";
+import { operationTodayYmd } from "@/lib/utils/operation-datetime";
 
 export type OwnerNotificationKind =
   | "stockout"
@@ -269,7 +270,7 @@ export async function fetchOwnerNotificationsData(params: {
     };
   }
 
-  const todayStr = format(new Date(), "yyyy-MM-dd");
+  const todayStr = operationTodayYmd();
   const from60 = format(subDays(new Date(), 60), "yyyy-MM-dd");
   const from30 = format(subDays(new Date(), 30), "yyyy-MM-dd");
 

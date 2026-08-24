@@ -47,6 +47,7 @@ import { toast, toastMutationError } from "@/lib/toast";
 import { cn } from "@/lib/utils/cn";
 import { formatCurrency, toNumber } from "@/lib/utils/currency";
 import { playPosAddBeep } from "@/lib/utils/pos-sound";
+import { getActiveTimeZone } from "@/lib/utils/operation-datetime";
 
 /**
  * Minuscules sans accent : « Café », « cafe » et « CAFE » se rejoignent. Le
@@ -87,6 +88,7 @@ function timeLabel(iso: string): string {
   const d = new Date(iso);
   if (!Number.isFinite(d.getTime())) return "—";
   return d.toLocaleString("fr-FR", {
+    timeZone: getActiveTimeZone(),
     day: "2-digit",
     month: "2-digit",
     hour: "2-digit",

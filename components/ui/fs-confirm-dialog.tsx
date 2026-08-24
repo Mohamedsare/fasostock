@@ -28,7 +28,10 @@ export function FsConfirmDialog({
   cancelLabel?: string;
   tone?: "default" | "danger";
   busy?: boolean;
-  /** Ex. `z-[96]` quand la confirmation s'ouvre par-dessus un panneau ou un autre modal. */
+  /**
+   * Calque, si le défaut ne convient pas (ex. `z-[210]` par-dessus le POS plein écran).
+   * Le défaut suffit partout ailleurs : voir le commentaire du rendu.
+   */
   overlayClassName?: string;
   onCancel: () => void;
   onConfirm: () => void;
@@ -38,7 +41,13 @@ export function FsConfirmDialog({
     <div
       className={cn(
         "fixed inset-0 flex items-center justify-center bg-black/45 p-4",
-        overlayClassName ?? "z-[70]",
+        // Une confirmation arrive TOUJOURS par-dessus ce qui l'a déclenchée — et ce qui la
+        // déclenche est presque toujours un bouton dans un panneau ou un dialogue (75, 80,
+        // 85, 90, 100). À z-70, elle s'ouvrait derrière : le bouton de confirmation devenait
+        // inatteignable et l'utilisateur restait bloqué sur deux modales superposées.
+        // 110 passe au-dessus de tous les calques applicatifs ; les toasts (9999) restent
+        // visibles au-dessus. Voir `lib/config/z-index.ts`.
+        overlayClassName ?? "z-[110]",
       )}
       role="alertdialog"
       aria-modal="true"

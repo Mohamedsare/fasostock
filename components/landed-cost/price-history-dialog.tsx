@@ -7,11 +7,13 @@ import { LcCard } from "./ui";
 import { fetchPriceHistory } from "@/lib/features/landed-cost/api";
 import { formatCost, formatQuantity } from "@/lib/features/landed-cost/format";
 import { queryKeys } from "@/lib/query/query-keys";
+import { getActiveTimeZone } from "@/lib/utils/operation-datetime";
 
 function formatMoment(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "—";
   return d.toLocaleString("fr-FR", {
+    timeZone: getActiveTimeZone(),
     day: "2-digit",
     month: "2-digit",
     year: "numeric",

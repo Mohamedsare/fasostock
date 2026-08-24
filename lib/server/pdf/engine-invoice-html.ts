@@ -1,4 +1,5 @@
 import QRCode from "qrcode";
+import { TABLE_PAGINATION_CSS } from "./table-pagination-css";
 
 /** Données de rendu de la facture A4 « Vente Engin » (toutes dynamiques). */
 export type EngineInvoiceData = {
@@ -142,6 +143,7 @@ export async function renderEngineInvoiceHtml(data: EngineInvoiceData): Promise<
   return `<!doctype html>
 <html lang="fr"><head><meta charset="utf-8" />
 <style>
+${TABLE_PAGINATION_CSS}
   * { box-sizing: border-box; }
   @page { size: A4; margin: 0; }
   body { margin: 0; font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif; color: #1f2937; font-size: 12px; }

@@ -66,6 +66,7 @@ import {
   MdStorefront,
   MdWarningAmber,
 } from "react-icons/md";
+import { getActiveTimeZone } from "@/lib/utils/operation-datetime";
 
 const INVENTORY_PAGE_SIZE = 20;
 const MOVEMENTS_PAGE_SIZE = 20;
@@ -1296,6 +1297,7 @@ function MovementTableRow({ row }: { row: StockMovementRow }) {
   const dateStr = (() => {
     try {
       return new Date(row.createdAt).toLocaleString("fr-FR", {
+        timeZone: getActiveTimeZone(),
         day: "2-digit",
         month: "2-digit",
         year: "numeric",

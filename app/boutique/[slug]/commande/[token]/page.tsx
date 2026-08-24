@@ -73,6 +73,7 @@ export default async function OrderTrackingPage({
         <p className="track__date">
           Passée le{" "}
           {new Date(order.createdAt).toLocaleString("fr-FR", {
+            timeZone: order.timeZone,
             day: "2-digit",
             month: "long",
             hour: "2-digit",

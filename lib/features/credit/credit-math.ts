@@ -1,12 +1,6 @@
-import {
-  addDays,
-  differenceInCalendarDays,
-  isThisWeek,
-  isToday,
-  parseISO,
-  startOfDay,
-} from "date-fns";
+import { addDays, differenceInCalendarDays, isThisWeek, parseISO, startOfDay } from "date-fns";
 import { saleSettlement } from "@/lib/features/sales/sale-settlement";
+import { isOperationToday } from "@/lib/utils/operation-datetime";
 import type {
   CreditPaymentRow,
   CreditLineStatus,
@@ -114,13 +108,13 @@ export function dueBadgeVariant(
 
 export function isDueToday(sale: CreditSaleRow, _now = new Date()): boolean {
   if (remainingTotal(sale) <= EPS) return false;
-  return isToday(effectiveDueDate(sale));
+  return isOperationToday(effectiveDueDate(sale));
 }
 
 export function isDueThisWeek(sale: CreditSaleRow, _now = new Date()): boolean {
   if (remainingTotal(sale) <= EPS) return false;
   const d = effectiveDueDate(sale);
-  if (isToday(d)) return true;
+  if (isOperationToday(d)) return true;
   return isThisWeek(d, { weekStartsOn: 1 });
 }
 

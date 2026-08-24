@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import type { Metadata } from "next";
+import { DEFAULT_TIME_ZONE, isSupportedTimeZone } from "@/lib/config/timezones";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +29,8 @@ type VerifyRow = {
   amount_due: number | null;
   payment_status: "paid" | "partial" | "unpaid" | null;
   payment_methods: string[] | null;
+  /** Fuseau du commerce (migration 00206) — absent tant qu'elle n'est pas appliquée. */
+  timezone?: string | null;
 };
 
 function fcfa(n: number): string {
@@ -138,6 +141,9 @@ export default async function VerifyEnginePage({
               <Row
                 label="Date"
                 value={new Date(row.sale_date).toLocaleString("fr-FR", {
+                  timeZone: isSupportedTimeZone(String(row.timezone ?? ""))
+                    ? String(row.timezone)
+                    : DEFAULT_TIME_ZONE,
                   day: "2-digit",
                   month: "2-digit",
                   year: "numeric",

@@ -39,11 +39,13 @@ import {
 import type { ProductItem } from "@/lib/features/products/types";
 import { formatCurrency } from "@/lib/utils/currency";
 import { cn } from "@/lib/utils/cn";
+import { getActiveTimeZone } from "@/lib/utils/operation-datetime";
 
 function dateTimeFr(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "—";
   return new Intl.DateTimeFormat("fr-FR", {
+    timeZone: getActiveTimeZone(),
     day: "2-digit",
     month: "2-digit",
     year: "numeric",

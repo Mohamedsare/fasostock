@@ -100,6 +100,7 @@ import {
   WarehouseThresholdDialog,
 } from "./warehouse-dialogs";
 import "./warehouse-magasin.css";
+import { getActiveTimeZone } from "@/lib/utils/operation-datetime";
 
 const TAB_LABELS = [
   "Tableau de bord",
@@ -231,6 +232,7 @@ function formatDayLong(day: string): string {
   if (!m) return day;
   try {
     return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).toLocaleDateString("fr-FR", {
+      timeZone: getActiveTimeZone(),
       weekday: "long",
       day: "numeric",
       month: "long",
@@ -244,6 +246,7 @@ function formatDayLong(day: string): string {
 function formatHm(iso: string): string {
   try {
     return new Date(iso).toLocaleTimeString("fr-FR", {
+      timeZone: getActiveTimeZone(),
       hour: "2-digit",
       minute: "2-digit",
       hour12: false,
@@ -256,6 +259,7 @@ function formatHm(iso: string): string {
 function formatDt(iso: string) {
   try {
     return new Date(iso).toLocaleString("fr-FR", {
+      timeZone: getActiveTimeZone(),
       day: "2-digit",
       month: "2-digit",
       year: "numeric",

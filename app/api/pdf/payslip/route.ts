@@ -3,6 +3,7 @@ import { htmlToPdfBufferA4 } from "@/lib/server/pdf/html-to-pdf";
 import { renderPayslipHtml, type PayslipLineData } from "@/lib/server/pdf/payslip-html";
 import { createClient } from "@/lib/supabase/server";
 import { requireAuthUser, userBelongsToCompany } from "@/lib/server/api-auth";
+import { resolveCompanyTimeZone } from "@/lib/server/company-timezone";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -64,6 +65,7 @@ export async function POST(req: Request) {
     const month = num(r.period_month);
     const year = num(r.period_year);
 
+    const tz = await resolveCompanyTimeZone(supabase, companyId);
     const html = renderPayslipHtml({
       companyName: String((company as { name?: string } | null)?.name ?? "Entreprise"),
       employeeName: emp ? `${String(emp.last_name ?? "")} ${String(emp.first_name ?? "")}`.trim() : "—",
@@ -82,7 +84,7 @@ export async function POST(req: Request) {
       otherDeductions: num(r.other_deductions),
       netPay: num(r.net_pay),
       lines,
-      generatedAtLabel: new Date().toLocaleDateString("fr-FR"),
+      generatedAtLabel: new Date().toLocaleDateString("fr-FR", { timeZone: tz }),
     });
 
     const buf = await htmlToPdfBufferA4(html);

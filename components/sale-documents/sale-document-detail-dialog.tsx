@@ -41,12 +41,14 @@ import {
 import { formatCurrency } from "@/lib/utils/currency";
 import { messageFromUnknownError, toast } from "@/lib/toast";
 import { cn } from "@/lib/utils/cn";
+import { getActiveTimeZone } from "@/lib/utils/operation-datetime";
 
 function dateLabel(iso: string | null): string {
   if (!iso) return "—";
   const d = new Date(`${iso}T00:00:00`);
   if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" });
+  return d.toLocaleDateString("fr-FR", {
+    timeZone: getActiveTimeZone(), day: "2-digit", month: "long", year: "numeric" });
 }
 
 export function SaleDocumentDetailDialog({

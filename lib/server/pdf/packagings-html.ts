@@ -1,5 +1,6 @@
 import { formatCurrency } from "@/lib/utils/currency";
 import { escapeHtml } from "./escape-html";
+import { TABLE_PAGINATION_CSS } from "./table-pagination-css";
 
 function tx(s: string): string {
   return escapeHtml(s ?? "");
@@ -104,6 +105,7 @@ export function renderPackagingsHtml(data: {
 <head>
   <meta charset="utf-8" />
   <style>
+${TABLE_PAGINATION_CSS}
     * { box-sizing: border-box; }
     body {
       margin: 0;

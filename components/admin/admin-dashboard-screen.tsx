@@ -56,6 +56,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { formatOperationDateTime } from "@/lib/utils/operation-datetime";
 
 type RangePreset = "today" | "7d" | "30d" | "month" | "year" | "custom";
 
@@ -537,7 +538,7 @@ export function AdminDashboardScreen() {
               <span>
                 Dernière synchro affichée :{" "}
                 <strong className="font-semibold text-white">
-                  {q.dataUpdatedAt ? format(new Date(q.dataUpdatedAt), "dd/MM/yyyy HH:mm") : "—"}
+                  {q.dataUpdatedAt ? formatOperationDateTime(q.dataUpdatedAt) : "—"}
                 </strong>
               </span>
             </span>

@@ -2,14 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import {
-  addDays,
-  differenceInCalendarDays,
-  format,
-  parseISO,
-  startOfMonth,
-  subDays,
-} from "date-fns";
+import { addDays, differenceInCalendarDays, format, parseISO, startOfMonth, subDays } from "date-fns";
 import { fr } from "date-fns/locale";
 import {
   MdChevronLeft,
@@ -33,16 +26,17 @@ import { paymentMethodLabel } from "@/lib/features/receipt/build-receipt-ticket-
 import { formatCurrency } from "@/lib/utils/currency";
 import { messageFromUnknownError, toast } from "@/lib/toast";
 import { cn } from "@/lib/utils/cn";
+import { operationYmd, formatOperationDateTime, formatOperationTime } from "@/lib/utils/operation-datetime";
 
 function ymd(d: Date): string {
-  return format(d, "yyyy-MM-dd");
+  return operationYmd(d);
 }
 function todayYmd(): string {
   return ymd(new Date());
 }
 function hhmm(iso: string): string {
   try {
-    return format(parseISO(iso), "HH:mm");
+    return formatOperationTime(iso);
   } catch {
     return "—";
   }
@@ -50,7 +44,7 @@ function hhmm(iso: string): string {
 /** Date courte « 05/08 » pour les listes multi-jours. */
 function ddmm(iso: string): string {
   try {
-    return format(parseISO(iso), "dd/MM");
+    return formatOperationDateTime(iso).slice(0, 5);
   } catch {
     return "—";
   }

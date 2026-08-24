@@ -35,11 +35,13 @@ import { InvoicePreviewDialog } from "@/components/subscription/invoice-preview-
 import { formatCurrency } from "@/lib/utils/currency";
 import { toast, toastMutationError } from "@/lib/toast";
 import { cn } from "@/lib/utils/cn";
+import { getActiveTimeZone } from "@/lib/utils/operation-datetime";
 
 function formatDmy(iso: string | null): string {
   if (!iso) return "—";
   try {
     return new Date(iso).toLocaleDateString("fr-FR", {
+      timeZone: getActiveTimeZone(),
       day: "2-digit",
       month: "long",
       year: "numeric",

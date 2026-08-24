@@ -10,6 +10,7 @@ import type {
   PublicOnlineStore,
   PublicOrderTracking,
 } from "./types";
+import { DEFAULT_TIME_ZONE, isSupportedTimeZone } from "@/lib/config/timezones";
 
 /**
  * Lectures publiques du catalogue. Aucune table n'est exposée : tout passe par des
@@ -182,6 +183,8 @@ export async function fetchPublicOrderTracking(
     shopName: String(row.shop_name ?? "Boutique"),
     shopSlug: str(row.shop_slug),
     shopPhone: str(row.shop_phone),
+    // Migration 00206 : absent tant qu'elle n'est pas appliquée → fuseau par défaut.
+    timeZone: isSupportedTimeZone(String(row.timezone ?? "")) ? String(row.timezone) : DEFAULT_TIME_ZONE,
     items: rawItems.map((i) => ({
       name: String(i.name ?? ""),
       quantity: toNum(i.quantity),

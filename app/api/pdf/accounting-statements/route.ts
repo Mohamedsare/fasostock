@@ -4,6 +4,7 @@ import { renderAccountingStatementsHtml } from "@/lib/server/pdf/accounting-stat
 import type { AccountBalance } from "@/lib/features/accounting/reports";
 import { createClient } from "@/lib/supabase/server";
 import { requireAuthUser, userBelongsToCompany } from "@/lib/server/api-auth";
+import { resolveCompanyTimeZone } from "@/lib/server/company-timezone";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -52,12 +53,13 @@ export async function POST(req: Request) {
 
     const { data: company } = await supabase.from("companies").select("name").eq("id", companyId).maybeSingle();
 
+    const tz = await resolveCompanyTimeZone(supabase, companyId);
     const html = renderAccountingStatementsHtml({
       companyName: String((company as { name?: string } | null)?.name ?? "Entreprise"),
       fromLabel: from,
       toLabel: to,
       rows: [...byCode.values()],
-      generatedAtLabel: new Date().toLocaleDateString("fr-FR"),
+      generatedAtLabel: new Date().toLocaleDateString("fr-FR", { timeZone: tz }),
     });
 
     const buf = await htmlToPdfBufferA4ResilientWithPageNumbers(html);

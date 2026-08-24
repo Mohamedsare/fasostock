@@ -53,6 +53,7 @@ import { SaleDocumentEditorDialog } from "./sale-document-editor-dialog";
 import { SaleDocumentDetailDialog } from "./sale-document-detail-dialog";
 import { SaleDocumentIssueDialog } from "./sale-document-issue-dialog";
 import { SaleDocumentStatusPill } from "./sale-document-status-pill";
+import { getActiveTimeZone } from "@/lib/utils/operation-datetime";
 
 type Tab = SaleDocumentKind;
 
@@ -77,7 +78,8 @@ function dayLabel(iso: string | null): string {
   if (!iso) return "—";
   const d = new Date(`${iso}T00:00:00`);
   if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" });
+  return d.toLocaleDateString("fr-FR", {
+    timeZone: getActiveTimeZone(), day: "2-digit", month: "short", year: "numeric" });
 }
 
 export function SaleDocumentsScreen() {

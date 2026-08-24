@@ -48,6 +48,7 @@ import {
 } from "@/lib/features/online-store/types";
 import { messageFromUnknownError, toast } from "@/lib/toast";
 import { cn } from "@/lib/utils/cn";
+import { getActiveTimeZone } from "@/lib/utils/operation-datetime";
 
 type Tab = "commandes" | "vitrine" | "partager";
 
@@ -355,6 +356,7 @@ export function OnlineStoreScreen() {
                           </p>
                           <p className="mt-0.5 truncate text-xs text-neutral-500">
                             {new Date(o.createdAt).toLocaleString("fr-FR", {
+                              timeZone: getActiveTimeZone(),
                               day: "2-digit",
                               month: "2-digit",
                               hour: "2-digit",

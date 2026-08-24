@@ -12,6 +12,7 @@ import {
   repaidAfterSaleTotal,
 } from "@/lib/features/credit/credit-math";
 import type { CreditSaleRow } from "@/lib/features/credit/types";
+import { operationYmd } from "@/lib/utils/operation-datetime";
 
 const CREDIT_SALE_HEADERS = [
   "Référence",
@@ -38,7 +39,7 @@ export function creditSalesToSpreadsheetMatrix(sales: CreditSaleRow[]): {
     s.sale_number ?? "",
     s.customer?.name ?? "",
     s.customer?.phone ?? "",
-    format(new Date(s.created_at), "yyyy-MM-dd"),
+    operationYmd(s.created_at),
     s.store?.name ?? "",
     Number(s.total),
     Number(downPaymentTotal(s)),

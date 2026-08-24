@@ -45,6 +45,7 @@ import {
 } from "react-icons/md";
 import { messageFromUnknownError, toast, toastMutationError } from "@/lib/toast";
 import { downloadProSpreadsheet } from "@/lib/utils/spreadsheet-export-pro";
+import { getActiveTimeZone } from "@/lib/utils/operation-datetime";
 
 const PURCHASES_PAGE_SIZE = 20;
 
@@ -69,6 +70,7 @@ function statusLabel(s: PurchaseStatus) {
 function formatPurchaseDate(iso: string) {
   try {
     return new Date(iso).toLocaleString("fr-FR", {
+      timeZone: getActiveTimeZone(),
       day: "2-digit",
       month: "2-digit",
       year: "numeric",

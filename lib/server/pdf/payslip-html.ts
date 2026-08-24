@@ -1,4 +1,5 @@
 import { escapeHtml } from "./escape-html";
+import { TABLE_PAGINATION_CSS } from "./table-pagination-css";
 
 export type PayslipLineData = { label: string; amount: number; kind: "earning" | "deduction" };
 
@@ -47,6 +48,7 @@ export function renderPayslipHtml(d: PayslipPdfData): string {
 
   return `<!doctype html><html lang="fr"><head><meta charset="utf-8"/>
 <style>
+${TABLE_PAGINATION_CSS}
   * { box-sizing: border-box; }
   body { font-family: "Segoe UI", Arial, sans-serif; color: #111827; margin: 0; font-size: 12px; }
   .doc { padding: 4px; }
