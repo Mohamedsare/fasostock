@@ -27,6 +27,11 @@ import {
   updateCompletedPosSale,
 } from "@/lib/features/pos/api";
 import { packagingPiecePrice } from "@/lib/features/products/packaging-price";
+import {
+  bestPackagingTier,
+  packagingTierLineTotal,
+  type PackagingTier,
+} from "@/lib/features/pos/packaging-tier-price";
 import { productNameMatches } from "@/lib/features/products/search-aliases";
 import {
   cancelPosHandoff,
@@ -182,6 +187,12 @@ type CartRow = {
   lineTotal?: number;
   /** Si true, ne pas recalculer détail/gros quand la qté change (ex. PU saisi ou édition vente). */
   linePriceUserSet?: boolean;
+  /**
+   * Palier de conditionnement actuellement appliqué à la ligne (« Paquet », « Carton »…),
+   * `null`/absent = prix à la pièce. Recalculé à CHAQUE changement de quantité : le
+   * tarif de gros suit la quantité, dans les deux sens.
+   */
+  tierLabel?: string | null;
 };
 
 /** Aligné `sale_pos_edit.dart` / liste ventes. */
@@ -1634,6 +1645,77 @@ export function PosScreen({
     return pct > 0 ? applyPromoPercent(base, pct) : base;
   }
 
+  /*
+   * Paliers de conditionnement — le cœur de la règle « le prix suit la quantité ».
+   *
+   * Un tarif Paquet/Carton ne peut PAS être utilisé tant que la ligne n'atteint pas
+   * son nombre de pièces, et dès qu'elle l'atteint il s'applique tout seul, à toute
+   * la ligne. Le vendeur n'a rien à choisir : il tape la quantité, le prix suit —
+   * dans les deux sens, car redescendre sous le palier doit remonter le prix (sinon
+   * on vend 3 bougies au prix du carton).
+   */
+  const lastTierToast = useRef<{ key: string; at: number }>({ key: "", at: 0 });
+  function announceTier(name: string, unit: string, tier: PackagingTier | null) {
+    // Dédoublonnage court : les updaters `setCart` peuvent être rejoués (StrictMode).
+    const key = `${name}|${tier ? `${tier.label}:${tier.piecePrice}` : "piece"}`;
+    const now = Date.now();
+    if (lastTierToast.current.key === key && now - lastTierToast.current.at < 1500) return;
+    lastTierToast.current = { key, at: now };
+    const u = unit || "pce";
+    queueMicrotask(() => {
+      if (tier) {
+        toast.success(
+          `Tarif ${tier.label} appliqué · ${formatCurrency(tier.piecePrice)} /${u} (dès ${tier.factor} ${u})`,
+          4000,
+        );
+      } else {
+        toast.info(`Quantité sous le palier — retour au prix ${u}.`, 4000);
+      }
+    });
+  }
+
+  /**
+   * Ligne du panier recalculée pour une nouvelle quantité : prix catalogue
+   * (pièce / gros / promo / arrivage) ou palier de conditionnement s'il est atteint
+   * ET réellement moins cher. Un PU saisi à la main (`linePriceUserSet`) reste
+   * intouchable — c'est une décision du vendeur, pas un tarif du catalogue.
+   */
+  function repricedRow(
+    row: CartRow,
+    quantity: number,
+    opts?: { silent?: boolean },
+  ): CartRow {
+    const qty = Math.max(0, Math.floor(Number(quantity) || 0));
+    if (row.linePriceUserSet) return { ...row, quantity: qty, lineTotal: undefined };
+    const p = products.find((x) => x.id === row.productId);
+    const catalog = catalogUnitPrice(row.productId, qty);
+    const tier = p
+      ? bestPackagingTier(
+          validPackagings(p),
+          baseSalePrice(p.id, Number(p.sale_price ?? 0)),
+          qty,
+        )
+      : null;
+    // Le palier ne sert jamais à FAIRE MONTER le prix : s'il est plus cher que le
+    // prix du moment (promo, gros, arrivage), on garde le prix du moment.
+    const applied = tier && tier.piecePrice < catalog ? tier : null;
+    const nextLabel = applied ? applied.label : null;
+    if (!opts?.silent && qty > 0 && nextLabel !== (row.tierLabel ?? null)) {
+      announceTier(row.name, row.unit, applied);
+    }
+    return {
+      ...row,
+      quantity: qty,
+      unitPrice: applied ? applied.piecePrice : catalog,
+      // Total exact du palier (prorata) : c'est lui qui fait foi au sous-total et
+      // sur le ticket ; la remise de ligne absorbe l'arrondi du PU au checkout.
+      lineTotal: applied
+        ? packagingTierLineTotal(applied.total, applied.factor, qty)
+        : undefined,
+      tierLabel: nextLabel,
+    };
+  }
+
   function addToCart(
     productId: string,
     name: string,
@@ -1674,12 +1756,8 @@ export function PosScreen({
         }
         return prev;
       }
-      const newQty = row.quantity + 1;
-      const unitPrice = row.linePriceUserSet
-        ? row.unitPrice
-        : catalogUnitPrice(productId, newQty);
       const next = [...prev];
-      next[idx] = { ...row, quantity: newQty, unitPrice, lineTotal: undefined };
+      next[idx] = repricedRow(row, row.quantity + 1);
       return next;
     });
   }
@@ -1714,35 +1792,29 @@ export function PosScreen({
     playPosAddBeep();
     setCart((prev) => {
       const idx = prev.findIndex((p) => p.productId === productId);
+      /*
+       * Le prix n'est PAS figé sur la ligne : c'est `repricedRow` qui décide, à partir
+       * de la quantité totale. Scanner un carton donne donc bien le tarif carton, mais
+       * ajouter ensuite 3 pièces à la main ne casse rien — et retirer des pièces
+       * jusque sous le palier remet automatiquement le prix pièce.
+       */
       if (idx < 0) {
-        return [
-          ...prev,
-          {
-            productId,
-            name,
-            quantity: addQty,
-            unitPrice: fixedUnitPrice,
-            unit: unit || "u",
-            imageUrl: imageUrl ?? null,
-            // `lineTotal` = prix exact du conditionnement : c'est lui qui fait foi
-            // (sous-total, ticket, remise de ligne au checkout).
-            lineTotal: lineAddTotal,
-            linePriceUserSet: true,
-          },
-        ];
+        const fresh: CartRow = {
+          productId,
+          name,
+          quantity: addQty,
+          unitPrice: fixedUnitPrice,
+          unit: unit || "u",
+          imageUrl: imageUrl ?? null,
+          // `lineTotal` = prix exact du conditionnement : c'est lui qui fait foi
+          // (sous-total, ticket, remise de ligne au checkout).
+          lineTotal: lineAddTotal,
+        };
+        // Silencieux : l'appelant annonce déjà « Carton · Produit (400) ».
+        return [...prev, repricedRow(fresh, addQty, { silent: true })];
       }
-      const row = prev[idx];
-      // Total exact cumulé : on ajoute le total du conditionnement scanné au total
-      // déjà présent sur la ligne (qu'il vienne d'un scan précédent ou de qté×PU).
-      const prevLineTotal = row.lineTotal ?? row.quantity * row.unitPrice;
       const next = [...prev];
-      next[idx] = {
-        ...row,
-        quantity: row.quantity + addQty,
-        unitPrice: fixedUnitPrice,
-        linePriceUserSet: true,
-        lineTotal: prevLineTotal + lineAddTotal,
-      };
+      next[idx] = repricedRow(prev[idx], prev[idx].quantity + addQty);
       return next;
     });
     return true;
@@ -1915,14 +1987,11 @@ export function PosScreen({
         return prev;
       }
       return prev
-        .map((r) => {
-          if (r.productId !== productId) return r;
-          const q = Math.max(0, Math.min(stock, r.quantity + delta));
-          const unitPrice = r.linePriceUserSet
-            ? r.unitPrice
-            : catalogUnitPrice(productId, q);
-          return { ...r, quantity: q, unitPrice, lineTotal: undefined };
-        })
+        .map((r) =>
+          r.productId === productId
+            ? repricedRow(r, Math.max(0, Math.min(stock, r.quantity + delta)))
+            : r,
+        )
         .filter((r) => r.quantity > 0);
     });
   }
@@ -1934,18 +2003,7 @@ export function PosScreen({
       if (!row) return prev;
       const q = Math.max(0, Math.min(stock, Math.floor(quantity)));
       return prev
-        .map((r) =>
-          r.productId === productId
-            ? {
-                ...r,
-                quantity: q,
-                unitPrice: r.linePriceUserSet
-                  ? r.unitPrice
-                  : catalogUnitPrice(productId, q),
-                lineTotal: undefined,
-              }
-            : r,
-        )
+        .map((r) => (r.productId === productId ? repricedRow(r, q) : r))
         .filter((r) => r.quantity > 0);
     });
   }
@@ -1971,7 +2029,8 @@ export function PosScreen({
     setCart((prev) =>
       prev.map((r) =>
         r.productId === productId
-          ? { ...r, unitPrice: p, lineTotal: undefined, linePriceUserSet: true }
+          ? // PU saisi à la main : le palier automatique lâche la ligne.
+            { ...r, unitPrice: p, lineTotal: undefined, linePriceUserSet: true, tierLabel: null }
           : r,
       ),
     );
@@ -3124,6 +3183,13 @@ export function PosScreen({
                                 ? ` · ${formatCurrency(packagingPiecePrice(packTotal, pk.factor))} /${cp.unit || "pce"}`
                                 : ""}
                             </span>
+                            {/* La règle, écrite noir sur blanc : ce tarif n'existe qu'à
+                                partir de ce nombre de pièces — en dessous, prix pièce. */}
+                            {pk.factor > 1 ? (
+                              <span className="mt-0.5 block text-[11px] font-semibold text-fs-accent">
+                                Tarif appliqué dès {pk.factor} {cp.unit || "pce"} au panier
+                              </span>
+                            ) : null}
                           </span>
                           <span className="text-sm font-extrabold text-fs-accent">
                             {formatCurrency(packTotal)}
@@ -4464,6 +4530,15 @@ function PosCartPanel({
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-xs font-semibold text-[#1F2937]">{c.name}</p>
+                    {/* Palier de conditionnement en cours : le vendeur doit voir
+                        POURQUOI le prix a changé, pas seulement que le total a bougé. */}
+                    {c.tierLabel ? (
+                      <p className="mt-0.5">
+                        <span className="inline-flex items-center rounded-full bg-[#F97316]/10 px-1.5 py-0.5 text-[10px] font-bold text-[#F97316]">
+                          Tarif {c.tierLabel} · {formatCurrency(c.unitPrice)} /{c.unit || "pce"}
+                        </span>
+                      </p>
+                    ) : null}
                     {locationByProduct?.get(c.productId) ? (
                       <p className="mt-0.5">
                         <PosLocationTag loc={locationByProduct.get(c.productId)!} />
