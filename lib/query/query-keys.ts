@@ -260,6 +260,9 @@ export const queryKeys = {
   /** Réglage owner « saisie du prix en caisse rapide » (`company_settings`). */
   quickPosPriceEditEnabled: (companyId: string) =>
     ["quick-pos-price-edit", companyId] as const,
+  /** Réglage owner « classement des vendeurs visible par les employés ». */
+  salesSellerBoardStaffEnabled: (companyId: string) =>
+    ["sales-seller-board-staff", companyId] as const,
   /** Réglage owner « encaissement en caisse rapide » — opérateurs, mixte, client. */
   quickPosPayments: (companyId: string) => ["quick-pos-payments", companyId] as const,
   /** Réglage owner « marchandise payée non emportée » (`company_settings`). */

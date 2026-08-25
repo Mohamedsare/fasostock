@@ -38,6 +38,11 @@ import {
   setQuickPosPriceEditEnabled,
 } from "@/lib/features/settings/quick-pos-price-edit";
 import {
+  fetchSalesSellerBoardStaffEnabled,
+  peekSalesSellerBoardStaffEnabled,
+  setSalesSellerBoardStaffEnabled,
+} from "@/lib/features/settings/sales-seller-board";
+import {
   fetchSalePickupTrackingEnabled,
   peekSalePickupTrackingEnabled,
   setSalePickupTrackingEnabled,
@@ -146,6 +151,7 @@ import {
   MdGroups,
   MdHistory,
   MdKey,
+  MdLeaderboard,
   MdLock,
   MdMail,
   MdPalette,
@@ -716,6 +722,40 @@ export function SettingsScreen() {
           : "Saisie du prix désactivée : le prix du catalogue s'applique.",
       );
       await qc.invalidateQueries({ queryKey: queryKeys.quickPosPriceEditEnabled(companyId) });
+    },
+    onError: (e) => toastMutationError("settings", e),
+  });
+
+  /*
+   * Classement des vendeurs sur la page Ventes : visible du propriétaire, masqué de
+   * ses employés tant qu'il ne l'ouvre pas ici.
+   */
+  const peekSellerBoardStaff =
+    companyId.length > 0 && isOwner
+      ? peekSalesSellerBoardStaffEnabled(companyId)
+      : undefined;
+  const sellerBoardStaffQ = useQuery({
+    queryKey: queryKeys.salesSellerBoardStaffEnabled(companyId),
+    queryFn: () => fetchSalesSellerBoardStaffEnabled(companyId),
+    enabled: Boolean(companyId && isOwner),
+    staleTime: 30_000,
+    ...(peekSellerBoardStaff !== undefined ? { initialData: peekSellerBoardStaff } : {}),
+  });
+
+  const sellerBoardStaffMut = useMutation({
+    mutationFn: async (enabled: boolean) => {
+      if (!companyId) throw new Error("Entreprise introuvable.");
+      await setSalesSellerBoardStaffEnabled(companyId, enabled);
+    },
+    onSuccess: async (_, enabled) => {
+      toast.success(
+        enabled
+          ? "Vos employés voient le classement des vendeurs du jour."
+          : "Classement des vendeurs masqué pour vos employés.",
+      );
+      await qc.invalidateQueries({
+        queryKey: queryKeys.salesSellerBoardStaffEnabled(companyId),
+      });
     },
     onError: (e) => toastMutationError("settings", e),
   });
@@ -2020,6 +2060,58 @@ export function SettingsScreen() {
                   disabled={quickPosPriceEditMut.isPending}
                   onChange={(e) => {
                     void quickPosPriceEditMut.mutateAsync(e.target.checked);
+                  }}
+                />
+              </label>
+            </div>
+          )}
+        </FsCard>
+      ) : null}
+
+      {/* Classement des vendeurs (page Ventes) — owner uniquement */}
+      {isOwner && companyId ? (
+        <FsCard className="mt-5" padding="p-5">
+          <SettingsCardTitle
+            icon={MdLeaderboard}
+            title="Ventes — classement des vendeurs"
+          />
+          <p className="mt-2 text-xs leading-relaxed text-neutral-600 sm:text-sm">
+            Le tableau « Qui a vendu combien » de la page Ventes affiche le total facturé
+            de chaque vendeur. Vous le voyez toujours, sur la période de votre choix. Vos
+            employés, eux, ne le voient pas tant que vous ne l&apos;ouvrez pas ici — et
+            même ouvert, ils n&apos;y lisent que la journée en cours, jamais tout
+            l&apos;historique.
+          </p>
+          {sellerBoardStaffQ.isPending ? (
+            <div className="mt-4 flex justify-center py-4" role="status" aria-label="Chargement">
+              <div className="h-8 w-8 animate-spin rounded-full border-2 border-fs-accent border-t-transparent" />
+            </div>
+          ) : (
+            <div className="mt-4 space-y-0 rounded-[10px] border border-black/[0.08]">
+              <label
+                className={cn(
+                  "flex cursor-pointer items-start justify-between gap-3 px-3 py-3 sm:px-4",
+                  sellerBoardStaffMut.isPending && "pointer-events-none opacity-60",
+                )}
+              >
+                <span className="min-w-0">
+                  <span className="block text-sm font-medium text-fs-text">
+                    Montrer le classement à mes employés
+                  </span>
+                  <span className="mt-0.5 block text-xs text-neutral-600">
+                    {sellerBoardStaffQ.data
+                      ? "Vos employés voient le classement des vendeurs, limité à aujourd'hui."
+                      : "Masqué : seul le propriétaire voit qui a vendu combien."}
+                  </span>
+                </span>
+                <input
+                  type="checkbox"
+                  role="switch"
+                  className="mt-1 h-5 w-9 shrink-0 cursor-pointer accent-fs-accent"
+                  checked={Boolean(sellerBoardStaffQ.data)}
+                  disabled={sellerBoardStaffMut.isPending}
+                  onChange={(e) => {
+                    void sellerBoardStaffMut.mutateAsync(e.target.checked);
                   }}
                 />
               </label>

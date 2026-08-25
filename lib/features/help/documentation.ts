@@ -1107,6 +1107,12 @@ export const DOC_GROUPS: DocGroup[] = [
           },
           {
             kind: "note",
+            tone: "info",
+            title: "Qui a vendu combien",
+            text: "Le tableau « Qui a vendu combien » classe vos vendeurs par total facturé. Le propriétaire le voit toujours, sur la période choisie. Vos employés ne le voient pas, sauf si vous l'activez dans Paramètres › Ventes — classement des vendeurs : ils n'y lisent alors que la journée en cours, jamais tout l'historique.",
+          },
+          {
+            kind: "note",
             tone: "warn",
             title: "Facturé n'est pas encaissé",
             text: "Les montants de cette page sont les montants facturés. Les Rapports, eux, raisonnent en encaissé. Un écart entre les deux pages n'est pas une erreur : c'est votre crédit client. C'est même l'écart le plus utile à surveiller.",
@@ -1126,6 +1132,8 @@ export const DOC_GROUPS: DocGroup[] = [
           "réimprimer",
           "vendeur",
           "période",
+          "qui a vendu combien",
+          "classement des vendeurs",
           "bénéfice",
           "marge",
           "retrait",

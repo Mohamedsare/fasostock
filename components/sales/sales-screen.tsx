@@ -46,6 +46,10 @@ import {
 } from "@/lib/features/settings/sale-pickup-tracking";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDateTime, toIsoDate } from "@/lib/utils/date";
+import {
+  fetchSalesSellerBoardStaffEnabled,
+  peekSalesSellerBoardStaffEnabled,
+} from "@/lib/features/settings/sales-seller-board";
 import { localDateFromIso } from "@/lib/utils/local-day";
 import { operationTodayYmd } from "@/lib/utils/operation-datetime";
 import { salesToSpreadsheetMatrix } from "@/lib/features/sales/csv";
@@ -532,6 +536,22 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
     ...(peekPickup !== undefined ? { initialData: peekPickup } : {}),
   });
   const pickupTrackingEnabled = pickupTrackingQ.data ?? false;
+  /**
+   * « Qui a vendu combien » chez un employé : masqué par défaut (le classement
+   * expose le chiffre d'affaires de toute l'équipe). Le propriétaire l'ouvre dans
+   * Paramètres ; même ouvert, l'employé ne voit que la journée du jour. Le
+   * propriétaire, lui, ne dépend pas du réglage : pas de requête pour lui.
+   */
+  const peekSellerBoardStaff =
+    companyId.length > 0 ? peekSalesSellerBoardStaffEnabled(companyId) : undefined;
+  const sellerBoardStaffQ = useQuery({
+    queryKey: queryKeys.salesSellerBoardStaffEnabled(companyId),
+    queryFn: () => fetchSalesSellerBoardStaffEnabled(companyId),
+    enabled: Boolean(companyId) && !canSeeSellerHistory,
+    staleTime: 60_000,
+    ...(peekSellerBoardStaff !== undefined ? { initialData: peekSellerBoardStaff } : {}),
+  });
+  const sellerBoardStaffEnabled = sellerBoardStaffQ.data ?? false;
   /** Droit ET réglage : les deux sont nécessaires pour voir le bouton. */
   const canMarkDelivery = pickupTrackingEnabled && mayMarkDelivery;
 
@@ -720,12 +740,13 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
    */
   const sellerBoardStats = useMemo(() => {
     if (canSeeSellerHistory) return sellerStats;
+    if (!sellerBoardStaffEnabled) return [];
     const today = operationTodayYmd();
     const todaySales = sellerScopeSales.filter(
       (s) => s.created_at && localDateFromIso(s.created_at) === today,
     );
     return groupSalesBySeller(todaySales, stores);
-  }, [canSeeSellerHistory, sellerStats, sellerScopeSales, stores]);
+  }, [canSeeSellerHistory, sellerBoardStaffEnabled, sellerStats, sellerScopeSales, stores]);
   /**
    * Un vendeur choisi puis absent de la nouvelle période ne doit pas vider
    * l'écran sans explication : on retombe alors sur « tous les vendeurs ».
