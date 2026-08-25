@@ -46,6 +46,8 @@ import {
 } from "@/lib/features/settings/sale-pickup-tracking";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDateTime, toIsoDate } from "@/lib/utils/date";
+import { localDateFromIso } from "@/lib/utils/local-day";
+import { operationTodayYmd } from "@/lib/utils/operation-datetime";
 import { salesToSpreadsheetMatrix } from "@/lib/features/sales/csv";
 import { downloadProSpreadsheet } from "@/lib/utils/spreadsheet-export-pro";
 import { saleSellerLabel, saleStoreLabel } from "@/lib/features/sales/sale-display";
@@ -458,6 +460,13 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
    * (propriétaire ou droit Rapports). Un caissier ne voit tout simplement pas la colonne.
    */
   const canSeeProfit = isOwner || (helpers?.canReports ?? false);
+  /**
+   * Le classement « qui a vendu combien » sur plusieurs jours est une lecture de
+   * patron : il expose le chiffre d'affaires de toute l'équipe depuis toujours.
+   * Un caissier n'a besoin que de sa journée de comptoir — son tableau reste donc
+   * borné à aujourd'hui, quelle que soit la période choisie pour la liste.
+   */
+  const canSeeSellerHistory = canSeeProfit;
 
   const [status, setStatus] = useState<SaleStatus | "">("");
   const [storeFilter, setStoreFilter] = useState("");
@@ -704,6 +713,19 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
     () => groupSalesBySeller(sellerScopeSales, stores),
     [sellerScopeSales, stores],
   );
+  /**
+   * Ventes affichées dans le tableau « Qui a vendu combien » : la période complète
+   * pour le propriétaire (ou le droit Rapports), la seule journée du jour sinon.
+   * Le filtre vendeur et la liste, eux, continuent de suivre la période choisie.
+   */
+  const sellerBoardStats = useMemo(() => {
+    if (canSeeSellerHistory) return sellerStats;
+    const today = operationTodayYmd();
+    const todaySales = sellerScopeSales.filter(
+      (s) => s.created_at && localDateFromIso(s.created_at) === today,
+    );
+    return groupSalesBySeller(todaySales, stores);
+  }, [canSeeSellerHistory, sellerStats, sellerScopeSales, stores]);
   /**
    * Un vendeur choisi puis absent de la nouvelle période ne doit pas vider
    * l'écran sans explication : on retombe alors sur « tous les vendeurs ».
@@ -1356,15 +1378,19 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
         loading={listLoading}
       />
 
-      {sellerStats.length > 0 ? (
+      {sellerBoardStats.length > 0 ? (
         <SalesSellerBoard
-          stats={sellerStats}
-          selectedUserId={effectiveSellerId}
+          stats={sellerBoardStats}
+          selectedUserId={
+            sellerBoardStats.some((s) => s.userId === effectiveSellerId)
+              ? effectiveSellerId
+              : ""
+          }
           onSelect={(id) => {
             setSellerId(id);
             setPage(0);
           }}
-          periodLabel={listPeriodLabel}
+          periodLabel={canSeeSellerHistory ? listPeriodLabel : "aujourd'hui"}
           sellerTerm={sellerTerm}
         />
       ) : null}
