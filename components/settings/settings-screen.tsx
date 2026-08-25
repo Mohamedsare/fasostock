@@ -750,8 +750,8 @@ export function SettingsScreen() {
     onSuccess: async (_, enabled) => {
       toast.success(
         enabled
-          ? "Vos employés voient le classement des vendeurs du jour."
-          : "Classement des vendeurs masqué pour vos employés.",
+          ? "Vos employés voient les chiffres de vente du jour."
+          : "Total facturé, panier moyen et classement masqués pour vos employés.",
       );
       await qc.invalidateQueries({
         queryKey: queryKeys.salesSellerBoardStaffEnabled(companyId),
@@ -2068,7 +2068,7 @@ export function SettingsScreen() {
         </FsCard>
       ) : null}
 
-      {/* Classement des vendeurs (page Ventes) — owner uniquement */}
+      {/* Chiffres de la page Ventes visibles par les employés — owner uniquement */}
       {isOwner && companyId ? (
         <FsCard className="mt-5" padding="p-5">
           <SettingsCardTitle
@@ -2096,12 +2096,12 @@ export function SettingsScreen() {
               >
                 <span className="min-w-0">
                   <span className="block text-sm font-medium text-fs-text">
-                    Montrer le classement à mes employés
+                    Montrer mes chiffres de vente à mes employés
                   </span>
                   <span className="mt-0.5 block text-xs text-neutral-600">
                     {sellerBoardStaffQ.data
-                      ? "Vos employés voient le classement des vendeurs, limité à aujourd'hui."
-                      : "Masqué : seul le propriétaire voit qui a vendu combien."}
+                      ? "Classement, total facturé et panier moyen visibles, limités à aujourd'hui."
+                      : "Masqués : seul le propriétaire voit le total facturé, le panier moyen et qui a vendu combien."}
                   </span>
                 </span>
                 <input

@@ -1397,6 +1397,7 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
             : null
         }
         loading={listLoading}
+        showAmounts={canSeeSellerHistory || sellerBoardStaffEnabled}
       />
 
       {sellerBoardStats.length > 0 ? (
@@ -1819,12 +1820,19 @@ function SalesSummaryBand({
   sellerName,
   storeLabel,
   loading,
+  showAmounts,
 }: {
   summary: SalesSummary;
   periodLabel: string;
   sellerName: string | null;
   storeLabel: string | null;
   loading: boolean;
+  /**
+   * Faux pour un employé quand le propriétaire garde ses chiffres pour lui :
+   * le nombre de ventes et les remises restent utiles au comptoir, mais le
+   * total facturé et le panier moyen — le chiffre d'affaires, en somme — non.
+   */
+  showAmounts: boolean;
 }) {
   const scope = [sellerName ? `Ventes de ${sellerName}` : "Toutes les ventes", storeLabel]
     .filter(Boolean)
@@ -1856,7 +1864,7 @@ function SalesSummaryBand({
       </div>
       {loading ? (
         <div className="mt-2 grid grid-cols-2 gap-2 min-[700px]:grid-cols-4">
-          {[0, 1, 2, 3].map((i) => (
+          {(showAmounts ? [0, 1, 2, 3] : [0, 1]).map((i) => (
             <div
               key={i}
               className="h-[72px] animate-pulse rounded-[6px] bg-fs-surface-container"
@@ -1876,19 +1884,23 @@ function SalesSummaryBand({
             icon={MdReceiptLong}
             tone="bg-blue-500/15 text-blue-700 dark:text-blue-400"
           />
-          <SummaryStat
-            label="Total facturé"
-            value={formatCurrency(summary.billed)}
-            sub="hors ventes annulées"
-            icon={MdPayments}
-            tone="bg-fs-accent/15 text-fs-accent"
-          />
-          <SummaryStat
-            label="Panier moyen"
-            value={formatCurrency(summary.average)}
-            icon={MdShoppingBag}
-            tone="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
-          />
+          {showAmounts ? (
+            <>
+              <SummaryStat
+                label="Total facturé"
+                value={formatCurrency(summary.billed)}
+                sub="hors ventes annulées"
+                icon={MdPayments}
+                tone="bg-fs-accent/15 text-fs-accent"
+              />
+              <SummaryStat
+                label="Panier moyen"
+                value={formatCurrency(summary.average)}
+                icon={MdShoppingBag}
+                tone="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
+              />
+            </>
+          ) : null}
           <SummaryStat
             label="Remises"
             value={formatCurrency(summary.discount)}

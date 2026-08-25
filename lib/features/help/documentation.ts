@@ -1108,8 +1108,8 @@ export const DOC_GROUPS: DocGroup[] = [
           {
             kind: "note",
             tone: "info",
-            title: "Qui a vendu combien",
-            text: "Le tableau « Qui a vendu combien » classe vos vendeurs par total facturé. Le propriétaire le voit toujours, sur la période choisie. Vos employés ne le voient pas, sauf si vous l'activez dans Paramètres › Ventes — classement des vendeurs : ils n'y lisent alors que la journée en cours, jamais tout l'historique.",
+            title: "Ce que vos employés voient de vos chiffres",
+            text: "Le tableau « Qui a vendu combien », le total facturé et le panier moyen sont réservés au propriétaire. Vos employés ne les voient pas, sauf si vous l'activez dans Paramètres › Ventes — chiffres visibles par les employés : ils n'y lisent alors que la journée en cours, jamais tout l'historique. Le nombre de ventes, les remises et la liste des ventes leur restent visibles dans tous les cas.",
           },
           {
             kind: "note",
