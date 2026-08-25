@@ -184,6 +184,36 @@ export async function fetchWarehouseMovementsPdfBlob(data: {
   );
 }
 
+/**
+ * Rapport d'inventaire A4 (boutique ou dépôt). Les lignes et les dates partent déjà
+ * formatées : le rendu serveur est partagé entre requêtes et n'a ni fuseau ni devise.
+ */
+export async function fetchInventorySessionPdfBlob(data: {
+  companyId: string;
+  companyName: string;
+  companyLogoUrl?: string | null;
+  scopeName: string;
+  scopeKind: string;
+  sessionTitle: string;
+  statusLabel: string;
+  status: "open" | "closed" | "cancelled";
+  startedLabel: string;
+  closedLabel: string | null;
+  generatedLabel: string;
+  countedByLabel?: string | null;
+  rows: Array<{
+    productName: string;
+    expectedQty: number;
+    countedQty: number | null;
+    unitPurchasePrice: number;
+  }>;
+}): Promise<Blob> {
+  return postPdf(
+    "/api/pdf/inventory-session",
+    JSON.stringify({ ...data, currencyCode: getActiveCurrency() }),
+  );
+}
+
 export async function fetchStoreProductsPdfBlob(data: {
   companyId: string;
   storeId?: string | null;

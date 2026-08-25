@@ -7,13 +7,18 @@ import { ROUTES } from "@/lib/config/routes";
 import {
   cancelInventorySession,
   deleteInventorySession,
+  listInventorySessionItems,
   listInventorySessions,
   reopenInventorySession,
   startInventorySession,
 } from "@/lib/features/inventory/sessions/api";
+import {
+  exportInventorySessionReport,
+  type InventoryReportMode,
+} from "@/lib/features/inventory/sessions/export-report";
 import type { InventorySessionStatus, InventorySessionSummary } from "@/lib/features/inventory/sessions/types";
 import { usePermissions } from "@/lib/features/permissions/use-permissions";
-import { messageFromUnknownError, toast } from "@/lib/toast";
+import { messageFromUnknownError, toast, toastMutationError } from "@/lib/toast";
 import { formatCurrency } from "@/lib/utils/currency";
 import { cn } from "@/lib/utils/cn";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -27,7 +32,9 @@ import {
   MdChecklist,
   MdClose,
   MdDeleteOutline,
+  MdDownload,
   MdInventory2,
+  MdPrint,
   MdLockOutline,
   MdPlayArrow,
   MdReplay,
@@ -71,6 +78,46 @@ export function InventorySessionsScreen() {
   const [confirm, setConfirm] = useState<
     { kind: "cancel" | "delete" | "reopen"; session: InventorySessionSummary } | null
   >(null);
+  const [exportBusy, setExportBusy] = useState<{ id: string; mode: InventoryReportMode } | null>(
+    null,
+  );
+
+  /**
+   * Rapport A4 d'un inventaire passé — on le ressort le jour où une correction de stock
+   * est contestée. Les lignes sont relues ici : la carte ne connaît que les agrégats.
+   */
+  async function exportSession(mode: InventoryReportMode, s: InventorySessionSummary) {
+    if (exportBusy || !ctx?.companyId) return;
+    setExportBusy({ id: s.id, mode });
+    try {
+      const items = await listInventorySessionItems(s.id);
+      if (items.length === 0) {
+        toast.info("Aucun produit dans cette session.");
+        return;
+      }
+      await exportInventorySessionReport(mode, {
+        companyId: ctx.companyId,
+        companyName: ctx.companyName ?? "",
+        companyLogoUrl: ctx.companyLogoUrl ?? null,
+        scopeKind: "Boutique",
+        scopeName: storeName ?? "",
+        sessionNote: s.note,
+        status: s.status,
+        startedAt: s.startedAt,
+        closedAt: s.closedAt,
+        rows: items.map((it) => ({
+          productName: it.productName,
+          expectedQty: it.expectedQty,
+          countedQty: it.countedQty,
+          unitPurchasePrice: it.unitPurchasePrice,
+        })),
+      });
+    } catch (e) {
+      toastMutationError("inventory-sessions-report-pdf", e);
+    } finally {
+      setExportBusy(null);
+    }
+  }
 
   const q = useQuery({
     queryKey: ["inventory-sessions", storeId] as const,
@@ -263,6 +310,9 @@ export function InventorySessionsScreen() {
               key={s.id}
               session={s}
               reopenBlocked={openSession != null}
+              exportBusy={exportBusy?.id === s.id ? exportBusy.mode : null}
+              onPrint={() => void exportSession("print", s)}
+              onDownload={() => void exportSession("download", s)}
               onCancel={() => setConfirm({ kind: "cancel", session: s })}
               onDelete={() => setConfirm({ kind: "delete", session: s })}
               onReopen={() => setConfirm({ kind: "reopen", session: s })}
@@ -315,6 +365,9 @@ export function InventorySessionsScreen() {
 function SessionCard({
   session,
   reopenBlocked,
+  exportBusy,
+  onPrint,
+  onDownload,
   onCancel,
   onDelete,
   onReopen,
@@ -322,6 +375,10 @@ function SessionCard({
   session: InventorySessionSummary;
   /** Une autre session est ouverte : impossible d'en rouvrir une seconde. */
   reopenBlocked: boolean;
+  /** Mode d'export en cours pour CETTE carte (les autres restent cliquables). */
+  exportBusy: InventoryReportMode | null;
+  onPrint: () => void;
+  onDownload: () => void;
   onCancel: () => void;
   onDelete: () => void;
   onReopen: () => void;
@@ -351,13 +408,35 @@ function SessionCard({
             {session.status !== "open" && session.closedAt ? ` · clôturé ${fmtDate(session.closedAt)}` : ""}
           </p>
         </div>
-        <Link
-          href={`${ROUTES.inventorySessions}/${session.id}`}
-          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-black/10 text-neutral-600 hover:bg-black/[0.03]"
-          aria-label="Ouvrir la session"
-        >
-          <MdArrowForward className="h-5 w-5" aria-hidden />
-        </Link>
+        <div className="flex shrink-0 items-center gap-1.5">
+          <button
+            type="button"
+            onClick={onPrint}
+            disabled={exportBusy != null}
+            title="Imprimer le rapport A4"
+            aria-label="Imprimer le rapport d'inventaire"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-black/10 text-neutral-600 hover:bg-black/[0.03] disabled:opacity-50"
+          >
+            <MdPrint className={cn("h-5 w-5", exportBusy === "print" && "animate-pulse text-fs-accent")} aria-hidden />
+          </button>
+          <button
+            type="button"
+            onClick={onDownload}
+            disabled={exportBusy != null}
+            title="Télécharger le rapport A4 (PDF)"
+            aria-label="Télécharger le rapport d'inventaire"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-black/10 text-neutral-600 hover:bg-black/[0.03] disabled:opacity-50"
+          >
+            <MdDownload className={cn("h-5 w-5", exportBusy === "download" && "animate-pulse text-fs-accent")} aria-hidden />
+          </button>
+          <Link
+            href={`${ROUTES.inventorySessions}/${session.id}`}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-black/10 text-neutral-600 hover:bg-black/[0.03]"
+            aria-label="Ouvrir la session"
+          >
+            <MdArrowForward className="h-5 w-5" aria-hidden />
+          </Link>
+        </div>
       </div>
 
       <div className="mt-3">

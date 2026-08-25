@@ -1601,6 +1601,7 @@ export const DOC_GROUPS: DocGroup[] = [
               "L'application affiche l'écart entre le stock théorique et le stock compté, ligne par ligne.",
               "Examinez les écarts importants avant de valider : ce sont eux qui portent l'information.",
               "Validez. Le stock est mis à jour d'un seul bloc et la session passe à « Validé ».",
+              "Imprimez ou téléchargez le rapport A4 proposé juste après la validation : c'est la pièce à classer et à faire signer.",
             ],
           },
           {
@@ -1610,6 +1611,7 @@ export const DOC_GROUPS: DocGroup[] = [
               "La validation est atomique : elle passe entièrement ou pas du tout. Pas d'inventaire à moitié appliqué.",
               "Une session peut être reprise, y compris après validation, pour corriger une erreur de comptage.",
               "Les écarts sont conservés : ils sont votre mesure de la démarque et des erreurs de saisie.",
+              "Le rapport A4 (résumé, écarts classés par valeur, détail du comptage, cases de signature) se réimprime à tout moment depuis les boutons Imprimer / Télécharger de l'historique — même des mois plus tard.",
             ],
           },
           {
@@ -1699,7 +1701,7 @@ export const DOC_GROUPS: DocGroup[] = [
               ["Mouvements", "Entrées et sorties du dépôt, avec leur auteur. Le journal d'une journée s'imprime ou se télécharge en PDF."],
               ["Transfert", "Envoyer de la marchandise du dépôt vers une boutique."],
               ["Historiques des bons", "Les bons émis, à retrouver et rééditer."],
-              ["Inventaire", "Le comptage physique du dépôt, avec écarts et validation."],
+              ["Inventaire", "Le comptage physique du dépôt, avec écarts, validation et rapport A4 à imprimer ou télécharger."],
             ],
           },
           {

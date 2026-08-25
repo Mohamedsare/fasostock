@@ -2,7 +2,13 @@
 
 import { FsCard, FsQueryErrorPanel } from "@/components/ui/fs-screen-primitives";
 import { FsConfirmDialog } from "@/components/ui/fs-confirm-dialog";
+import { InventoryReportDialog } from "@/components/inventory/inventory-report-dialog";
 import { ProductListThumbnail, firstProductImageUrl } from "@/components/products/product-list-thumbnail";
+import {
+  exportInventorySessionReport,
+  type InventoryReportMode,
+} from "@/lib/features/inventory/sessions/export-report";
+import { usePermissions } from "@/lib/features/permissions/use-permissions";
 import { listProducts } from "@/lib/features/products/api";
 import { queryKeys } from "@/lib/query/query-keys";
 import {
@@ -21,7 +27,7 @@ import type {
   WarehouseInventorySessionStatus,
   WarehouseInventorySessionSummary,
 } from "@/lib/features/warehouse/inventory-sessions/types";
-import { messageFromUnknownError, toast } from "@/lib/toast";
+import { messageFromUnknownError, toast, toastMutationError } from "@/lib/toast";
 import { formatCurrency } from "@/lib/utils/currency";
 import { cn } from "@/lib/utils/cn";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -35,8 +41,10 @@ import {
   MdChecklist,
   MdClose,
   MdDeleteOutline,
+  MdDownload,
   MdInventory2,
   MdPlayArrow,
+  MdPrint,
   MdReplay,
   MdSearch,
 } from "react-icons/md";
@@ -96,6 +104,7 @@ export function WarehouseInventoryTab({ companyId, warehouseId, warehouseName, c
         sessionId={countingId}
         companyId={companyId}
         warehouseId={warehouseId}
+        warehouseName={warehouseName}
         onBack={() => setCountingId(null)}
       />
     );
@@ -126,11 +135,49 @@ function WarehouseInventoryList({
   onOpen: (sessionId: string) => void;
 }) {
   const qc = useQueryClient();
+  const { data: ctx } = usePermissions();
   const sessionsKey = queryKeys.warehouseInventorySessions(companyId, warehouseId);
   const [note, setNote] = useState("");
   const [confirm, setConfirm] = useState<
     { kind: "cancel" | "delete" | "reopen"; session: WarehouseInventorySessionSummary } | null
   >(null);
+  const [exportBusy, setExportBusy] = useState<{ id: string; mode: InventoryReportMode } | null>(
+    null,
+  );
+
+  /** Rapport A4 d'un inventaire de dépôt passé. Les lignes sont relues : la carte n'a que les agrégats. */
+  async function exportSession(mode: InventoryReportMode, s: WarehouseInventorySessionSummary) {
+    if (exportBusy) return;
+    setExportBusy({ id: s.id, mode });
+    try {
+      const items = await listWarehouseInventorySessionItems(s.id);
+      if (items.length === 0) {
+        toast.info("Aucun produit dans cette session.");
+        return;
+      }
+      await exportInventorySessionReport(mode, {
+        companyId,
+        companyName: ctx?.companyName ?? "",
+        companyLogoUrl: ctx?.companyLogoUrl ?? null,
+        scopeKind: "Dépôt",
+        scopeName: warehouseName,
+        sessionNote: s.note,
+        status: s.status,
+        startedAt: s.startedAt,
+        closedAt: s.closedAt,
+        rows: items.map((it) => ({
+          productName: it.productName,
+          expectedQty: it.expectedQty,
+          countedQty: it.countedQty,
+          unitPurchasePrice: it.unitPurchasePrice,
+        })),
+      });
+    } catch (e) {
+      toastMutationError("warehouse-inventory-report-pdf", e);
+    } finally {
+      setExportBusy(null);
+    }
+  }
 
   const q = useQuery({
     queryKey: sessionsKey,
@@ -281,6 +328,9 @@ function WarehouseInventoryList({
               key={s.id}
               session={s}
               reopenBlocked={openSession != null}
+              exportBusy={exportBusy?.id === s.id ? exportBusy.mode : null}
+              onPrint={() => void exportSession("print", s)}
+              onDownload={() => void exportSession("download", s)}
               onOpen={() => onOpen(s.id)}
               onCancel={() => setConfirm({ kind: "cancel", session: s })}
               onDelete={() => setConfirm({ kind: "delete", session: s })}
@@ -334,6 +384,9 @@ function WarehouseInventoryList({
 function SessionCard({
   session,
   reopenBlocked,
+  exportBusy,
+  onPrint,
+  onDownload,
   onOpen,
   onCancel,
   onDelete,
@@ -342,6 +395,10 @@ function SessionCard({
   session: WarehouseInventorySessionSummary;
   /** Une autre session est ouverte : impossible d'en rouvrir une seconde. */
   reopenBlocked: boolean;
+  /** Mode d'export en cours pour CETTE carte (les autres restent cliquables). */
+  exportBusy: InventoryReportMode | null;
+  onPrint: () => void;
+  onDownload: () => void;
   onOpen: () => void;
   onCancel: () => void;
   onDelete: () => void;
@@ -373,14 +430,36 @@ function SessionCard({
             {session.status !== "open" && session.closedAt ? ` · clôturé ${fmtDate(session.closedAt)}` : ""}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={onOpen}
-          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-black/10 text-neutral-600 hover:bg-black/[0.03]"
-          aria-label="Ouvrir la session"
-        >
-          <MdArrowForward className="h-5 w-5" aria-hidden />
-        </button>
+        <div className="flex shrink-0 items-center gap-1.5">
+          <button
+            type="button"
+            onClick={onPrint}
+            disabled={exportBusy != null}
+            title="Imprimer le rapport A4"
+            aria-label="Imprimer le rapport d'inventaire"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-black/10 text-neutral-600 hover:bg-black/[0.03] disabled:opacity-50"
+          >
+            <MdPrint className={cn("h-5 w-5", exportBusy === "print" && "animate-pulse text-fs-accent")} aria-hidden />
+          </button>
+          <button
+            type="button"
+            onClick={onDownload}
+            disabled={exportBusy != null}
+            title="Télécharger le rapport A4 (PDF)"
+            aria-label="Télécharger le rapport d'inventaire"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-black/10 text-neutral-600 hover:bg-black/[0.03] disabled:opacity-50"
+          >
+            <MdDownload className={cn("h-5 w-5", exportBusy === "download" && "animate-pulse text-fs-accent")} aria-hidden />
+          </button>
+          <button
+            type="button"
+            onClick={onOpen}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-black/10 text-neutral-600 hover:bg-black/[0.03]"
+            aria-label="Ouvrir la session"
+          >
+            <MdArrowForward className="h-5 w-5" aria-hidden />
+          </button>
+        </div>
       </div>
 
       <div className="mt-3">
@@ -471,14 +550,17 @@ function WarehouseInventoryCount({
   sessionId,
   companyId,
   warehouseId,
+  warehouseName,
   onBack,
 }: {
   sessionId: string;
   companyId: string;
   warehouseId: string | null;
+  warehouseName: string;
   onBack: () => void;
 }) {
   const qc = useQueryClient();
+  const { data: ctx } = usePermissions();
   const sessionsKey = queryKeys.warehouseInventorySessions(companyId, warehouseId);
   const sessionKey = ["warehouse-inventory-session", sessionId] as const;
   const itemsKey = ["warehouse-inventory-session-items", sessionId] as const;
@@ -523,6 +605,9 @@ function WarehouseInventoryCount({
   const [filter, setFilter] = useState<CountFilter>("all");
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [confirm, setConfirm] = useState<"validate" | "cancel" | "reopen" | null>(null);
+  const [exportBusy, setExportBusy] = useState<InventoryReportMode | null>(null);
+  /** Rapport proposé dès la validation : la trace se demande quand on l'a encore en tête. */
+  const [reportOpen, setReportOpen] = useState(false);
 
   // Nom courant prioritaire sur le nom snapshoté, puis reclassement alphabétique
   // (le serveur trie sur le snapshot : un produit renommé se retrouverait mal placé).
@@ -573,6 +658,42 @@ function WarehouseInventoryCount({
     });
   }, [items, search, filter]);
 
+  /**
+   * Rapport A4 de la session — imprimé ou téléchargé, c'est le même document. Il part des
+   * lignes affichées : le papier doit dire ce que la personne avait sous les yeux.
+   */
+  async function runExport(mode: InventoryReportMode) {
+    if (exportBusy || !session) return;
+    if (items.length === 0) {
+      toast.info("Aucun produit dans cette session.");
+      return;
+    }
+    setExportBusy(mode);
+    try {
+      await exportInventorySessionReport(mode, {
+        companyId,
+        companyName: ctx?.companyName ?? "",
+        companyLogoUrl: ctx?.companyLogoUrl ?? null,
+        scopeKind: "Dépôt",
+        scopeName: warehouseName,
+        sessionNote: session.note,
+        status: session.status,
+        startedAt: session.startedAt,
+        closedAt: session.closedAt,
+        rows: items.map((it) => ({
+          productName: it.productName,
+          expectedQty: it.expectedQty,
+          countedQty: it.countedQty,
+          unitPurchasePrice: it.unitPurchasePrice,
+        })),
+      });
+    } catch (e) {
+      toastMutationError("warehouse-inventory-report-pdf", e);
+    } finally {
+      setExportBusy(null);
+    }
+  }
+
   function patchItem(itemId: string, countedQty: number, expectedQty: number) {
     qc.setQueryData<WarehouseInventorySessionItem[]>(itemsKey, (prev) =>
       (prev ?? []).map((it) =>
@@ -602,7 +723,10 @@ function WarehouseInventoryCount({
         // Rafraîchit stock dépôt + mouvements (préfixe ["warehouse", companyId]).
         qc.invalidateQueries({ queryKey: ["warehouse", companyId] }),
       ]);
-      onBack();
+      // On ne referme pas tout de suite : le rapport se propose ici, au moment où l'on
+      // veut la trace. « Terminer » revient à la liste.
+      setConfirm(null);
+      setReportOpen(true);
     },
     onError: (e) => toast.error(messageFromUnknownError(e)),
   });
@@ -736,6 +860,36 @@ function WarehouseInventoryCount({
             tone={stats.varianceValue < 0 ? "red" : stats.varianceValue > 0 ? "green" : "muted"}
           />
         </div>
+
+        {/* Le résultat sur papier, dès qu'il y a quelque chose à montrer. */}
+        {stats.counted > 0 ? (
+          <div className="mt-3 flex flex-col gap-2 border-t border-black/[0.06] pt-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-xs text-neutral-500">
+              Rapport A4 : résumé, écarts classés par valeur, détail du comptage et cases de
+              signature.
+            </p>
+            <div className="flex shrink-0 gap-2">
+              <button
+                type="button"
+                onClick={() => void runExport("print")}
+                disabled={exportBusy != null}
+                className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-md border border-fs-accent/40 px-3 text-xs font-bold text-fs-accent disabled:opacity-50"
+              >
+                <MdPrint className="h-4 w-4" aria-hidden />
+                {exportBusy === "print" ? "Préparation…" : "Imprimer"}
+              </button>
+              <button
+                type="button"
+                onClick={() => void runExport("download")}
+                disabled={exportBusy != null}
+                className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-md border border-black/10 px-3 text-xs font-bold text-neutral-700 disabled:opacity-50"
+              >
+                <MdDownload className="h-4 w-4" aria-hidden />
+                {exportBusy === "download" ? "Préparation…" : "Télécharger"}
+              </button>
+            </div>
+          </div>
+        ) : null}
       </FsCard>
 
       {/* Recherche + filtres */}
@@ -870,6 +1024,22 @@ function WarehouseInventoryCount({
             setConfirm(null);
             reopenMut.mutate();
           } else if (confirm === "validate") validateMut.mutate();
+        }}
+      />
+
+      <InventoryReportDialog
+        open={reportOpen}
+        subtitle={`Le stock du dépôt ${warehouseName} a été mis à jour.`}
+        counted={stats.counted}
+        total={stats.total}
+        varianceCount={stats.varianceCount}
+        varianceValue={stats.varianceValue}
+        busy={exportBusy}
+        onPrint={() => void runExport("print")}
+        onDownload={() => void runExport("download")}
+        onClose={() => {
+          setReportOpen(false);
+          onBack();
         }}
       />
     </div>
