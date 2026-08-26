@@ -1,6 +1,7 @@
 "use client";
 
 import { CustomerFormDialog } from "@/components/customers/customer-form-dialog";
+import { DebtExemptionDialog } from "@/components/customers/debt-exemption-dialog";
 import {
   FsCard,
   FsFab,
@@ -18,6 +19,20 @@ import {
 } from "@/lib/features/customers/api";
 import { customersToSpreadsheetMatrix } from "@/lib/features/customers/csv";
 import type { Customer } from "@/lib/features/customers/types";
+import {
+  fetchDebtExemptions,
+  findActiveDebtExemption,
+  grantDebtExemption,
+  peekDebtExemptions,
+  revokeDebtExemption,
+  type DebtExemption,
+} from "@/lib/features/credit/debt-exemptions";
+import {
+  fetchSaleCustomerPolicy,
+  peekSaleCustomerPolicy,
+  SALE_CUSTOMER_POLICY_DEFAULT,
+} from "@/lib/features/settings/sale-customer-policy";
+import { formatOperationCalendarDayYmd } from "@/lib/utils/operation-datetime";
 import { usePermissions } from "@/lib/features/permissions/use-permissions";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { queryKeys } from "@/lib/query/query-keys";
@@ -31,6 +46,7 @@ import {
   MdBusiness,
   MdChevronLeft,
   MdChevronRight,
+  MdCreditScore,
   MdDeleteOutline,
   MdDownload,
   MdEdit,
@@ -99,16 +115,47 @@ function DeleteCustomerDialog({
   );
 }
 
+/**
+ * Pastille « ce client peut acheter même endetté ».
+ *
+ * Visible de tous, y compris du caissier : c'est justement ce qu'il doit savoir
+ * avant de composer le panier, plutôt que de le découvrir au moment d'encaisser.
+ */
+function ExemptionBadge({ exemption }: { exemption: DebtExemption }) {
+  return (
+    <span
+      className="inline-flex max-w-full items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400"
+      title={
+        exemption.note
+          ? `Autorisé malgré une dette — ${exemption.note}`
+          : "Autorisé à acheter malgré une dette en cours"
+      }
+    >
+      <MdCreditScore className="h-3.5 w-3.5 shrink-0" aria-hidden />
+      <span className="truncate">
+        {exemption.until
+          ? `Autorisé jusqu'au ${formatOperationCalendarDayYmd(exemption.until)}`
+          : "Autorisé malgré dette"}
+      </span>
+    </span>
+  );
+}
+
 function CustomerCard({
   customer,
   canDelete,
+  exemption,
   onEdit,
   onDelete,
+  onExempt,
 }: {
   customer: Customer;
   canDelete: boolean;
+  exemption: DebtExemption | null;
   onEdit: () => void;
   onDelete: () => void;
+  /** `null` si l'utilisateur n'est pas propriétaire : la dérogation lui est réservée. */
+  onExempt: (() => void) | null;
 }) {
   const isCompany = customer.type === "company";
   return (
@@ -129,9 +176,12 @@ function CustomerCard({
           </div>
           <div className="min-w-0 flex-1">
             <p className="line-clamp-2 text-base font-bold text-fs-text">{customer.name}</p>
-            <span className="mt-0.5 inline-block rounded bg-fs-surface-container px-1.5 py-0.5 text-[11px] font-medium text-neutral-600">
-              {typeLabel(customer.type)}
-            </span>
+            <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
+              <span className="inline-block rounded bg-fs-surface-container px-1.5 py-0.5 text-[11px] font-medium text-neutral-600">
+                {typeLabel(customer.type)}
+              </span>
+              {exemption ? <ExemptionBadge exemption={exemption} /> : null}
+            </div>
           </div>
         </div>
         {customer.phone ? (
@@ -157,20 +207,43 @@ function CustomerCard({
         <button
           type="button"
           onClick={onEdit}
-          className="flex flex-1 items-center justify-center gap-2 py-3 text-sm font-semibold text-fs-accent active:bg-fs-surface-container"
+          className="flex flex-1 items-center justify-center gap-1.5 py-3 text-[13px] font-semibold text-fs-accent active:bg-fs-surface-container"
         >
-          <MdEdit className="h-5 w-5" aria-hidden />
+          <MdEdit className="h-5 w-5 shrink-0" aria-hidden />
           Modifier
         </button>
+        {onExempt ? (
+          <>
+            <div className="w-px bg-black/[0.06]" aria-hidden />
+            <button
+              type="button"
+              onClick={onExempt}
+              className={cn(
+                "flex flex-1 items-center justify-center gap-1.5 py-3 text-[13px] font-semibold active:bg-fs-surface-container",
+                exemption
+                  ? "text-emerald-600 dark:text-emerald-400"
+                  : "text-neutral-600",
+              )}
+              aria-label={
+                exemption
+                  ? `Modifier l'autorisation de vente à crédit de ${customer.name}`
+                  : `Autoriser ${customer.name} à acheter malgré une dette`
+              }
+            >
+              <MdCreditScore className="h-5 w-5 shrink-0" aria-hidden />
+              {exemption ? "Autorisé" : "Autoriser"}
+            </button>
+          </>
+        ) : null}
         {canDelete ? (
           <>
             <div className="w-px bg-black/[0.06]" aria-hidden />
             <button
               type="button"
               onClick={onDelete}
-              className="flex flex-1 items-center justify-center gap-2 py-3 text-sm font-semibold text-red-600 active:bg-fs-surface-container"
+              className="flex flex-1 items-center justify-center gap-1.5 py-3 text-[13px] font-semibold text-red-600 active:bg-fs-surface-container"
             >
-              <MdDeleteOutline className="h-5 w-5" aria-hidden />
+              <MdDeleteOutline className="h-5 w-5 shrink-0" aria-hidden />
               Supprimer
             </button>
           </>
@@ -189,6 +262,11 @@ export function CustomersScreen() {
   const canView = hasPermission(P.customersView) || hasPermission(P.customersManage);
   const canManage = hasPermission(P.customersManage);
   const canDeleteCustomer = canManage;
+  /*
+   * Lever la règle « pas de vente à un client endetté » engage l'argent de la maison :
+   * c'est au propriétaire, jamais au caissier qui a le client en face de lui.
+   */
+  const isOwner = ctx?.roleSlug === "owner";
 
   const isWide = useMediaQuery("(min-width: 900px)");
   const isNarrowHeader = !useMediaQuery("(min-width: 560px)");
@@ -201,11 +279,33 @@ export function CustomersScreen() {
     staleTime: 20_000,
   });
 
+  /*
+   * Dérogations « peut acheter malgré une dette ». Lues pour tout le monde (la
+   * pastille renseigne aussi le caissier), modifiables par le seul propriétaire.
+   */
+  const exemptionsQ = useQuery({
+    queryKey: queryKeys.customerDebtExemptions(companyId),
+    queryFn: () => fetchDebtExemptions(companyId),
+    enabled: Boolean(companyId) && canView,
+    placeholderData: () => peekDebtExemptions(companyId),
+    staleTime: 30_000,
+  });
+
+  // Sert au dialogue à expliquer que la règle n'est pas (encore) activée.
+  const policyQ = useQuery({
+    queryKey: queryKeys.saleCustomerPolicy(companyId),
+    queryFn: () => fetchSaleCustomerPolicy(companyId),
+    enabled: Boolean(companyId) && isOwner,
+    placeholderData: () => peekSaleCustomerPolicy(companyId),
+    staleTime: 60_000,
+  });
+
   const [q, setQ] = useState("");
   const [currentPage, setCurrentPage] = useState(0);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Customer | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Customer | null>(null);
+  const [exemptTarget, setExemptTarget] = useState<Customer | null>(null);
 
   const rows = useMemo(() => customersQ.data ?? [], [customersQ.data]);
 
@@ -287,6 +387,46 @@ export function CustomersScreen() {
       toast.success("Client mis à jour");
     },
     onError: (e) => toastMutationError("customers", e),
+  });
+
+  const exemptions = useMemo(() => exemptionsQ.data ?? [], [exemptionsQ.data]);
+
+  /** L'autorisation en cours d'un client (numéro ou fiche), ou `null`. */
+  const exemptionOf = useMemo(() => {
+    return (c: Customer) => findActiveDebtExemption(exemptions, c);
+  }, [exemptions]);
+
+  const exemptionMut = useMutation({
+    mutationFn: async (vars: {
+      customer: Customer;
+      action: "grant" | "revoke";
+      until?: string | null;
+      note?: string;
+    }) => {
+      if (!companyId) throw new Error("Entreprise manquante.");
+      if (vars.action === "revoke") {
+        return revokeDebtExemption({ companyId, customer: vars.customer });
+      }
+      return grantDebtExemption({
+        companyId,
+        customer: vars.customer,
+        until: vars.until ?? null,
+        note: vars.note ?? "",
+      });
+    },
+    onSuccess: (list, vars) => {
+      qc.setQueryData(queryKeys.customerDebtExemptions(companyId), list);
+      const who = vars.customer.name?.trim() || vars.customer.phone?.trim() || "Ce client";
+      toast.success(
+        vars.action === "revoke"
+          ? `Autorisation retirée : ${who} devra solder sa dette.`
+          : vars.until
+            ? `${who} peut acheter malgré sa dette jusqu'au ${formatOperationCalendarDayYmd(vars.until)}.`
+            : `${who} peut acheter malgré sa dette.`,
+      );
+    },
+    // Pas de toast d'erreur ici : le dialogue reste ouvert et affiche le motif
+    // à l'endroit où le propriétaire vient de cliquer.
   });
 
   const deleteMut = useMutation({
@@ -491,8 +631,13 @@ export function CustomersScreen() {
                 <tbody>
                   {paginated.map((c) => (
                     <tr key={c.id} className="border-b border-black/[0.04] last:border-0">
-                      <td className="max-w-[200px] truncate px-4 py-3 font-medium text-fs-text">
-                        {c.name}
+                      <td className="max-w-[200px] px-4 py-3 font-medium text-fs-text">
+                        <span className="block truncate">{c.name}</span>
+                        {exemptionOf(c) ? (
+                          <span className="mt-1 block">
+                            <ExemptionBadge exemption={exemptionOf(c)!} />
+                          </span>
+                        ) : null}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-neutral-700">{typeLabel(c.type)}</td>
                       <td className="max-w-[140px] truncate px-4 py-3 text-neutral-700">
@@ -520,6 +665,30 @@ export function CustomersScreen() {
                           >
                             <MdEdit className="h-5 w-5" aria-hidden />
                           </button>
+                          {isOwner ? (
+                            <button
+                              type="button"
+                              onClick={() => setExemptTarget(c)}
+                              className={cn(
+                                "rounded-lg p-2 hover:bg-fs-surface-container",
+                                exemptionOf(c)
+                                  ? "text-emerald-600 dark:text-emerald-400"
+                                  : "text-neutral-500",
+                              )}
+                              aria-label={
+                                exemptionOf(c)
+                                  ? "Modifier l'autorisation d'achat malgré une dette"
+                                  : "Autoriser cet achat malgré une dette"
+                              }
+                              title={
+                                exemptionOf(c)
+                                  ? "Autorisé à acheter malgré une dette — modifier"
+                                  : "Autoriser à acheter malgré une dette"
+                              }
+                            >
+                              <MdCreditScore className="h-5 w-5" aria-hidden />
+                            </button>
+                          ) : null}
                           {canDeleteCustomer ? (
                             <button
                               type="button"
@@ -545,11 +714,13 @@ export function CustomersScreen() {
                   key={c.id}
                   customer={c}
                   canDelete={canDeleteCustomer}
+                  exemption={exemptionOf(c)}
                   onEdit={() => {
                     setEditing(c);
                     setFormOpen(true);
                   }}
                   onDelete={() => setDeleteTarget(c)}
+                  onExempt={isOwner ? () => setExemptTarget(c) : null}
                 />
               ))}
             </div>
@@ -642,6 +813,30 @@ export function CustomersScreen() {
           } else {
             await createMut.mutateAsync(value);
           }
+        }}
+      />
+
+      <DebtExemptionDialog
+        open={exemptTarget != null}
+        customer={exemptTarget}
+        exemption={exemptTarget ? exemptionOf(exemptTarget) : null}
+        blockOnDebt={(policyQ.data ?? SALE_CUSTOMER_POLICY_DEFAULT).blockOnDebt}
+        busy={exemptionMut.isPending}
+        onClose={() => {
+          if (!exemptionMut.isPending) setExemptTarget(null);
+        }}
+        onGrant={async ({ until, note }) => {
+          if (!exemptTarget) return;
+          await exemptionMut.mutateAsync({
+            customer: exemptTarget,
+            action: "grant",
+            until,
+            note,
+          });
+        }}
+        onRevoke={async () => {
+          if (!exemptTarget) return;
+          await exemptionMut.mutateAsync({ customer: exemptTarget, action: "revoke" });
         }}
       />
 

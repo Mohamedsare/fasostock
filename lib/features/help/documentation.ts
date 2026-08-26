@@ -407,6 +407,7 @@ export const DOC_GROUPS: DocGroup[] = [
             items: [
               "Toute vente au nom d'un client : plus aucune vente anonyme, dans les trois caisses (rapide, Facture A4, vue tableau). Pour créer un client au comptoir, le numéro de téléphone suffit — le nom est facultatif.",
               "Refuser la vente si le client a une dette : au moment d'encaisser, la caisse annonce la somme due et refuse la nouvelle vente, même payée comptant. La dette est comptée sur toutes les fiches partageant le même numéro. Si la connexion est coupée, la vérification est impossible et la vente passe — une boutique doit pouvoir continuer à vendre.",
+              "Exception nominative : page Clients, bouton « Autoriser » (propriétaire). La règle est levée pour un client précis, avec un motif et, si vous voulez, une date de fin.",
             ],
           },
           {
@@ -872,7 +873,7 @@ export const DOC_GROUPS: DocGroup[] = [
             kind: "note",
             tone: "warn",
             title: "Client endetté : la vente peut être refusée",
-            text: "Si le propriétaire a activé « Refuser la vente si le client a une dette », la caisse vérifie l'ardoise au moment d'encaisser. Un message annonce alors la somme due et le nombre de ventes non soldées : le client doit régler avant de repartir avec autre chose, même s'il paie comptant. La dette est comptée sur toutes les fiches portant le même numéro de téléphone — se faire réinscrire ne remet pas le compteur à zéro. Encaissez la dette depuis la page Crédit, puis reprenez la vente.",
+            text: "Si le propriétaire a activé « Refuser la vente si le client a une dette », la caisse vérifie l'ardoise au moment d'encaisser. Un message annonce alors la somme due et le nombre de ventes non soldées : le client doit régler avant de repartir avec autre chose, même s'il paie comptant. La dette est comptée sur toutes les fiches portant le même numéro de téléphone — se faire réinscrire ne remet pas le compteur à zéro. Encaissez la dette depuis la page Crédit, puis reprenez la vente. Un client peut aussi être autorisé nominativement par le propriétaire (page Clients, bouton « Autoriser ») : la vente passe alors, et la caisse vous l'annonce à l'écran.",
           },
           {
             kind: "note",
@@ -1942,8 +1943,35 @@ export const DOC_GROUPS: DocGroup[] = [
             title: "Le téléphone est obligatoire",
             text: "Huit chiffres au minimum. Ce n'est pas une contrainte administrative : sans numéro, un client à crédit devient introuvable. Prenez le numéro avant d'accorder le crédit, jamais après.",
           },
+          {
+            kind: "steps",
+            title: "Autoriser un client à acheter malgré sa dette (propriétaire)",
+            items: [
+              "Réservé au propriétaire : sur la fiche du client, touchez le bouton vert « Autoriser » (carte avec une coche).",
+              "Choisissez la durée : aujourd'hui, 7 jours, 30 jours, une date précise, ou sans limite.",
+              "Écrivez le motif (« client en compte, règle le 30 ») : dans six mois, c'est lui qui expliquera pourquoi l'ardoise a grossi.",
+              "Une pastille verte « Autorisé » apparaît sur la fiche — le caissier la voit avant de composer le panier.",
+              "Pour revenir en arrière : même bouton, « Retirer l'autorisation ».",
+            ],
+          },
+          {
+            kind: "note",
+            tone: "info",
+            title: "À quoi sert cette autorisation",
+            text: "Elle ne sert que si vous avez activé « Refuser la vente si le client a une dette » (Paramètres › Vente au nom d'un client). Cette règle protège la caisse des ardoises qui s'empilent, mais il y a toujours le client en compte, la mairie qui paie en fin de mois, le parent. Plutôt que de couper la règle pour tout le monde, vous la levez pour cette personne. L'autorisation suit le numéro de téléphone : recréer une fiche ne la fait ni perdre ni contourner. Au moment d'encaisser, le caissier voit un message lui disant que ce client est autorisé — la décision reste la vôtre, pas la sienne.",
+          },
         ],
-        keywords: ["client", "fichier", "téléphone", "historique", "fidélité"],
+        keywords: [
+          "client",
+          "fichier",
+          "téléphone",
+          "historique",
+          "fidélité",
+          "autoriser",
+          "dérogation",
+          "client endetté",
+          "vente refusée",
+        ],
       },
       {
         id: "credit",

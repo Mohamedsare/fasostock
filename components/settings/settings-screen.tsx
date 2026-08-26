@@ -1572,6 +1572,14 @@ export function SettingsScreen() {
               trop qu&apos;une boutique à l&apos;arrêt.
             </p>
           ) : null}
+          {customerPolicy.blockOnDebt ? (
+            <p className="mt-2 rounded-[10px] bg-emerald-500/10 px-3 py-2 text-xs leading-relaxed text-emerald-900 dark:text-emerald-200">
+              Exception pour un client précis : page <b>Clients</b>, bouton{" "}
+              <b>« Autoriser »</b>. Vous levez la règle pour lui seul — avec un motif et,
+              si vous le voulez, une date de fin. Le caissier voit alors à l&apos;écran que
+              c&apos;est vous qui l&apos;avez autorisé.
+            </p>
+          ) : null}
         </FsCard>
       ) : null}
 

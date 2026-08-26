@@ -7,6 +7,12 @@ import {
   fetchCustomerDebt,
   hasBlockingDebt,
 } from "./customer-debt";
+import {
+  fetchDebtExemptions,
+  findActiveDebtExemptionById,
+  type DebtExemption,
+} from "./debt-exemptions";
+import { formatOperationCalendarDayYmd } from "@/lib/utils/operation-datetime";
 
 /**
  * Vente refusée, motif DÉJÀ affiché à l'écran. Les gestionnaires d'erreur des
@@ -58,11 +64,16 @@ export async function allowSaleForCustomer(params: {
   if (!enabled || !customerId || !companyId) return true;
 
   let debt: Awaited<ReturnType<typeof fetchCustomerDebt>>;
+  let exemptions: DebtExemption[];
   try {
-    debt = await fetchCustomerDebt({
-      companyId,
-      customerIds: customerIdsSharingPhone(customers, customerId),
-    });
+    // Les deux lectures ensemble : la file n'attend pas deux allers-retours réseau.
+    [debt, exemptions] = await Promise.all([
+      fetchCustomerDebt({
+        companyId,
+        customerIds: customerIdsSharingPhone(customers, customerId),
+      }),
+      fetchDebtExemptions(companyId),
+    ]);
   } catch {
     toast.info(
       "Dettes du client non vérifiées (connexion) : la vente continue.",
@@ -74,12 +85,27 @@ export async function allowSaleForCustomer(params: {
   if (!hasBlockingDebt(debt)) return true;
 
   const who = customerLabel(customers.find((c) => c.id === customerId));
+
+  /*
+   * Dérogation nominative accordée par le propriétaire (page Clients). Le caissier
+   * n'a rien à décider : il est simplement informé, pour qu'il sache pourquoi la
+   * caisse laisse passer une vente qu'elle refuse à quelqu'un d'autre.
+   */
+  const exemption = findActiveDebtExemptionById(exemptions, customers, customerId);
+  if (exemption) {
+    const until = exemption.until
+      ? ` (jusqu'au ${formatOperationCalendarDayYmd(exemption.until)})`
+      : "";
+    toast.info(`${who} est autorisé à acheter malgré sa dette${until}.`, 4500);
+    return true;
+  }
+
   toast.blocked({
     title: "Dette en cours : vente refusée",
     message: `${who} doit encore ${formatCurrency(debt.total)} sur ${debt.saleCount} vente${
       debt.saleCount > 1 ? "s" : ""
     } non soldée${debt.saleCount > 1 ? "s" : ""}.`,
-    hint: "Faites régler cette dette (page Crédit) avant d'encaisser une nouvelle vente.",
+    hint: "Faites régler cette dette (page Crédit) — ou demandez au propriétaire d'autoriser ce client depuis la page Clients.",
   });
   return false;
 }

@@ -141,6 +141,9 @@ export const queryKeys = {
   /** Module Location — encaissements d'un bail. */
   rentalPayments: (leaseId: string) => ["rental-payments", leaseId] as const,
   customers: (companyId: string) => ["customers", companyId] as const,
+  /** Dérogations « peut acheter malgré une dette » (`company_settings`). */
+  customerDebtExemptions: (companyId: string) =>
+    ["customer-debt-exemptions", companyId] as const,
   suppliers: (companyId: string) => ["suppliers", companyId] as const,
   /** Fournisseurs + situation de dette (RPC `supplier_payables_overview`). */
   supplierAccounts: (companyId: string) => ["supplier-accounts", companyId] as const,
