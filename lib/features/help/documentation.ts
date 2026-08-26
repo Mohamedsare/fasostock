@@ -642,7 +642,7 @@ export const DOC_GROUPS: DocGroup[] = [
         id: "barcodes",
         title: "Code Barre",
         route: "/barcodes",
-        tagline: "Imprimer vos propres étiquettes sur imprimante thermique.",
+        tagline: "Imprimer vos propres étiquettes, au format de votre imprimante.",
         access: "Propriétaire par défaut ; accordable à un employé.",
         blocks: [
           {
@@ -652,17 +652,25 @@ export const DOC_GROUPS: DocGroup[] = [
           {
             kind: "steps",
             items: [
+              "« Enregistrer tous les codes manquants » : chaque produit du catalogue qui n'a pas encore de code en reçoit un, d'un seul coup. Les produits déjà codés ne bougent pas.",
               "Sélectionnez les produits à étiqueter.",
               "Indiquez le nombre d'étiquettes par produit.",
-              "Choisissez le format ; le format QR 40 × 30 mm est celui qui a été validé sur le terrain.",
-              "Lancez l'impression sur votre imprimante thermique.",
+              "Choisissez le format : rouleau thermique (40 × 30 mm par défaut, ou 50 × 30, 58 × 40, 40 × 20, 30 × 20) ou planche A4 à découper.",
+              "Réglez ce qui apparaît sur l'étiquette — nom, prix, code, SKU — et, avec « Réglages fins », les dimensions exactes et la taille du QR. L'aperçu est à la taille réelle.",
+              "Lancez l'impression.",
             ],
           },
           {
             kind: "note",
             tone: "tip",
             title: "Réglage imprimante",
-            text: "Le format 40 × 30 mm a été validé sur une Xprinter XP-237B. Si vos étiquettes sortent décalées, le problème vient presque toujours du réglage du papier dans le pilote de l'imprimante, pas de l'application.",
+            text: "Le format 40 × 30 mm a été validé sur une Xprinter XP-237B. Si vos étiquettes sortent décalées, le problème vient presque toujours du réglage du papier dans le pilote de l'imprimante, pas de l'application : le support du pilote doit correspondre aux dimensions choisies ici (portrait, 100 %, marges 0).",
+          },
+          {
+            kind: "note",
+            tone: "tip",
+            title: "Planche A4 déjà entamée",
+            text: "Sur une planche d'étiquettes autocollantes dont vous avez déjà décollé quelques cases, indiquez le nombre de cases à sauter dans « Réglages fins » : l'impression reprend là où la planche s'est arrêtée.",
           },
         ],
         keywords: ["étiquette", "qr", "scan", "imprimante", "thermique", "code-barres"],

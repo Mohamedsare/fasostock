@@ -1,10 +1,16 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import QRCodeLib from "qrcode";
 import QRCode from "react-qr-code";
-import { MdDeleteSweep, MdInventory2, MdLocalPrintshop, MdSearch } from "react-icons/md";
+import {
+  MdDeleteSweep,
+  MdInventory2,
+  MdLocalPrintshop,
+  MdQrCode2,
+  MdSearch,
+} from "react-icons/md";
 import { FsCard, FsPage, FsScreenHeader, fsInputClass } from "@/components/ui/fs-screen-primitives";
 import { useAppContext } from "@/lib/features/common/app-context";
 import { usePermissions } from "@/lib/features/permissions/use-permissions";
@@ -15,13 +21,29 @@ import {
   ProductListThumbnail,
   firstProductImageUrl,
 } from "@/components/products/product-list-thumbnail";
+import { LabelPrintOptionsPanel } from "@/components/products/label-print-options";
+import {
+  buildLabelsPrintHtml,
+  defaultLabelPrintOptions,
+  labelPaddingMm,
+  labelsPerPage,
+  pageCountFor,
+  sanitizeLabelPrintOptions,
+  type LabelPrintData,
+  type LabelPrintOptions,
+} from "@/lib/features/products/label-print";
 import { queryKeys } from "@/lib/query/query-keys";
-import { messageFromUnknownError, toast } from "@/lib/toast";
+import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils/cn";
+import { formatCurrency } from "@/lib/utils/currency";
+import { toFriendlyError } from "@/lib/utils/friendly-error";
 
 type SelectedMap = Record<string, number>;
-// Impression sur imprimante thermique uniquement : étiquette 40×30 mm, 1 par page.
-const THERMAL_CONFIG = { cols: 1, widthMm: 40, heightMm: 30 } as const;
+
+/** Réglages d'impression : propres à CE poste (l'imprimante n'est pas la même partout). */
+const PRINT_OPTIONS_KEY = "fs.barcodes.print-options.v1";
+/** Écritures simultanées lors des traitements en masse — assez pour aller vite, pas trop pour la base. */
+const BULK_CHUNK = 8;
 
 function normalizedBarcode(product: ProductItem): string {
   const raw = (product.barcode ?? "").trim();
@@ -73,20 +95,109 @@ async function qrSvg(value: string): Promise<string | null> {
   }
 }
 
-function esc(s: string): string {
-  return s
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
-}
-
 function clampQty(v: number): number {
   if (!Number.isFinite(v)) return 1;
   if (v < 1) return 1;
   if (v > 500) return 500;
   return Math.floor(v);
+}
+
+/**
+ * Traitement en masse par petits paquets : un catalogue entier peut compter des
+ * milliers de produits, et les envoyer un par un prendrait plusieurs minutes.
+ */
+async function runInChunks<T>(
+  items: T[],
+  size: number,
+  fn: (item: T) => Promise<void>,
+  onProgress: (done: number) => void,
+): Promise<void> {
+  for (let i = 0; i < items.length; i += size) {
+    await Promise.all(items.slice(i, i + size).map(fn));
+    onProgress(Math.min(i + size, items.length));
+  }
+}
+
+function friendlyToast(e: unknown, fallbackTitle: string) {
+  const f = toFriendlyError(e, fallbackTitle);
+  toast.blocked({
+    title: f.title,
+    message: f.hint || "Réessayez dans un instant.",
+  });
+}
+
+/** Aperçu à la taille réelle de l'étiquette, contenu compris. */
+function LabelPreview({ item, options }: { item: LabelPrintData; options: LabelPrintOptions }) {
+  const pad = labelPaddingMm(options);
+  const qrPx = Math.max(24, Math.round(options.qrMm * (96 / 25.4)));
+  return (
+    <div
+      className={cn(
+        "shrink-0 overflow-hidden rounded-md bg-white text-black",
+        options.showCutMarks ? "border border-dashed border-neutral-500" : "border border-dashed border-neutral-300",
+      )}
+      style={{
+        width: `${options.widthMm}mm`,
+        height: `${options.heightMm}mm`,
+        padding: `${pad}mm`,
+      }}
+    >
+      <div className="flex h-full w-full flex-col items-center justify-center text-center">
+        {options.showName ? (
+          <div
+            style={{
+              fontSize: `${options.nameSizePt}pt`,
+              fontWeight: 700,
+              lineHeight: 1.15,
+              width: "100%",
+              wordBreak: "break-word",
+              display: "-webkit-box",
+              WebkitLineClamp: options.nameLines,
+              WebkitBoxOrient: "vertical",
+              overflow: "hidden",
+              marginBottom: "0.6mm",
+            }}
+          >
+            {item.name}
+          </div>
+        ) : null}
+        {options.showPrice ? (
+          <div
+            className="w-full truncate"
+            style={{
+              fontSize: `${options.nameSizePt + 0.5}pt`,
+              fontWeight: 900,
+              marginBottom: "0.6mm",
+            }}
+          >
+            {item.priceLabel}
+          </div>
+        ) : null}
+        <QRCode
+          value={item.code}
+          level="M"
+          size={qrPx}
+          style={{ width: `${options.qrMm}mm`, height: `${options.qrMm}mm` }}
+        />
+        {options.showCode ? (
+          <div
+            className="w-full truncate"
+            style={{ fontSize: `${options.codeSizePt}pt`, marginTop: "0.6mm" }}
+          >
+            {item.code}
+          </div>
+        ) : null}
+        {options.showSku && item.sku ? (
+          <div
+            className="w-full truncate"
+            style={{ fontSize: `${Math.max(3, options.codeSizePt - 0.5)}pt` }}
+          >
+            {item.sku}
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
 }
 
 export function BarcodesScreen() {
@@ -99,7 +210,28 @@ export function BarcodesScreen() {
   const [selected, setSelected] = useState<SelectedMap>({});
   const [printing, setPrinting] = useState(false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
-  const [showPrice, setShowPrice] = useState(false);
+  const [showSaveAllConfirm, setShowSaveAllConfirm] = useState(false);
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+  const [printOptions, setPrintOptions] = useState<LabelPrintOptions>(defaultLabelPrintOptions);
+
+  // Lu après le montage : le HTML serveur ne connaît pas le localStorage du poste.
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(PRINT_OPTIONS_KEY);
+      if (raw) setPrintOptions(sanitizeLabelPrintOptions(JSON.parse(raw)));
+    } catch {
+      /* réglage illisible : on garde le format par défaut */
+    }
+  }, []);
+
+  const updatePrintOptions = useCallback((next: LabelPrintOptions) => {
+    setPrintOptions(next);
+    try {
+      window.localStorage.setItem(PRINT_OPTIONS_KEY, JSON.stringify(next));
+    } catch {
+      /* navigation privée : le réglage ne survivra pas à la page, sans plus */
+    }
+  }, []);
 
   const productsQ = useQuery({
     queryKey: queryKeys.products(companyId),
@@ -136,53 +268,68 @@ export function BarcodesScreen() {
     }
     return out;
   }, [products, selected]);
+
   const previewLabels = useMemo(() => {
-    const items: Array<{ name: string; barcode: string }> = [];
+    const items: LabelPrintData[] = [];
     for (const row of selectedRows) {
-      const price = Number(row.product.sale_price ?? 0);
-      const name = showPrice
-        ? `${row.product.name} (${price.toLocaleString("fr-FR")} FCFA)`
-        : row.product.name;
-      items.push({ name, barcode: row.barcode });
-      if (items.length >= 12) break;
+      items.push({
+        name: row.product.name,
+        priceLabel: formatCurrency(Number(row.product.sale_price ?? 0)),
+        code: row.barcode,
+        sku: row.product.sku ?? "",
+        svg: "",
+      });
+      if (items.length >= 6) break;
     }
     return items;
-  }, [selectedRows, showPrice]);
+  }, [selectedRows]);
 
   const totalLabels = selectedRows.reduce((acc, r) => acc + r.qty, 0);
+  const pageCount = pageCountFor(totalLabels, printOptions);
+  const perPage = labelsPerPage(printOptions);
   const selectableFiltered = filtered;
   const allFilteredSelected =
     selectableFiltered.length > 0 &&
     selectableFiltered.every((p) => selected[p.id] && selected[p.id] > 0);
-  const cfg = THERMAL_CONFIG;
-  const selectedMissing = useMemo(
-    () =>
-      selectedRows.filter((r) => !(r.product.barcode ?? "").trim()),
-    [selectedRows],
-  );
   const productsWithBarcodes = useMemo(
     () => products.filter((p) => (p.barcode ?? "").trim().length > 0),
     [products],
   );
+  // Tout le catalogue, pas seulement la sélection : « enregistrer tous les codes manquants ».
+  const productsMissingBarcode = useMemo(
+    () => products.filter((p) => !(p.barcode ?? "").trim()),
+    [products],
+  );
+
+  const busy = progress !== null;
 
   const clearAllBarcodesMut = useMutation({
     mutationFn: async () => {
-      for (const p of productsWithBarcodes) {
-        await setProductBarcode(p.id, "");
-      }
+      const targets = productsWithBarcodes;
+      setProgress({ done: 0, total: targets.length });
+      await runInChunks(
+        targets,
+        BULK_CHUNK,
+        (p) => setProductBarcode(p.id, ""),
+        (done) => setProgress({ done, total: targets.length }),
+      );
+      return targets.length;
     },
-    onSuccess: async () => {
+    onSuccess: async (count) => {
       await qc.invalidateQueries({ queryKey: queryKeys.products(companyId) });
       setShowClearConfirm(false);
-      toast.success(`${productsWithBarcodes.length} code(s)-barres supprimé(s) avec succès.`);
+      setProgress(null);
+      toast.success(`${count} code(s)-barres supprimé(s) avec succès.`);
     },
     onError: (e) => {
-      toast.error(messageFromUnknownError(e));
+      setProgress(null);
       setShowClearConfirm(false);
+      friendlyToast(e, "Suppression impossible");
     },
   });
 
-  const saveMissingMut = useMutation({
+  /** Génère ET enregistre le code de TOUS les produits qui n'en ont pas encore. */
+  const saveAllMissingMut = useMutation({
     mutationFn: async () => {
       const used = new Set(
         products
@@ -190,19 +337,29 @@ export function BarcodesScreen() {
           .filter((s) => s.length > 0)
           .map((s) => s.toUpperCase()),
       );
-      const targets = [...selectedMissing].sort((a, b) =>
-        a.product.name.localeCompare(b.product.name, "fr", { sensitivity: "base" }),
+      const jobs = [...productsMissingBarcode]
+        .sort((a, b) => a.name.localeCompare(b.name, "fr", { sensitivity: "base" }))
+        .map((product) => ({ id: product.id, code: buildPersistedBarcode(product, used) }));
+      setProgress({ done: 0, total: jobs.length });
+      await runInChunks(
+        jobs,
+        BULK_CHUNK,
+        (job) => setProductBarcode(job.id, job.code),
+        (done) => setProgress({ done, total: jobs.length }),
       );
-      for (const row of targets) {
-        const next = buildPersistedBarcode(row.product, used);
-        await setProductBarcode(row.product.id, next);
-      }
+      return jobs.length;
     },
-    onSuccess: async () => {
+    onSuccess: async (count) => {
       await qc.invalidateQueries({ queryKey: queryKeys.products(companyId) });
-      toast.success("Codes-barres manquants enregistrés.");
+      setShowSaveAllConfirm(false);
+      setProgress(null);
+      toast.success(`${count} code(s)-barres enregistré(s).`);
     },
-    onError: (e) => toast.error(messageFromUnknownError(e)),
+    onError: (e) => {
+      setProgress(null);
+      setShowSaveAllConfirm(false);
+      friendlyToast(e, "Enregistrement impossible");
+    },
   });
 
   function toggleProduct(p: ProductItem, checked: boolean) {
@@ -259,9 +416,12 @@ export function BarcodesScreen() {
     if (toSave.length > 0) {
       void (async () => {
         try {
-          for (const row of toSave) {
-            await setProductBarcode(row.product.id, row.barcode);
-          }
+          await runInChunks(
+            toSave,
+            BULK_CHUNK,
+            (row) => setProductBarcode(row.product.id, row.barcode),
+            () => {},
+          );
           await qc.invalidateQueries({ queryKey: queryKeys.products(companyId) });
         } catch {
           /* non-bloquant */
@@ -271,19 +431,24 @@ export function BarcodesScreen() {
 
     setPrinting(true);
     try {
-      const labels: Array<{ name: string; barcode: string; svg: string }> = [];
+      const svgByCode = new Map<string, string>();
+      const labels: LabelPrintData[] = [];
       for (const row of selectedRows) {
-        const svg = await qrSvg(row.barcode);
-        if (!svg) continue;
-        const name = row.product.name;
-        const price = Number(row.product.sale_price ?? 0);
-        for (let i = 0; i < row.qty; i += 1) {
-          labels.push({
-            name: showPrice ? `${name} (${price.toLocaleString("fr-FR")} FCFA)` : name,
-            barcode: row.barcode,
-            svg,
-          });
+        let svg = svgByCode.get(row.barcode);
+        if (svg === undefined) {
+          const generated = await qrSvg(row.barcode);
+          if (!generated) continue;
+          svg = generated;
+          svgByCode.set(row.barcode, generated);
         }
+        const item: LabelPrintData = {
+          name: row.product.name,
+          priceLabel: formatCurrency(Number(row.product.sale_price ?? 0)),
+          code: row.barcode,
+          sku: row.product.sku ?? "",
+          svg,
+        };
+        for (let i = 0; i < row.qty; i += 1) labels.push(item);
       }
       if (labels.length === 0) {
         toast.error("Impossible de générer les codes QR pour cette sélection.");
@@ -291,27 +456,7 @@ export function BarcodesScreen() {
         return;
       }
 
-      // Imprimante thermique : 1 page exacte par étiquette (40×30 mm).
-      // IMPORTANT : aucun espace/retour à la ligne entre les divs — moindre text node
-      // décale le contenu et génère des pages blanches supplémentaires.
-      const labelsHtml = labels
-        .map((item) =>
-          `<div class="label"><div class="inner"><div class="name">${esc(item.name)}</div><div class="barcode">${item.svg}</div><div class="meta">${esc(item.barcode)}</div></div></div>`,
-        )
-        .join("");
-
-      const html = `<!doctype html><html><head><meta charset="utf-8"/><title>Etiquettes</title><style>
-@page{size:${cfg.widthMm}mm ${cfg.heightMm}mm;margin:0}
-*{box-sizing:border-box;margin:0;padding:0}
-html,body{width:${cfg.widthMm}mm;font-family:Arial,Helvetica,sans-serif;color:#000;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-.label{position:relative;width:${cfg.widthMm}mm;height:${cfg.heightMm}mm;overflow:hidden;break-inside:avoid}
-.inner{position:absolute;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2mm 2mm;text-align:center}
-.name{font-size:7pt;font-weight:700;line-height:1.15;width:100%;word-break:break-word;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-bottom:0.6mm}
-.barcode{width:100%;line-height:0;display:flex;justify-content:center;align-items:center}
-.barcode svg{width:13mm;height:13mm;display:block;shape-rendering:crispEdges}
-.meta{font-size:5.5pt;width:100%;margin-top:0.6mm;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-</style></head><body>${labelsHtml}<script>(function(){function go(){try{window.focus()}catch(e){}window.print()}window.onafterprint=function(){window.close()};function ready(){requestAnimationFrame(function(){requestAnimationFrame(go)})}if(document.readyState==='complete'){ready()}else{window.addEventListener('load',ready)}})();<\/script></body></html>`;
-
+      const html = buildLabelsPrintHtml(labels, printOptions);
       w.document.open();
       w.document.write(html);
       w.document.close();
@@ -333,7 +478,7 @@ html,body{width:${cfg.widthMm}mm;font-family:Arial,Helvetica,sans-serif;color:#0
       <FsPage>
         <FsScreenHeader title="Code Barre" subtitle="Impression d'étiquettes produits" className="mb-0" />
         <FsCard padding="p-4" className="mt-4 text-sm text-red-700">
-          {messageFromUnknownError(productsQ.error)}
+          {toFriendlyError(productsQ.error, "Chargement impossible").title}
         </FsCard>
       </FsPage>
     );
@@ -379,64 +524,46 @@ html,body{width:${cfg.widthMm}mm;font-family:Arial,Helvetica,sans-serif;color:#0
         </button>
         <button
           type="button"
-          onClick={() => saveMissingMut.mutate()}
-          disabled={saveMissingMut.isPending || selectedMissing.length <= 0}
-          className="rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800 disabled:opacity-50"
+          onClick={() => setShowSaveAllConfirm(true)}
+          disabled={busy || productsMissingBarcode.length <= 0}
+          className="inline-flex items-center gap-2 rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800 disabled:opacity-50"
         >
-          {saveMissingMut.isPending
-            ? "Enregistrement..."
-            : `Enregistrer codes manquants (${selectedMissing.length})`}
+          <MdQrCode2 className="h-5 w-5" aria-hidden />
+          {productsMissingBarcode.length > 0
+            ? `Enregistrer tous les codes manquants (${productsMissingBarcode.length})`
+            : "Tous les produits ont un code"}
         </button>
         <button
           type="button"
           title="Vider tous les codes-barres"
           aria-label="Vider tous les codes-barres"
           onClick={() => setShowClearConfirm(true)}
-          disabled={productsWithBarcodes.length === 0}
+          disabled={busy || productsWithBarcodes.length === 0}
           className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 disabled:opacity-40 dark:border-red-800/50 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/30"
         >
           <MdDeleteSweep className="h-5 w-5" aria-hidden />
         </button>
       </div>
+
       <FsCard padding="p-4" className="mt-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2 rounded-xl border border-black/10 bg-fs-surface px-3 py-2 text-sm font-semibold text-neutral-800">
-            🖨️ Thermique 40×30 mm (1 étiquette/page)
-          </div>
-          <label className="flex items-center gap-2 text-sm font-medium text-neutral-700">
-            <input
-              type="checkbox"
-              checked={showPrice}
-              onChange={(e) => setShowPrice(e.target.checked)}
-            />
-            Afficher le prix
-          </label>
-        </div>
+        <LabelPrintOptionsPanel options={printOptions} onChange={updatePrintOptions} />
+
         <div className="mt-3 text-xs text-neutral-500">
-          {`Thermique : 1 étiquette par page — ${cfg.widthMm}mm large × ${cfg.heightMm}mm haut`}
+          {totalLabels > 0
+            ? printOptions.pageMode === "sheet"
+              ? `${totalLabels} étiquette(s) — ${perPage} par feuille A4, soit ${pageCount} feuille(s).`
+              : `${totalLabels} étiquette(s) — 1 par page de ${printOptions.widthMm} × ${printOptions.heightMm} mm.`
+            : "Sélectionnez des produits dans la liste pour préparer l'impression."}
         </div>
+
         <div className="mt-3 rounded-xl border border-black/10 bg-fs-surface p-3">
           <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-neutral-500">
-            Aperçu visuel (miniature)
+            Aperçu à la taille réelle
           </div>
           {previewLabels.length > 0 ? (
-            <div
-              className="grid gap-2"
-              style={{ gridTemplateColumns: `repeat(${cfg.cols}, minmax(0, 1fr))` }}
-            >
+            <div className="flex flex-wrap gap-2 overflow-x-auto">
               {previewLabels.map((item, idx) => (
-                <div
-                  key={`${item.barcode}-${idx}`}
-                  className="overflow-hidden rounded-lg border border-dashed border-neutral-300 bg-white p-2"
-                >
-                  <div className="wrap-break-word text-[8px] font-bold leading-tight text-neutral-800">
-                    {item.name}
-                  </div>
-                  <div className="mt-1 flex justify-center">
-                    <QRCode value={item.barcode} size={52} level="M" />
-                  </div>
-                  <div className="truncate text-[8px] text-neutral-600 text-center mt-1">{item.barcode}</div>
-                </div>
+                <LabelPreview key={`${item.code}-${idx}`} item={item} options={printOptions} />
               ))}
             </div>
           ) : (
@@ -526,6 +653,63 @@ html,body{width:${cfg.widthMm}mm;font-family:Arial,Helvetica,sans-serif;color:#0
           ) : null}
         </div>
       </FsCard>
+
+      {showSaveAllConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4">
+          <div className="w-full max-w-sm rounded-2xl bg-fs-card p-6 shadow-2xl">
+            <div className="flex items-start gap-4">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30">
+                <MdQrCode2 className="h-6 w-6 text-emerald-600 dark:text-emerald-400" aria-hidden />
+              </div>
+              <div>
+                <h3 className="font-black text-fs-text">Enregistrer tous les codes manquants ?</h3>
+                <p className="mt-1 text-sm text-neutral-600">
+                  Un code-barres sera généré et enregistré pour les{" "}
+                  <span className="font-bold text-emerald-700">
+                    {productsMissingBarcode.length} produit(s)
+                  </span>{" "}
+                  qui n&apos;en ont pas encore, dans tout le catalogue. Les produits qui ont déjà
+                  un code ne sont pas touchés.
+                </p>
+              </div>
+            </div>
+            {progress ? (
+              <div className="mt-4">
+                <div className="h-2 w-full overflow-hidden rounded-full bg-black/10">
+                  <div
+                    className="h-full rounded-full bg-emerald-500 transition-all"
+                    style={{
+                      width: `${progress.total > 0 ? Math.round((progress.done / progress.total) * 100) : 0}%`,
+                    }}
+                  />
+                </div>
+                <div className="mt-1 text-center text-xs font-semibold text-neutral-600">
+                  {progress.done} / {progress.total}
+                </div>
+              </div>
+            ) : null}
+            <div className="mt-5 flex gap-3">
+              <button
+                type="button"
+                onClick={() => setShowSaveAllConfirm(false)}
+                disabled={saveAllMissingMut.isPending}
+                className="flex-1 rounded-xl border border-black/10 bg-fs-surface px-4 py-2.5 text-sm font-semibold text-neutral-700 hover:bg-fs-surface-container disabled:opacity-50"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={() => saveAllMissingMut.mutate()}
+                disabled={saveAllMissingMut.isPending}
+                className="flex-1 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-black text-white hover:bg-emerald-700 disabled:opacity-50"
+              >
+                {saveAllMissingMut.isPending ? "Enregistrement..." : "Oui, tout enregistrer"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showClearConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4">
           <div className="w-full max-w-sm rounded-2xl bg-fs-card p-6 shadow-2xl">
@@ -542,6 +726,21 @@ html,body{width:${cfg.widthMm}mm;font-family:Arial,Helvetica,sans-serif;color:#0
                 </p>
               </div>
             </div>
+            {progress ? (
+              <div className="mt-4">
+                <div className="h-2 w-full overflow-hidden rounded-full bg-black/10">
+                  <div
+                    className="h-full rounded-full bg-red-500 transition-all"
+                    style={{
+                      width: `${progress.total > 0 ? Math.round((progress.done / progress.total) * 100) : 0}%`,
+                    }}
+                  />
+                </div>
+                <div className="mt-1 text-center text-xs font-semibold text-neutral-600">
+                  {progress.done} / {progress.total}
+                </div>
+              </div>
+            ) : null}
             <div className="mt-5 flex gap-3">
               <button
                 type="button"
