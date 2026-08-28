@@ -28,10 +28,7 @@ import {
 } from "@/lib/features/products/packaging-price";
 import { productNameMatches } from "@/lib/features/products/search-aliases";
 import type { ProductItem } from "@/lib/features/products/types";
-import {
-  fetchPackagingPricePerPiece,
-  peekPackagingPricePerPiece,
-} from "@/lib/features/settings/packaging-price-mode";
+import { usePackagingPriceMode } from "@/lib/features/settings/use-packaging-price-mode";
 import { filterByStoreCatalog } from "@/lib/features/stores/store-catalog";
 import { useStoreCatalog } from "@/lib/features/stores/use-store-catalog";
 import { queryKeys } from "@/lib/query/query-keys";
@@ -136,15 +133,15 @@ export function PackagingsScreen() {
    * Mode de saisie du prix (réglage propriétaire) : le champ demande le prix du lot
    * entier, ou celui d'une pièce du lot. Ce qui est enregistré ne change pas.
    */
-  const peekMode = companyId.length > 0 ? peekPackagingPricePerPiece(companyId) : undefined;
-  const perPieceQ = useQuery({
-    queryKey: queryKeys.packagingPricePerPiece(companyId),
-    queryFn: () => fetchPackagingPricePerPiece(companyId),
-    enabled: Boolean(companyId) && canView,
-    staleTime: 60_000,
-    ...(peekMode !== undefined ? { initialData: peekMode } : {}),
-  });
-  const perPiece = perPieceQ.data === true;
+  /*
+   * `""` quand la page n'est pas accessible : le hook n'interroge alors rien, comme le
+   * faisait `enabled: … && canView`. `modeReady` reste faux, donc les champs prix de
+   * l'éditeur restent bloqués — ce qui est de toute façon le cas, l'écran s'arrête plus
+   * bas sur `if (!canView)`.
+   */
+  const { perPiece, ready: modeReady } = usePackagingPriceMode(
+    canView ? companyId : "",
+  );
 
   const productAliasesOn = h?.productAliasesOn ?? false;
 
@@ -585,7 +582,20 @@ export function PackagingsScreen() {
                       </button>
                     </div>
 
-                    {open ? (
+                    {open && !modeReady ? (
+                      /*
+                       * L'éditeur calcule ses lignes UNE fois, au montage
+                       * (`useState(() => rowsFromProduct(product, perPiece))`) : monté
+                       * avant que le mode soit connu, il afficherait les prix du lot
+                       * sous le libellé « à la pièce », sans jamais se corriger. On
+                       * attend donc le mode avant de le monter, plutôt que de le
+                       * rattraper après coup.
+                       */
+                      <p className="mt-3 rounded-[10px] border border-black/[0.08] bg-fs-surface-container/40 px-3 py-3 text-[11px] text-neutral-500">
+                        Vérification du mode de saisie des prix…
+                      </p>
+                    ) : null}
+                    {open && modeReady ? (
                       <div className="mt-3">
                         <PackagingRowsEditor
                           companyId={companyId}

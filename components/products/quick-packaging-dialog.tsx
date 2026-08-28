@@ -6,18 +6,14 @@ import {
   packagingPriceFromInput,
   packagingPriceProblem,
 } from "@/lib/features/products/packaging-price";
-import {
-  fetchPackagingPricePerPiece,
-  peekPackagingPricePerPiece,
-} from "@/lib/features/settings/packaging-price-mode";
+import { usePackagingPriceMode } from "@/lib/features/settings/use-packaging-price-mode";
 import { findPackagingBarcodeCollision } from "@/lib/features/products/packaging-barcodes";
-import { queryKeys } from "@/lib/query/query-keys";
 import { saveProductPackagings } from "@/lib/features/products/packagings-api";
 import type { ProductItem, ProductPackagingDraft } from "@/lib/features/products/types";
 import { messageFromUnknownError, toast } from "@/lib/toast";
 import { formatCurrency } from "@/lib/utils/currency";
 import { cn } from "@/lib/utils/cn";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { MdCheck, MdClose, MdInventory2, MdQrCode2 } from "react-icons/md";
 
@@ -82,16 +78,7 @@ export function QuickPackagingDialog({
    * Mode de saisie choisi par le propriétaire : prix du lot entier (défaut) ou prix
    * d'une pièce du lot. Ce qui est enregistré reste le total dans les deux cas.
    */
-  const peekPkgMode =
-    companyId.length > 0 ? peekPackagingPricePerPiece(companyId) : undefined;
-  const perPieceQ = useQuery({
-    queryKey: queryKeys.packagingPricePerPiece(companyId),
-    queryFn: () => fetchPackagingPricePerPiece(companyId),
-    enabled: Boolean(companyId),
-    staleTime: 60_000,
-    ...(peekPkgMode !== undefined ? { initialData: peekPkgMode } : {}),
-  });
-  const perPiece = perPieceQ.data === true;
+  const { perPiece, ready: modeReady } = usePackagingPriceMode(companyId);
 
   /** Prix du LOT prévisualisé : saisie convertie, sinon facteur × prix pièce. */
   const previewPrice =
@@ -115,7 +102,12 @@ export function QuickPackagingDialog({
     perPiece,
   });
 
-  const canSave = label.trim().length > 0 && factorNum >= 1 && !priceProblem;
+  /*
+   * `modeReady` conditionne l'enregistrement, pas seulement l'affichage : sans mode
+   * confirmé, on ne sait pas si le nombre saisi désigne le lot ou la pièce.
+   */
+  const canSave =
+    label.trim().length > 0 && factorNum >= 1 && !priceProblem && modeReady;
 
   const saveMut = useMutation({
     mutationFn: async () => {
@@ -259,27 +251,41 @@ export function QuickPackagingDialog({
             </div>
             <div>
               <label className="text-[11px] font-semibold uppercase tracking-wide text-neutral-500">
-                {perPiece ? "Prix d'une pièce du lot" : "Prix du lot entier"}
+                {!modeReady
+                  ? "Prix du lot"
+                  : perPiece
+                    ? "Prix d'une pièce du lot"
+                    : "Prix du lot entier"}
               </label>
+              {/* Bloqué tant que le mode n'est pas confirmé : le même nombre y vaudrait
+                  le carton ou la pièce (voir usePackagingPriceMode). */}
               <input
                 inputMode="numeric"
                 value={price}
                 onChange={(e) => setPrice(e.target.value.replace(/[^\d\s.,]/g, ""))}
+                disabled={!modeReady}
                 placeholder={
-                  perPiece
-                    ? formatCurrency(product.sale_price)
-                    : factorNum > 0
-                      ? formatCurrency(factorNum * product.sale_price)
-                      : "auto"
+                  !modeReady
+                    ? "Un instant…"
+                    : perPiece
+                      ? formatCurrency(product.sale_price)
+                      : factorNum > 0
+                        ? formatCurrency(factorNum * product.sale_price)
+                        : "auto"
                 }
-                className="mt-1.5 min-h-11 w-full rounded-md border border-black/10 bg-white px-3 text-sm font-bold text-fs-text outline-none focus:border-fs-accent focus:ring-2 focus:ring-fs-accent/20"
+                className={cn(
+                  "mt-1.5 min-h-11 w-full rounded-md border border-black/10 bg-white px-3 text-sm font-bold text-fs-text outline-none focus:border-fs-accent focus:ring-2 focus:ring-fs-accent/20",
+                  !modeReady && "opacity-60",
+                )}
               />
             </div>
           </div>
           <p className="-mt-2 text-[11px] text-neutral-400">
-            {perPiece
-              ? "Prix d'une seule pièce du lot ; le prix du lot est calculé pour vous."
-              : "Prix du lot complet, pas d'une pièce du lot."}{" "}
+            {!modeReady
+              ? "Vérification du mode de saisie du prix…"
+              : perPiece
+                ? "Prix d'une seule pièce du lot ; le prix du lot est calculé pour vous."
+                : "Prix du lot complet, pas d'une pièce du lot."}{" "}
             Vide = {factorNum > 0 ? "facteur × prix pièce" : "calculé automatiquement"}.
           </p>
 

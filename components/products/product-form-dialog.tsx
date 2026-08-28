@@ -38,10 +38,7 @@ import {
   packagingPriceProblem,
   packagingTotalPrice,
 } from "@/lib/features/products/packaging-price";
-import {
-  fetchPackagingPricePerPiece,
-  peekPackagingPricePerPiece,
-} from "@/lib/features/settings/packaging-price-mode";
+import { usePackagingPriceMode } from "@/lib/features/settings/use-packaging-price-mode";
 import { queryKeys } from "@/lib/query/query-keys";
 import { cn } from "@/lib/utils/cn";
 import { formatCurrency, toNumber } from "@/lib/utils/currency";
@@ -296,32 +293,29 @@ export function ProductFormDialog({
 
   /*
    * Mode de saisie du prix de conditionnement (réglage propriétaire) : « prix du lot
-   * entier » par défaut, « prix d'une pièce du lot » si le propriétaire l'a ouvert.
-   * La base stocke toujours le total ; seul ce formulaire parle l'autre langue.
+   * entier » ou « prix d'une pièce du lot ». La base stocke toujours le total ; seul ce
+   * formulaire parle l'autre langue.
+   *
+   * Tant que `ready` est faux le mode n'est pas certain, et le champ prix reste bloqué :
+   * le même nombre y vaut le carton ou la pièce, on ne le fait pas saisir sous un
+   * libellé provisoire. Une fois connu, le mode est gelé pour toute la durée du
+   * formulaire — voir `usePackagingPriceMode`.
    */
-  const peekPkgMode =
-    companyId.length > 0 ? peekPackagingPricePerPiece(companyId) : undefined;
-  const packagingPerPieceQ = useQuery({
-    queryKey: queryKeys.packagingPricePerPiece(companyId),
-    queryFn: () => fetchPackagingPricePerPiece(companyId),
-    enabled: Boolean(companyId),
-    staleTime: 60_000,
-    ...(peekPkgMode !== undefined ? { initialData: peekPkgMode } : {}),
-  });
-  const packagingPerPiece = packagingPerPieceQ.data === true;
+  const { perPiece: packagingPerPiece, ready: packagingModeReady } =
+    usePackagingPriceMode(companyId);
 
   /*
-   * Les lignes existantes ont été initialisées avec le total enregistré (le réglage
-   * n'était pas encore connu). Dès qu'il arrive, on ramène à la pièce — uniquement les
+   * Les lignes existantes ont été initialisées avec le total enregistré (le mode
+   * n'était pas encore connu). Dès qu'il l'est, on ramène à la pièce — uniquement les
    * lignes que personne n'a touchées entre-temps, pour ne jamais réécrire une saisie
    * en cours.
    */
   const packagingModeAppliedRef = useRef(false);
   useEffect(() => {
     if (packagingModeAppliedRef.current) return;
-    if (packagingPerPieceQ.data === undefined) return;
+    if (!packagingModeReady) return;
     packagingModeAppliedRef.current = true;
-    if (packagingPerPieceQ.data !== true) return;
+    if (!packagingPerPiece) return;
     const stored = initial?.product_packagings ?? [];
     if (stored.length === 0) return;
     setPackagings((rows) =>
@@ -332,7 +326,7 @@ export function ProductFormDialog({
         return { ...r, price: packagingPriceInputValue(src.price, src.factor, true) };
       }),
     );
-  }, [packagingPerPieceQ.data, initial]);
+  }, [packagingModeReady, packagingPerPiece, initial]);
 
   const addPackaging = useCallback(() => {
     setPackagings((rows) => [
@@ -1077,7 +1071,11 @@ export function ProductFormDialog({
               </p>
               <p className="mt-0.5 text-[11px] leading-relaxed text-neutral-500">
                 Paquet, carton… Indiquez le nombre de pièces, le code-barres et le prix{" "}
-                {packagingPerPiece ? (
+                {!packagingModeReady ? (
+                  <>
+                    du lot — <strong>vérification du mode de saisie en cours…</strong>
+                  </>
+                ) : packagingPerPiece ? (
                   <>
                     <strong>d&apos;une pièce du lot</strong> — le prix du lot entier est
                     calculé pour vous.
@@ -1171,26 +1169,35 @@ export function ProductFormDialog({
                         </label>
                         <label className="min-w-0 flex-1">
                           <span className="mb-1 block text-[11px] font-medium text-neutral-600">
-                            {packagingPerPiece
-                              ? "Prix d'une pièce du lot"
-                              : "Prix du lot entier"}
+                            {!packagingModeReady
+                              ? "Prix du lot"
+                              : packagingPerPiece
+                                ? "Prix d'une pièce du lot"
+                                : "Prix du lot entier"}
                           </span>
+                          {/* Bloqué tant que le mode n'est pas confirmé : le même nombre
+                              y vaudrait le carton ou la pièce (voir usePackagingPriceMode). */}
                           <input
                             value={r.price}
                             onChange={(e) =>
                               updatePackaging(r.key, "price", e.target.value)
                             }
                             inputMode="decimal"
+                            disabled={!packagingModeReady}
                             placeholder={
-                              packagingPerPiece
-                                ? rowUnitPrice > 0
-                                  ? `Moins que ${formatCurrency(rowUnitPrice)}`
-                                  : "Prix de gros à la pièce"
-                                : rowFactor >= 1 && rowUnitPrice > 0
-                                  ? formatCurrency(rowFactor * rowUnitPrice)
-                                  : "Sinon nb × prix pièce"
+                              !packagingModeReady
+                                ? "Un instant…"
+                                : packagingPerPiece
+                                  ? rowUnitPrice > 0
+                                    ? `Moins que ${formatCurrency(rowUnitPrice)}`
+                                    : "Prix de gros à la pièce"
+                                  : rowFactor >= 1 && rowUnitPrice > 0
+                                    ? formatCurrency(rowFactor * rowUnitPrice)
+                                    : "Sinon nb × prix pièce"
                             }
-                            className={fsInputClass()}
+                            className={fsInputClass(
+                              !packagingModeReady ? "opacity-60" : undefined,
+                            )}
                           />
                         </label>
                       </div>

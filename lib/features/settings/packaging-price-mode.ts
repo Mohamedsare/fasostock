@@ -4,7 +4,16 @@ import { createClient } from "@/lib/supabase/client";
 
 const KEY = "packaging_price_per_piece_enabled";
 
-/** Cache session : le libellé du champ prix ne doit pas changer sous les doigts. */
+/**
+ * Cache session, pour les écrans qui se contentent d'**afficher** le réglage (l'écran
+ * Paramètres et son interrupteur).
+ *
+ * Les écrans qui font **saisir** un prix ne s'appuient pas dessus : ils passent par
+ * `usePackagingPriceMode`, qui relit la valeur auprès du serveur puis la gèle avant
+ * d'accepter la moindre frappe. Un libellé de champ qui bascule sous les doigts ne se
+ * règle pas avec un cache — il se règle en refusant la saisie tant que le sens du
+ * champ n'est pas établi.
+ */
 const cache = new Map<string, boolean>();
 
 export function peekPackagingPricePerPiece(companyId: string): boolean | undefined {
