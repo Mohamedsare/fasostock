@@ -7,6 +7,7 @@ import {
   createOptimisticColumn,
   isUndefinedColumnError,
 } from "@/lib/features/common/optimistic-column";
+import { isDefiniteAuthRejection } from "@/lib/auth/auth-failure";
 import type { AppContextData } from "@/lib/features/permissions/access";
 import { reportHandledClientError } from "@/lib/monitoring/remote-error-logger";
 import { createClient } from "@/lib/supabase/client";
@@ -136,14 +137,22 @@ async function resolveCurrentUser(
       10_000,
       "Authentification",
     );
+    /*
+     * DÉFAUT INVERSÉ (voir `lib/auth/auth-failure.ts`). On ne déclare la session
+     * perdue que sur un refus positivement identifié par Supabase. Auparavant c'est
+     * l'inverse qui se produisait : toute erreur non reconnue comme réseau renvoyait
+     * `null`, donc « Votre session a expiré », donc un panier perdu — pour un simple
+     * verrou volé à l'intérieur du SDK.
+     */
     if (error) {
-      if (isTransientAuthFailure(error)) throw new SessionUnavailableError();
-      return null;
+      if (isDefiniteAuthRejection(error)) return null;
+      throw new SessionUnavailableError();
     }
     return data.user ?? null;
   } catch (e) {
-    if (isTransientAuthFailure(e)) throw new SessionUnavailableError();
-    return null;
+    if (e instanceof SessionUnavailableError) throw e;
+    if (isDefiniteAuthRejection(e)) return null;
+    throw new SessionUnavailableError();
   }
 }
 

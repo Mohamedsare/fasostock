@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 
+import { isDefiniteAuthRejection } from "@/lib/auth/auth-failure";
 import { hasStoredSessionCookie } from "@/lib/supabase/auth-cookies";
 
 /**
@@ -104,9 +105,14 @@ export async function resolveServerSession(
   try {
     const { data, error } = await withTimeout(supabase.auth.getUser());
     if (data?.user) return { status: "signed-in", user: data.user };
-    if (isTransientBackendFailure(error)) return { status: "unverified" };
-    // Jeton présent mais explicitement refusé (session révoquée, mot de passe changé…).
-    return { status: "signed-out" };
+    /*
+     * DÉFAUT INVERSÉ (voir `lib/auth/auth-failure.ts`) : `signed-out` exige un refus
+     * positivement identifié — 401/403 ou session absente. Tout le reste, y compris
+     * une erreur jamais vue, reste `unverified` : l'app s'affiche et les gardes client
+     * tranchent. Un cookie de session présent ne doit jamais être jeté sur un doute.
+     */
+    if (isDefiniteAuthRejection(error)) return { status: "signed-out" };
+    return { status: "unverified" };
   } catch {
     // `getUser()` ne lève que sur incident réseau / délai dépassé : indécidable.
     return { status: "unverified" };
