@@ -46,6 +46,35 @@ function isTransientAuthFailure(err: unknown): boolean {
   const name = (err as { name?: string } | null)?.name ?? "";
   if (name === "AuthRetryableFetchError" || name === "AbortError") return true;
 
+  /*
+   * Contention sur le verrou d'authentification du SDK — et NON un refus du serveur.
+   *
+   * `@supabase/auth-js` sérialise ses accès au jeton derrière un verrou
+   * `navigator.locks`. Quand un appel le garde trop longtemps (réseau lent), un autre
+   * le lui vole et la victime reçoit un `NavigatorLockAcquireTimeoutError` :
+   * « Lock "lock:sb-…-auth-token" was released because another request stole it ».
+   *
+   * Ce message ne contient aucun des marqueurs réseau ci-dessous. Sans ce test, il
+   * était donc classé « erreur définitive » : `resolveCurrentUser` renvoyait `null`,
+   * et `null` signifie pour l'app « le serveur a explicitement refusé le jeton » —
+   * d'où l'écran « Votre session a expiré » en pleine vente, alors que la session est
+   * parfaitement valide. C'est la panne la plus coûteuse du produit : le caissier perd
+   * son panier en cours. Cf. `app_error_logs`, 30 occurrences côté web sur deux mois,
+   * déclenchées depuis des requêtes React Query concurrentes (`pos-user-id`,
+   * `sales-cost`…).
+   *
+   * `isAcquireTimeout` est le drapeau que le SDK documente pour ce cas ; le nom de
+   * classe et le libellé servent de filets si l'erreur a transité par une sérialisation.
+   */
+  if ((err as { isAcquireTimeout?: boolean } | null)?.isAcquireTimeout === true) return true;
+  if (
+    name === "NavigatorLockAcquireTimeoutError" ||
+    name === "ProcessLockAcquireTimeoutError" ||
+    name === "LockAcquireTimeoutError"
+  ) {
+    return true;
+  }
+
   const status = (err as { status?: number } | null)?.status;
   if (typeof status === "number" && (status === 0 || status === 408 || status === 429 || status >= 500)) {
     return true;
@@ -58,7 +87,9 @@ function isTransientAuthFailure(err: unknown): boolean {
     msg.includes("network request failed") ||
     msg.includes("load failed") ||
     msg.includes("délai dépassé") ||
-    msg.includes("timeout")
+    msg.includes("timeout") ||
+    msg.includes("another request stole it") ||
+    msg.includes("lockmanager")
   );
 }
 

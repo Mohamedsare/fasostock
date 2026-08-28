@@ -30,6 +30,22 @@ export function isTransientBackendFailure(err: unknown): boolean {
   const name = (err as { name?: string }).name ?? "";
   if (name === "AuthRetryableFetchError" || name === "AbortError") return true;
 
+  /*
+   * Verrou d'authentification du SDK volé par un appel concurrent : la session est
+   * intacte, seul l'accès au jeton a échoué. Le pendant client détaille le mécanisme
+   * (`isTransientAuthFailure`, app-context.ts). Ici la contention est plus rare — un
+   * rendu serveur n'a qu'un client à la fois — mais le verdict doit rester le même des
+   * deux côtés, sinon le proxy renvoie au login ce que le client sait rattraper.
+   */
+  if ((err as { isAcquireTimeout?: boolean }).isAcquireTimeout === true) return true;
+  if (
+    name === "NavigatorLockAcquireTimeoutError" ||
+    name === "ProcessLockAcquireTimeoutError" ||
+    name === "LockAcquireTimeoutError"
+  ) {
+    return true;
+  }
+
   const status = (err as { status?: number }).status;
   if (
     typeof status === "number" &&
@@ -46,7 +62,9 @@ export function isTransientBackendFailure(err: unknown): boolean {
     msg.includes("load failed") ||
     msg.includes("fetch failed") ||
     msg.includes("timeout") ||
-    msg.includes("aborted")
+    msg.includes("aborted") ||
+    msg.includes("another request stole it") ||
+    msg.includes("lockmanager")
   );
 }
 
