@@ -42,6 +42,7 @@ import {
   MdSchedule,
   MdSearch,
   MdSnooze,
+  MdTune,
   MdWhatsapp,
 } from "react-icons/md";
 
@@ -69,8 +70,11 @@ import {
 import { usePermissions } from "@/lib/features/permissions/use-permissions";
 import { whatsappUrl } from "@/lib/features/share/share-document";
 import {
+  DEFAULT_CREDIT_REMINDERS_CONFIG,
   fetchCreditRemindersConfig,
   frequencyLabel,
+  setCreditRemindersConfig,
+  type CreditRemindersConfig,
 } from "@/lib/features/settings/credit-reminders-config";
 import { queryKeys } from "@/lib/query/query-keys";
 import { toast, toastMutationError } from "@/lib/toast";
@@ -123,6 +127,16 @@ export function CreditRemindersScreen() {
   const [tab, setTab] = useState<Tab>("today");
   const [query, setQuery] = useState("");
   const [snoozing, setSnoozing] = useState<CustomerCreditAggregate | null>(null);
+  /*
+   * Les réglages vivent AUSSI ici, et pas seulement dans Paramètres.
+   *
+   * C'est sur cet écran qu'on découvre qu'ils sont mal réglés — « pourquoi ce client
+   * n'apparaît pas ? », « pourquoi je revois celui-là ? ». Envoyer le commerçant dans
+   * Paramètres à ce moment-là, c'est lui faire perdre sa liste, son filtre et sa
+   * recherche pour trois secondes de réglage. Repliés par défaut : la page reste une
+   * page d'action, pas un formulaire.
+   */
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const salesQ = useQuery({
     queryKey: queryKeys.creditSales({ companyId, storeId, from: "", to: "" }),
@@ -207,6 +221,29 @@ export function CreditRemindersScreen() {
       }),
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: queryKeys.creditReminderStates(companyId) });
+    },
+    onError: (e) => toastMutationError("credit-reminders", e),
+  });
+
+  /**
+   * Écriture des réglages depuis CETTE page. Même clé `company_settings` que l'écran
+   * Paramètres — il n'y a qu'un seul réglage, vu de deux endroits, et l'invalidation
+   * commune fait que changer ici met l'autre à jour tout seul.
+   *
+   * La base tranche pour de bon : `can_write_company_setting` (00207) n'autorise que le
+   * propriétaire. Cacher le panneau aux autres est un confort d'affichage, pas la
+   * frontière de sécurité.
+   */
+  const configMut = useMutation({
+    mutationFn: async (patch: Partial<CreditRemindersConfig>) => {
+      if (!companyId) throw new Error("Entreprise introuvable.");
+      await setCreditRemindersConfig(companyId, {
+        ...(config ?? DEFAULT_CREDIT_REMINDERS_CONFIG),
+        ...patch,
+      });
+    },
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: queryKeys.creditRemindersConfig(companyId) });
     },
     onError: (e) => toastMutationError("credit-reminders", e),
   });
@@ -318,20 +355,183 @@ export function CreditRemindersScreen() {
             <MdSchedule className="h-3.5 w-3.5 shrink-0" aria-hidden />
             <span>
               Rappel : {frequencyLabel(config.frequencyDays).toLowerCase()}
+              {config.maxPerSession > 0
+                ? ` · ${config.maxPerSession} par tour`
+                : " · tour complet"}
               {config.minAmount > 0
                 ? ` · à partir de ${formatCurrency(config.minAmount)}`
                 : ""}
               {config.overdueOnly ? " · créances échues seulement" : ""}
+              {` · pas avant ${String(config.fromHour).padStart(2, "0")} h`}
             </span>
             {isOwner ? (
+              <button
+                type="button"
+                onClick={() => setSettingsOpen((v) => !v)}
+                aria-expanded={settingsOpen}
+                className="inline-flex items-center gap-1 rounded-md border border-black/[0.1] px-1.5 py-0.5 font-semibold text-fs-accent"
+              >
+                <MdTune className="h-3.5 w-3.5" aria-hidden />
+                {settingsOpen ? "Fermer" : "Régler"}
+              </button>
+            ) : null}
+          </p>
+        ) : null}
+
+        {/*
+          Le panneau de réglage, sur place. Chaque champ écrit immédiatement : il n'y a
+          pas de bouton « Enregistrer », parce qu'il n'y a rien à valider ensemble — et
+          que l'effet se voit dans la liste juste en dessous, dans la seconde.
+        */}
+        {isOwner && settingsOpen ? (
+          <div className="mt-3 space-y-3 rounded-[10px] border border-black/[0.08] bg-fs-surface px-3 py-3">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <label
+                  className="block text-xs font-medium text-neutral-600"
+                  htmlFor="rem-page-frequency"
+                >
+                  Fréquence par client
+                </label>
+                <select
+                  id="rem-page-frequency"
+                  className={fsInputClass("mt-1.5")}
+                  value={String((config ?? DEFAULT_CREDIT_REMINDERS_CONFIG).frequencyDays)}
+                  disabled={configMut.isPending}
+                  onChange={(e) => {
+                    void configMut.mutateAsync({ frequencyDays: Number(e.target.value) });
+                  }}
+                >
+                  {[1, 2, 3, 7, 14, 30].map((d) => (
+                    <option key={d} value={d}>
+                      {frequencyLabel(d)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label
+                  className="block text-xs font-medium text-neutral-600"
+                  htmlFor="rem-page-max"
+                >
+                  Clients par tour
+                </label>
+                <select
+                  id="rem-page-max"
+                  className={fsInputClass("mt-1.5")}
+                  value={String((config ?? DEFAULT_CREDIT_REMINDERS_CONFIG).maxPerSession)}
+                  disabled={configMut.isPending}
+                  onChange={(e) => {
+                    void configMut.mutateAsync({ maxPerSession: Number(e.target.value) });
+                  }}
+                >
+                  <option value="0">Tous — le tour complet</option>
+                  {[3, 5, 10, 20].map((n) => (
+                    <option key={n} value={n}>
+                      Les {n} plus gros montants
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label
+                  className="block text-xs font-medium text-neutral-600"
+                  htmlFor="rem-page-min"
+                >
+                  Ne rien rappeler en dessous de
+                </label>
+                <input
+                  id="rem-page-min"
+                  inputMode="numeric"
+                  /*
+                   * `key` sur la valeur enregistrée : un champ non contrôlé ne se
+                   * rafraîchit pas tout seul quand le réglage change ailleurs (écran
+                   * Paramètres, autre onglet). Le remonter à neuf après chaque écriture
+                   * est ce qui garde les deux vues d'accord.
+                   */
+                  key={`min-${(config ?? DEFAULT_CREDIT_REMINDERS_CONFIG).minAmount}`}
+                  defaultValue={String(
+                    Math.round((config ?? DEFAULT_CREDIT_REMINDERS_CONFIG).minAmount),
+                  )}
+                  disabled={configMut.isPending}
+                  className={fsInputClass("mt-1.5 text-right tabular-nums")}
+                  onBlur={(e) => {
+                    const digits = e.target.value.replace(/[^0-9]/g, "");
+                    const v = Math.max(0, Number(digits) || 0);
+                    if (v !== (config ?? DEFAULT_CREDIT_REMINDERS_CONFIG).minAmount) {
+                      void configMut.mutateAsync({ minAmount: v });
+                    }
+                  }}
+                />
+              </div>
+
+              <div>
+                <label
+                  className="block text-xs font-medium text-neutral-600"
+                  htmlFor="rem-page-hour"
+                >
+                  Pas avant
+                </label>
+                <select
+                  id="rem-page-hour"
+                  className={fsInputClass("mt-1.5")}
+                  value={String((config ?? DEFAULT_CREDIT_REMINDERS_CONFIG).fromHour)}
+                  disabled={configMut.isPending}
+                  onChange={(e) => {
+                    void configMut.mutateAsync({ fromHour: Number(e.target.value) });
+                  }}
+                >
+                  {[5, 6, 7, 8, 9, 10, 12, 14, 16].map((hh) => (
+                    <option key={hh} value={hh}>
+                      {String(hh).padStart(2, "0")} h
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <label
+              className={cn(
+                "flex cursor-pointer items-start justify-between gap-3 border-t border-black/[0.06] pt-3",
+                configMut.isPending && "pointer-events-none opacity-60",
+              )}
+            >
+              <span className="min-w-0">
+                <span className="block text-sm font-medium text-fs-text">
+                  Seulement les créances en retard
+                </span>
+                <span className="mt-0.5 block text-xs text-neutral-600">
+                  {(config ?? DEFAULT_CREDIT_REMINDERS_CONFIG).overdueOnly
+                    ? "Un client dont l'échéance n'est pas encore passée n'est pas rappelé."
+                    : "Tous vos débiteurs sont rappelés, échéance passée ou non."}
+                </span>
+              </span>
+              <input
+                type="checkbox"
+                role="switch"
+                className="mt-1 h-5 w-9 shrink-0 cursor-pointer accent-fs-accent"
+                checked={(config ?? DEFAULT_CREDIT_REMINDERS_CONFIG).overdueOnly}
+                disabled={configMut.isPending}
+                onChange={(e) => {
+                  void configMut.mutateAsync({ overdueOnly: e.target.checked });
+                }}
+              />
+            </label>
+
+            <p className="text-[11px] leading-relaxed text-neutral-500">
+              Ces réglages sont les mêmes que dans{" "}
               <Link
                 href={ROUTES.settings}
                 className="font-semibold text-fs-accent hover:underline"
               >
-                modifier
+                Paramètres › Rappels de crédit
               </Link>
-            ) : null}
-          </p>
+              . Ils valent pour toute l&apos;entreprise, et la liste ci-dessous se remet à
+              jour immédiatement.
+            </p>
+          </div>
         ) : null}
       </FsCard>
 

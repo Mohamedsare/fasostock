@@ -2307,7 +2307,7 @@ export const DOC_GROUPS: DocGroup[] = [
           },
           {
             kind: "bullets",
-            title: "Ce que vous réglez vous-même",
+            title: "Ce que vous réglez vous-même (Paramètres, ou le bouton Régler de la page)",
             items: [
               "Combien de clients par tour : tous (le réglage d'origine), ou seulement les 3, 5, 10 ou 20 plus gros montants si vous avez beaucoup d'ardoises.",
               "La fréquence : chaque jour, tous les 2 ou 3 jours, chaque semaine, chaque quinzaine ou chaque mois. C'est le délai avant qu'un MÊME client revienne — ce qui évite que trois personnes le relancent le même matin.",
@@ -2315,6 +2315,12 @@ export const DOC_GROUPS: DocGroup[] = [
               "L'heure à partir de laquelle les rappels s'affichent : personne ne veut penser à ses créances en ouvrant la caisse au petit matin.",
               "Les créances en retard seulement, ou toutes.",
             ],
+          },
+          {
+            kind: "note",
+            tone: "tip",
+            title: "Se régler sans quitter la liste",
+            text: "Les mêmes réglages sont accessibles depuis la page elle-même : le bouton « Régler », dans la ligne de résumé sous les totaux (propriétaire uniquement). C'est là qu'on s'aperçoit qu'un réglage ne va pas — « pourquoi ce client n'apparaît pas ? » — et la liste se remet à jour dans la seconde, sans perdre votre recherche ni votre filtre. Paramètres et page écrivent le même réglage : changer d'un côté met l'autre à jour.",
           },
           {
             kind: "steps",
