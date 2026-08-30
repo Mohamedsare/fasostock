@@ -113,6 +113,10 @@ import {
 } from "@/lib/features/receipt/build-receipt-ticket-data";
 import { generateReceiptThermalPdfBlob } from "@/lib/features/receipt/generate-receipt-thermal-pdf";
 import { printProvisionalTicket } from "@/lib/features/receipt/print-provisional-ticket";
+import {
+  readQuickAutoPrint,
+  writeQuickAutoPrint,
+} from "@/lib/features/receipt/quick-auto-print";
 import type { ReceiptTicketData } from "@/lib/features/receipt/receipt-ticket-types";
 import { OFFLINE_SALE_ID_PREFIX } from "@/lib/offline/constants";
 import {
@@ -273,6 +277,13 @@ export function PosScreen({
   } | null>(null);
   const [receiptDialog, setReceiptDialog] = useState<ReceiptTicketData | null>(null);
   const [quickAutoPrint, setQuickAutoPrint] = useState(false);
+  /*
+   * Dernier ticket de la session, gardé pour être réimprimé sans quitter la caisse.
+   * En impression automatique le dialogue ne s'affiche plus : le jour où l'imprimante
+   * était hors papier, le caissier n'avait plus aucun moyen de ressortir le ticket
+   * depuis son écran de vente.
+   */
+  const [lastTicket, setLastTicket] = useState<ReceiptTicketData | null>(null);
   const [quickSettingsOpen, setQuickSettingsOpen] = useState(false);
   const [barcodeScannerOpen, setBarcodeScannerOpen] = useState(false);
   const [customerCreateOpen, setCustomerCreateOpen] = useState(false);
@@ -323,11 +334,7 @@ export function PosScreen({
   }, []);
 
   useEffect(() => {
-    try {
-      setQuickAutoPrint(localStorage.getItem("pos_quick_auto_print") === "true");
-    } catch {
-      /* ignore */
-    }
+    setQuickAutoPrint(readQuickAutoPrint());
   }, []);
 
   useLayoutEffect(() => {
@@ -1431,19 +1438,43 @@ export function PosScreen({
           return;
         }
 
-        let auto = false;
-        try {
-          auto = localStorage.getItem("pos_quick_auto_print") === "true";
-        } catch {
-          auto = quickAutoPrint;
-        }
-        if (auto) {
+        // Réimprimable depuis l'en-tête, que le ticket soit parti tout seul ou non.
+        setLastTicket(ticketData);
+
+        /*
+         * Impression automatique : le ticket part sans que le caissier ait rien à faire.
+         * Trois choses doivent rester vraies, sinon le client repart sans justificatif
+         * sans que personne ne s'en aperçoive :
+         *
+         *  1. le réglage est relu ici (appareil, pas état React) — la caisse est souvent
+         *     ouverte dans deux onglets ;
+         *  2. l'attente est annoncée : sur une connexion faible, la fabrication du PDF
+         *     par le serveur prend quelques secondes, et un écran muet fait croire à un
+         *     oubli — le caissier réencaisse ;
+         *  3. un échec ramène TOUJOURS le dialogue. Une impression déclenchée hors clic
+         *     peut être refusée en bloc par le navigateur (pop-up bloquée) : le bouton
+         *     « Imprimer » du dialogue, lui, part d'un vrai clic et passe.
+         */
+        if (readQuickAutoPrint()) {
+          const slowNotice = window.setTimeout(() => {
+            toast.info("Ticket en préparation…");
+          }, 1200);
           try {
             const blob = await generateReceiptThermalPdfBlob(ticketData, {
               paperWidthMm: thermalPaperWidthMm,
             });
-            printInvoicePdf(blob);
+            window.clearTimeout(slowNotice);
+            const launched = await printInvoicePdf(blob);
+            if (launched) {
+              toast.success(`Ticket #${res.saleNumber} envoyé à l'imprimante.`);
+            } else {
+              toast.info(
+                "Impression bloquée par le navigateur : appuyez sur « Imprimer ».",
+              );
+              setReceiptDialog(ticketData);
+            }
           } catch (e) {
+            window.clearTimeout(slowNotice);
             toast.error(messageFromUnknownError(e, "Impression ticket impossible."));
             setReceiptDialog(ticketData);
           }
@@ -2320,6 +2351,17 @@ export function PosScreen({
         </div>
         {mode === "quick" ? (
           <>
+            {lastTicket ? (
+              <button
+                type="button"
+                onClick={() => setReceiptDialog(lastTicket)}
+                className="rounded-full p-2 hover:bg-white/15"
+                aria-label="Réimprimer le dernier ticket"
+                title="Dernier ticket"
+              >
+                <MdPrint className="h-5 w-5" aria-hidden />
+              </button>
+            ) : null}
             <Link
               href={`${ROUTES.sales}?store=${encodeURIComponent(storeId)}`}
               className="rounded-full p-2 hover:bg-white/15"
@@ -3293,7 +3335,12 @@ export function PosScreen({
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-[#1F2937]">Impression automatique</p>
                 <p className="mt-1 text-xs text-neutral-600">
-                  Après chaque vente, ne pas afficher le dialogue ticket (gain de temps).
+                  Après chaque vente, le ticket part seul à l&apos;imprimante : plus de
+                  dialogue à valider.
+                </p>
+                <p className="mt-1 text-xs text-neutral-500">
+                  Réglage de cet appareil. Si l&apos;impression ne part pas, le ticket
+                  s&apos;affiche pour être imprimé à la main.
                 </p>
               </div>
               <button
@@ -3303,11 +3350,7 @@ export function PosScreen({
                 onClick={() => {
                   const v = !quickAutoPrint;
                   setQuickAutoPrint(v);
-                  try {
-                    localStorage.setItem("pos_quick_auto_print", v ? "true" : "false");
-                  } catch {
-                    /* ignore */
-                  }
+                  writeQuickAutoPrint(v);
                 }}
                 className={cn(
                   "relative h-7 w-12 shrink-0 rounded-full transition-colors",

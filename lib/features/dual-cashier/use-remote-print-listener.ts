@@ -87,7 +87,13 @@ export function useRemotePrintListener(params: {
             const blob = await generateReceiptThermalPdfBlob(data, {
               paperWidthMm: job.paperWidthMm,
             });
-            printInvoicePdf(blob);
+            const launched = await printInvoicePdf(blob);
+            if (!launched) {
+              // Le poste n'a rien imprimé (pop-up bloquée) : c'est un échec, pas un succès.
+              throw new Error(
+                "Impression bloquée par le navigateur sur le poste du vendeur.",
+              );
+            }
             await completePosPrintJob(job.id, true);
             toast.info(`Ticket ${sale.sale_number ?? ""} envoyé à votre imprimante.`.trim());
           } catch (e) {
