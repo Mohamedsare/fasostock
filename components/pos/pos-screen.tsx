@@ -1456,20 +1456,23 @@ export function PosScreen({
          *     « Imprimer » du dialogue, lui, part d'un vrai clic et passe.
          */
         if (readQuickAutoPrint()) {
+          /*
+           * Silence quand tout va bien : le toast de la vente (total, monnaie à rendre)
+           * doit rester lisible — un seul toast est affiché à la fois. On ne parle que si
+           * l'attente s'installe, ou si le ticket n'est pas parti.
+           */
           const slowNotice = window.setTimeout(() => {
             toast.info("Ticket en préparation…");
-          }, 1200);
+          }, 2000);
           try {
             const blob = await generateReceiptThermalPdfBlob(ticketData, {
               paperWidthMm: thermalPaperWidthMm,
             });
             window.clearTimeout(slowNotice);
             const launched = await printInvoicePdf(blob);
-            if (launched) {
-              toast.success(`Ticket #${res.saleNumber} envoyé à l'imprimante.`);
-            } else {
-              toast.info(
-                "Impression bloquée par le navigateur : appuyez sur « Imprimer ».",
+            if (!launched) {
+              toast.error(
+                "Ticket non imprimé (fenêtres surgissantes bloquées) : appuyez sur « Imprimer ».",
               );
               setReceiptDialog(ticketData);
             }

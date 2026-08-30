@@ -77,10 +77,14 @@ export function ReceiptTicketDialog({
     try {
       toast.info("Impression en cours…");
       const blob = await generateReceiptThermalPdfBlob(data, { paperWidthMm });
-      printInvoicePdf(blob);
-      window.setTimeout(() => {
-        toast.success("Ticket envoyé à l'imprimante.");
-      }, 400);
+      const launched = await printInvoicePdf(blob);
+      if (!launched) {
+        toast.error(
+          "Impression bloquée par le navigateur. Autorisez les fenêtres surgissantes pour ce site, puis réessayez.",
+        );
+        return;
+      }
+      toast.success("Ticket envoyé à l'imprimante.");
     } catch (e) {
       toast.error(messageFromUnknownError(e, "Impossible d'imprimer le ticket."));
     } finally {

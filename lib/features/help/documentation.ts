@@ -289,7 +289,7 @@ export const DOC_GROUPS: DocGroup[] = [
             kind: "bullets",
             title: "Les trois boutons de la carte d'une boutique",
             items: [
-              "Configurer le ticket : modèle de mise en forme (Classique ou Moderne), largeur 58 mm ou 80 mm, en-tête, pied de page, mentions légales, impression automatique après encaissement. Le modèle Moderne imprime le nom complet de chaque article, le total dans un bandeau noir, et des filets nets à la place des lignes de tirets ; l'aperçu à droite montre le rendu exact avant d'enregistrer.",
+              "Configurer le ticket : modèle de mise en forme (Classique ou Moderne), largeur 58 mm ou 80 mm, en-tête, pied de page, mentions légales. Le modèle Moderne imprime le nom complet de chaque article, le total dans un bandeau noir, et des filets nets à la place des lignes de tirets ; l'aperçu à droite montre le rendu exact avant d'enregistrer.",
               "Configurer la facture A4 : logo, slogan, nom et fonction du signataire, mentions, modèle de mise en page.",
               "Modifier : nom, adresse, téléphone de la boutique. Ces informations sont imprimées sur les documents remis au client.",
             ],
@@ -384,7 +384,7 @@ export const DOC_GROUPS: DocGroup[] = [
             kind: "bullets",
             title: "Caisse rapide",
             items: [
-              "Impression automatique du ticket après encaissement.",
+              "Impression automatique du ticket : elle se règle dans la caisse rapide elle-même (roue dentée en haut à droite), et non ici. C'est un réglage de l'APPAREIL, pas de l'entreprise : seul le poste relié à l'imprimante imprime tout seul ; le téléphone du propriétaire, lui, continue d'afficher le ticket. Quand elle est active, le ticket part sans aucun clic après chaque encaissement ; si le navigateur refuse (fenêtres surgissantes bloquées) ou si la connexion tombe pendant la fabrication du ticket, la fenêtre du ticket revient avec son bouton « Imprimer » et un message dit pourquoi — un client ne part jamais sans justificatif sans que vous le sachiez. Le bouton imprimante de l'en-tête de la caisse ressort le dernier ticket (papier coincé, bourrage) sans quitter l'écran de vente.",
               "Saisie des quantités : boutons + / − ou champ libre.",
               "Vente à crédit en caisse rapide : ajoute un bouton « CRÉDIT » au moment du paiement. Désactivé par défaut.",
               "Saisie du prix en caisse rapide : rend le prix unitaire modifiable dans le panier. À n'ouvrir que si vous négociez réellement vos prix — sinon vos marges deviennent imprévisibles.",

@@ -14,6 +14,20 @@ import type { Store } from "@/lib/features/stores/types";
 
 export type SalePrintFormat = "a4" | "thermal";
 
+/**
+ * Le navigateur peut refuser d'ouvrir la boîte d'impression (pop-up bloquée). L'appelant
+ * annonce « envoyé à l'imprimante » : sans cette vérification, il annoncerait un document
+ * que personne ne verra sortir.
+ */
+async function launchPrint(blob: Blob): Promise<void> {
+  const launched = await printInvoicePdf(blob);
+  if (!launched) {
+    throw new Error(
+      "Impression bloquée par le navigateur : autorisez les fenêtres surgissantes pour ce site.",
+    );
+  }
+}
+
 /** Largeur du rouleau configurée sur la boutique ; 80 mm à défaut, comme la caisse. */
 export function thermalWidthForStore(store: Store): 58 | 80 {
   return store.receipt_paper_width_mm === 58 ? 58 : 80;
@@ -61,12 +75,12 @@ export async function printSaleInFormat({
   if (format === "a4") {
     const logoBytes = await fetchLogoBytes(store.logo_url);
     const data = buildInvoiceA4FromSaleDetail(sale, store, logoBytes);
-    printInvoicePdf(await generateInvoicePdfBlob(data, { saleId }));
+    await launchPrint(await generateInvoicePdfBlob(data, { saleId }));
     return;
   }
 
   const data = buildReceiptTicketDataFromSale(store, sale, saleId);
-  printInvoicePdf(
+  await launchPrint(
     await generateReceiptThermalPdfBlob(data, {
       paperWidthMm: thermalWidthForStore(store),
     }),
