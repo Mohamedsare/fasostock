@@ -75,6 +75,7 @@ import { whatsappUrl } from "@/lib/features/share/share-document";
 import { fetchCreditRemindersConfig } from "@/lib/features/settings/credit-reminders-config";
 import { queryKeys } from "@/lib/query/query-keys";
 import { toast } from "@/lib/toast";
+import type { CustomerCreditAggregate } from "@/lib/features/credit/types";
 import { formatCurrency } from "@/lib/utils/currency";
 
 /** Le premier écran appartient au travail en cours : le rappel arrive après. */
@@ -255,8 +256,32 @@ function CreditReminderNudgeFor({ companyId }: { companyId: string }) {
       .slice(0, config.maxPerSession > 0 ? config.maxPerSession : undefined);
   }, [config, salesQ.data, statesQ.data]);
 
-  const total = candidates.length;
-  const current = candidates[index] ?? null;
+  /*
+   * L'ITINÉRAIRE EST FIGÉ AU DÉPART DU TOUR — et ce n'est pas un détail de confort.
+   *
+   * `candidates` se recalcule dès que `statesQ` change. Or relancer un client invalide
+   * précisément cette requête : la fiche traitée quitte la liste, tout le monde derrière
+   * elle recule d'un cran… pendant que l'index, lui, avance d'un cran. Résultat : un
+   * client sur deux SAUTÉ à chaque relance, sans que rien ne le signale. C'est le pire
+   * défaut possible ici, puisque le seul but du tour est de n'oublier personne.
+   *
+   * Un tour est donc une liste arrêtée : on note qui sera visité, et on visite. Les
+   * montants peuvent vieillir de deux minutes — c'est sans conséquence, et infiniment
+   * préférable à une tournée qui se réécrit sous les pieds de celui qui la fait.
+   */
+  const [tour, setTour] = useState<CustomerCreditAggregate[] | null>(null);
+
+  useEffect(() => {
+    if (!active || !ready || dismissed) return;
+    if (tour !== null || candidates.length === 0) return;
+    // Différé : figer la liste en plein corps d'effet déclencherait la cascade de rendus
+    // que `react-hooks/set-state-in-effect` interdit.
+    const t = setTimeout(() => setTour(candidates), 0);
+    return () => clearTimeout(t);
+  }, [active, ready, dismissed, tour, candidates]);
+
+  const total = tour?.length ?? 0;
+  const current = tour?.[index] ?? null;
 
   /*
    * Le tour est marqué fait à la PREMIÈRE apparition réelle, et non à l'ouverture de
@@ -291,9 +316,9 @@ function CreditReminderNudgeFor({ companyId }: { companyId: string }) {
   /*
    * Fin du tour : l'index a dépassé le dernier client. On referme.
    *
-   * C'est un effet et non un test dans le rendu, parce que `candidates` peut encore
-   * grandir pendant le tour (une requête de fond qui se termine) : décider « c'est fini »
-   * pendant le rendu fermerait la carte sur une liste incomplète.
+   * C'est un effet et non un test dans le rendu, pour que la fermeture soit un
+   * changement d'état franc — et non un `return null` qui laisserait la carte
+   * réapparaître au prochain recalcul.
    */
   useEffect(() => {
     if (!ready || dismissed || total === 0) return;
@@ -309,7 +334,7 @@ function CreditReminderNudgeFor({ companyId }: { companyId: string }) {
    * Le total de TOUTE la tournée, pas seulement de la fiche affichée. C'est le chiffre
    * qui fait agir : « 47 500 F » se remet à demain, « 38 millions dehors » non.
    */
-  const totalDueAll = candidates.reduce((sum, a) => sum + a.totalDue, 0);
+  const totalDueAll = (tour ?? []).reduce((sum, a) => sum + a.totalDue, 0);
 
   function next() {
     if (index + 1 < total) setIndex((i) => i + 1);
