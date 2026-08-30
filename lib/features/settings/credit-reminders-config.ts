@@ -36,8 +36,12 @@ export type CreditRemindersConfig = {
   /** N'annoncer que les créances dont l'échéance est passée. */
   overdueOnly: boolean;
   /**
-   * Combien de clients au maximum par passage. Le rappel doit informer, pas bloquer :
-   * au-delà de trois ou quatre, il devient un mur qu'on ferme sans lire.
+   * Combien de clients au maximum par tour. **0 = tous.**
+   *
+   * La carte fait défiler les débiteurs toute seule, l'un après l'autre, puis se tait.
+   * Le tour complet est donc le comportement attendu : le patron veut savoir OÙ EST SON
+   * ARGENT, pas en voir trois échantillons. Le plafond reste là pour celui qui a deux
+   * cents ardoises et préfère ne revoir que les plus grosses à chaque connexion.
    */
   maxPerSession: number;
   /**
@@ -51,7 +55,9 @@ export const DEFAULT_CREDIT_REMINDERS_CONFIG: CreditRemindersConfig = {
   frequencyDays: 1,
   minAmount: 0,
   overdueOnly: false,
-  maxPerSession: 3,
+  // 0 = tour complet. C'est la demande d'origine : passer TOUS les debiteurs en revue
+  // a la connexion, puis se taire.
+  maxPerSession: 0,
   fromHour: 8,
 };
 
@@ -82,7 +88,10 @@ export function parseCreditRemindersConfig(raw: unknown): CreditRemindersConfig 
     frequencyDays: clampInt(o.frequencyDays, 1, 30, DEFAULT_CREDIT_REMINDERS_CONFIG.frequencyDays),
     minAmount: Math.max(0, Number(o.minAmount) || 0),
     overdueOnly: o.overdueOnly === true,
-    maxPerSession: clampInt(o.maxPerSession, 1, 10, DEFAULT_CREDIT_REMINDERS_CONFIG.maxPerSession),
+    // Borne basse a 0 (« tous ») et haute a 50 : au-dela, un tour complet durerait plus
+    // longtemps que l'attention qu'on peut lui accorder, et la carte deviendrait le mur
+    // qu'on ferme sans lire.
+    maxPerSession: clampInt(o.maxPerSession, 0, 50, DEFAULT_CREDIT_REMINDERS_CONFIG.maxPerSession),
     fromHour: clampInt(o.fromHour, 0, 23, DEFAULT_CREDIT_REMINDERS_CONFIG.fromHour),
   };
 }

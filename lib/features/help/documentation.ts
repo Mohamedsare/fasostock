@@ -2303,12 +2303,13 @@ export const DOC_GROUPS: DocGroup[] = [
           },
           {
             kind: "p",
-            text: "Une fois les rappels activés, ils viennent à vous. Une carte discrète apparaît en bas de l'écran, à la fréquence que vous avez choisie : « Ouédraogo Salif vous doit 47 500 F — depuis 23 jours ». Deux boutons, et rien de plus : relancer, ou reporter.",
+            text: "Une fois les rappels activés, ils viennent à vous. À chaque connexion, une carte discrète apparaît en bas de l'écran et passe vos débiteurs en revue toute seule, du plus gros montant au plus petit, quelques secondes chacun : « Ouédraogo Salif vous doit 47 500 F — depuis 23 jours ». Elle indique où vous en êtes (3/20), le total dehors, et se referme d'elle-même à la fin du tour.",
           },
           {
             kind: "bullets",
             title: "Ce que vous réglez vous-même",
             items: [
+              "Combien de clients par tour : tous (le réglage d'origine), ou seulement les 3, 5, 10 ou 20 plus gros montants si vous avez beaucoup d'ardoises.",
               "La fréquence : chaque jour, tous les 2 ou 3 jours, chaque semaine, chaque quinzaine ou chaque mois. C'est le délai avant qu'un MÊME client revienne — ce qui évite que trois personnes le relancent le même matin.",
               "Le montant plancher : une dette de 500 F relancée chaque jour coûte plus cher en agacement qu'elle ne rapporte.",
               "L'heure à partir de laquelle les rappels s'affichent : personne ne veut penser à ses créances en ouvrant la caisse au petit matin.",
@@ -2330,6 +2331,18 @@ export const DOC_GROUPS: DocGroup[] = [
             tone: "tip",
             title: "Le ton du message compte plus que le message",
             text: "Les messages proposés sont volontairement courtois et sans reproche : on rappelle un montant, on remercie, on n'accuse pas. Un client de quartier qu'on brusque ne revient pas — et la créance est presque toujours un oubli, pas un refus. Le message s'ouvre dans WhatsApp avant l'envoi : vous gardez le dernier mot.",
+          },
+          {
+            kind: "note",
+            tone: "tip",
+            title: "Le tour s'arrête quand vous le regardez",
+            text: "Approchez la souris de la carte (ou tabulez vers un de ses boutons) et le défilement se met en pause, avec la mention « en pause ». Il repart quand vous vous éloignez. Une fiche qui s'échappe au moment où vous tendez le doigt vers « Relancer » serait pire que pas de rappel du tout. La petite barre en haut de la carte montre le temps restant sur la fiche en cours.",
+          },
+          {
+            kind: "note",
+            tone: "info",
+            title: "Un tour par connexion, pas par page",
+            text: "Le tour a lieu une fois, à l'ouverture de votre session de travail, puis la carte se tait — naviguer dans l'application ne la relance pas, et recharger la page non plus. Elle revient à la prochaine connexion. Pour consulter la liste à tout moment sans attendre, ouvrez la page Rappels crédit.",
           },
           {
             kind: "note",

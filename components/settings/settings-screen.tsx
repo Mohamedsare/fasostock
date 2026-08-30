@@ -2238,11 +2238,18 @@ export function SettingsScreen() {
             n&apos;a redemandé.
           </p>
           <p className="mt-2 text-xs leading-relaxed text-neutral-600 sm:text-sm">
-            Une fois activés, les rappels viennent à vous : une carte discrète en bas de
-            l&apos;écran, à la fréquence que vous choisissez, qui dit{" "}
-            <strong>« Untel vous doit tant »</strong> — et un message poli, déjà écrit,
-            prêt à partir sur WhatsApp. Vous pouvez relancer, ou mettre le client de côté
-            pour trois jours d&apos;un seul tap.
+            Une fois activés, les rappels viennent à vous. À chaque connexion, une carte
+            discrète apparaît en bas de l&apos;écran et <strong>passe vos débiteurs en
+            revue toute seule</strong>, du plus gros montant au plus petit, quelques
+            secondes chacun : « Untel vous doit tant ». Elle affiche le total dehors et le
+            nombre de fiches restantes, puis se referme d&apos;elle-même à la fin du tour.
+          </p>
+          <p className="mt-2 text-xs leading-relaxed text-neutral-600 sm:text-sm">
+            Sur chaque fiche, un message poli déjà écrit part sur WhatsApp d&apos;un seul
+            tap, ou le client se met de côté pour trois jours. Le défilement{" "}
+            <strong>s&apos;arrête dès que vous approchez la souris</strong> de la carte —
+            une fiche qui s&apos;échappe au moment où vous tendez le doigt serait pire que
+            pas de rappel du tout.
           </p>
           <div className="mt-4 space-y-0 rounded-[10px] border border-black/[0.08]">
             <label
@@ -2304,6 +2311,39 @@ export function SettingsScreen() {
                   Un client relancé ne réapparaît qu&apos;au bout de ce délai. C&apos;est
                   ce qui évite que trois personnes de la boutique le relancent le même
                   jour.
+                </p>
+              </div>
+
+              <div>
+                <label
+                  className="block text-xs font-medium text-neutral-600"
+                  htmlFor="credit-reminders-max"
+                >
+                  Combien de clients par tour
+                </label>
+                <select
+                  id="credit-reminders-max"
+                  className={fsInputClass("mt-1.5")}
+                  value={String(remindersConfig.maxPerSession)}
+                  disabled={remindersConfigMut.isPending}
+                  onChange={(e) => {
+                    void remindersConfigMut.mutateAsync({
+                      maxPerSession: Number(e.target.value),
+                    });
+                  }}
+                >
+                  <option value="0">Tous — le tour complet</option>
+                  {[3, 5, 10, 20].map((n) => (
+                    <option key={n} value={n}>
+                      Les {n} plus gros montants
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-xs leading-relaxed text-neutral-500">
+                  « Tous » est le réglage d&apos;origine : à la connexion, vous voyez
+                  l&apos;intégralité de ce qui est dehors. Si vous avez deux cents
+                  ardoises, limitez-vous aux plus grosses — le tour doit tenir dans le
+                  temps qu&apos;on veut bien lui donner.
                 </p>
               </div>
 
