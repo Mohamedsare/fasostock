@@ -99,6 +99,11 @@ export function paymentUppercase(method: string): string {
   return method.trim().toUpperCase();
 }
 
+/**
+ * @deprecated Le ticket web n'aligne plus ses colonnes en calant des espaces : il
+ * utilise un vrai tableau (`renderReceiptThermalClassicHtml`), ce qui laisse les noms
+ * d'articles entiers. Conservé comme référence de la mise en forme Flutter.
+ */
 export function headerMonoLine(): string {
   const n = "Produit".padEnd(13);
   const q = "Qté".padStart(2);
@@ -107,6 +112,7 @@ export function headerMonoLine(): string {
   return `${n} ${q} ${p} ${t}`;
 }
 
+/** @deprecated Voir {@link headerMonoLine}. */
 export function productNumericLine(
   qty: number,
   pu: number,

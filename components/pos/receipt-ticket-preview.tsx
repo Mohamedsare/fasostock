@@ -10,17 +10,14 @@ import {
 } from "@/lib/features/receipt/receipt-ticket-template";
 import { ReceiptTicketPreviewModern } from "@/components/pos/receipt-ticket-preview-modern";
 import {
-  RECEIPT_SEP_LONG,
-  RECEIPT_SEP_MID,
-  RECEIPT_SEP_TOTAL,
   buildReceiptQrPayload,
-  headerMonoLine,
   metaFactureDateHeureLine,
   paymentUppercase,
-  productNumericLine,
-  receiptIntAmount,
+  receiptGroupedNumber,
   telLine,
 } from "@/lib/features/receipt/receipt-ticket-format";
+import { currencySymbolOf } from "@/lib/config/currencies";
+import { formatCurrencyFlutter } from "@/lib/utils/currency";
 
 const archivoBlack = Archivo_Black({
   weight: "400",
@@ -49,7 +46,16 @@ export function ReceiptTicketPreview({
   return <ReceiptTicketPreviewClassic data={data} />;
 }
 
-/** Copie visuelle de `ReceiptTicketWidget` (Flutter `receipt_ticket_dialog.dart`). */
+/**
+ * Ticket thermique — modèle « Classique », jumeau à l'écran de
+ * `renderReceiptThermalClassicHtml` (impression) : toute retouche ici doit être
+ * reportée là-bas.
+ *
+ * Les tailles sont **celles du PDF**, sans agrandissement : la zone de contenu de cet
+ * aperçu (296 px moins les marges) fait 272 px, exactement le viewport de rendu du
+ * ticket 80 mm — à valeurs égales, un nom d'article passe à la ligne au même endroit
+ * à l'écran et sur le papier.
+ */
 function ReceiptTicketPreviewClassic({ data }: { data: ReceiptTicketData }) {
   const payU = paymentUppercase(data.paymentMethod);
   const isCashLike = payU === "ESPECES";
@@ -59,6 +65,10 @@ function ReceiptTicketPreviewClassic({ data }: { data: ReceiptTicketData }) {
   const qrPayload = buildReceiptQrPayload(data);
   const [logoErr, setLogoErr] = useState(false);
   const logoUrl = data.storeLogoUrl?.trim() ?? "";
+  const money = (n: number) =>
+    formatCurrencyFlutter(Math.round(n), data.currencyCode);
+  const num = (n: number) => receiptGroupedNumber(n, data.currencyCode);
+  const currency = currencySymbolOf(data.currencyCode ?? undefined);
 
   useEffect(() => {
     setLogoErr(false);
@@ -76,7 +86,7 @@ function ReceiptTicketPreviewClassic({ data }: { data: ReceiptTicketData }) {
         color: "#000000",
       }}
     >
-      <div style={{ fontSize: 9.5, lineHeight: 1.22 }}>
+      <div style={{ fontSize: 8, lineHeight: 1.3 }}>
         {logoUrl && !logoErr ? (
           <div className="mb-2 flex justify-center">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -106,7 +116,7 @@ function ReceiptTicketPreviewClassic({ data }: { data: ReceiptTicketData }) {
         {data.storeAddress?.trim() ? (
           <p
             className="text-center"
-            style={{ fontFamily: mono, fontSize: 9, margin: 0 }}
+            style={{ fontFamily: mono, fontSize: 7, margin: 0 }}
           >
             {data.storeAddress.trim()}
           </p>
@@ -114,110 +124,104 @@ function ReceiptTicketPreviewClassic({ data }: { data: ReceiptTicketData }) {
         {tel ? (
           <p
             className="text-center"
-            style={{ fontFamily: mono, fontSize: 9, margin: 0 }}
+            style={{ fontFamily: mono, fontSize: 7, margin: 0 }}
           >
             {tel}
           </p>
         ) : null}
-        <div style={{ height: 8 }} />
         <p
           className="text-center"
-          style={{ fontFamily: mono, fontSize: 9.5, margin: 0 }}
+          style={{ fontFamily: mono, fontSize: 8.5, margin: "6px 0 0" }}
         >
           {metaFactureDateHeureLine(data.saleNumber, data.date)}
         </p>
-        <div style={{ height: 6 }} />
-        <Separator text={RECEIPT_SEP_LONG} />
-        <ReceiptTableLine text={headerMonoLine()} bold />
-        <Separator text={RECEIPT_SEP_LONG} />
-        {data.items.map((item, i) => (
-          <ReceiptProductRow
-            key={i}
-            name={item.name.trim()}
-            numeric={productNumericLine(
-              item.quantity,
-              Math.round(item.unitPrice),
-              Math.round(item.total),
-            )}
-          />
-        ))}
-        <div style={{ height: 4 }} />
-        <Separator text={RECEIPT_SEP_LONG} />
-        <div style={{ height: 4 }} />
-        <AmountRow
-          label="Sous-total"
-          value={receiptIntAmount(data.subtotal)}
-          size={9}
-        />
+
+        <Separator />
+        <table
+          className="w-full border-collapse"
+          style={{ fontFamily: mono, fontSize: 8 }}
+        >
+          <thead>
+            <tr style={{ fontWeight: 700 }}>
+              <th className="whitespace-nowrap pb-[3px] text-left">Produit</th>
+              <th className="whitespace-nowrap px-[6px] pb-[3px] text-center">Qté</th>
+              <th className="whitespace-nowrap pb-[3px] pl-[8px] text-right">
+                PU ({currency})
+              </th>
+              <th className="whitespace-nowrap pb-[3px] pl-[8px] text-right">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.items.map((item, i) => (
+              <tr key={i}>
+                {/* Nom complet : il passe à la ligne, les chiffres restent alignés. */}
+                <td
+                  className="pb-[3px] pr-[6px] align-top"
+                  style={{ wordBreak: "break-word" }}
+                >
+                  {item.name.trim()}
+                </td>
+                <td className="whitespace-nowrap px-[6px] pb-[3px] text-center align-top">
+                  {item.quantity}
+                </td>
+                <td className="whitespace-nowrap pb-[3px] pl-[8px] text-right align-top">
+                  {num(item.unitPrice)}
+                </td>
+                <td className="whitespace-nowrap pb-[3px] pl-[8px] text-right align-top">
+                  {num(item.total)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <Separator />
+
+        <AmountRow label="Sous-total" value={money(data.subtotal)} size={8} />
         {data.discount > 0 ? (
-          <AmountRow
-            label="Remise"
-            value={receiptIntAmount(data.discount)}
-            size={9}
-          />
+          <AmountRow label="Remise" value={`- ${money(data.discount)}`} size={8} />
         ) : null}
-        <div style={{ height: 4 }} />
-        <Separator text={RECEIPT_SEP_TOTAL} />
-        <div style={{ height: 4 }} />
-        <AmountRow
-          label="TOTAL"
-          value={receiptIntAmount(data.total)}
-          size={12}
-          bold
-        />
-        <div style={{ height: 8 }} />
-        <AmountRow label="Paiement" value={payU} size={9.5} />
+        <Separator solid />
+        <AmountRow label="TOTAL" value={money(data.total)} size={12} bold />
+        <Separator solid />
+
+        <AmountRow label="Paiement" value={payU} size={8} boldValue />
         {(data.paymentSplit ?? []).map((p, i) => (
-          <AmountRow
-            key={i}
-            label={p.label}
-            value={receiptIntAmount(Math.round(p.amount))}
-            size={9.5}
-          />
+          <AmountRow key={i} label={p.label} value={money(p.amount)} size={8} />
         ))}
         {isCashLike ? (
           <>
             <AmountRow
               label="Reçu"
-              value={receiptIntAmount(
-                Math.round(data.amountReceived ?? data.total),
-              )}
-              size={9.5}
+              value={money(data.amountReceived ?? data.total)}
+              size={8}
             />
-            <AmountRow
-              label="Rendu"
-              value={receiptIntAmount(Math.round(data.change ?? 0))}
-              size={9.5}
-            />
+            <AmountRow label="Rendu" value={money(data.change ?? 0)} size={8} />
           </>
         ) : null}
         {data.customerName?.trim() ? (
-          <AmountRow label="Client" value={data.customerName.trim()} size={9.5} />
+          <AmountRow label="Client" value={data.customerName.trim()} size={8} />
         ) : null}
         {creditRemaining > 0 ? (
           <>
+            <Separator />
+            <AmountRow label="Acompte" value={money(data.creditPaid ?? 0)} size={8} />
             <AmountRow
-              label="Acompte"
-              value={receiptIntAmount(Math.round(data.creditPaid ?? 0))}
-              size={9.5}
-            />
-            <AmountRow
-              label="RESTE A PAYER"
-              value={receiptIntAmount(Math.round(creditRemaining))}
-              size={10.5}
+              label="RESTE À PAYER"
+              value={money(creditRemaining)}
+              size={8}
               bold
             />
             {data.creditDueLabel?.trim() ? (
               <AmountRow
-                label="Echeance"
+                label="Échéance"
                 value={data.creditDueLabel.trim()}
-                size={9.5}
+                size={8}
               />
             ) : null}
           </>
         ) : null}
-        <div style={{ height: 12 }} />
-        <div className="flex justify-center">
+
+        <div className="flex justify-center" style={{ marginTop: 9 }}>
           <div className="bg-white" style={{ padding: 0 }}>
             <QRCode
               value={qrPayload}
@@ -228,101 +232,46 @@ function ReceiptTicketPreviewClassic({ data }: { data: ReceiptTicketData }) {
             />
           </div>
         </div>
-        <div style={{ height: 10 }} />
-        <p
-          className="text-center"
-          style={{
-            fontFamily: mono,
-            fontSize: 10,
-            fontWeight: 600,
-            margin: 0,
-          }}
-        >
-          Merci pour votre achat !
-        </p>
-        <div style={{ height: 8 }} />
-        <Separator text={RECEIPT_SEP_MID} />
         <p
           className="text-center"
           style={{
             fontFamily: mono,
             fontSize: 8.5,
+            fontWeight: 700,
+            margin: "7px 0 0",
+          }}
+        >
+          Merci pour votre achat !
+        </p>
+        <Separator />
+        <p
+          className="text-center"
+          style={{
+            fontFamily: mono,
+            fontSize: 7,
             color: "#333333",
             margin: 0,
           }}
         >
           Powered by FasoStock POS
         </p>
-        <Separator text={RECEIPT_SEP_MID} />
       </div>
     </div>
   );
 }
 
-function Separator({ text }: { text: string }) {
+/**
+ * Filet à la largeur exacte du ticket. Avant, c'était une chaîne de tirets de longueur
+ * fixe : trop longue pour le papier 58 mm, elle sortait rognée en plein milieu.
+ */
+function Separator({ solid }: { solid?: boolean }) {
   return (
     <div
-      className="w-full overflow-hidden text-center"
       style={{
-        fontFamily: mono,
-        fontSize: 9,
-        lineHeight: 1.2,
-        whiteSpace: "nowrap",
+        borderTop: `1px ${solid ? "solid" : "dashed"} #000`,
+        margin: "5px 0",
       }}
-    >
-      {text}
-    </div>
-  );
-}
-
-function ReceiptTableLine({ text, bold }: { text: string; bold?: boolean }) {
-  return (
-    <div
-      className="w-full overflow-hidden"
-      style={{
-        fontFamily: mono,
-        fontSize: 9,
-        fontWeight: bold ? 700 : 400,
-        lineHeight: 1.2,
-        whiteSpace: "nowrap",
-      }}
-    >
-      {text}
-    </div>
-  );
-}
-
-function ReceiptProductRow({
-  name,
-  numeric,
-}: {
-  name: string;
-  numeric: string;
-}) {
-  return (
-    <div
-      className="mb-[3px] flex flex-row items-start gap-1"
-      style={{ fontFamily: mono, fontSize: 9 }}
-    >
-      <div
-        className="min-w-0 flex-1"
-        style={{
-          display: "-webkit-box",
-          WebkitLineClamp: 2,
-          WebkitBoxOrient: "vertical",
-          overflow: "hidden",
-          wordBreak: "break-word",
-        }}
-      >
-        {name}
-      </div>
-      <div
-        className="max-w-[45%] shrink-0 overflow-hidden text-right"
-        style={{ whiteSpace: "nowrap" }}
-      >
-        {numeric}
-      </div>
-    </div>
+    />
   );
 }
 
@@ -331,24 +280,33 @@ function AmountRow({
   value,
   size,
   bold,
+  boldValue,
 }: {
   label: string;
   value: string;
   size: number;
   bold?: boolean;
+  boldValue?: boolean;
 }) {
   return (
     <div
-      className="mb-[3px] flex justify-between gap-2"
+      className="flex items-baseline justify-between gap-2"
       style={{
         fontFamily: mono,
         fontSize: size,
-        fontWeight: bold ? 800 : 400,
-        lineHeight: bold ? 1 : 1.22,
+        fontWeight: bold ? 700 : 400,
+        letterSpacing: bold ? 0.3 : undefined,
+        lineHeight: 1.4,
+        margin: bold ? "3px 0" : undefined,
       }}
     >
       <span className="min-w-0 truncate">{label}</span>
-      <span className="shrink-0 whitespace-nowrap">{value}</span>
+      <span
+        className="shrink-0 whitespace-nowrap"
+        style={{ fontWeight: boldValue ? 700 : undefined }}
+      >
+        {value}
+      </span>
     </div>
   );
 }
