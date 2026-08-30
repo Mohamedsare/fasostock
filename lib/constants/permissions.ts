@@ -205,3 +205,62 @@ export const PERMISSION_LABELS_FR: Record<string, string> = {
   [P.payrollView]: "Voir la paie (bulletins, livre de paie)",
   [P.payrollManage]: "Gerer la paie (bulletins, baremes CNSS / IUTS)",
 };
+
+/**
+ * Droits qu'un AUTRE droit coché rend inopérants.
+ *
+ * L'écran des droits est une liste plate d'une soixantaine de cases. Rien n'y disait
+ * que deux d'entre elles pouvaient s'annuler : le propriétaire cochait « Ajouter un
+ * produit sans prix » à côté de « Modifier des produits », lisait une restriction, et
+ * n'en avait aucune — l'employé gardait le formulaire complet, prix compris.
+ */
+export const PERMISSION_NEUTRALIZED_BY: Record<
+  string,
+  { by: readonly string[]; note: string }
+> = {
+  [P.productsDraftCreate]: {
+    by: [P.productsCreate, P.productsUpdate, P.productsImport],
+    note:
+      "Sans effet : cette personne peut deja creer ou modifier une fiche produit, prix compris. "
+      + "Pour qu'elle n'ajoute que des articles a chiffrer, decochez « Creer des produits », "
+      + "« Modifier des produits » et « Importer des produits (CSV) ».",
+  },
+};
+
+/**
+ * Droits qui ne servent à rien sans un autre — la page qu'ils ouvrent reste
+ * inaccessible. `products.draft_create` n'ouvre pas la page Produits : le bouton
+ * « Ajouter un article » y vit, et sans « Voir les produits » l'entrée de menu
+ * n'apparaît même pas.
+ */
+export const PERMISSION_REQUIRES: Record<
+  string,
+  { needs: readonly string[]; note: string }
+> = {
+  [P.productsDraftCreate]: {
+    needs: [P.productsView],
+    note:
+      "Incomplet : le bouton « Ajouter un article » se trouve sur la page Produits. "
+      + "Cochez aussi « Voir les produits », sinon cette personne n'aura pas l'entree de menu.",
+  },
+};
+
+/**
+ * Message à afficher sous une case cochée, ou `null`. Le droit neutralisé passe avant
+ * le droit incomplet : inutile de réclamer « Voir les produits » à quelqu'un pour qui
+ * la case ne changera rien de toute façon.
+ */
+export function permissionGrantWarning(
+  key: string,
+  grantedKeys: readonly string[],
+): string | null {
+  const neutralized = PERMISSION_NEUTRALIZED_BY[key];
+  if (neutralized && neutralized.by.some((k) => grantedKeys.includes(k))) {
+    return neutralized.note;
+  }
+  const required = PERMISSION_REQUIRES[key];
+  if (required && !required.needs.every((k) => grantedKeys.includes(k))) {
+    return required.note;
+  }
+  return null;
+}

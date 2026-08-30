@@ -152,6 +152,16 @@ export function ProductsScreen() {
    * proposer une saisie amputée serait un recul.
    */
   const canDraftProducts = (helpers?.canDraftProducts ?? false) && !canCreateProduct;
+  /*
+   * Prix affichés, ou pas.
+   *
+   * La liste imprimait le prix de vente sur chaque ligne, et le prix d'ACHAT dans
+   * l'infobulle d'alerte des conditionnements — pour tout le monde, y compris
+   * l'employé à qui l'on vient de promettre qu'il ne verrait jamais un prix. Qui ne
+   * peut pas modifier une fiche n'a rien à lire ici : la caisse lui montre déjà ce
+   * qu'il doit encaisser.
+   */
+  const canSeePrices = (helpers?.isOwner ?? false) || canModifyProducts;
   const readOnlyCategoriesBrands = helpers?.isCashier ?? false;
   const companyId = ctx.data?.companyId ?? "";
   const storeId = ctx.data?.storeId ?? null;
@@ -788,7 +798,8 @@ export function ProductsScreen() {
                         </div>
                       ) : null}
                       <p className="mt-0.5 line-clamp-2 text-xs text-neutral-500">
-                        {p.sku || "—"} · {formatCurrency(p.sale_price)} ·{" "}
+                        {p.sku || "—"}
+                        {canSeePrices ? ` · ${formatCurrency(p.sale_price)}` : ""} ·{" "}
                         {p.category?.name ?? "—"} · {p.brand?.name ?? "—"}
                       </p>
                       {(p.product_packagings?.length ?? 0) > 0 ? (
@@ -799,14 +810,18 @@ export function ProductsScreen() {
                             .map((pk) => {
                               const effPrice = pk.price ?? pk.factor * p.sale_price;
                               /* Un lot moins cher qu'une pièce = prix saisi à l'envers.
-                                 Signalé en rouge ici pour être repéré sans ouvrir la fiche. */
-                              const problem = packagingPriceProblem({
-                                label: pk.label,
-                                factor: pk.factor,
-                                price: pk.price ?? null,
-                                unitSalePrice: p.sale_price,
-                                purchasePrice: p.purchase_price,
-                              });
+                                 Signalé en rouge ici pour être repéré sans ouvrir la fiche.
+                                 Le message cite le prix d'achat : il ne s'adresse donc
+                                 qu'à qui a le droit de le lire — et de le corriger. */
+                              const problem = canSeePrices
+                                ? packagingPriceProblem({
+                                    label: pk.label,
+                                    factor: pk.factor,
+                                    price: pk.price ?? null,
+                                    unitSalePrice: p.sale_price,
+                                    purchasePrice: p.purchase_price,
+                                  })
+                                : null;
                               return (
                                 <span
                                   key={pk.id}
@@ -818,9 +833,13 @@ export function ProductsScreen() {
                                   )}
                                   title={
                                     problem ??
-                                    `${pk.label} = ${pk.factor} pièce${pk.factor > 1 ? "s" : ""} · ${formatCurrency(
-                                      packagingPiecePrice(effPrice, pk.factor),
-                                    )} la pièce${pk.barcode ? ` · code-barres ${pk.barcode}` : ""}`
+                                    (canSeePrices
+                                      ? `${pk.label} = ${pk.factor} pièce${pk.factor > 1 ? "s" : ""} · ${formatCurrency(
+                                          packagingPiecePrice(effPrice, pk.factor),
+                                        )} la pièce${pk.barcode ? ` · code-barres ${pk.barcode}` : ""}`
+                                      : `${pk.label} = ${pk.factor} pièce${pk.factor > 1 ? "s" : ""}${
+                                          pk.barcode ? ` · code-barres ${pk.barcode}` : ""
+                                        }`)
                                   }
                                 >
                                   <MdInventory2
@@ -834,9 +853,11 @@ export function ProductsScreen() {
                                     {pk.label}
                                   </span>
                                   <span className={problem ? "" : "text-neutral-400"}>×{pk.factor}</span>
-                                  <span className={problem ? "" : "text-neutral-500"}>
-                                    {formatCurrency(effPrice)}
-                                  </span>
+                                  {canSeePrices ? (
+                                    <span className={problem ? "" : "text-neutral-500"}>
+                                      {formatCurrency(effPrice)}
+                                    </span>
+                                  ) : null}
                                 </span>
                               );
                             })}

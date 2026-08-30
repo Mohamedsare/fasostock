@@ -444,7 +444,12 @@ export async function setProductBarcode(id: string, barcode: string) {
     await enqueueOutbox("product_set_barcode", { id, barcode: normalized });
     return;
   }
-  const { error } = await supabase.from("products").update({ barcode: normalized }).eq("id", id);
+  // RPC et non UPDATE : depuis 00217 la table n'est plus écrivable sans `products.update`,
+  // or la page Code Barre s'ouvre aussi sur `barcodes.manage` seul.
+  const { error } = await supabase.rpc("set_product_barcode", {
+    p_product_id: id,
+    p_barcode: normalized,
+  });
   if (error) throw error;
 }
 

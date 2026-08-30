@@ -12,7 +12,12 @@ import {
   FsSectionLabel,
   fsInputClass,
 } from "@/components/ui/fs-screen-primitives";
-import { P, PERMISSIONS_ALL, PERMISSION_LABELS_FR } from "@/lib/constants/permissions";
+import {
+  P,
+  PERMISSIONS_ALL,
+  PERMISSION_LABELS_FR,
+  permissionGrantWarning,
+} from "@/lib/constants/permissions";
 import {
   createCompanyUser,
   getUserPermissionKeys,
@@ -725,20 +730,35 @@ export function UsersScreen() {
                     </p>
                   ) : null}
                   {visiblePermissionKeys.map((key) => {
-                    const checked = (rightsQ.data ?? []).includes(key);
+                    const granted = rightsQ.data ?? [];
+                    const checked = granted.includes(key);
                     const label = PERMISSION_LABELS_FR[key] ?? key;
                     const busy = rightsMut.isPending || rightsQ.isFetching;
+                    /* Deux cases qui s'annulent, ou une case seule qui n'ouvre rien :
+                       la liste est plate, personne ne peut le deviner. */
+                    const warning = checked ? permissionGrantWarning(key, granted) : null;
                     return (
                       <label
                         key={key}
                         className={cn(
-                          "flex items-center justify-between gap-3 rounded-[10px] border border-black/6 bg-fs-card px-3 py-2",
+                          "flex items-start justify-between gap-3 rounded-[10px] border bg-fs-card px-3 py-2",
+                          warning ? "border-amber-500/50" : "border-black/6",
                           busy && "pointer-events-none opacity-60",
                         )}
                       >
-                        <span className="text-xs text-neutral-800 sm:text-sm">{label}</span>
+                        <span className="min-w-0">
+                          <span className="block text-xs text-neutral-800 sm:text-sm">
+                            {label}
+                          </span>
+                          {warning ? (
+                            <span className="mt-0.5 block text-[11px] leading-relaxed text-amber-800 dark:text-amber-300">
+                              {warning}
+                            </span>
+                          ) : null}
+                        </span>
                         <input
                           type="checkbox"
+                          className="mt-0.5 shrink-0"
                           checked={checked}
                           disabled={busy}
                           aria-label={label}
