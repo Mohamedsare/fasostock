@@ -232,11 +232,24 @@ function CreditReminderNudgeFor({ companyId }: { companyId: string }) {
 
   const config = configQ.data;
 
-  /** L'heure convenue par le patron n'est pas encore venue : on ne dit rien. */
-  const withinHours = useMemo(() => {
-    if (!config) return false;
-    return new Date().getHours() >= config.fromHour;
-  }, [config]);
+  /*
+   * L'HEURE EST RELUE AU FIL DE LA JOURNÉE, et non une fois pour toutes.
+   *
+   * Calculée une seule fois, « pas avant 08 h » se retournait contre son propriétaire :
+   * celui qui ouvre sa caisse à 7 h — c'est-à-dire tout le monde — voyait le verdict
+   * « trop tôt » figé pour toute la session. Passer 8 h ne réveillait rien, et le rappel
+   * ne venait jamais. Le réglage censé décaler l'apparition l'annulait purement et
+   * simplement.
+   *
+   * Un battement d'une minute suffit : la précision utile est l'heure, pas la seconde,
+   * et l'on ne réveille rien d'autre que la comparaison ci-dessous.
+   */
+  const [nowHour, setNowHour] = useState(() => new Date().getHours());
+  useEffect(() => {
+    const id = setInterval(() => setNowHour(new Date().getHours()), 60_000);
+    return () => clearInterval(id);
+  }, []);
+  const withinHours = config != null && nowHour >= config.fromHour;
 
   const candidates = useMemo(() => {
     if (!config || !salesQ.data) return [];
@@ -272,25 +285,31 @@ function CreditReminderNudgeFor({ companyId }: { companyId: string }) {
   const [tour, setTour] = useState<CustomerCreditAggregate[] | null>(null);
 
   useEffect(() => {
-    if (!active || !ready || dismissed) return;
+    if (!active || !ready || dismissed || !withinHours) return;
     if (tour !== null || candidates.length === 0) return;
     // Différé : figer la liste en plein corps d'effet déclencherait la cascade de rendus
     // que `react-hooks/set-state-in-effect` interdit.
     const t = setTimeout(() => setTour(candidates), 0);
     return () => clearTimeout(t);
-  }, [active, ready, dismissed, tour, candidates]);
+  }, [active, ready, dismissed, withinHours, tour, candidates]);
 
   const total = tour?.length ?? 0;
   const current = tour?.[index] ?? null;
 
   /*
-   * Le tour est marqué fait à la PREMIÈRE apparition réelle, et non à l'ouverture de
-   * l'application : marquer trop tôt le ferait sauter les jours où les données arrivent
-   * lentement, c'est-à-dire exactement les jours de mauvaise connexion.
+   * Le tour est marqué fait à la PREMIÈRE APPARITION RÉELLE — au sens strict : une fiche
+   * existe ET elle est à l'écran.
+   *
+   * `withinHours` fait partie de la condition, et c'était le défaut jumeau du précédent :
+   * se connecter avant l'heure autorisée consommait le tour sans rien afficher. Le
+   * marqueur disait « déjà vu » d'une carte que personne n'avait vue, et la journée était
+   * perdue. Même raisonnement pour les données lentes : on ne marque rien tant qu'il n'y
+   * a rien à montrer, sinon les jours de mauvaise connexion sont précisément ceux où le
+   * rappel disparaît.
    */
   useEffect(() => {
-    if (current && companyId) writeTourMark(companyId);
-  }, [current, companyId]);
+    if (current && withinHours && companyId) writeTourMark(companyId);
+  }, [current, withinHours, companyId]);
 
   /*
    * LE DÉFILEMENT. Un pas toutes les `TOUR_STEP_MS`, jusqu'au dernier client, puis la
@@ -306,12 +325,14 @@ function CreditReminderNudgeFor({ companyId }: { companyId: string }) {
    * qui revient ne doit pas se retrouver trois clients plus loin.
    */
   useEffect(() => {
-    if (!active || !ready || dismissed || paused || !current) return;
+    // `withinHours` ici aussi : sans lui, le tour défilait À VIDE avant l'heure dite et
+    // se terminait tout seul, invisible, avant même d'avoir eu le droit de s'afficher.
+    if (!active || !ready || dismissed || paused || !withinHours || !current) return;
     const t = setTimeout(() => {
       setIndex((i) => i + 1);
     }, TOUR_STEP_MS);
     return () => clearTimeout(t);
-  }, [active, ready, dismissed, paused, current, index]);
+  }, [active, ready, dismissed, paused, withinHours, current, index]);
 
   /*
    * Fin du tour : l'index a dépassé le dernier client. On referme.
@@ -321,11 +342,11 @@ function CreditReminderNudgeFor({ companyId }: { companyId: string }) {
    * réapparaître au prochain recalcul.
    */
   useEffect(() => {
-    if (!ready || dismissed || total === 0) return;
+    if (!ready || dismissed || !withinHours || total === 0) return;
     if (index < total) return;
     const t = setTimeout(() => setDismissed(true), 0);
     return () => clearTimeout(t);
-  }, [ready, dismissed, index, total]);
+  }, [ready, dismissed, withinHours, index, total]);
 
   if (!active || !ready || dismissed || !withinHours || !current) return null;
 
