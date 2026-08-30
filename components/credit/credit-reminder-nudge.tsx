@@ -194,20 +194,29 @@ function CreditReminderNudgeFor({ companyId }: { companyId: string }) {
   /** Le rappel n'a le droit d'exister que si tout est réuni — on ne lit rien avant. */
   const active = moduleOn && !isBusyRoute(pathname) && !blocked && !tourAlreadyDone;
 
+  /*
+   * LE DÉLAI COMPTE DEPUIS L'OUVERTURE, ET NE REPART JAMAIS À ZÉRO.
+   *
+   * Tableau de dépendances VIDE, et c'est tout l'objet de ce bloc. Il contenait
+   * auparavant `active` — lequel dépend de `pathname`. Chaque changement de page
+   * relançait donc le compte à rebours de six secondes… c'est-à-dire exactement ce que
+   * fait un commerçant qui vient de se connecter : il clique. Tableau de bord, ventes,
+   * clients — et le minuteur repartait de zéro à chaque fois. Le rappel n'arrivait
+   * jamais, sauf à rester six secondes immobile sur un écran.
+   *
+   * `ready` ne dit qu'une chose : « l'application est ouverte depuis assez longtemps
+   * pour qu'on ait le droit de parler ». Savoir s'il FAUT parler (module ouvert, page de
+   * caisse, tour déjà fait) est la responsabilité d'`active`, évaluée à chaque rendu.
+   * Les deux ne se mélangent plus.
+   *
+   * Conséquence voulue : si le délai expire pendant que le caissier est au comptoir, la
+   * carte ne s'affiche pas — mais elle apparaîtra dès qu'il quittera la caisse, au lieu
+   * de repartir pour six secondes.
+   */
   useEffect(() => {
-    if (!active) {
-      /*
-       * Remise a plat DIFFEREE. Appeler `setReady(false)` en plein corps d'effet
-       * declenche un rendu en cascade (react-hooks/set-state-in-effect) : on repasse
-       * donc par la boucle d'evenements, ce qui ne change rien au resultat visible
-       * (le rappel n'est de toute facon pas affiche quand `active` est faux).
-       */
-      const reset = setTimeout(() => setReady(false), 0);
-      return () => clearTimeout(reset);
-    }
     const t = setTimeout(() => setReady(true), APPEAR_DELAY_MS);
     return () => clearTimeout(t);
-  }, [active]);
+  }, []);
 
   const configQ = useQuery({
     queryKey: queryKeys.creditRemindersConfig(companyId),
