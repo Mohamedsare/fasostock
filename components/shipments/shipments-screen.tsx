@@ -29,7 +29,7 @@
  * (aucune fonction de 00213 n'écrit dans `store_inventory`).
  */
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   MdAdd,
@@ -56,6 +56,7 @@ import {
   FsSectionLabel,
   fsInputClass,
 } from "@/components/ui/fs-screen-primitives";
+import { FsPager } from "@/components/ui/fs-pager";
 import { useAppContext } from "@/lib/features/common/app-context";
 import { usePermissions } from "@/lib/features/permissions/use-permissions";
 import { whatsappUrl } from "@/lib/features/share/share-document";
@@ -72,6 +73,7 @@ import {
 } from "@/lib/features/shipments/messages";
 import {
   SHIPMENT_STATUS_LABELS,
+  SHIPMENTS_PAGE_SIZE,
   type Shipment,
   type ShipmentStatus,
 } from "@/lib/features/shipments/types";
@@ -165,14 +167,44 @@ export function ShipmentsScreen() {
   const [reimbursing, setReimbursing] = useState<Shipment | null>(null);
   const [created, setCreated] = useState<Shipment | null>(null);
 
+  /*
+   * PAGINÉ CÔTÉ SERVEUR. Un grossiste qui expédie en province fait plusieurs colis par
+   * jour : au bout d'un an, tout charger d'un coup revient à envoyer des milliers de
+   * lignes à un téléphone pour en afficher vingt.
+   *
+   * `placeholderData` garde la page précédente affichée pendant que la suivante arrive :
+   * sans lui, chaque clic vide la liste et fait sauter la mise en page — sur une
+   * connexion lente, l'écran clignote à chaque changement de page.
+   */
+  const [page, setPage] = useState(0);
   const listQ = useQuery({
-    queryKey: queryKeys.shipments(companyId, contextStoreId),
-    queryFn: () => listShipments({ companyId, storeId: contextStoreId }),
+    queryKey: queryKeys.shipmentsPage(companyId, contextStoreId, page),
+    queryFn: () =>
+      listShipments({
+        companyId,
+        storeId: contextStoreId,
+        limit: SHIPMENTS_PAGE_SIZE,
+        offset: page * SHIPMENTS_PAGE_SIZE,
+      }),
     enabled: Boolean(companyId) && canView,
     staleTime: 30_000,
+    placeholderData: (prev) => prev,
   });
 
-  const shipments = useMemo(() => listQ.data ?? [], [listQ.data]);
+  /*
+   * Changer de boutique remet la pagination à sa première page — sinon on atterrit
+   * « page 4 » d'une boutique qui n'a que douze lignes, donc sur un écran vide.
+   *
+   * Différé d'un tour de boucle : remettre l'état à plat en plein corps d'effet
+   * déclenche la cascade de rendus que `react-hooks/set-state-in-effect` interdit.
+   */
+  useEffect(() => {
+    const t = setTimeout(() => setPage(0), 0);
+    return () => clearTimeout(t);
+  }, [contextStoreId]);
+
+  const shipments = useMemo(() => listQ.data?.rows ?? [], [listQ.data]);
+  const hasMore = listQ.data?.hasMore ?? false;
 
   /** Le chiffre autour duquel l'écran est construit. */
   const summary = useMemo(() => {
@@ -685,6 +717,22 @@ export function ShipmentsScreen() {
         })}
       </div>
 
+      {/*
+        Le pager compte la PAGE SERVEUR (« Expéditions 21 – 40 »). Les puces et la
+        recherche affinent ensuite cette page — même convention que partout ailleurs,
+        et l'on ne promet pas une recherche qui fouillerait un an d'archives sans les
+        charger.
+      */}
+      <FsPager
+        page={page}
+        hasMore={hasMore}
+        pageSize={SHIPMENTS_PAGE_SIZE}
+        rowsOnPage={shipments.length}
+        busy={listQ.isFetching}
+        onPageChange={setPage}
+        itemLabel="Expéditions"
+      />
+
       {formOpen && storeId ? (
         <ShipmentFormDialog
           companyId={companyId}
@@ -693,7 +741,7 @@ export function ShipmentsScreen() {
           onCreated={async (id) => {
             setFormOpen(false);
             const fresh = await listShipments({ companyId, storeId, limit: 5 });
-            setCreated(fresh.find((s) => s.id === id) ?? null);
+            setCreated(fresh.rows.find((s) => s.id === id) ?? null);
             await qc.invalidateQueries({ queryKey: ["shipments", companyId] });
           }}
         />

@@ -326,6 +326,14 @@ export const queryKeys = {
   partnerOfftakes: (companyId: string, storeId: string | null) =>
     ["partner-offtakes", companyId, storeId ?? "__all__"] as const,
   /**
+   * UNE page de l'historique. Le numéro de page fait partie de la clé — sans lui, deux
+   * pages se partageraient la même entrée de cache et se remplaceraient l'une l'autre.
+   * Le préfixe reste celui ci-dessus : invalider `partnerOfftakes` invalide donc toutes
+   * les pages d'un coup après une écriture.
+   */
+  partnerOfftakesPage: (companyId: string, storeId: string | null, page: number) =>
+    ["partner-offtakes", companyId, storeId ?? "__all__", "page", page] as const,
+  /**
    * Catalogue de saisie d'un enlèvement. Clé DISTINCTE de `quickSupplyCatalog` : les
    * deux projections ont la même vocation mais pas la même forme (celle-ci porte le
    * prix de gros, celle-là le coût de l'arrivage). Les confondre servirait un objet
@@ -348,6 +356,9 @@ export const queryKeys = {
   /** Expéditions d'une boutique (préfixe `['shipments', companyId]`). */
   shipments: (companyId: string, storeId: string | null) =>
     ["shipments", companyId, storeId ?? "__all__"] as const,
+  /** UNE page d'expéditions — même raison d'être que `partnerOfftakesPage`. */
+  shipmentsPage: (companyId: string, storeId: string | null, page: number) =>
+    ["shipments", companyId, storeId ?? "__all__", "page", page] as const,
   /** Remboursements de frais + relances d'une expédition précise. */
   shipmentDetail: (shipmentId: string) => ["shipments", "detail", shipmentId] as const,
   /** Articles retenus au comptoir sur une boutique — garde-fou du comptage d'inventaire. */

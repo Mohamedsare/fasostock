@@ -52,6 +52,7 @@ import {
 import { PosBarcodeScannerDialog } from "@/components/pos/pos-barcode-scanner-dialog";
 import { OfftakePaymentDialog } from "@/components/partner-offtakes/offtake-payment-dialog";
 import { FsConfirmDialog } from "@/components/ui/fs-confirm-dialog";
+import { FsPager } from "@/components/ui/fs-pager";
 import { ProductListThumbnail } from "@/components/products/product-list-thumbnail";
 import {
   FsCard,
@@ -78,6 +79,7 @@ import {
 } from "@/lib/features/partner-offtakes/messages";
 import {
   OFFTAKE_STATUS_LABELS,
+  OFFTAKES_PAGE_SIZE,
   type OfftakeDraftLine,
   type OfftakeProduct,
   type PartnerOfftake,
@@ -237,15 +239,45 @@ export function PartnerOfftakesScreen() {
     staleTime: 60_000,
   });
 
+  /*
+   * L'historique est PAGINÉ CÔTÉ SERVEUR. Une boutique qui tourne fait plusieurs bons
+   * par jour : au bout d'un an, tout charger d'un coup, c'est plusieurs milliers de
+   * lignes et leurs articles envoyés à un téléphone pour en afficher vingt.
+   *
+   * `placeholderData` garde la page précédente à l'écran pendant que la suivante
+   * arrive : sans lui, chaque changement de page vide la liste et fait sauter la mise en
+   * page — sur une connexion lente, l'écran clignote à chaque clic.
+   */
+  const [page, setPage] = useState(0);
   const historyQ = useQuery({
-    queryKey: queryKeys.partnerOfftakes(companyId, contextStoreId),
-    queryFn: () => listPartnerOfftakes({ companyId, storeId: contextStoreId }),
+    queryKey: queryKeys.partnerOfftakesPage(companyId, contextStoreId, page),
+    queryFn: () =>
+      listPartnerOfftakes({
+        companyId,
+        storeId: contextStoreId,
+        limit: OFFTAKES_PAGE_SIZE,
+        offset: page * OFFTAKES_PAGE_SIZE,
+      }),
     enabled: Boolean(companyId) && canView,
     staleTime: 30_000,
+    placeholderData: (prev) => prev,
   });
 
+  /*
+   * Changer de boutique remet la pagination à sa première page — sinon on atterrit
+   * « page 4 » d'une boutique qui n'a que douze lignes, donc sur un écran vide.
+   *
+   * Différé d'un tour de boucle : remettre l'état à plat en plein corps d'effet
+   * déclenche la cascade de rendus que `react-hooks/set-state-in-effect` interdit.
+   */
+  useEffect(() => {
+    const t = setTimeout(() => setPage(0), 0);
+    return () => clearTimeout(t);
+  }, [contextStoreId]);
+
   const catalog = useMemo(() => catalogQ.data ?? [], [catalogQ.data]);
-  const offtakes = useMemo(() => historyQ.data ?? [], [historyQ.data]);
+  const offtakes = useMemo(() => historyQ.data?.rows ?? [], [historyQ.data]);
+  const historyHasMore = historyQ.data?.hasMore ?? false;
 
   /** Partenaires déjà venus — proposés à la saisie pour ne pas retaper un nom. */
   const knownPartners = useMemo(() => {
@@ -384,7 +416,7 @@ export function PartnerOfftakesScreen() {
       // On relit l'enlèvement plutôt que de le reconstituer : numéro et totaux sont
       // calculés en base, et c'est CE bon-là qu'on va imprimer et envoyer.
       const fresh = await listPartnerOfftakes({ companyId, storeId, limit: 5 });
-      return fresh.find((o) => o.id === id) ?? null;
+      return fresh.rows.find((o) => o.id === id) ?? null;
     },
     onSuccess: async (created) => {
       toast.success("Enlèvement enregistré. Le stock est à jour.");
@@ -615,6 +647,11 @@ export function PartnerOfftakesScreen() {
           onPdf={(id) => pdfMut.mutate(id)}
           pdfPending={pdfMut.isPending}
           onWhatsApp={(o) => sendWhatsApp(o, "reminder")}
+          page={page}
+          hasMore={historyHasMore}
+          rowsOnPage={offtakes.length}
+          onPageChange={setPage}
+          pagerBusy={historyQ.isFetching}
         />
       )}
 
@@ -1130,6 +1167,11 @@ function HistoryTab(props: {
   onPdf: (id: string) => void;
   pdfPending: boolean;
   onWhatsApp: (o: PartnerOfftake) => void;
+  page: number;
+  hasMore: boolean;
+  rowsOnPage: number;
+  onPageChange: (p: number) => void;
+  pagerBusy: boolean;
 }) {
   return (
     <>
@@ -1345,6 +1387,23 @@ function HistoryTab(props: {
           );
         })}
       </div>
+
+      {/*
+        Le pager porte sur la PAGE SERVEUR, pas sur le filtre local : « Bons 21 – 40 »
+        compte ce que la base a renvoyé. Les puces (En cours / Soldés / Tous) et la
+        recherche affinent ensuite CETTE page. C'est la convention de l'historique des
+        mouvements de stock, et elle évite la promesse intenable d'un filtre qui
+        chercherait dans un an d'archives sans les charger.
+      */}
+      <FsPager
+        page={props.page}
+        hasMore={props.hasMore}
+        pageSize={OFFTAKES_PAGE_SIZE}
+        rowsOnPage={props.rowsOnPage}
+        busy={props.pagerBusy}
+        onPageChange={props.onPageChange}
+        itemLabel="Bons"
+      />
     </>
   );
 }

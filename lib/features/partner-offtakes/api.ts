@@ -5,12 +5,14 @@ import { fetchAllPages } from "@/lib/supabase/fetch-all-pages";
 import { fetchByChunks } from "@/lib/supabase/fetch-by-chunks";
 import { firstProductImageUrlFromNestedRows } from "@/lib/features/products/product-images";
 import { fetchStoreCatalog } from "@/lib/features/stores/store-catalog";
+import { OFFTAKES_PAGE_SIZE } from "./types";
 import type {
   CreatePartnerOfftakeInput,
   OfftakeProduct,
   OfftakeStatus,
   PartnerOfftake,
   PartnerOfftakeLine,
+  PartnerOfftakePage,
   PartnerOfftakePayment,
 } from "./types";
 
@@ -154,23 +156,38 @@ export async function listPartnerOfftakes(params: {
   /** `null` = toutes les boutiques de l'utilisateur. */
   storeId: string | null;
   limit?: number;
-}): Promise<PartnerOfftake[]> {
+  offset?: number;
+}): Promise<PartnerOfftakePage> {
   const supabase = createClient();
-  const limit = params.limit ?? 60;
+  const limit = params.limit ?? OFFTAKES_PAGE_SIZE;
+  const offset = Math.max(0, params.offset ?? 0);
 
+  /*
+   * PAGINATION SERVEUR — `range(offset, offset + limit)` demande UNE LIGNE DE PLUS que
+   * la page. Sa présence dit « il y en a encore », sans le `count: exact` qui obligerait
+   * PostgreSQL à compter toute la table à chaque page.
+   *
+   * Le tri porte sur `(created_at DESC, id DESC)` et non sur `created_at` seul : deux
+   * bons enregistrés dans la même seconde — ce qui arrive quand on solde une tournée de
+   * partenaires — auraient sinon un ordre indéterminé, et une ligne pourrait apparaître
+   * sur deux pages pendant qu'une autre n'apparaîtrait sur aucune.
+   */
   let q = supabase
     .from("partner_offtakes")
     .select(offtakeSelect)
     .eq("company_id", params.companyId)
     .order("created_at", { ascending: false })
-    .limit(limit);
+    .order("id", { ascending: false })
+    .range(offset, offset + limit);
   if (params.storeId) q = q.eq("store_id", params.storeId);
 
   const { data: rows, error } = await q;
   if (error) throw error;
 
-  const offtakes = (rows ?? []) as Array<Record<string, unknown>>;
-  if (offtakes.length === 0) return [];
+  const raw = (rows ?? []) as Array<Record<string, unknown>>;
+  const hasMore = raw.length > limit;
+  const offtakes = raw.slice(0, limit);
+  if (offtakes.length === 0) return { rows: [], hasMore: false };
 
   const ids = offtakes.map((r) => String(r.id));
   const authorIds = [
@@ -215,7 +232,7 @@ export async function listPartnerOfftakes(params: {
     linesByOfftake.set(key, list);
   }
 
-  return offtakes.map((r) => {
+  const mapped = offtakes.map((r) => {
     const id = String(r.id);
     const createdBy = r.created_by ? String(r.created_by) : null;
     const total = toNum(r.total_amount);
@@ -242,6 +259,8 @@ export async function listPartnerOfftakes(params: {
       lines: linesByOfftake.get(id) ?? [],
     } satisfies PartnerOfftake;
   });
+
+  return { rows: mapped, hasMore };
 }
 
 /** Les règlements d'un enlèvement, du plus récent au plus ancien. */

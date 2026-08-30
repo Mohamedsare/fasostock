@@ -2,9 +2,14 @@
 
 import { createClient } from "@/lib/supabase/client";
 import { fetchByChunks } from "@/lib/supabase/fetch-by-chunks";
+import {
+  SHIPMENT_REIMBURSEMENTS_MAX,
+  SHIPMENTS_PAGE_SIZE,
+} from "./types";
 import type {
   CreateShipmentInput,
   Shipment,
+  ShipmentPage,
   ShipmentReimbursement,
   ShipmentStatus,
   ShippableSale,
@@ -33,23 +38,40 @@ export async function listShipments(params: {
   /** `null` = toutes les boutiques de l'utilisateur. */
   storeId: string | null;
   limit?: number;
-}): Promise<Shipment[]> {
+  offset?: number;
+}): Promise<ShipmentPage> {
   const supabase = createClient();
-  const limit = params.limit ?? 80;
+  const limit = params.limit ?? SHIPMENTS_PAGE_SIZE;
+  const offset = Math.max(0, params.offset ?? 0);
 
+  /*
+   * PAGINATION SERVEUR — une ligne lue en trop dit « il y a une suite », sans le
+   * `count: exact` qui ferait compter toute la table à chaque page.
+   *
+   * Tri sur `(created_at DESC, id DESC)` : plusieurs colis partent souvent dans la même
+   * minute pour le même car. Sur `created_at` seul, leur ordre relatif serait
+   * indéterminé d'une requête à l'autre — un colis pourrait apparaître sur deux pages
+   * pendant qu'un autre n'apparaîtrait sur aucune. Sur un suivi de frais avancés, un
+   * colis invisible est de l'argent perdu.
+   */
   let q = supabase
     .from("shipments")
     .select(shipmentSelect)
     .eq("company_id", params.companyId)
     .order("created_at", { ascending: false })
-    .limit(limit);
+    .order("id", { ascending: false })
+    .range(offset, offset + limit);
   if (params.storeId) q = q.eq("store_id", params.storeId);
 
-  const { data: rows, error } = await q;
+  const { data: rawRows, error } = await q;
   if (error) throw error;
 
-  const shipments = (rows ?? []) as Array<Record<string, unknown>>;
-  if (shipments.length === 0) return [];
+  const all = (rawRows ?? []) as Array<Record<string, unknown>>;
+  const hasMore = all.length > limit;
+  const rows = all.slice(0, limit);
+
+  const shipments = rows;
+  if (shipments.length === 0) return { rows: [], hasMore: false };
 
   const ids = shipments.map((r) => String(r.id));
   const saleIds = [
@@ -91,7 +113,7 @@ export async function listShipments(params: {
     }
   }
 
-  return shipments.map((r) => {
+  const mapped = shipments.map((r) => {
     const cost = toNum(r.shipping_cost);
     const done = toNum(r.shipping_reimbursed);
     const id = String(r.id);
@@ -131,6 +153,8 @@ export async function listShipments(params: {
       reminderCount: stat?.count ?? 0,
     } satisfies Shipment;
   });
+
+  return { rows: mapped, hasMore };
 }
 
 /** Enregistre l'expédition. Le RPC ne touche jamais au stock — voir la migration 00213. */
@@ -203,7 +227,11 @@ export async function listShipmentReimbursements(
     .from("shipment_reimbursements")
     .select("id, amount, method, reference, note, created_at, created_by")
     .eq("shipment_id", shipmentId)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    // Borne de principe : un colis n'a jamais deux cents remboursements, mais aucune
+    // lecture ne part sans plafond ici — c'est ce qui met le module à l'abri du seuil
+    // silencieux des 1000 lignes de PostgREST, aujourd'hui comme dans trois ans.
+    .limit(SHIPMENT_REIMBURSEMENTS_MAX);
   if (error) throw error;
 
   const rows = (data ?? []) as Array<Record<string, unknown>>;

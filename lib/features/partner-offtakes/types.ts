@@ -119,3 +119,20 @@ export const OFFTAKE_STATUS_LABELS: Record<OfftakeStatus, string> = {
   unpaid: "Non payé",
   overdue: "En retard",
 };
+
+/**
+ * Une page d'historique. `hasMore` vient d'une ligne lue en trop côté serveur, jamais
+ * d'un `count` : compter toute la table à chaque page coûterait plus cher que la page
+ * elle-même, et la seule question posée par l'écran est « y a-t-il une suite ? ».
+ */
+export type PartnerOfftakePage = {
+  rows: PartnerOfftake[];
+  hasMore: boolean;
+};
+
+/**
+ * Vingt lignes par page — même mesure que l'historique des mouvements de stock.
+ * C'est ce qui tient sur un écran de téléphone sans défilement interminable, et ce qui
+ * arrive vite sur une connexion de marché.
+ */
+export const OFFTAKES_PAGE_SIZE = 20;

@@ -113,3 +113,22 @@ export type ShippableSale = {
   total: number;
   createdAt: string;
 };
+
+/**
+ * Une page d'expéditions. `hasMore` vient d'une ligne lue en trop, jamais d'un `count` :
+ * l'écran n'a besoin de savoir qu'une chose — reste-t-il une suite.
+ */
+export type ShipmentPage = {
+  rows: Shipment[];
+  hasMore: boolean;
+};
+
+/** Vingt colis par page — même mesure que partout ailleurs dans l'application. */
+export const SHIPMENTS_PAGE_SIZE = 20;
+
+/**
+ * Plafond des remboursements lus pour UNE expédition. Un colis n'en a jamais deux
+ * cents — mais aucune lecture ne part sans borne dans ce dépôt : c'est ce qui garantit
+ * qu'on ne rencontrera jamais le plafond silencieux des 1000 lignes de PostgREST.
+ */
+export const SHIPMENT_REIMBURSEMENTS_MAX = 200;
