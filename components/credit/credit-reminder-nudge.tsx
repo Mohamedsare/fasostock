@@ -71,9 +71,19 @@ function isBusyRoute(pathname: string): boolean {
   return pathname === ROUTES.checkoutQueue || pathname.startsWith(`${ROUTES.checkoutQueue}/`);
 }
 
-/** Marqueur « déjà montré » — par entreprise, pour ne pas suivre un patron d'une maison à l'autre. */
+/**
+ * Marqueur « déjà montré » — par entreprise, pour ne pas suivre un patron d'une maison
+ * à l'autre.
+ *
+ * Le suffixe `_v2` n'est pas décoratif. La première version relisait ce marqueur à
+ * chaque rendu et se coupait donc l'herbe sous le pied (voir le bloc « MARQUEUR LU UNE
+ * SEULE FOIS » plus bas) : les navigateurs qui ont tourné dessus gardent un marqueur
+ * posé pour aujourd'hui, alors que la carte n'a jamais été montrée. Changer de clé les
+ * repart à neuf sans rien demander au commerçant — sinon le correctif ne se verrait
+ * que le lendemain, chez ceux-là mêmes qui ont signalé la panne.
+ */
 function shownKey(companyId: string): string {
-  return `fs_credit_nudge_shown_${companyId}`;
+  return `fs_credit_nudge_shown_v2_${companyId}`;
 }
 
 function readShownDay(companyId: string): string | null {
@@ -94,13 +104,27 @@ function writeShownDay(companyId: string, day: string): void {
   }
 }
 
+/**
+ * Enveloppe : elle ne fait qu'attendre de savoir DANS QUELLE MAISON on est.
+ *
+ * Le marqueur « deja montre aujourd'hui » est range par entreprise. Le lire avant que
+ * le contexte ait livre l'identifiant reviendrait a le lire sous une cle vide, donc a
+ * ne rien trouver, donc a reafficher le rappel a chaque rechargement. Le `key` remonte
+ * l'ecran a neuf si le patron change d'entreprise, ce qui relit le bon marqueur.
+ */
 export function CreditReminderNudge() {
+  const ctx = useAppContext();
+  const companyId = ctx.data?.companyId ?? "";
+  if (!companyId) return null;
+  return <CreditReminderNudgeFor key={companyId} companyId={companyId} />;
+}
+
+function CreditReminderNudgeFor({ companyId }: { companyId: string }) {
   const qc = useQueryClient();
   const ctx = useAppContext();
   const { helpers: h } = usePermissions();
   const pathname = usePathname() ?? "";
 
-  const companyId = ctx.data?.companyId ?? "";
   const storeId = ctx.data?.storeId ?? null;
   const companyName = ctx.data?.companyName ?? "";
   const storeName = ctx.data?.stores.find((s) => s.id === storeId)?.name ?? companyName;
@@ -111,11 +135,30 @@ export function CreditReminderNudge() {
   const [index, setIndex] = useState(0);
 
   const today = isoDatePlusDays(0);
-  const alreadyShownToday = companyId ? readShownDay(companyId) === today : true;
-  const blocked = companyId ? readShownDay(companyId) === "blocked" : true;
+
+  /*
+   * MARQUEUR LU UNE SEULE FOIS — et c'est tout le sujet de ce bloc.
+   *
+   * L'effet plus bas ÉCRIT « montré aujourd'hui » dès qu'un client à relancer existe.
+   * Tant que cette valeur était RELUE à chaque rendu, elle se retournait contre la carte
+   * qu'elle venait d'autoriser : l'effet écrivait le marqueur, le rendu suivant le
+   * relisait, `active` retombait à faux, et la carte disparaissait. Or le rendu suivant
+   * arrive immédiatement — les trois requêtes ne se résolvent pas ensemble, et la
+   * moindre navigation redéclenche `usePathname`. D'où le symptôme : aucune carte, ou le
+   * temps d'un battement de cil.
+   *
+   * Le marqueur sert à empêcher une NOUVELLE apparition (rechargement plus tard dans la
+   * journée, lendemain), jamais à retirer celle qui est à l'écran. Il est donc lu une
+   * fois, à l'ouverture — l'initialiseur paresseux de `useState` garantit cette unicité,
+   * y compris sous le double rendu du mode strict — et l'entreprise est déjà connue
+   * puisque l'enveloppe ne monte cet écran qu'à ce moment-là.
+   */
+  const [shownDayAtMount] = useState<string | null>(() => readShownDay(companyId));
+  const alreadyShownToday = shownDayAtMount === today;
+  const blocked = shownDayAtMount === "blocked";
 
   /** Le rappel n'a le droit d'exister que si tout est réuni — on ne lit rien avant. */
-  const active = moduleOn && Boolean(companyId) && !isBusyRoute(pathname) && !blocked && !alreadyShownToday;
+  const active = moduleOn && !isBusyRoute(pathname) && !blocked && !alreadyShownToday;
 
   useEffect(() => {
     if (!active) {
