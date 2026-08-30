@@ -12,6 +12,11 @@ import {
 } from "@/lib/features/invoices/invoice-a4-store-preview";
 import { generateInvoicePdfBlob } from "@/lib/features/invoices/generate-invoice-pdf";
 import type { ReceiptTicketData } from "@/lib/features/receipt/receipt-ticket-types";
+import {
+  RECEIPT_TEMPLATE_CHOICES,
+  normalizeReceiptTemplate,
+  type ReceiptTicketTemplate,
+} from "@/lib/features/receipt/receipt-ticket-template";
 import { getStore, updateStore } from "@/lib/features/stores/api";
 import type { Store } from "@/lib/features/stores/types";
 import { cn } from "@/lib/utils/cn";
@@ -46,6 +51,32 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
     <p className="text-[11px] font-bold uppercase tracking-wide text-[#F97316]">
       {children}
     </p>
+  );
+}
+
+/** Vignette schématique d'un modèle de ticket — reconnaître le rendu sans lire. */
+function TemplateThumb({ variant }: { variant: ReceiptTicketTemplate }) {
+  const bar = "block rounded-[1px] bg-neutral-400";
+  return (
+    <span className="flex h-[52px] w-[38px] shrink-0 flex-col justify-center gap-[3px] rounded-md border border-black/[0.12] bg-white px-[5px] py-[4px]">
+      <span className="mx-auto block h-[5px] w-[22px] rounded-[1px] bg-neutral-800" />
+      {variant === "classic" ? (
+        <>
+          <span className="block border-t border-dashed border-neutral-400" />
+          <span className={cn(bar, "h-[2px] w-full")} />
+          <span className={cn(bar, "h-[2px] w-full")} />
+          <span className="block border-t border-dashed border-neutral-400" />
+          <span className={cn(bar, "ml-auto h-[3px] w-[20px] bg-neutral-800")} />
+        </>
+      ) : (
+        <>
+          <span className="block border-t border-neutral-400" />
+          <span className={cn(bar, "h-[2px] w-[26px]")} />
+          <span className={cn(bar, "ml-auto h-[2px] w-[14px]")} />
+          <span className="block h-[7px] w-full rounded-[1px] bg-neutral-900" />
+        </>
+      )}
+    </span>
   );
 }
 
@@ -802,12 +833,14 @@ export function StoreReceiptFormatDialog({
   onUpdated: () => void;
 }) {
   const [width, setWidth] = useState<58 | 80>(80);
+  const [template, setTemplate] = useState<ReceiptTicketTemplate>("classic");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!store || !open) return;
     setWidth(store.receipt_paper_width_mm === 58 ? 58 : 80);
+    setTemplate(normalizeReceiptTemplate(store.receipt_template));
     setError(null);
     setLoading(false);
   }, [store, open]);
@@ -841,8 +874,13 @@ export function StoreReceiptFormatDialog({
     setLoading(true);
     setError(null);
     try {
-      await updateStore(store.id, { receipt_paper_width_mm: width });
-      toast.success(`Format ticket : ${width} mm enregistré`);
+      await updateStore(store.id, {
+        receipt_paper_width_mm: width,
+        receipt_template: template,
+      });
+      const templateLabel =
+        RECEIPT_TEMPLATE_CHOICES.find((t) => t.value === template)?.label ?? "";
+      toast.success(`Ticket ${templateLabel.toLowerCase()} — ${width} mm enregistré`);
       onUpdated();
       onClose();
     } catch (e) {
@@ -905,10 +943,49 @@ export function StoreReceiptFormatDialog({
               </p>
             ) : null}
             <p className="text-sm text-neutral-600">
-              Choisissez la largeur du ticket thermique. Ce format sera utilisé pour
-              l&apos;impression des tickets de <strong>{store.name}</strong> en Caisse
-              rapide.
+              Choisissez la mise en forme et la largeur du ticket thermique. Ces
+              réglages s&apos;appliquent à tous les tickets de{" "}
+              <strong>{store.name}</strong> : Caisse rapide, réimpressions et Caisse à
+              deux.
             </p>
+
+            <SectionTitle>Modèle du ticket</SectionTitle>
+            <div className="space-y-2.5">
+              {RECEIPT_TEMPLATE_CHOICES.map((choice) => {
+                const active = template === choice.value;
+                return (
+                  <button
+                    key={choice.value}
+                    type="button"
+                    onClick={() => setTemplate(choice.value)}
+                    aria-pressed={active}
+                    className={cn(
+                      "flex w-full items-center gap-3 rounded-xl border-2 p-3 text-left transition",
+                      active
+                        ? "border-[#F97316] bg-orange-50"
+                        : "border-black/[0.1] bg-white hover:border-[#F97316]/40",
+                    )}
+                  >
+                    <TemplateThumb variant={choice.value} />
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-bold text-neutral-900">
+                        {choice.label}
+                        {choice.value === "classic" ? (
+                          <span className="ml-2 rounded-full bg-neutral-200 px-2 py-0.5 text-[10px] font-bold text-neutral-700">
+                            Actuel par défaut
+                          </span>
+                        ) : null}
+                      </span>
+                      <span className="block text-xs text-neutral-500">
+                        {choice.description}
+                      </span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <SectionTitle>Largeur du papier</SectionTitle>
             <div className="space-y-2.5">
               {([80, 58] as const).map((w) => {
                 const active = width === w;
@@ -959,7 +1036,7 @@ export function StoreReceiptFormatDialog({
           {/* Aperçu du ticket */}
           <div className="min-h-0 overflow-y-auto bg-neutral-100 p-4 dark:bg-neutral-900/60">
             <p className="mb-3 text-center text-xs font-semibold text-neutral-500">
-              Aperçu ticket — {width} mm
+              Aperçu ticket — {RECEIPT_TEMPLATE_CHOICES.find((t) => t.value === template)?.label} · {width} mm
             </p>
             <div className="flex justify-center">
               <div
@@ -968,7 +1045,7 @@ export function StoreReceiptFormatDialog({
                   transformOrigin: "top center",
                 }}
               >
-                <ReceiptTicketPreview data={demo} />
+                <ReceiptTicketPreview data={demo} template={template} />
               </div>
             </div>
           </div>
@@ -988,7 +1065,7 @@ export function StoreReceiptFormatDialog({
             onClick={() => void submit()}
             className="flex-[1.4] rounded-xl bg-[#F97316] py-3 text-sm font-bold text-white shadow-sm disabled:opacity-60"
           >
-            {loading ? "Enregistrement…" : `Enregistrer (${width} mm)`}
+            {loading ? "Enregistrement…" : `Enregistrer (${template === "moderne" ? "Moderne" : "Classique"} · ${width} mm)`}
           </button>
         </div>
       </div>

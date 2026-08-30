@@ -84,6 +84,27 @@ export const P = {
    * produit ni l'ajustement de stock libre.
    */
   quickSupplyCreate: "quick_supply.create",
+  /**
+   * Page « Photos produits » — illustrer le catalogue, et RIEN d'autre. Accordé par
+   * défaut aux rôles qui travaillent le rayon : la page n'existe de toute façon que si
+   * le propriétaire a ouvert le module.
+   */
+  productsPhoto: "products.photo",
+  /**
+   * Créer une fiche produit SANS prix (elle reste invendable jusqu'à ce que le
+   * propriétaire la chiffre). Distinct de `products.create`, qui ouvre les prix.
+   */
+  productsDraftCreate: "products.draft_create",
+  /**
+   * Page « Enlèvements partenaires » — sortir de la marchandise pour un confrère et
+   * suivre ce qu'il doit. Accordé à AUCUN rôle : c'est une décision de patron.
+   */
+  partnerOfftakesManage: "partner_offtakes.manage",
+  /**
+   * Page « Expéditions » — envoyer un colis et suivre les frais avancés. Accordé à
+   * AUCUN rôle par défaut, pour la même raison.
+   */
+  shipmentsManage: "shipments.manage",
   /** Page Dépenses — consultation ; owner par défaut, accordable aux autres. */
   expensesView: "expenses.view",
   /** Page Dépenses — création / modification / suppression. */
@@ -166,6 +187,10 @@ export const PERMISSION_LABELS_FR: Record<string, string> = {
   [P.landedCostManage]: "Gerer le prix de revient (arrivages, frais, prix de vente)",
   [P.onlineStoreManage]: "Gerer la boutique en ligne (catalogue public, commandes web)",
   [P.quickSupplyCreate]: "Faire un approvisionnement (entrer de la marchandise)",
+  [P.productsPhoto]: "Ajouter des photos aux produits (page Photos produits)",
+  [P.productsDraftCreate]: "Ajouter un produit sans prix (a chiffrer par le patron)",
+  [P.partnerOfftakesManage]: "Gerer les enlevements partenaires (sortie de marchandise, creances)",
+  [P.shipmentsManage]: "Gerer les expeditions (colis, frais de transport avances)",
   [P.expensesView]: "Voir la page Depenses (charges)",
   [P.expensesManage]: "Gerer les depenses (ajout / modif / suppression)",
   [P.suppliersView]: "Voir les fournisseurs",

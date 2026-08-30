@@ -5,6 +5,11 @@ import QRCode from "react-qr-code";
 import { useEffect, useState } from "react";
 import type { ReceiptTicketData } from "@/lib/features/receipt/receipt-ticket-types";
 import {
+  normalizeReceiptTemplate,
+  type ReceiptTicketTemplate,
+} from "@/lib/features/receipt/receipt-ticket-template";
+import { ReceiptTicketPreviewModern } from "@/components/pos/receipt-ticket-preview-modern";
+import {
   RECEIPT_SEP_LONG,
   RECEIPT_SEP_MID,
   RECEIPT_SEP_TOTAL,
@@ -26,8 +31,26 @@ const archivoBlack = Archivo_Black({
 const mono =
   "'Courier New', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace";
 
+/**
+ * Aperçu du ticket thermique, dans la mise en forme de la boutique.
+ *
+ * `template` n'est utile qu'au dialogue de configuration, qui montre un modèle avant
+ * qu'il soit enregistré ; partout ailleurs le modèle voyage dans `data`, comme la devise.
+ */
+export function ReceiptTicketPreview({
+  data,
+  template,
+}: {
+  data: ReceiptTicketData;
+  template?: ReceiptTicketTemplate;
+}) {
+  const resolved = template ?? normalizeReceiptTemplate(data.receiptTemplate);
+  if (resolved === "moderne") return <ReceiptTicketPreviewModern data={data} />;
+  return <ReceiptTicketPreviewClassic data={data} />;
+}
+
 /** Copie visuelle de `ReceiptTicketWidget` (Flutter `receipt_ticket_dialog.dart`). */
-export function ReceiptTicketPreview({ data }: { data: ReceiptTicketData }) {
+function ReceiptTicketPreviewClassic({ data }: { data: ReceiptTicketData }) {
   const payU = paymentUppercase(data.paymentMethod);
   const isCashLike = payU === "ESPECES";
   /** Vente à crédit : preuve de dette au client (acompte + reste dû). */

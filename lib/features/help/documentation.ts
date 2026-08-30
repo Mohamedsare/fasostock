@@ -289,7 +289,7 @@ export const DOC_GROUPS: DocGroup[] = [
             kind: "bullets",
             title: "Les trois boutons de la carte d'une boutique",
             items: [
-              "Configurer le ticket : format 58 mm ou 80 mm, en-tête, pied de page, mentions légales, impression automatique après encaissement.",
+              "Configurer le ticket : modèle de mise en forme (Classique ou Moderne), largeur 58 mm ou 80 mm, en-tête, pied de page, mentions légales, impression automatique après encaissement. Le modèle Moderne imprime le nom complet de chaque article, le total dans un bandeau noir, et des filets nets à la place des lignes de tirets ; l'aperçu à droite montre le rendu exact avant d'enregistrer.",
               "Configurer la facture A4 : logo, slogan, nom et fonction du signataire, mentions, modèle de mise en page.",
               "Modifier : nom, adresse, téléphone de la boutique. Ces informations sont imprimées sur les documents remis au client.",
             ],
@@ -577,6 +577,118 @@ export const DOC_GROUPS: DocGroup[] = [
           },
         ],
         keywords: ["articles", "catalogue", "fiche", "prix", "csv", "import", "conditionnement", "alias"],
+      },
+      {
+        id: "product-photos",
+        title: "Photos produits",
+        route: "/photos-produits",
+        tagline: "Confier à l'équipe l'illustration du catalogue — et rien d'autre.",
+        access:
+          "Propriétaire, plus tout employé à qui il a coché « Ajouter des photos aux produits ».",
+        activation:
+          "Paramètres › Vos employés et le catalogue (propriétaire). Désactivé par défaut.",
+        blocks: [
+          {
+            kind: "p",
+            text: "Un catalogue sans photos se cherche au nom, et un nom se tape mal — surtout en caisse, un client devant soi. Photographier trois cents articles est pourtant un travail que le propriétaire ne finit jamais : il s'y met le soir, seul, et abandonne au quarantième. Ses vendeurs, eux, tiennent les articles dans la main toute la journée.",
+          },
+          {
+            kind: "p",
+            text: "Cette page leur confie la photo, et strictement la photo. L'employé voit la liste, voit d'un coup d'œil ce qui manque, prend l'article en photo avec le téléphone. Il ne peut ni renommer, ni reclasser, ni supprimer, et il ne voit aucun prix — ni d'achat, ni de vente, ni de marge.",
+          },
+          {
+            kind: "steps",
+            title: "Comment ça se passe",
+            items: [
+              "Ouvrez Photos produits. Par défaut, la page n'affiche que les articles SANS photo : c'est le travail qui reste.",
+              "Touchez un article, puis « Prendre la photo ». Sur téléphone, l'appareil s'ouvre directement.",
+              "La photo est réduite et envoyée toute seule. La vignette apparaît, et l'article quitte la liste « sans photo ».",
+              "Le compteur en haut indique où vous en êtes : « 128 illustrés sur 340 ».",
+              "Pour remplacer une photo ratée, passez sur « Tous » et touchez l'article : l'ancienne est remplacée.",
+            ],
+          },
+          {
+            kind: "note",
+            tone: "tip",
+            title: "À faire en une fois, rayon par rayon",
+            text: "La page se tient d'une main. Prenez un rayon, filtrez sur sa catégorie, et descendez la liste. Vingt minutes par rayon suffisent, et le catalogue devient utilisable au doigt en caisse — le vendeur reconnaît l'article sans lire.",
+          },
+          {
+            kind: "note",
+            tone: "info",
+            title: "Ce que l'employé ne peut pas faire ici",
+            text: "Aucun prix ne lui est montré, à aucun moment. Il ne peut pas modifier un nom, changer une catégorie, désactiver un article ni en supprimer un. S'il envoie une photo par erreur, vous la remplacez depuis la fiche produit comme d'habitude.",
+          },
+        ],
+        keywords: [
+          "photos",
+          "photo produit",
+          "images",
+          "illustrer",
+          "appareil photo",
+          "employé",
+          "vendeur",
+          "catalogue",
+        ],
+      },
+      {
+        id: "draft-products",
+        title: "Articles ajoutés par l'équipe",
+        route: "/products",
+        tagline: "L'employé saisit l'article qui manque ; vous posez le prix, il devient vendable.",
+        access:
+          "Propriétaire, plus tout employé à qui il a coché « Ajouter un produit sans prix ».",
+        activation:
+          "Paramètres › Vos employés et le catalogue (propriétaire). Désactivé par défaut.",
+        blocks: [
+          {
+            kind: "p",
+            text: "Un carton arrive avec quarante références dedans. Celui qui le déballe est le seul à avoir les articles sous les yeux — mais lui ouvrir la fiche produit, c'est lui ouvrir le prix d'achat, donc la marge de la maison. C'est exactement ce qu'un commerçant ne fait pas, et c'est pourquoi les nouveaux articles attendent des semaines.",
+          },
+          {
+            kind: "p",
+            text: "Une fois la fonction ouverte, l'employé dispose d'un bouton « Ajouter un article » réduit à ce qu'il peut voir : le nom, l'unité, le code-barres, la catégorie, une photo. Aucun champ de prix ne lui est présenté.",
+          },
+          {
+            kind: "steps",
+            title: "Le trajet d'un article, du carton au comptoir",
+            items: [
+              "L'employé saisit l'article. La fiche est créée, rangée, illustrée — et marquée « en attente de prix ».",
+              "L'article est INVENDABLE : il n'apparaît pas en caisse, il ne peut pas être mis au panier.",
+              "Vous ouvrez votre page Produits : un onglet « À chiffrer » s'affiche en tête avec le nombre d'articles en attente.",
+              "Vous ouvrez la fiche et posez le prix de vente. Rien d'autre à faire.",
+              "L'article devient opérationnel tout seul, à la seconde, et part en caisse.",
+            ],
+          },
+          {
+            kind: "note",
+            tone: "tip",
+            title: "Aucune case à cocher, aucun écran à retrouver",
+            text: "La mise en service tient au prix de vente et à rien d'autre. Que vous le posiez depuis la fiche produit, depuis l'application mobile, par import CSV ou depuis la page Prix de revient, l'article sort d'attente de la même façon. Vous ne pouvez pas oublier l'étape : elle n'existe pas.",
+          },
+          {
+            kind: "note",
+            tone: "warn",
+            title: "L'employé ne peut pas se donner le prix",
+            text: "Même en essayant, il ne peut pas fixer le prix d'un article en attente : la base refuse l'écriture. C'est ce qui rend la fonction confiable — sinon celui qui crée la fiche pourrait, dans la foulée, lui donner un prix, et la porte qu'on vient de fermer se rouvrirait toute seule.",
+          },
+          {
+            kind: "note",
+            tone: "info",
+            title: "Rien ne change pour vos articles existants",
+            text: "L'état « en attente de prix » ne concerne QUE les fiches créées par cette fonction. Un produit ancien affiché à 0 F ne bascule pas dedans : un article gratuit ou une fiche jamais terminée ne sont pas la même chose qu'un article qui attend son prix, et ils restent exactement dans l'état où vous les aviez laissés.",
+          },
+        ],
+        keywords: [
+          "employé ajoute un produit",
+          "sans prix",
+          "à chiffrer",
+          "en attente de prix",
+          "brouillon",
+          "nouvel article",
+          "carton",
+          "déballer",
+        ],
       },
       {
         id: "packagings",
@@ -1861,6 +1973,151 @@ export const DOC_GROUPS: DocGroup[] = [
         ],
       },
       {
+        id: "partner-offtakes",
+        title: "Enlèvements partenaires",
+        route: "/enlevements",
+        tagline: "La marchandise qu'un confrère vient prendre chez vous, et ce qu'il vous doit.",
+        access:
+          "Propriétaire, plus tout employé à qui il a coché « Gérer les enlèvements partenaires ».",
+        activation:
+          "Paramètres › Enlèvements partenaires (propriétaire). Désactivé par défaut.",
+        blocks: [
+          {
+            kind: "p",
+            text: "C'est l'inverse exact de l'Approvisionnement. Là, vous allez prendre de la marchandise chez un confrère pour la revendre. Ici, c'est un confrère qui vient en prendre chez vous : « Ali est passé ce matin, il a pris quinze cartons de savon, il a laissé 50 000, il paiera le reste vendredi. »",
+          },
+          {
+            kind: "p",
+            text: "Ce geste-là ne rentrait dans aucune page. Ce n'est pas une vente au comptoir (le prix est négocié, le paiement s'étale, l'acheteur est un professionnel), ce n'est pas un transfert (la marchandise quitte la maison), et le noter dans un cahier fait perdre à la fois le stock et la créance. Cette page l'écrit correctement, d'un seul geste.",
+          },
+          {
+            kind: "steps",
+            title: "Comment ça se passe",
+            items: [
+              "Touchez « Nouvel enlèvement » et indiquez le partenaire : son nom et son téléphone suffisent.",
+              "Ajoutez les articles pris, en cherchant par nom ou au code-barres. Réglez la quantité et le prix consenti — c'est un prix de gros, il vous appartient.",
+              "Saisissez ce qu'il laisse aujourd'hui, s'il laisse quelque chose. Le reste dû se calcule sous vos yeux.",
+              "Validez : la marchandise sort du stock en une seule opération, et le bon reçoit son numéro.",
+              "Remettez le papier : « Bon A4 » pour l'imprimer, ou « WhatsApp » pour lui envoyer le détail complet, article par article.",
+            ],
+          },
+          {
+            kind: "bullets",
+            title: "Ce que la page suit pour vous",
+            items: [
+              "Le total pris, l'encaissé et le reste dû par partenaire — l'ardoise du gros, séparée de celle du détail.",
+              "Chaque règlement partiel, avec sa date, son moyen de paiement et qui l'a reçu.",
+              "Le bon complet reste consultable : ce qui a été pris, à quel prix, et quel jour.",
+              "Un message de relance courtois, déjà écrit, quand un solde traîne.",
+            ],
+          },
+          {
+            kind: "note",
+            tone: "warn",
+            title: "L'alerte qui justifie la page à elle seule",
+            text: "Si un prix consenti passe sous votre prix d'achat, la page vous le dit AVANT de valider. C'est l'erreur que le cahier ne rattrape jamais : on accorde un prix d'ami sur un article dont le coût a monté, et la perte ne se découvre qu'à l'inventaire, des mois plus tard, sans qu'on puisse dire d'où elle vient.",
+          },
+          {
+            kind: "note",
+            tone: "info",
+            title: "Un enlèvement n'est pas une vente",
+            text: "Son montant n'entre pas dans le chiffre d'affaires du comptoir et ne se mélange pas à vos ventes du jour. C'est voulu : le gros et le détail n'ont ni les mêmes prix, ni les mêmes marges, ni le même rythme d'encaissement. Les empiler rendrait vos chiffres de caisse illisibles. Le stock, lui, est bien déduit — la marchandise est réellement partie.",
+          },
+          {
+            kind: "note",
+            tone: "tip",
+            title: "Et si le partenaire fait aussi expédier ?",
+            text: "Un enlèvement peut se rattacher à une expédition (page Expéditions) quand le confrère ne vient pas lui-même et fait porter la marchandise au car. Les frais de transport sont alors suivis à part, et se réclament séparément du solde de la marchandise.",
+          },
+        ],
+        keywords: [
+          "enlèvement",
+          "partenaire",
+          "confrère",
+          "vente en gros",
+          "grossiste",
+          "bon d'enlèvement",
+          "ardoise",
+          "revendeur",
+          "demi-gros",
+        ],
+      },
+      {
+        id: "shipments",
+        title: "Expéditions",
+        route: "/expeditions",
+        tagline: "Le colis parti en province, et les frais de transport que vous avez avancés.",
+        access:
+          "Propriétaire, plus tout employé à qui il a coché « Gérer les expéditions ».",
+        activation: "Paramètres › Expéditions (propriétaire). Désactivé par défaut.",
+        blocks: [
+          {
+            kind: "p",
+            text: "Vous vendez en gros à des commerçants éloignés. Le client de Fada, de Bobo ou de Dori appelle, commande, vous facturez, vous sortez la marchandise, vous portez le colis à la gare routière — et vous payez le car. Puis le colis voyage, arrive, est retiré (ou pas), et les 4 500 F du transport, vous les avez avancés.",
+          },
+          {
+            kind: "p",
+            text: "Ces frais-là ne sont dans aucune facture, ne sont pas une dépense de la maison, et sont trop petits pour qu'on y pense. Vingt colis par semaine, et c'est le bénéfice d'une journée entière qui est resté à la gare routière. Cette page suit le colis, et surtout ce que le transport vous doit.",
+          },
+          {
+            kind: "steps",
+            title: "Comment ça se passe",
+            items: [
+              "Touchez « Nouvelle expédition ». Choisissez la facture que vous venez d'établir : le client, son téléphone et le montant se remplissent tout seuls.",
+              "Indiquez le destinataire et la destination — les deux seules choses vraiment obligatoires.",
+              "Ajoutez le transporteur, le n° de bordereau, le nombre de colis et la date d'arrivée annoncée. Tout cela se complète plus tard si le bordereau n'est pas encore remis.",
+              "Saisissez les frais payés au car, et dites qui les a payés : vous, ou le client à l'arrivée.",
+              "Suivez le colis avec les boutons d'étape : Expédié › Arrivé › Retiré.",
+            ],
+          },
+          {
+            kind: "bullets",
+            title: "Ce que la page vous montre en tête",
+            items: [
+              "Les colis en route, ceux arrivés et pas encore retirés, et ceux en retard sur la date annoncée.",
+              "Le total des frais que vous avez avancés et qui ne vous sont pas encore revenus — le chiffre que personne ne connaît.",
+              "Par destinataire : ce qu'il doit sur le transport, indépendamment de ce qu'il doit sur la marchandise.",
+              "Ce que coûte réellement chaque destination, une fois vingt colis passés.",
+            ],
+          },
+          {
+            kind: "steps",
+            title: "Se faire rembourser le transport",
+            items: [
+              "Touchez le bouton WhatsApp d'une expédition : le message de réclamation est déjà écrit, courtois, avec le n° de bordereau et le montant exact.",
+              "Le client rembourse (souvent par mobile money) : touchez « Frais remboursés », le montant restant est pré-rempli.",
+              "Choisissez Orange Money, Moov, Wave, espèces ou virement, et validez.",
+              "L'expédition sort de la liste « frais à récupérer ». Un remboursement partiel y reste, avec le reliquat.",
+            ],
+          },
+          {
+            kind: "note",
+            tone: "info",
+            title: "Une expédition ne touche jamais au stock",
+            text: "La marchandise est déjà sortie par la facture ou par le bon d'enlèvement auquel le colis se rattache. La page suit le TRANSPORT, pas la marchandise : rien n'est déduit deux fois, et vos quantités restent justes même si vous enregistrez le colis trois jours après le départ du car.",
+          },
+          {
+            kind: "note",
+            tone: "tip",
+            title: "Les frais du client et la dette du client sont deux choses",
+            text: "Un client peut avoir soldé sa facture et vous devoir encore le car ; un autre peut avoir remboursé le car et devoir la marchandise. Les deux ardoises sont suivies séparément, et se réclament par deux messages différents — mélangez-les, et vous perdez toujours la plus petite des deux.",
+          },
+        ],
+        keywords: [
+          "expédition",
+          "colis",
+          "transport",
+          "gare routière",
+          "car",
+          "province",
+          "frais de transport",
+          "bordereau",
+          "livraison",
+          "envoi",
+          "grossiste",
+        ],
+      },
+      {
         id: "restock",
         title: "Réassort",
         route: "/reassort",
@@ -2030,6 +2287,74 @@ export const DOC_GROUPS: DocGroup[] = [
           "recouvrement",
           "annuler encaissement",
           "paiement en double",
+        ],
+      },
+      {
+        id: "credit-reminders",
+        title: "Rappels crédit",
+        route: "/rappels-credit",
+        tagline: "L'application vous rappelle qui vous doit, et écrit le message à sa place.",
+        access: "Propriétaire, plus tout employé qui a accès à la page Crédit.",
+        activation: "Paramètres › Rappels de crédit (propriétaire). Désactivé par défaut.",
+        blocks: [
+          {
+            kind: "p",
+            text: "Votre page Crédit sait déjà parfaitement qui vous doit combien. Le problème n'a jamais été là : il faut y aller. Et quand on vend toute la journée, on n'y va pas. L'argent dort dehors pendant des mois — non pas parce que le client refuse de payer, mais parce que personne n'a redemandé.",
+          },
+          {
+            kind: "p",
+            text: "Une fois les rappels activés, ils viennent à vous. Une carte discrète apparaît en bas de l'écran, à la fréquence que vous avez choisie : « Ouédraogo Salif vous doit 47 500 F — depuis 23 jours ». Deux boutons, et rien de plus : relancer, ou reporter.",
+          },
+          {
+            kind: "bullets",
+            title: "Ce que vous réglez vous-même",
+            items: [
+              "La fréquence : chaque jour, tous les 2 ou 3 jours, chaque semaine, chaque quinzaine ou chaque mois. C'est le délai avant qu'un MÊME client revienne — ce qui évite que trois personnes le relancent le même matin.",
+              "Le montant plancher : une dette de 500 F relancée chaque jour coûte plus cher en agacement qu'elle ne rapporte.",
+              "L'heure à partir de laquelle les rappels s'affichent : personne ne veut penser à ses créances en ouvrant la caisse au petit matin.",
+              "Les créances en retard seulement, ou toutes.",
+            ],
+          },
+          {
+            kind: "steps",
+            title: "La page Rappels crédit",
+            items: [
+              "Elle liste vos débiteurs, le plus urgent en premier : montant dû, ancienneté, échéance dépassée, date de la dernière relance.",
+              "Touchez « WhatsApp » : le message est déjà écrit — poli, court, avec le montant exact et la référence. Vous pouvez le relire et le modifier avant l'envoi.",
+              "Touchez « Reporter » pour mettre un client de côté trois jours : il ne réapparaîtra pas d'ici là.",
+              "Chaque relance envoyée est notée avec sa date, son canal et son auteur. Vous savez qui a déjà été relancé, et quand.",
+            ],
+          },
+          {
+            kind: "note",
+            tone: "tip",
+            title: "Le ton du message compte plus que le message",
+            text: "Les messages proposés sont volontairement courtois et sans reproche : on rappelle un montant, on remercie, on n'accuse pas. Un client de quartier qu'on brusque ne revient pas — et la créance est presque toujours un oubli, pas un refus. Le message s'ouvre dans WhatsApp avant l'envoi : vous gardez le dernier mot.",
+          },
+          {
+            kind: "note",
+            tone: "info",
+            title: "Rien n'est envoyé automatiquement",
+            text: "L'application ne relance jamais personne toute seule. Elle vous rappelle, elle écrit à votre place, mais c'est vous qui appuyez sur envoyer. Un message parti sans que vous l'ayez voulu, dans un commerce, est une brouille assurée.",
+          },
+          {
+            kind: "note",
+            tone: "info",
+            title: "Où vont les chiffres",
+            text: "Les montants viennent de vos créances réelles : ventes à crédit non soldées et acomptes. Encaisser un client depuis la page Crédit le fait disparaître des rappels à l'instant même — il n'y a pas deux listes à tenir.",
+          },
+        ],
+        keywords: [
+          "rappel",
+          "relance",
+          "créance",
+          "crédit",
+          "dette client",
+          "recouvrement",
+          "whatsapp",
+          "impayé",
+          "notification",
+          "ardoise",
         ],
       },
       {

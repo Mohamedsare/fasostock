@@ -311,6 +311,45 @@ export const queryKeys = {
     ["quick-supply", companyId, "catalog", storeId] as const,
   quickSupplyHistory: (companyId: string, storeId: string | null) =>
     ["quick-supply", companyId, "history", storeId ?? "__all__"] as const,
+  /**
+   * Catalogue vu par la page Photos produits — projection SANS les prix, donc une clé
+   * à part : réutiliser `products` ferait servir cette lecture allégée à la caisse.
+   */
+  photoCatalog: (companyId: string) => ["photo-catalog", companyId] as const,
+  /** Compteur « fiches en attente de prix » (badge de la page Produits). */
+  awaitingPricingCount: (companyId: string) =>
+    ["products", companyId, "awaiting-pricing-count"] as const,
+  /**
+   * Enlèvements partenaires. Préfixe `['partner-offtakes', companyId]` : après une
+   * sortie ou un règlement, la liste et les totaux se rafraîchissent d'un bloc.
+   */
+  partnerOfftakes: (companyId: string, storeId: string | null) =>
+    ["partner-offtakes", companyId, storeId ?? "__all__"] as const,
+  /**
+   * Catalogue de saisie d'un enlèvement. Clé DISTINCTE de `quickSupplyCatalog` : les
+   * deux projections ont la même vocation mais pas la même forme (celle-ci porte le
+   * prix de gros, celle-là le coût de l'arrivage). Les confondre servirait un objet
+   * d'un type à un écran qui en attend un autre.
+   */
+  partnerOfftakeCatalog: (companyId: string, storeId: string) =>
+    ["partner-offtakes", companyId, "catalog", storeId] as const,
+  /** Règlements d'un enlèvement précis. */
+  partnerOfftakePayments: (offtakeId: string) =>
+    ["partner-offtakes", "payments", offtakeId] as const,
+  /**
+   * Rappels de crédit : ce que l'on a déjà dit à qui, et quand. Distinct de
+   * `creditSales` — l'un est la dette, l'autre la relance.
+   */
+  creditReminderStates: (companyId: string) =>
+    ["credit-reminders", companyId, "states"] as const,
+  /** Réglage owner de la fréquence des rappels (`company_settings`). */
+  creditRemindersConfig: (companyId: string) =>
+    ["credit-reminders", companyId, "config"] as const,
+  /** Expéditions d'une boutique (préfixe `['shipments', companyId]`). */
+  shipments: (companyId: string, storeId: string | null) =>
+    ["shipments", companyId, storeId ?? "__all__"] as const,
+  /** Remboursements de frais + relances d'une expédition précise. */
+  shipmentDetail: (shipmentId: string) => ["shipments", "detail", shipmentId] as const,
   /** Articles retenus au comptoir sur une boutique — garde-fou du comptage d'inventaire. */
   awaitingPickupItems: (storeId: string) =>
     ["awaiting-pickup-items", storeId] as const,

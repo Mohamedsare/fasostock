@@ -45,6 +45,7 @@ import type {
   ProductFormSavePayload,
   ProductItem,
 } from "@/lib/features/products/types";
+import { DraftProductDialog } from "@/components/products/draft-product-dialog";
 import { ProductFormDialog } from "@/components/products/product-form-dialog";
 import { ProductBatchesDialog } from "@/components/products/product-batches-dialog";
 import {
@@ -86,6 +87,7 @@ import {
   MdInventory2,
   MdLockPerson,
   MdPlace,
+  MdPriceCheck,
   MdSearch,
   MdSell,
   MdUpload,
@@ -126,6 +128,10 @@ export function ProductsScreen() {
   const [packagingFilter, setPackagingFilter] = useState<"" | "with" | "without">("");
   const [page, setPage] = useState(0);
   const [showForm, setShowForm] = useState(false);
+  /** Fiche SANS prix (employé) — dialogue distinct du formulaire produit complet. */
+  const [showDraftForm, setShowDraftForm] = useState(false);
+  /** N'afficher que les fiches qui attendent leur prix (vue du patron). */
+  const [awaitingOnly, setAwaitingOnly] = useState(false);
   const [showImportCsv, setShowImportCsv] = useState(false);
   const [editing, setEditing] = useState<ProductItem | null>(null);
   const [batchesProduct, setBatchesProduct] = useState<ProductItem | null>(null);
@@ -140,6 +146,12 @@ export function ProductsScreen() {
   const canDeleteProduct = hasPermission(P.productsDelete);
   const canModifyProducts =
     canCreateProduct || canUpdateProduct || canDeleteProduct;
+  /*
+   * Fiche sans prix : ouverte par le propriétaire dans Paramètres, puis accordée au
+   * rôle. Ceux qui ont déjà `products.create` gardent le formulaire complet — leur
+   * proposer une saisie amputée serait un recul.
+   */
+  const canDraftProducts = (helpers?.canDraftProducts ?? false) && !canCreateProduct;
   const readOnlyCategoriesBrands = helpers?.isCashier ?? false;
   const companyId = ctx.data?.companyId ?? "";
   const storeId = ctx.data?.storeId ?? null;
@@ -441,6 +453,8 @@ export function ProductsScreen() {
           );
         if (!okName && !okSku && !okBarcode) return false;
       }
+      // Vue « à chiffrer » : les fiches ajoutées par l'équipe et pas encore tarifées.
+      if (awaitingOnly && p.awaiting_pricing !== true) return false;
       if (categoryFilter && p.category_id !== categoryFilter) return false;
       if (brandFilter && p.brand_id !== brandFilter) return false;
       if (packagingFilter) {
@@ -450,7 +464,24 @@ export function ProductsScreen() {
       }
       return true;
     });
-  }, [products, search, categoryFilter, brandFilter, packagingFilter, productAliasesOn]);
+  }, [
+    products,
+    search,
+    categoryFilter,
+    brandFilter,
+    packagingFilter,
+    awaitingOnly,
+    productAliasesOn,
+  ]);
+
+  /**
+   * Combien de fiches attendent leur prix. Compté sur la liste déjà chargée : aucune
+   * requête de plus, et le chiffre suit les créations de la session sans rechargement.
+   */
+  const awaitingCount = useMemo(
+    () => products.filter((p) => p.awaiting_pricing === true).length,
+    [products],
+  );
 
   const pageCount = filtered.length === 0 ? 0 : Math.ceil(filtered.length / PAGE_SIZE);
   const safePage = Math.min(page, Math.max(0, pageCount - 1));
@@ -599,6 +630,40 @@ export function ProductsScreen() {
                 ) : null}
               </div>
             ) : null}
+            {awaitingCount > 0 && canUpdateProduct ? (
+              /*
+                Le bandeau ne s'affiche QUE s'il y a du travail, et seulement pour qui
+                peut le faire. Une bannière permanente sur un compteur à zéro devient
+                invisible en trois jours ; celle-ci arrive quand l'équipe a saisi
+                quelque chose, et disparaît quand tout est chiffré.
+              */
+              <button
+                type="button"
+                onClick={() => {
+                  setAwaitingOnly((v) => !v);
+                  setPage(0);
+                }}
+                className={cn(
+                  "flex w-full items-start gap-2 rounded-md border px-3 py-2.5 text-left transition-colors",
+                  awaitingOnly
+                    ? "border-amber-500 bg-amber-500/15"
+                    : "border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/15",
+                )}
+              >
+                <MdPriceCheck className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" aria-hidden />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-semibold text-amber-900 dark:text-amber-200">
+                    {awaitingCount} article{awaitingCount > 1 ? "s" : ""} attend
+                    {awaitingCount > 1 ? "ent" : ""} son prix
+                  </span>
+                  <span className="mt-0.5 block text-xs leading-relaxed text-amber-900/80 dark:text-amber-200/80">
+                    {awaitingOnly
+                      ? "Vous ne voyez que ces articles. Touchez encore pour revoir tout le catalogue."
+                      : "Ajoutés par votre équipe. Ils ne sont pas vendables : ouvrez la fiche, mettez le prix de vente, et ils le deviennent aussitôt."}
+                  </span>
+                </span>
+              </button>
+            ) : null}
             <div className="relative">
               <MdSearch
                 className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-neutral-400"
@@ -698,6 +763,16 @@ export function ProductsScreen() {
                       >
                         {p.name}
                       </h3>
+                      {p.awaiting_pricing === true ? (
+                        /*
+                          Le barré d'un produit inactif dit « ne se vend pas » mais pas
+                          POURQUOI. Ici la raison est précise et l'action évidente : il
+                          manque un prix, et c'est au patron de le poser.
+                        */
+                        <span className="mt-0.5 inline-flex items-center rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800">
+                          Attend son prix
+                        </span>
+                      ) : null}
                       {p.prescription_required || p.dosage_form ? (
                         <div className="mt-0.5 flex flex-wrap items-center gap-1">
                           {p.prescription_required ? (
@@ -1090,13 +1165,20 @@ export function ProductsScreen() {
         </FsCard>
       ) : null}
 
-      {tab === "products" && canCreateProduct ? (
+      {tab === "products" && (canCreateProduct || canDraftProducts) ? (
+        /*
+          Même bouton, deux portes. Qui a `products.create` garde le formulaire complet ;
+          qui n'a que la fiche sans prix ouvre le dialogue réduit. Deux boutons côte à
+          côte n'auraient de sens pour personne — aucun utilisateur n'a les deux droits
+          à la fois (cf. `canDraftProducts`).
+        */
         <>
           <FsFab
-            ariaLabel="Nouveau produit"
+            ariaLabel={canCreateProduct ? "Nouveau produit" : "Ajouter un article"}
             onClick={() => {
               setEditing(null);
-              setShowForm(true);
+              if (canCreateProduct) setShowForm(true);
+              else setShowDraftForm(true);
             }}
           >
             <MdAdd className="h-7 w-7" aria-hidden />
@@ -1105,14 +1187,28 @@ export function ProductsScreen() {
             type="button"
             onClick={() => {
               setEditing(null);
-              setShowForm(true);
+              if (canCreateProduct) setShowForm(true);
+              else setShowDraftForm(true);
             }}
             className="fixed bottom-8 right-8 z-40 hidden items-center gap-2 rounded-lg bg-[#f97316] px-5 py-3.5 text-sm font-semibold text-white shadow-lg min-[900px]:inline-flex"
           >
             <MdAdd className="h-5 w-5 shrink-0" aria-hidden />
-            Nouveau produit
+            {canCreateProduct ? "Nouveau produit" : "Ajouter un article"}
           </button>
         </>
+      ) : null}
+
+      {showDraftForm ? (
+        <DraftProductDialog
+          companyId={companyId}
+          storeId={storeId}
+          categories={catalogCategories}
+          onClose={() => setShowDraftForm(false)}
+          onCreated={() => {
+            void qc.invalidateQueries({ queryKey: queryKeys.products(companyId) });
+            void qc.invalidateQueries({ queryKey: queryKeys.photoCatalog(companyId) });
+          }}
+        />
       ) : null}
 
       {showForm ? (

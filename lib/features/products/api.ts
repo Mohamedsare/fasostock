@@ -29,18 +29,62 @@ const productSelectBase =
  */
 let activityAttributesColumnAvailable = true;
 
+/**
+ * `awaiting_pricing` (migration 00210) — même parade, même raison. Suivi séparément :
+ * les deux migrations n'arrivent pas ensemble, et une base à jour de l'une mais pas de
+ * l'autre ne doit pas perdre les deux colonnes.
+ */
+let awaitingPricingColumnAvailable = true;
+
+/**
+ * L'erreur dit-elle « colonne inconnue » ?
+ *
+ * `42703` = verdict de Postgres ; `PGRST204` = refus de PostgREST sur la foi de son
+ * cache de schéma (donc possiblement transitoire, le temps qu'il recharge après un
+ * `db push`). Le repli sur le message couvre les variantes de formulation.
+ */
 function isUndefinedColumnError(error: unknown): boolean {
   const e = error as { code?: string; message?: string } | null;
   if (!e) return false;
-  // 42703 = undefined_column (Postgres) ; PGRST204 = colonne absente du cache PostgREST.
   if (e.code === "42703" || e.code === "PGRST204") return true;
-  return typeof e.message === "string" && e.message.includes("activity_attributes");
+  return (
+    typeof e.message === "string" &&
+    (e.message.includes("activity_attributes") || e.message.includes("awaiting_pricing"))
+  );
+}
+
+/**
+ * Laquelle des deux colonnes optionnelles l'erreur accuse-t-elle ?
+ *
+ * Postgres nomme la colonne fautive dans son message (« column products.awaiting_pricing
+ * does not exist »), et c'est ce nom qu'on suit. Sans cette distinction, une seule
+ * migration manquante ferait renoncer aux DEUX colonnes pour toute la session — le
+ * drapeau étant un simple booléen qui ne se remet jamais à l'endroit. La page perdrait
+ * alors les champs métier (00189) parce que le suivi des prix (00210) n'est pas passé,
+ * sans que rien ne l'explique.
+ *
+ * Message muet (`42703` seul, réponse tronquée) : on ne devine pas, on retire les deux.
+ * C'est le repli sûr — dégradé, jamais cassé.
+ */
+function undefinedColumnNames(error: unknown): {
+  activityAttributes: boolean;
+  awaitingPricing: boolean;
+} {
+  const message = (error as { message?: string } | null)?.message;
+  if (typeof message === "string") {
+    const activityAttributes = message.includes("activity_attributes");
+    const awaitingPricing = message.includes("awaiting_pricing");
+    if (activityAttributes || awaitingPricing) return { activityAttributes, awaitingPricing };
+  }
+  return { activityAttributes: true, awaitingPricing: true };
 }
 
 function productSelectColumns(): string {
-  return activityAttributesColumnAvailable
-    ? `${productSelectBase}, activity_attributes`
-    : productSelectBase;
+  const extra = [
+    activityAttributesColumnAvailable ? "activity_attributes" : null,
+    awaitingPricingColumnAvailable ? "awaiting_pricing" : null,
+  ].filter(Boolean);
+  return extra.length > 0 ? `${productSelectBase}, ${extra.join(", ")}` : productSelectBase;
 }
 
 /**
@@ -120,10 +164,22 @@ export async function listProducts(companyId: string): Promise<ProductItem[]> {
     );
 
   let { data, error } = await runQuery();
-  // Migration 00189 pas encore appliquée : on retire la colonne et on rejoue —
-  // le catalogue (et donc la caisse) reste opérationnel.
-  if (error && activityAttributesColumnAvailable && isUndefinedColumnError(error)) {
-    activityAttributesColumnAvailable = false;
+  /*
+   * Migration 00189 (`activity_attributes`) ou 00210 (`awaiting_pricing`) pas encore
+   * appliquée : on retire LA colonne accusée et on rejoue. Sans ce repli, une base non
+   * migrée n'afficherait plus aucun produit — donc plus aucune vente possible, et pour
+   * tous les clients, pas seulement pour ceux qui utiliseraient la nouveauté.
+   */
+  // Boucle plutôt qu'un `if` : quand les DEUX migrations manquent, Postgres n'accuse
+  // que la première colonne rencontrée. Un seul essai supplémentaire retomberait donc
+  // sur la seconde. Deux tours au plus — il n'y a que deux colonnes optionnelles.
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    if (!error) break;
+    if (!activityAttributesColumnAvailable && !awaitingPricingColumnAvailable) break;
+    if (!isUndefinedColumnError(error)) break;
+    const missing = undefinedColumnNames(error);
+    if (missing.activityAttributes) activityAttributesColumnAvailable = false;
+    if (missing.awaitingPricing) awaitingPricingColumnAvailable = false;
     ({ data, error } = await runQuery());
   }
   if (error) throw error;

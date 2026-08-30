@@ -1,6 +1,7 @@
 "use client";
 
 import { AppPresenceReporter } from "@/components/presence/app-presence-reporter";
+import { CreditReminderNudge } from "@/components/credit/credit-reminder-nudge";
 import { OfflineStrip } from "@/components/offline/offline-strip";
 import { CompanyCurrencyLoader } from "@/components/providers/company-currency-loader";
 import { CompanyTimeZoneLoader } from "@/components/providers/company-timezone-loader";
@@ -358,6 +359,12 @@ export function AppShell({ children, userEmail }: AppShellProps) {
         />
       ) : null}
       <OfflineStrip />
+      {/*
+        Rappels de crédit : la carte discrète qui vient au commerçant au lieu d'attendre
+        qu'il aille la chercher. Elle décide seule de se taire (module fermé, route de
+        caisse, déjà vue aujourd'hui) — voir `credit-reminder-nudge.tsx`.
+      */}
+      <CreditReminderNudge />
       {/* Rend active la devise de l'entreprise pour tous les montants affichés. */}
       <CompanyCurrencyLoader />
       <CompanyTimeZoneLoader />

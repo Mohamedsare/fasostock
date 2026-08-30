@@ -28,6 +28,28 @@ const quickSupplyColumn = createOptimisticColumn();
 const saleDocumentsColumn = createOptimisticColumn();
 /** Idem pour la migration 00203 (page « Conditionnements »). */
 const packagingsPageColumn = createOptimisticColumn();
+/**
+ * Idem pour la migration 00209 — un SEUL compteur pour ses cinq colonnes (photos
+ * produits, produits sans prix, enlèvements, rappels de crédit, expéditions). Elles
+ * arrivent dans le même fichier : aucun état intermédiaire ne les sépare, et cinq
+ * compteurs coûteraient jusqu''à cinq allers-retours perdus au premier chargement
+ * d''une base non migrée, pour distinguer des cas qui ne peuvent pas se produire.
+ */
+const newModulesColumns = createOptimisticColumn();
+
+/** Les cinq colonnes de 00209, demandées ou omises ensemble. */
+const NEW_MODULE_COLUMNS = [
+  "employee_photos_enabled",
+  "employee_draft_products_enabled",
+  "partner_offtakes_enabled",
+  "credit_reminders_enabled",
+  "shipments_enabled",
+] as const;
+
+/** Vrai si l''erreur impute l''échec à l''une des cinq colonnes de 00209. */
+function isMissingNewModuleColumn(error: unknown): boolean {
+  return NEW_MODULE_COLUMNS.some((c) => isUndefinedColumnError(error, c));
+}
 
 const COMPANY_SELECT_BASE =
   "id, name, logo_url, business_type_slug, warehouse_feature_enabled, purchases_feature_enabled, transfers_feature_enabled, store_quota_increase_enabled, ai_predictions_enabled, warehouse_kpi_show_purchase_value, warehouse_kpi_show_sale_value, accounting_module_enabled, hr_module_enabled, expiry_module_enabled, parts_module_enabled, restock_module_enabled, product_locations_enabled, product_aliases_enabled, landed_cost_enabled, custom_expenses_enabled, dual_cashier_enabled, online_store_enabled";
@@ -51,11 +73,13 @@ export async function fetchAppContextForCompany(
     withQuickSupply: boolean;
     withSaleDocuments: boolean;
     withPackagingsPage: boolean;
+    withNewModules: boolean;
   }) => {
     const extra = [
       opts.withQuickSupply ? "quick_supply_enabled" : null,
       opts.withSaleDocuments ? "sale_documents_enabled" : null,
       opts.withPackagingsPage ? "packagings_page_enabled" : null,
+      ...(opts.withNewModules ? NEW_MODULE_COLUMNS : []),
     ].filter(Boolean);
     return supabase
       .from("companies")
@@ -72,10 +96,12 @@ export async function fetchAppContextForCompany(
   let askedQuickSupply = quickSupplyColumn.available();
   let askedSaleDocuments = saleDocumentsColumn.available();
   let askedPackagingsPage = packagingsPageColumn.available();
+  let askedNewModules = newModulesColumns.available();
   let { data: companyRaw, error: cErr } = await runCompanyQuery({
     withQuickSupply: askedQuickSupply,
     withSaleDocuments: askedSaleDocuments,
     withPackagingsPage: askedPackagingsPage,
+    withNewModules: askedNewModules,
   });
   if (cErr && askedQuickSupply && isUndefinedColumnError(cErr, "quick_supply_enabled")) {
     quickSupplyColumn.markMissing();
@@ -84,6 +110,7 @@ export async function fetchAppContextForCompany(
       withQuickSupply: false,
       withSaleDocuments: askedSaleDocuments,
       withPackagingsPage: askedPackagingsPage,
+      withNewModules: askedNewModules,
     }));
   }
   if (cErr && askedSaleDocuments && isUndefinedColumnError(cErr, "sale_documents_enabled")) {
@@ -93,6 +120,7 @@ export async function fetchAppContextForCompany(
       withQuickSupply: askedQuickSupply,
       withSaleDocuments: false,
       withPackagingsPage: askedPackagingsPage,
+      withNewModules: askedNewModules,
     }));
   }
   if (cErr && askedPackagingsPage && isUndefinedColumnError(cErr, "packagings_page_enabled")) {
@@ -102,6 +130,18 @@ export async function fetchAppContextForCompany(
       withQuickSupply: askedQuickSupply,
       withSaleDocuments: askedSaleDocuments,
       withPackagingsPage: false,
+      withNewModules: askedNewModules,
+    }));
+  }
+  // Migration 00209 : ses cinq colonnes partent et se retirent ensemble.
+  if (cErr && askedNewModules && isMissingNewModuleColumn(cErr)) {
+    newModulesColumns.markMissing();
+    askedNewModules = false;
+    ({ data: companyRaw, error: cErr } = await runCompanyQuery({
+      withQuickSupply: askedQuickSupply,
+      withSaleDocuments: askedSaleDocuments,
+      withPackagingsPage: askedPackagingsPage,
+      withNewModules: false,
     }));
   }
   // `select()` dynamique : PostgREST ne peut plus inférer la forme de la ligne.
@@ -138,6 +178,11 @@ export async function fetchAppContextForCompany(
     quick_supply_enabled?: boolean | null;
     sale_documents_enabled?: boolean | null;
     packagings_page_enabled?: boolean | null;
+    employee_photos_enabled?: boolean | null;
+    employee_draft_products_enabled?: boolean | null;
+    partner_offtakes_enabled?: boolean | null;
+    credit_reminders_enabled?: boolean | null;
+    shipments_enabled?: boolean | null;
     online_store_enabled?: boolean | null;
   };
 
@@ -197,6 +242,11 @@ export async function fetchAppContextForCompany(
       quickSupplyEnabled: cr.quick_supply_enabled === true,
       saleDocumentsEnabled: cr.sale_documents_enabled === true,
       packagingsPageEnabled: cr.packagings_page_enabled === true,
+      employeePhotosEnabled: cr.employee_photos_enabled === true,
+      employeeDraftProductsEnabled: cr.employee_draft_products_enabled === true,
+      partnerOfftakesEnabled: cr.partner_offtakes_enabled === true,
+      creditRemindersEnabled: cr.credit_reminders_enabled === true,
+      shipmentsEnabled: cr.shipments_enabled === true,
       onlineStoreEnabled: cr.online_store_enabled === true,
       // Flag évalué côté client (bouton uniquement) ; non requis pour les gardes de route serveur.
       promoAdGenerationEnabled: false,
@@ -251,6 +301,11 @@ export async function fetchAppContextForCompany(
     quickSupplyEnabled: cr.quick_supply_enabled === true,
     saleDocumentsEnabled: cr.sale_documents_enabled === true,
     packagingsPageEnabled: cr.packagings_page_enabled === true,
+    employeePhotosEnabled: cr.employee_photos_enabled === true,
+    employeeDraftProductsEnabled: cr.employee_draft_products_enabled === true,
+    partnerOfftakesEnabled: cr.partner_offtakes_enabled === true,
+    creditRemindersEnabled: cr.credit_reminders_enabled === true,
+    shipmentsEnabled: cr.shipments_enabled === true,
     onlineStoreEnabled: cr.online_store_enabled === true,
     // Flag évalué côté client (bouton uniquement) ; non requis pour les gardes de route serveur.
     promoAdGenerationEnabled: false,

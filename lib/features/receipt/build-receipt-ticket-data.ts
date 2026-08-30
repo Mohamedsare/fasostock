@@ -10,6 +10,7 @@ import {
   type MobileMoneyProvider,
 } from "@/lib/features/payments/payment-display";
 import { getActiveCurrency } from "@/lib/utils/currency";
+import { normalizeReceiptTemplate } from "./receipt-ticket-template";
 
 /**
  * `credit` = vente à crédit en caisse rapide (réglage entreprise, cf. `quick-pos-credit.ts`).
@@ -134,6 +135,8 @@ export function buildReceiptTicketDataFromSale(
   return {
     // Transmise au serveur avec le ticket : lui n'a aucune devise ambiante.
     currencyCode: getActiveCurrency(),
+    // Mise en forme choisie pour cette boutique — le serveur ne peut pas la deviner.
+    receiptTemplate: normalizeReceiptTemplate(store.receipt_template),
     storeName: store.name,
     storeLogoUrl: store.logo_url ?? null,
     storeAddress: store.address ?? null,
@@ -180,6 +183,8 @@ export function buildReceiptTicketData(
   return {
     // Transmise au serveur avec le ticket : lui n'a aucune devise ambiante.
     currencyCode: getActiveCurrency(),
+    // Mise en forme choisie pour cette boutique — le serveur ne peut pas la deviner.
+    receiptTemplate: normalizeReceiptTemplate(store.receipt_template),
     storeName: store.name,
     storeLogoUrl: store.logo_url ?? null,
     storeAddress: store.address ?? null,

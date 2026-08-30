@@ -75,6 +75,21 @@ export function receiptIntAmount(n: number, currencyCode?: string | null): strin
   return `${amount} ${currencySymbolOf(currencyCode ?? getActiveCurrency())}`;
 }
 
+/**
+ * Nombre seul, séparateurs de milliers (« 12 500 ») — ticket « moderne ».
+ * Le symbole de devise n'y est pas répété sur la ligne « qté × PU » : il figure déjà
+ * sur le total de la ligne, juste en face.
+ */
+export function receiptGroupedNumber(
+  n: number,
+  currencyCode?: string | null,
+): string {
+  const code = currencyCode ?? getActiveCurrency();
+  // Réutilise le formatage monétaire (mêmes séparateurs, mêmes espaces assainies)
+  // et retire le symbole : la devise est déjà lisible en face, sur le total.
+  return formatCurrencyFlutter(n, code).replace(currencySymbolOf(code), "").trim();
+}
+
 export function paymentUppercase(method: string): string {
   const t = method.trim().toLowerCase();
   if (t.includes("esp")) return "ESPECES";

@@ -39,6 +39,8 @@ export type Store = {
   engine_invoice_extra_phones: string | null;
   /** Largeur du ticket thermique (mm) pour le POS de cette boutique : 58 ou 80. `null` => 80 par défaut. */
   receipt_paper_width_mm: number | null;
+  /** Mise en forme du ticket thermique : `classic` (défaut) ou `moderne`. `null` => classique. */
+  receipt_template: string | null;
   /** true = la boutique partage tout le catalogue de l'entreprise (défaut). false = catalogue personnalisé (table store_products). */
   shares_company_catalog: boolean;
 };

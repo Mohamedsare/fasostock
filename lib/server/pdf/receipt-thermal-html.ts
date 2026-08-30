@@ -12,12 +12,30 @@ import {
   telLine,
   truncateName,
 } from "@/lib/features/receipt/receipt-ticket-format";
+import { normalizeReceiptTemplate } from "@/lib/features/receipt/receipt-ticket-template";
+import { renderReceiptThermalModernHtml } from "./receipt-thermal-modern-html";
 import QRCode from "qrcode";
 import { ARCHIVO_BLACK_FONT_FACE_CSS } from "./archivo-black-font";
 import { escapeHtml } from "./escape-html";
 
 function tx(s: string): string {
   return escapeHtml(sanitizeForPdf(s));
+}
+
+/**
+ * Ticket thermique HTML → PDF, dans la mise en forme choisie par la boutique
+ * (`stores.receipt_template`, transportée par le ticket : le serveur ne connaît
+ * aucune boutique). Absente ou inconnue ⇒ modèle classique, donc les tickets déjà
+ * en circulation sont imprimés à l'identique.
+ */
+export async function renderReceiptThermalHtml(
+  data: ReceiptTicketData,
+  paperWidthMm: 58 | 80 = 80,
+): Promise<string> {
+  if (normalizeReceiptTemplate(data.receiptTemplate) === "moderne") {
+    return renderReceiptThermalModernHtml(data, paperWidthMm);
+  }
+  return renderReceiptThermalClassicHtml(data, paperWidthMm);
 }
 
 /**
@@ -30,7 +48,7 @@ function tx(s: string): string {
  * éléments à largeur fixe (logo, nom de boutique, colonnes chiffres, longueur de
  * nom) pour qu'ils tiennent dans les 48 mm. Le rendu 80 mm reste inchangé.
  */
-export async function renderReceiptThermalHtml(
+export async function renderReceiptThermalClassicHtml(
   data: ReceiptTicketData,
   paperWidthMm: 58 | 80 = 80,
 ): Promise<string> {

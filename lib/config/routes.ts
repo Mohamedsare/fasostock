@@ -49,6 +49,26 @@ export const ROUTES = {
    * puis facture). Activé par le propriétaire dans Paramètres.
    */
   saleDocuments: "/factures-devis",
+  /**
+   * Photos produits : l'employé illustre le catalogue, et ne peut rien y faire d'autre.
+   * Activée par le propriétaire dans Paramètres.
+   */
+  productPhotos: "/photos-produits",
+  /**
+   * Enlèvements partenaires : la marchandise qu'un confrère vient prendre (l'exact
+   * opposé de l'Approvisionnement). Activé par le propriétaire dans Paramètres.
+   */
+  partnerOfftakes: "/enlevements",
+  /**
+   * Rappels de crédit : qui doit combien, depuis quand, et le message poli qui part
+   * sur WhatsApp. Activé par le propriétaire dans Paramètres.
+   */
+  creditReminders: "/rappels-credit",
+  /**
+   * Expéditions : le colis qui part en province, et les frais de transport avancés
+   * qu'il faut se faire rembourser. Activé par le propriétaire dans Paramètres.
+   */
+  shipments: "/expeditions",
   /** Module Pièces : compatibilités par modèle, équivalences, variantes — activé par la plateforme. */
   parts: "/pieces",
   /** Module Réassort : quoi recommander et en quelle quantité — actif par défaut. */

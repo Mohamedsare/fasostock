@@ -62,6 +62,12 @@ export type ProductItem = {
   stock_min: number;
   description: string | null;
   is_active: boolean;
+  /**
+   * Fiche créée par un employé sans prix (migration 00210). Le produit est inactif,
+   * donc invendable, et le redevient de lui-même dès que le propriétaire pose un prix
+   * de vente. Absent tant que la migration n'est pas appliquée.
+   */
+  awaiting_pricing?: boolean | null;
   category_id: string | null;
   brand_id: string | null;
   /** `both` | `warehouse_only` | `boutique_only` */

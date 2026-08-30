@@ -135,6 +135,33 @@ export type AppContextData = {
    */
   packagingsPageEnabled: boolean;
   /**
+   * Page « Photos produits » : l'employé illustre le catalogue sans pouvoir rien y
+   * modifier d'autre. Fermée par défaut, ouverte par le PROPRIÉTAIRE dans Paramètres
+   * (`companies.employee_photos_enabled`).
+   */
+  employeePhotosEnabled: boolean;
+  /**
+   * L'employé peut créer une fiche produit SANS prix — elle reste invendable jusqu'à
+   * ce que le propriétaire la chiffre. Fermé par défaut
+   * (`companies.employee_draft_products_enabled`).
+   */
+  employeeDraftProductsEnabled: boolean;
+  /**
+   * Module « Enlèvements partenaires » (la marchandise qu'un confrère vient prendre) —
+   * fermé par défaut (`companies.partner_offtakes_enabled`).
+   */
+  partnerOfftakesEnabled: boolean;
+  /**
+   * Module « Rappels de crédit » (relances des clients endettés) — fermé par défaut
+   * (`companies.credit_reminders_enabled`).
+   */
+  creditRemindersEnabled: boolean;
+  /**
+   * Module « Expéditions » (colis vers un client éloigné + frais avancés) — fermé par
+   * défaut (`companies.shipments_enabled`).
+   */
+  shipmentsEnabled: boolean;
+  /**
    * Pages retirées du menu de CET utilisateur par le propriétaire (« help »,
    * « notifications »). Confort d'affichage, pas frontière de sécurité — voir
    * `lib/features/settings/employee-hidden-pages.ts`. Absent ⇒ rien de masqué.
@@ -342,6 +369,35 @@ export type AccessHelpers = {
    * nommément, pour que son commercial puisse chiffrer sans tenir la caisse.
    */
   canSaleDocuments: boolean;
+  /** Page « Photos produits » ouverte par le propriétaire pour l'entreprise. */
+  employeePhotosOn: boolean;
+  /**
+   * Page Photos produits : module ouvert ET droit d'illustrer (photo, ou modification
+   * des produits — qui peut refaire une fiche peut évidemment la photographier).
+   */
+  canProductPhotos: boolean;
+  /** L'employé peut créer une fiche sans prix (réglage propriétaire). */
+  employeeDraftProductsOn: boolean;
+  /**
+   * Peut ajouter un produit SANS prix. Vrai aussi pour qui a déjà `products.create` :
+   * le formulaire complet reste sa porte, celle-ci ne lui retire rien.
+   */
+  canDraftProducts: boolean;
+  /** Module Enlèvements partenaires ouvert par le propriétaire. */
+  partnerOfftakesOn: boolean;
+  /** Page Enlèvements : module ouvert ET propriétaire / droit dédié. */
+  canPartnerOfftakes: boolean;
+  /** Module Rappels de crédit ouvert par le propriétaire. */
+  creditRemindersOn: boolean;
+  /**
+   * Page Rappels de crédit : module ouvert ET accès à la page Crédit. Pas de droit
+   * propre — relancer sur une créance, c'est agir sur ce que `credit.view` montre déjà.
+   */
+  canCreditReminders: boolean;
+  /** Module Expéditions ouvert par le propriétaire. */
+  shipmentsOn: boolean;
+  /** Page Expéditions : module ouvert ET propriétaire / droit dédié. */
+  canShipments: boolean;
   /** Page Aide visible. Visible par défaut ; le propriétaire peut la retirer du menu. */
   canHelp: boolean;
   /** Page Notifications visible. Idem — ne concerne pas la réception des push. */
@@ -552,6 +608,51 @@ export function buildAccessHelpers(
   const canSaleDocuments =
     saleDocumentsOn && (isOwner || hasPermission(P.saleDocumentsManage));
   /*
+   * Photos produits : additive, ouverte par le PROPRIÉTAIRE (Paramètres).
+   *
+   * Le droit `products.photo` est donné d'office aux rôles qui travaillent le rayon
+   * (migration 00209) : la page n'existe pour personne tant que le module est fermé, et
+   * une fois ouvert, obliger le patron à cocher une case par vendeur avant que la page
+   * ne serve à quoi que ce soit reviendrait à lui faire faire deux fois le même geste.
+   *
+   * `products.update` en repli : celui qui peut refonder une fiche peut évidemment
+   * l'illustrer. Sans ce repli, ouvrir le module RETIRERAIT la photo à un gérant qui la
+   * faisait déjà depuis la fiche produit.
+   */
+  const employeePhotosOn = data.employeePhotosEnabled === true;
+  const canProductPhotos =
+    employeePhotosOn &&
+    (isOwner ||
+      hasPermission(P.productsPhoto) ||
+      hasPermission(P.productsUpdate));
+  /*
+   * Produit ajouté par un employé, sans prix. Pas de page dédiée : c'est le formulaire
+   * produit qui se présente autrement — sans les deux champs de prix — à qui n'a que ce
+   * droit-là. Le produit créé reste invendable jusqu'à ce que le patron le chiffre.
+   */
+  const employeeDraftProductsOn = data.employeeDraftProductsEnabled === true;
+  const canDraftProducts =
+    employeeDraftProductsOn && (isOwner || hasPermission(P.productsDraftCreate));
+  /*
+   * Enlèvements partenaires et Expéditions : additifs, ouverts par le PROPRIÉTAIRE, et
+   * — contrairement aux deux ci-dessus — avec un droit accordé à AUCUN rôle. Sortir de
+   * la marchandise pour un confrère ou avancer des frais de transport engage l'argent
+   * de la maison : le patron délègue nommément, employé par employé.
+   */
+  const partnerOfftakesOn = data.partnerOfftakesEnabled === true;
+  const canPartnerOfftakes =
+    partnerOfftakesOn && (isOwner || hasPermission(P.partnerOfftakesManage));
+  const shipmentsOn = data.shipmentsEnabled === true;
+  const canShipments = shipmentsOn && (isOwner || hasPermission(P.shipmentsManage));
+  /*
+   * Rappels de crédit : aucune permission propre. Relancer un client sur sa dette,
+   * c'est agir sur exactement ce que la page Crédit montre déjà — un droit de plus
+   * obligerait le propriétaire à re-cocher une case pour la même personne, sur la même
+   * information, et laisserait entre-temps un écran vide à qui voit déjà tout.
+   */
+  const creditRemindersOn = data.creditRemindersEnabled === true;
+  const canCreditReminders = creditRemindersOn && canCredit;
+  /*
    * Aide et Notifications : VISIBLES par défaut, et retirées seulement si le
    * propriétaire l'a demandé pour cet employé. Le sens de la liste est « ce qui est
    * masqué » et non « ce qui est permis », précisément pour que l'absence de donnée
@@ -616,6 +717,16 @@ export function buildAccessHelpers(
     canQuickSupply,
     saleDocumentsOn,
     canSaleDocuments,
+    employeePhotosOn,
+    canProductPhotos,
+    employeeDraftProductsOn,
+    canDraftProducts,
+    partnerOfftakesOn,
+    canPartnerOfftakes,
+    creditRemindersOn,
+    canCreditReminders,
+    shipmentsOn,
+    canShipments,
     canHelp,
     canNotifications,
     landedCostOn,
@@ -673,6 +784,7 @@ export function filterNavItemsForPermissions(
     // (dont tous les métiers historiques) ne voient jamais cette entrée.
     if (href === ROUTES.tradeWorkspace) return workspace !== undefined;
     if (href === ROUTES.products) return h.canProducts;
+    if (href === ROUTES.productPhotos) return h.canProductPhotos;
     if (href === ROUTES.parts) return h.canParts;
     if (href === ROUTES.restock) return h.canRestock;
     // Conditionnements : page additive, ouverte par le propriétaire. Ensuite, même
@@ -701,11 +813,14 @@ export function filterNavItemsForPermissions(
     if (href === ROUTES.expiry) return h.canExpiry;
     if (href === ROUTES.purchases) return h.canPurchases;
     if (href === ROUTES.quickSupply) return h.canQuickSupply;
+    if (href === ROUTES.partnerOfftakes) return h.canPartnerOfftakes;
+    if (href === ROUTES.shipments) return h.canShipments;
     if (href === ROUTES.saleDocuments) return h.canSaleDocuments;
     if (href === ROUTES.expenses) return h.canExpenses;
     if (href === ROUTES.warehouse) return h.canWarehouse;
     if (href === ROUTES.customers) return h.canCustomers;
     if (href === ROUTES.credit) return h.canCredit;
+    if (href === ROUTES.creditReminders) return h.canCreditReminders;
     if (href === ROUTES.suppliers) return h.canSuppliers;
     if (href === ROUTES.reports) return h.canReports;
     /** Même logique que `app_shell.dart` (Flutter) — pas de filtre `isCashier` sur le menu. */
@@ -771,6 +886,13 @@ const APP_SHELL_ROUTE_PREFIXES: readonly string[] = [
   // ligne, la garde de route la refuse à TOUT LE MONDE — drapeau ouvert ou non —
   // car la liste ci-dessous est une liste blanche, pas une liste d'exceptions.
   ROUTES.packagings,
+  // Photos produits, Enlèvements, Rappels crédit, Expéditions : liste BLANCHE. Un
+  // module absent d'ici est refusé à tout le monde, drapeau ouvert ou non — le menu
+  // affiche l'entrée et la page répond « pas accès ».
+  ROUTES.productPhotos,
+  ROUTES.partnerOfftakes,
+  ROUTES.creditReminders,
+  ROUTES.shipments,
   ROUTES.parts,
   ROUTES.restock,
   ROUTES.productLocations,
@@ -904,6 +1026,16 @@ export function canAccessPathname(
   // Devis & Factures : tant que le propriétaire n'a pas ouvert le module — ou sans le
   // droit dédié — l'adresse tapée à la main ne fait pas apparaître la page.
   if (route === ROUTES.saleDocuments && !h.canSaleDocuments) return false;
+  /*
+   * Les quatre modules de 00209. Même règle pour tous : le drapeau ET le droit. Deux
+   * d'entre eux (Enlèvements, Expéditions) font sortir de la marchandise ou engagent de
+   * l'argent avancé — la base refuserait de toute façon l'écriture, mais montrer un
+   * écran de saisie qui finira par un refus n'apprend rien à personne.
+   */
+  if (route === ROUTES.productPhotos && !h.canProductPhotos) return false;
+  if (route === ROUTES.partnerOfftakes && !h.canPartnerOfftakes) return false;
+  if (route === ROUTES.creditReminders && !h.canCreditReminders) return false;
+  if (route === ROUTES.shipments && !h.canShipments) return false;
   /*
    * Aide / Notifications retirées du menu de cet employé : un lien resté ouvert dans
    * un onglet ne doit pas rouvrir ce qu'on vient de ranger. La garde SERVEUR, elle, ne

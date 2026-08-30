@@ -83,6 +83,21 @@ import {
 import { setDualCashierEnabled } from "@/lib/features/dual-cashier/api";
 import { setQuickSupplyEnabled } from "@/lib/features/quick-supply/api";
 import {
+  setEmployeeDraftProductsEnabled,
+  setEmployeePhotosEnabled,
+} from "@/lib/features/products/employee-catalog";
+import { setPartnerOfftakesEnabled } from "@/lib/features/partner-offtakes/api";
+import { setShipmentsEnabled } from "@/lib/features/shipments/api";
+import {
+  DEFAULT_CREDIT_REMINDERS_CONFIG,
+  fetchCreditRemindersConfig,
+  frequencyLabel,
+  peekCreditRemindersConfig,
+  setCreditRemindersConfig,
+  setCreditRemindersEnabled,
+  type CreditRemindersConfig,
+} from "@/lib/features/settings/credit-reminders-config";
+import {
   fetchDualCashierSelfCheckout,
   peekDualCashierSelfCheckout,
   setDualCashierSelfCheckout,
@@ -157,6 +172,10 @@ import {
   MdPalette,
   MdPerson,
   MdPlace,
+  MdPhotoCamera,
+  MdNotificationsActive,
+  MdOutbox,
+  MdSend,
   MdLocalShipping,
   MdMoveToInbox,
   MdSave,
@@ -1101,6 +1120,137 @@ export function SettingsScreen() {
     onError: (e) => toastMutationError("settings", e),
   });
 
+  /**
+   * « Photos produits » : l'employé illustre le catalogue, et RIEN d'autre. Réglage
+   * entreprise, écrit par le propriétaire — fermé par défaut, parce que la page n'a de
+   * sens que là où quelqu'un d'autre que le patron tient les articles dans la main.
+   */
+  const employeePhotosEnabled = ctxQ.data?.employeePhotosEnabled === true;
+  const employeePhotosMut = useMutation({
+    mutationFn: async (enabled: boolean) => {
+      if (!companyId) throw new Error("Entreprise introuvable.");
+      await setEmployeePhotosEnabled(companyId, enabled);
+    },
+    onSuccess: async (_, enabled) => {
+      toast.success(
+        enabled
+          ? "Photos produits activée. Vos vendeurs peuvent illustrer le catalogue."
+          : "Photos produits désactivée. Les photos déjà prises sont conservées.",
+      );
+      await qc.invalidateQueries({ queryKey: queryKeys.appContext });
+    },
+    onError: (e) => toastMutationError("settings", e),
+  });
+
+  /**
+   * « L'équipe peut ajouter un article » : la fiche arrive SANS prix et invendable, et
+   * devient opérationnelle d'elle-même dès que le propriétaire pose un prix de vente.
+   */
+  const employeeDraftProductsEnabled =
+    ctxQ.data?.employeeDraftProductsEnabled === true;
+  const employeeDraftProductsMut = useMutation({
+    mutationFn: async (enabled: boolean) => {
+      if (!companyId) throw new Error("Entreprise introuvable.");
+      await setEmployeeDraftProductsEnabled(companyId, enabled);
+    },
+    onSuccess: async (_, enabled) => {
+      toast.success(
+        enabled
+          ? "Vos employés peuvent ajouter des articles. Ils n'y verront aucun prix."
+          : "Ajout d'articles par l'équipe désactivé. Les fiches déjà créées restent en place.",
+      );
+      await qc.invalidateQueries({ queryKey: queryKeys.appContext });
+    },
+    onError: (e) => toastMutationError("settings", e),
+  });
+
+  /**
+   * « Enlèvements partenaires » : le contraire de l'approvisionnement — la marchandise
+   * qu'un confrère vient prendre, ce qu'il paie et ce qu'il reste dû.
+   */
+  const partnerOfftakesEnabled = ctxQ.data?.partnerOfftakesEnabled === true;
+  const partnerOfftakesMut = useMutation({
+    mutationFn: async (enabled: boolean) => {
+      if (!companyId) throw new Error("Entreprise introuvable.");
+      await setPartnerOfftakesEnabled(companyId, enabled);
+    },
+    onSuccess: async (_, enabled) => {
+      toast.success(
+        enabled
+          ? "Enlèvements activés. Donnez le droit à vos employés depuis la page Employés."
+          : "Enlèvements désactivés. Les bons déjà enregistrés sont conservés.",
+      );
+      await qc.invalidateQueries({ queryKey: queryKeys.appContext });
+    },
+    onError: (e) => toastMutationError("settings", e),
+  });
+
+  /** « Expéditions » : le colis qui part en province et les frais de transport avancés. */
+  const shipmentsEnabled = ctxQ.data?.shipmentsEnabled === true;
+  const shipmentsMut = useMutation({
+    mutationFn: async (enabled: boolean) => {
+      if (!companyId) throw new Error("Entreprise introuvable.");
+      await setShipmentsEnabled(companyId, enabled);
+    },
+    onSuccess: async (_, enabled) => {
+      toast.success(
+        enabled
+          ? "Expéditions activées. Vous pouvez suivre les colis et les frais avancés."
+          : "Expéditions désactivées. Les expéditions déjà saisies sont conservées.",
+      );
+      await qc.invalidateQueries({ queryKey: queryKeys.appContext });
+    },
+    onError: (e) => toastMutationError("settings", e),
+  });
+
+  /**
+   * « Rappels de crédit » : le drapeau, puis la fréquence.
+   *
+   * Deux réglages de nature différente, d'où deux chemins d'écriture : le drapeau est
+   * une colonne de `companies` (il décide de l'existence de la page, donc du menu et de
+   * la garde de route) ; la configuration vit dans `company_settings`, où une valeur
+   * absente vaut « pas encore réglé » et retombe sur les défauts.
+   */
+  const creditRemindersEnabled = ctxQ.data?.creditRemindersEnabled === true;
+  const creditRemindersMut = useMutation({
+    mutationFn: async (enabled: boolean) => {
+      if (!companyId) throw new Error("Entreprise introuvable.");
+      await setCreditRemindersEnabled(companyId, enabled);
+    },
+    onSuccess: async (_, enabled) => {
+      toast.success(
+        enabled
+          ? "Rappels de crédit activés. L'application vous dira qui relancer."
+          : "Rappels de crédit désactivés. Vos créances restent visibles dans la page Crédit.",
+      );
+      await qc.invalidateQueries({ queryKey: queryKeys.appContext });
+    },
+    onError: (e) => toastMutationError("settings", e),
+  });
+
+  const peekReminders =
+    companyId.length > 0 && isOwner ? peekCreditRemindersConfig(companyId) : undefined;
+  const remindersConfigQ = useQuery({
+    queryKey: queryKeys.creditRemindersConfig(companyId),
+    queryFn: () => fetchCreditRemindersConfig(companyId),
+    enabled: Boolean(companyId && isOwner && creditRemindersEnabled),
+    staleTime: 30_000,
+    ...(peekReminders !== undefined ? { initialData: peekReminders } : {}),
+  });
+  const remindersConfig = remindersConfigQ.data ?? DEFAULT_CREDIT_REMINDERS_CONFIG;
+  const remindersConfigMut = useMutation({
+    mutationFn: async (patch: Partial<CreditRemindersConfig>) => {
+      if (!companyId) throw new Error("Entreprise introuvable.");
+      await setCreditRemindersConfig(companyId, { ...remindersConfig, ...patch });
+    },
+    onSuccess: async () => {
+      await qc.invalidateQueries({
+        queryKey: queryKeys.creditRemindersConfig(companyId),
+      });
+    },
+    onError: (e) => toastMutationError("settings", e),
+  });
+
   const profileMut = useMutation({
     mutationFn: async () => {
       const supabase = createClient();
@@ -1908,6 +2058,410 @@ export function SettingsScreen() {
               className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-fs-accent hover:underline hover:underline-offset-2"
             >
               Ouvrir la page Approvisionnement
+              <ChevronRight className="h-4 w-4" aria-hidden />
+            </Link>
+          ) : null}
+        </FsCard>
+      ) : null}
+
+      {/* Ce que l'équipe peut apporter au catalogue — owner uniquement */}
+      {isOwner && companyId ? (
+        <FsCard className="mt-5" padding="p-5">
+          <SettingsCardTitle icon={MdPhotoCamera} title="Vos employés et le catalogue" />
+          <p className="mt-2 text-xs leading-relaxed text-neutral-600 sm:text-sm">
+            Deux choses que vos vendeurs peuvent faire à votre place, sans jamais voir un
+            seul prix : <strong>photographier</strong> les articles, et{" "}
+            <strong>saisir ceux qui manquent</strong>. Ce sont les deux tâches que vous
+            n&apos;avez jamais le temps de finir, et les seules pour lesquelles ils sont
+            mieux placés que vous — ils tiennent la marchandise dans la main toute la
+            journée.
+          </p>
+
+          <div className="mt-4 space-y-0 divide-y divide-black/[0.06] rounded-[10px] border border-black/[0.08]">
+            <label
+              className={cn(
+                "flex cursor-pointer items-start justify-between gap-3 px-3 py-3 sm:px-4",
+                employeePhotosMut.isPending && "pointer-events-none opacity-60",
+              )}
+            >
+              <span className="min-w-0">
+                <span className="block text-sm font-medium text-fs-text">
+                  Page « Photos produits »
+                </span>
+                <span className="mt-0.5 block text-xs leading-relaxed text-neutral-600">
+                  {employeePhotosEnabled
+                    ? "Ouverte. L'employé voit la liste des articles, et ne peut QUE prendre la photo : ni renommer, ni reclasser, ni changer un prix."
+                    : "Désactivée : les photos ne se posent que depuis la fiche produit."}
+                </span>
+              </span>
+              <input
+                type="checkbox"
+                role="switch"
+                className="mt-1 h-5 w-9 shrink-0 cursor-pointer accent-fs-accent"
+                checked={employeePhotosEnabled}
+                disabled={employeePhotosMut.isPending}
+                onChange={(e) => {
+                  void employeePhotosMut.mutateAsync(e.target.checked);
+                }}
+              />
+            </label>
+
+            <label
+              className={cn(
+                "flex cursor-pointer items-start justify-between gap-3 px-3 py-3 sm:px-4",
+                employeeDraftProductsMut.isPending && "pointer-events-none opacity-60",
+              )}
+            >
+              <span className="min-w-0">
+                <span className="block text-sm font-medium text-fs-text">
+                  Ajouter un article, sans le prix
+                </span>
+                <span className="mt-0.5 block text-xs leading-relaxed text-neutral-600">
+                  {employeeDraftProductsEnabled
+                    ? "Activé. L'article créé n'est PAS vendable : il attend que vous posiez son prix de vente. Il le devient tout seul à ce moment-là."
+                    : "Désactivé : seule une personne autorisée à voir les prix peut créer un article."}
+                </span>
+              </span>
+              <input
+                type="checkbox"
+                role="switch"
+                className="mt-1 h-5 w-9 shrink-0 cursor-pointer accent-fs-accent"
+                checked={employeeDraftProductsEnabled}
+                disabled={employeeDraftProductsMut.isPending}
+                onChange={(e) => {
+                  void employeeDraftProductsMut.mutateAsync(e.target.checked);
+                }}
+              />
+            </label>
+          </div>
+
+          {/*
+            Le point qui décide un patron : ce qu'il confie, et ce qu'il ne confie pas.
+          */}
+          <p className="mt-2.5 text-xs leading-relaxed text-neutral-600">
+            Dans les deux cas, <strong>aucun prix ne quitte votre boutique</strong> : ni
+            d&apos;achat, ni de vente, ni de marge. Les articles en attente de prix
+            apparaissent en haut de votre page Produits, avec un bandeau « à chiffrer ».
+          </p>
+
+          {employeePhotosEnabled ? (
+            <Link
+              href={ROUTES.productPhotos}
+              className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-fs-accent hover:underline hover:underline-offset-2"
+            >
+              Ouvrir la page Photos produits
+              <ChevronRight className="h-4 w-4" aria-hidden />
+            </Link>
+          ) : null}
+        </FsCard>
+      ) : null}
+
+      {/* Enlèvements partenaires — owner uniquement */}
+      {isOwner && companyId ? (
+        <FsCard className="mt-5" padding="p-5">
+          <SettingsCardTitle icon={MdOutbox} title="Enlèvements partenaires" />
+          <p className="mt-2 text-xs leading-relaxed text-neutral-600 sm:text-sm">
+            C&apos;est l&apos;inverse exact de l&apos;Approvisionnement. Là, vous allez
+            prendre de la marchandise chez un confrère. Ici, un confrère vient en prendre
+            chez vous : « Ali est passé ce matin, il a pris quinze cartons de savon, il a
+            laissé 50 000, il paiera le reste vendredi. »
+          </p>
+          <p className="mt-2 text-xs leading-relaxed text-neutral-600 sm:text-sm">
+            La page sort la marchandise du stock, écrit ce qui a été pris et à quel prix,
+            suit ce qui reste dû, et vous donne le papier à remettre : un{" "}
+            <strong>bon d&apos;enlèvement A4</strong> à imprimer, ou le détail complet
+            envoyé <strong>sur WhatsApp</strong>. Quand le solde traîne, un message de
+            relance courtois est déjà écrit.
+          </p>
+          {/* Le garde-fou qui justifie l'écran à lui seul. */}
+          <p className="mt-2 rounded-[10px] bg-sky-500/10 px-3 py-2 text-xs leading-relaxed text-sky-900 dark:text-sky-200">
+            La page vous prévient si un prix consenti passe sous votre prix d&apos;achat.
+            C&apos;est l&apos;erreur que le cahier ne rattrape jamais : elle ne se
+            découvre qu&apos;à l&apos;inventaire, des mois plus tard.
+          </p>
+          <div className="mt-4 space-y-0 rounded-[10px] border border-black/[0.08]">
+            <label
+              className={cn(
+                "flex cursor-pointer items-start justify-between gap-3 px-3 py-3 sm:px-4",
+                partnerOfftakesMut.isPending && "pointer-events-none opacity-60",
+              )}
+            >
+              <span className="min-w-0">
+                <span className="block text-sm font-medium text-fs-text">
+                  Enlèvements partenaires
+                </span>
+                <span className="mt-0.5 block text-xs text-neutral-600">
+                  {partnerOfftakesEnabled
+                    ? "La page Enlèvements est ouverte. Vous seul y avez accès tant que vous n'accordez pas le droit à un employé."
+                    : "Désactivé : la marchandise sort par la caisse ou par l'ajustement de stock."}
+                </span>
+              </span>
+              <input
+                type="checkbox"
+                role="switch"
+                className="mt-1 h-5 w-9 shrink-0 cursor-pointer accent-fs-accent"
+                checked={partnerOfftakesEnabled}
+                disabled={partnerOfftakesMut.isPending}
+                onChange={(e) => {
+                  void partnerOfftakesMut.mutateAsync(e.target.checked);
+                }}
+              />
+            </label>
+          </div>
+          <p className="mt-2.5 text-xs leading-relaxed text-neutral-600">
+            Un enlèvement <strong>n&apos;est pas une vente</strong> : son montant
+            n&apos;entre pas dans le chiffre d&apos;affaires du comptoir. Le gros et le
+            détail se lisent côte à côte, jamais empilés — c&apos;est précisément ce
+            qu&apos;on cherche à séparer.
+          </p>
+          {partnerOfftakesEnabled ? (
+            <Link
+              href={ROUTES.partnerOfftakes}
+              className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-fs-accent hover:underline hover:underline-offset-2"
+            >
+              Ouvrir la page Enlèvements
+              <ChevronRight className="h-4 w-4" aria-hidden />
+            </Link>
+          ) : null}
+        </FsCard>
+      ) : null}
+
+      {/* Rappels de crédit — owner uniquement */}
+      {isOwner && companyId ? (
+        <FsCard className="mt-5" padding="p-5">
+          <SettingsCardTitle icon={MdNotificationsActive} title="Rappels de crédit" />
+          <p className="mt-2 text-xs leading-relaxed text-neutral-600 sm:text-sm">
+            Votre page Crédit sait déjà parfaitement qui vous doit combien. Le problème
+            n&apos;a jamais été là : il faut <strong>y aller</strong>. Et quand on vend
+            toute la journée, on n&apos;y va pas — l&apos;argent dort dehors pendant des
+            mois, non pas parce que le client refuse de payer, mais parce que personne
+            n&apos;a redemandé.
+          </p>
+          <p className="mt-2 text-xs leading-relaxed text-neutral-600 sm:text-sm">
+            Une fois activés, les rappels viennent à vous : une carte discrète en bas de
+            l&apos;écran, à la fréquence que vous choisissez, qui dit{" "}
+            <strong>« Untel vous doit tant »</strong> — et un message poli, déjà écrit,
+            prêt à partir sur WhatsApp. Vous pouvez relancer, ou mettre le client de côté
+            pour trois jours d&apos;un seul tap.
+          </p>
+          <div className="mt-4 space-y-0 rounded-[10px] border border-black/[0.08]">
+            <label
+              className={cn(
+                "flex cursor-pointer items-start justify-between gap-3 px-3 py-3 sm:px-4",
+                creditRemindersMut.isPending && "pointer-events-none opacity-60",
+              )}
+            >
+              <span className="min-w-0">
+                <span className="block text-sm font-medium text-fs-text">
+                  Rappels de crédit
+                </span>
+                <span className="mt-0.5 block text-xs text-neutral-600">
+                  {creditRemindersEnabled
+                    ? "Activés. La page Rappels crédit apparaît dans le menu, et la carte de rappel s'affiche une fois par cycle."
+                    : "Désactivés : rien ne vous rappellera vos créances."}
+                </span>
+              </span>
+              <input
+                type="checkbox"
+                role="switch"
+                className="mt-1 h-5 w-9 shrink-0 cursor-pointer accent-fs-accent"
+                checked={creditRemindersEnabled}
+                disabled={creditRemindersMut.isPending}
+                onChange={(e) => {
+                  void creditRemindersMut.mutateAsync(e.target.checked);
+                }}
+              />
+            </label>
+          </div>
+
+          {creditRemindersEnabled ? (
+            <div className="mt-3 space-y-3 rounded-[10px] border border-black/[0.08] px-3 py-3 sm:px-4">
+              <div>
+                <label
+                  className="block text-xs font-medium text-neutral-600"
+                  htmlFor="credit-reminders-frequency"
+                >
+                  À quelle fréquence vous rappeler un même client
+                </label>
+                <select
+                  id="credit-reminders-frequency"
+                  className={fsInputClass("mt-1.5")}
+                  value={String(remindersConfig.frequencyDays)}
+                  disabled={remindersConfigMut.isPending}
+                  onChange={(e) => {
+                    void remindersConfigMut.mutateAsync({
+                      frequencyDays: Number(e.target.value),
+                    });
+                  }}
+                >
+                  {[1, 2, 3, 7, 14, 30].map((d) => (
+                    <option key={d} value={d}>
+                      {frequencyLabel(d)}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-xs leading-relaxed text-neutral-500">
+                  Un client relancé ne réapparaît qu&apos;au bout de ce délai. C&apos;est
+                  ce qui évite que trois personnes de la boutique le relancent le même
+                  jour.
+                </p>
+              </div>
+
+              <div>
+                <label
+                  className="block text-xs font-medium text-neutral-600"
+                  htmlFor="credit-reminders-min"
+                >
+                  Ne rien rappeler en dessous de
+                </label>
+                <input
+                  id="credit-reminders-min"
+                  inputMode="numeric"
+                  defaultValue={String(Math.round(remindersConfig.minAmount))}
+                  disabled={remindersConfigMut.isPending}
+                  className={fsInputClass("mt-1.5 text-right tabular-nums")}
+                  onBlur={(e) => {
+                    const digits = e.target.value.replace(/[^0-9]/g, "");
+                    const v = Math.max(0, Number(digits) || 0);
+                    if (v !== remindersConfig.minAmount) {
+                      void remindersConfigMut.mutateAsync({ minAmount: v });
+                    }
+                  }}
+                />
+                <p className="mt-1 text-xs leading-relaxed text-neutral-500">
+                  Une dette de 500 F relancée chaque jour coûte plus cher en agacement
+                  qu&apos;elle ne rapporte. 0 = tout est rappelé.
+                </p>
+              </div>
+
+              <div>
+                <label
+                  className="block text-xs font-medium text-neutral-600"
+                  htmlFor="credit-reminders-hour"
+                >
+                  Pas avant
+                </label>
+                <select
+                  id="credit-reminders-hour"
+                  className={fsInputClass("mt-1.5")}
+                  value={String(remindersConfig.fromHour)}
+                  disabled={remindersConfigMut.isPending}
+                  onChange={(e) => {
+                    void remindersConfigMut.mutateAsync({
+                      fromHour: Number(e.target.value),
+                    });
+                  }}
+                >
+                  {[5, 6, 7, 8, 9, 10, 12, 14, 16].map((hh) => (
+                    <option key={hh} value={hh}>
+                      {String(hh).padStart(2, "0")} h
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-xs leading-relaxed text-neutral-500">
+                  Personne ne veut penser à ses créances en ouvrant la caisse au petit
+                  matin.
+                </p>
+              </div>
+
+              <label
+                className={cn(
+                  "flex cursor-pointer items-start justify-between gap-3",
+                  remindersConfigMut.isPending && "pointer-events-none opacity-60",
+                )}
+              >
+                <span className="min-w-0">
+                  <span className="block text-sm font-medium text-fs-text">
+                    Seulement les créances en retard
+                  </span>
+                  <span className="mt-0.5 block text-xs text-neutral-600">
+                    {remindersConfig.overdueOnly
+                      ? "Un client dont l'échéance n'est pas encore passée ne sera pas rappelé."
+                      : "Tous vos débiteurs sont rappelés, échéance passée ou non."}
+                  </span>
+                </span>
+                <input
+                  type="checkbox"
+                  role="switch"
+                  className="mt-1 h-5 w-9 shrink-0 cursor-pointer accent-fs-accent"
+                  checked={remindersConfig.overdueOnly}
+                  disabled={remindersConfigMut.isPending}
+                  onChange={(e) => {
+                    void remindersConfigMut.mutateAsync({ overdueOnly: e.target.checked });
+                  }}
+                />
+              </label>
+            </div>
+          ) : null}
+
+          {creditRemindersEnabled ? (
+            <Link
+              href={ROUTES.creditReminders}
+              className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-fs-accent hover:underline hover:underline-offset-2"
+            >
+              Ouvrir la page Rappels crédit
+              <ChevronRight className="h-4 w-4" aria-hidden />
+            </Link>
+          ) : null}
+        </FsCard>
+      ) : null}
+
+      {/* Expéditions — owner uniquement */}
+      {isOwner && companyId ? (
+        <FsCard className="mt-5" padding="p-5">
+          <SettingsCardTitle icon={MdSend} title="Expéditions" />
+          <p className="mt-2 text-xs leading-relaxed text-neutral-600 sm:text-sm">
+            Pour ceux qui vendent en gros à des commerçants éloignés : le client de Fada
+            appelle, vous facturez, vous sortez la marchandise, vous portez le colis à la
+            gare routière et vous payez le car. Cette page suit le colis — transporteur,
+            bordereau, arrivée, retrait — et surtout ce que le transport vous doit.
+          </p>
+          {/* Le vrai sujet, dit sans détour. */}
+          <p className="mt-2 rounded-[10px] bg-sky-500/10 px-3 py-2 text-xs leading-relaxed text-sky-900 dark:text-sky-200">
+            Les <strong>frais d&apos;expédition que vous avancez</strong> ne sont dans
+            aucune facture, ne sont pas une dépense de la maison, et sont trop petits pour
+            qu&apos;on y pense. Vingt colis par semaine, et c&apos;est le bénéfice
+            d&apos;une journée qui est resté à la gare routière. Ils sont ici suivis à
+            part, avec un message de réclamation courtois prêt à partir sur WhatsApp.
+          </p>
+          <div className="mt-4 space-y-0 rounded-[10px] border border-black/[0.08]">
+            <label
+              className={cn(
+                "flex cursor-pointer items-start justify-between gap-3 px-3 py-3 sm:px-4",
+                shipmentsMut.isPending && "pointer-events-none opacity-60",
+              )}
+            >
+              <span className="min-w-0">
+                <span className="block text-sm font-medium text-fs-text">Expéditions</span>
+                <span className="mt-0.5 block text-xs text-neutral-600">
+                  {shipmentsEnabled
+                    ? "La page Expéditions est ouverte. Vous seul y avez accès tant que vous n'accordez pas le droit à un employé."
+                    : "Désactivé : aucun suivi de colis ni de frais de transport."}
+                </span>
+              </span>
+              <input
+                type="checkbox"
+                role="switch"
+                className="mt-1 h-5 w-9 shrink-0 cursor-pointer accent-fs-accent"
+                checked={shipmentsEnabled}
+                disabled={shipmentsMut.isPending}
+                onChange={(e) => {
+                  void shipmentsMut.mutateAsync(e.target.checked);
+                }}
+              />
+            </label>
+          </div>
+          <p className="mt-2.5 text-xs leading-relaxed text-neutral-600">
+            Une expédition <strong>ne touche jamais au stock</strong> : la marchandise est
+            déjà sortie par la facture à laquelle le colis se rattache. Rien n&apos;est
+            déduit deux fois.
+          </p>
+          {shipmentsEnabled ? (
+            <Link
+              href={ROUTES.shipments}
+              className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-fs-accent hover:underline hover:underline-offset-2"
+            >
+              Ouvrir la page Expéditions
               <ChevronRight className="h-4 w-4" aria-hidden />
             </Link>
           ) : null}

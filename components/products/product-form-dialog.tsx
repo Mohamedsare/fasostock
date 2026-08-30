@@ -272,7 +272,17 @@ export function ProductFormDialog({
   const [productScope, setProductScope] = useState<ProductScope>(() =>
     parseScope(initial?.product_scope),
   );
-  const [isActive, setIsActive] = useState(initial?.is_active ?? true);
+  /**
+   * Fiche ajoutée par l'équipe et pas encore chiffrée : elle arrive INACTIVE (c'est ce
+   * qui la rend invendable). Le patron qui l'ouvre vient précisément de décider de la
+   * mettre en service — présenter la case décochée le ferait buter sur un second geste
+   * qu'il ne comprendrait pas. La base, de son côté, réactive de toute façon toute fiche
+   * en attente qui reçoit un prix (trigger `products_release_awaiting_pricing`).
+   */
+  const awaitingPricing = initial?.awaiting_pricing === true;
+  const [isActive, setIsActive] = useState(
+    awaitingPricing ? true : (initial?.is_active ?? true),
+  );
   const [newCategory, setNewCategory] = useState("");
   const [newBrand, setNewBrand] = useState("");
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
@@ -712,6 +722,13 @@ export function ProductFormDialog({
           <h2 id="product-form-title" className="text-lg font-bold text-fs-text">
             {isEdit ? "Modifier le produit" : "Nouveau produit"}
           </h2>
+          {awaitingPricing ? (
+            <p className="mt-2 rounded-[10px] bg-amber-500/15 px-3 py-2 text-xs leading-relaxed text-amber-900 dark:text-amber-200">
+              Cet article a été ajouté par votre équipe et <strong>attend son prix</strong>.
+              Il n&apos;est pas vendable pour l&apos;instant. Renseignez le prix de vente
+              ci-dessous : il devient vendable dès l&apos;enregistrement.
+            </p>
+          ) : null}
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 sm:px-6">

@@ -14,6 +14,13 @@ export type ReceiptTicketData = {
    * d'origine, donc les tickets déjà en circulation restent identiques.
    */
   currencyCode?: string | null;
+  /**
+   * Modèle de mise en forme du ticket (`classic` | `moderne`), venu de la boutique.
+   * Voyage avec le ticket pour la même raison que la devise : la génération serveur
+   * est partagée entre requêtes et ne connaît aucune boutique. Absent ⇒ `classic`,
+   * donc les tickets déjà imprimés restent identiques.
+   */
+  receiptTemplate?: string | null;
   storeName: string;
   /** `stores.logo_url` — centré en tête (Flutter `ReceiptTicketData.storeLogoUrl`). */
   storeLogoUrl?: string | null;

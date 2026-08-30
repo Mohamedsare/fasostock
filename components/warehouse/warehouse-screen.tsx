@@ -927,6 +927,7 @@ export function WarehouseScreen() {
       engine_invoice_extra_phones: null,
       invoice_template: "classic",
       receipt_paper_width_mm: null,
+      receipt_template: null,
       shares_company_catalog: true,
     };
 

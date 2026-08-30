@@ -7,7 +7,7 @@ import type { Store } from "@/lib/features/stores/types";
 
 const STORE_FIELDS =
   "id, company_id, name, code, address, logo_url, phone, email, description, is_active, is_primary, pos_discount_enabled, created_at, " +
-  "currency, primary_color, secondary_color, invoice_prefix, footer_text, legal_info, signature_url, stamp_url, payment_terms, tax_label, tax_number, city, country, commercial_name, slogan, activity, mobile_money, invoice_short_title, invoice_signer_title, invoice_signer_name, invoice_template, engine_invoice_signatory, engine_invoice_extra_phones, receipt_paper_width_mm, shares_company_catalog";
+  "currency, primary_color, secondary_color, invoice_prefix, footer_text, legal_info, signature_url, stamp_url, payment_terms, tax_label, tax_number, city, country, commercial_name, slogan, activity, mobile_money, invoice_short_title, invoice_signer_title, invoice_signer_name, invoice_template, engine_invoice_signatory, engine_invoice_extra_phones, receipt_paper_width_mm, receipt_template, shares_company_catalog";
 
 function mapStore(row: Record<string, unknown>): Store {
   return {
@@ -50,6 +50,7 @@ function mapStore(row: Record<string, unknown>): Store {
       row.receipt_paper_width_mm === 58 || row.receipt_paper_width_mm === 80
         ? (row.receipt_paper_width_mm as number)
         : null,
+    receipt_template: (row.receipt_template as string | null) ?? null,
     // Défaut historique : partage du catalogue si la colonne est absente/null.
     shares_company_catalog: row.shares_company_catalog !== false,
   };

@@ -5,6 +5,10 @@ import {
   FileSignature,
   Compass,
   Package,
+  Camera,
+  PackageOpen,
+  Send,
+  BellDot,
   Puzzle,
   PackagePlus,
   Layers,
@@ -70,6 +74,9 @@ export const NAV_ITEMS: NavItem[] = [
   // pour les activités qui n'en ont pas (cf. `filterNavItemsForPermissions`).
   { href: ROUTES.tradeWorkspace, label: "Mon métier", icon: Compass, iconBg: "#B45309" },
   { href: ROUTES.products, label: "Produits", icon: Package, iconBg: "#7C2D12" },
+  // Photos produits : la page que le propriétaire ouvre à son équipe pour illustrer
+  // le catalogue sans lui confier la fiche.
+  { href: ROUTES.productPhotos, label: "Photos produits", icon: Camera, iconBg: "#7C3AED" },
   { href: ROUTES.parts, label: "Pièces", icon: Puzzle, iconBg: "#0F766E" },
   { href: ROUTES.restock, label: "Réassort", icon: PackagePlus, iconBg: "#7E22CE" },
   { href: ROUTES.packagings, label: "Conditionnements", icon: Layers, iconBg: "#4D7C0F" },
@@ -102,11 +109,20 @@ export const NAV_ITEMS: NavItem[] = [
   { href: ROUTES.purchases, label: "Achats", icon: Truck, iconBg: "#92400E" },
   // Approvisionnement express : l'arrivage saisi debout, activé par le propriétaire.
   { href: ROUTES.quickSupply, label: "Approvisionnement", icon: Inbox, iconBg: "#0E7490" },
+  // Enlèvements partenaires : le sens inverse de l'Approvisionnement — placé juste
+  // après lui, parce que c'est ainsi que le commerçant les pense (« ce que je prends »
+  // / « ce qu'on vient prendre chez moi »).
+  { href: ROUTES.partnerOfftakes, label: "Enlèvements", icon: PackageOpen, iconBg: "#7C2D12" },
+  // Expéditions : le colis qui part en province et les frais avancés à récupérer.
+  { href: ROUTES.shipments, label: "Expéditions", icon: Send, iconBg: "#1D4ED8" },
   { href: ROUTES.expenses, label: "Dépenses", icon: Wallet, iconBg: "#B45309" },
   { href: ROUTES.warehouse, label: "Magasin", icon: Boxes, iconBg: "#7C2D12" },
   { href: ROUTES.transfers, label: "Transferts", icon: ArrowLeftRight, iconBg: "#EA580C" },
   { href: ROUTES.customers, label: "Clients", icon: Users, iconBg: "#9A3412" },
   { href: ROUTES.credit, label: "Crédit", icon: CreditCard, iconBg: "#D97706" },
+  // Rappels de crédit : juste sous la page Crédit — c'est la même créance, vue par
+  // « qui faut-il relancer aujourd'hui ? » plutôt que par « qui doit quoi ».
+  { href: ROUTES.creditReminders, label: "Rappels crédit", icon: BellDot, iconBg: "#C2410C" },
   { href: ROUTES.suppliers, label: "Fournisseurs", icon: Building2, iconBg: "#C2410C" },
   { href: ROUTES.reports, label: "Rapports", icon: BarChart3, iconBg: "#F97316" },
   { href: ROUTES.ai, label: "Prédictions IA", icon: Sparkles, iconBg: "#78350F" },
