@@ -55,6 +55,13 @@ export const ROUTES = {
    */
   productPhotos: "/photos-produits",
   /**
+   * Ajout produit : la page où l'employé autorisé saisit l'article qu'il a en main —
+   * sans aucun champ de prix. Jumelle de Photos produits : même réglage propriétaire
+   * (« Ajouter un article, sans le prix »), même promesse — l'équipe apporte ce
+   * qu'elle voit, le patron garde les prix.
+   */
+  draftProducts: "/ajout-produit",
+  /**
    * Enlèvements partenaires : la marchandise qu'un confrère vient prendre (l'exact
    * opposé de l'Approvisionnement). Activé par le propriétaire dans Paramètres.
    */

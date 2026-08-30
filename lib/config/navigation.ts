@@ -6,6 +6,7 @@ import {
   Compass,
   Package,
   Camera,
+  BadgePlus,
   PackageOpen,
   Send,
   BellDot,
@@ -74,6 +75,9 @@ export const NAV_ITEMS: NavItem[] = [
   // pour les activités qui n'en ont pas (cf. `filterNavItemsForPermissions`).
   { href: ROUTES.tradeWorkspace, label: "Mon métier", icon: Compass, iconBg: "#B45309" },
   { href: ROUTES.products, label: "Produits", icon: Package, iconBg: "#7C2D12" },
+  // Ajout produit : la page que le propriétaire ouvre à son équipe pour SAISIR
+  // l'article qui manque, sans jamais lui montrer un prix.
+  { href: ROUTES.draftProducts, label: "Ajout produit", icon: BadgePlus, iconBg: "#0E7490" },
   // Photos produits : la page que le propriétaire ouvre à son équipe pour illustrer
   // le catalogue sans lui confier la fiche.
   { href: ROUTES.productPhotos, label: "Photos produits", icon: Camera, iconBg: "#7C3AED" },

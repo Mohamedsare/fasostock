@@ -633,8 +633,8 @@ export const DOC_GROUPS: DocGroup[] = [
       },
       {
         id: "draft-products",
-        title: "Articles ajoutés par l'équipe",
-        route: "/products",
+        title: "Ajout produit (par l'équipe)",
+        route: "/ajout-produit",
         tagline: "L'employé saisit l'article qui manque ; vous posez le prix, il devient vendable.",
         access:
           "Propriétaire, plus tout employé à qui il a coché « Ajouter un produit sans prix ».",
@@ -647,13 +647,14 @@ export const DOC_GROUPS: DocGroup[] = [
           },
           {
             kind: "p",
-            text: "Une fois la fonction ouverte, l'employé dispose d'un bouton « Ajouter un article » réduit à ce qu'il peut voir : le nom, l'unité, le code-barres, la catégorie, une photo. Aucun champ de prix ne lui est présenté.",
+            text: "Une fois la fonction ouverte, une page « Ajout produit » apparaît dans le menu de l'employé autorisé. Elle est réduite à ce qu'il peut voir : le nom, une photo prise au téléphone, le code-barres scanné, l'unité, la catégorie. Aucun champ de prix ne lui est présenté, et aucun prix du catalogue ne lui est envoyé.",
           },
           {
             kind: "steps",
             title: "Le trajet d'un article, du carton au comptoir",
             items: [
-              "L'employé saisit l'article. La fiche est créée, rangée, illustrée — et marquée « en attente de prix ».",
+              "L'employé ouvre « Ajout produit » dans son menu, tape le nom lu sur l'emballage et valide. Le bouton reste sous son pouce : quarante articles se saisissent d'affilée sans jamais faire défiler la page.",
+              "La fiche est créée, rangée, illustrée — et marquée « en attente de prix ». Ce qu'il vient d'ajouter reste affiché à l'écran, et un doublon lui est signalé avant qu'il valide.",
               "L'article est INVENDABLE : il n'apparaît pas en caisse, il ne peut pas être mis au panier.",
               "Vous ouvrez votre page Produits : un onglet « À chiffrer » s'affiche en tête avec le nombre d'articles en attente.",
               "Vous ouvrez la fiche et posez le prix de vente. Rien d'autre à faire.",

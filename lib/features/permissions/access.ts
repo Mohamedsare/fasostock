@@ -785,6 +785,9 @@ export function filterNavItemsForPermissions(
     if (href === ROUTES.tradeWorkspace) return workspace !== undefined;
     if (href === ROUTES.products) return h.canProducts;
     if (href === ROUTES.productPhotos) return h.canProductPhotos;
+    // Ajout produit : le drapeau entreprise ET le droit `products.draft_create`.
+    // L'entrée disparaît d'elle-même quand le propriétaire referme le réglage.
+    if (href === ROUTES.draftProducts) return h.canDraftProducts;
     if (href === ROUTES.parts) return h.canParts;
     if (href === ROUTES.restock) return h.canRestock;
     // Conditionnements : page additive, ouverte par le propriétaire. Ensuite, même
@@ -890,6 +893,7 @@ const APP_SHELL_ROUTE_PREFIXES: readonly string[] = [
   // module absent d'ici est refusé à tout le monde, drapeau ouvert ou non — le menu
   // affiche l'entrée et la page répond « pas accès ».
   ROUTES.productPhotos,
+  ROUTES.draftProducts,
   ROUTES.partnerOfftakes,
   ROUTES.creditReminders,
   ROUTES.shipments,
@@ -1033,6 +1037,7 @@ export function canAccessPathname(
    * écran de saisie qui finira par un refus n'apprend rien à personne.
    */
   if (route === ROUTES.productPhotos && !h.canProductPhotos) return false;
+  if (route === ROUTES.draftProducts && !h.canDraftProducts) return false;
   if (route === ROUTES.partnerOfftakes && !h.canPartnerOfftakes) return false;
   if (route === ROUTES.creditReminders && !h.canCreditReminders) return false;
   if (route === ROUTES.shipments && !h.canShipments) return false;
