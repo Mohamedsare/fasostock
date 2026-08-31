@@ -667,6 +667,54 @@ html.dark .fs-owner-dashboard {
       background: transparent;
     }
   }
+
+  /* Voile de bas de liste — l'indice « il y a la suite » sur une zone `fs-scroll-y`.
+   * À poser en DERNIER enfant du conteneur défilant (la marge négative le superpose
+   * à la fin de la liste, sans rallonger le scroll d'un pixel).
+   *
+   * L'astuce classique des dégradés de fond (`background-attachment: local`) ne sert
+   * à rien ici : les listes de la caisse sont faites de cartes OPAQUES qui masquent
+   * le fond. Le voile est donc un calque AU-DESSUS, collé en bas du scrollport.
+   *
+   * Intelligent sans une ligne de JS : l'opacité est pilotée par le défilement
+   * lui-même (`animation-timeline: scroll()`), donc le voile s'efface à l'approche du
+   * bas et — timeline inactive faute de débordement — n'apparaît pas du tout quand la
+   * liste tient en entier. Navigateur sans scroll-timeline (ou mouvement réduit) :
+   * opacité 0, pas de voile, le défilement fonctionne exactement pareil. */
+  .fs-scroll-fade {
+    position: sticky;
+    bottom: 0;
+    z-index: 1;
+    height: 28px;
+    margin-top: -28px;
+    pointer-events: none;
+    opacity: 0;
+    background: linear-gradient(
+      to top,
+      var(--fs-card),
+      color-mix(in srgb, var(--fs-card) 0%, transparent)
+    );
+  }
+
+  @supports (animation-timeline: scroll()) {
+    @media (prefers-reduced-motion: no-preference) {
+      .fs-scroll-fade {
+        animation: fs-scroll-fade-out linear both;
+        animation-timeline: scroll(nearest block);
+      }
+    }
+  }
+}
+
+/* Voile visible tant qu'il reste à voir, éteint sur les derniers pixels. */
+@keyframes fs-scroll-fade-out {
+  0%,
+  88% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
 }
 
 /* Page 404 — animations dédiées (respect prefers-reduced-motion) */

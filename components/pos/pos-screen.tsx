@@ -3201,8 +3201,13 @@ export function PosScreen({
                   if (e.target === e.currentTarget) setPkgChooser(null);
                 }}
               >
-                <div className="w-full max-w-md rounded-lg bg-fs-card p-4 shadow-xl sm:p-5">
-                  <div className="flex items-start justify-between gap-2">
+                {/* Hauteur plafonnée + en-tête figé : au-delà de 3-4 conditionnements
+                    la liste débordait de l'écran et les derniers cartons — les plus
+                    gros — étaient inatteignables. Le nom du produit reste lisible
+                    pendant que la liste défile : c'est lui qui dit ce qu'on tarife.
+                    `dvh` : sur mobile la barre d'URL ne mange pas le dialogue. */}
+                <div className="flex max-h-[85dvh] w-full max-w-md flex-col overflow-hidden rounded-lg bg-fs-card shadow-xl">
+                  <div className="flex shrink-0 items-start justify-between gap-2 px-4 pt-4 sm:px-5 sm:pt-5">
                     <div className="min-w-0">
                       <h2 className="text-base font-bold text-fs-text">
                         {/* Sans conditionnement, le dialogue ne sert qu'à montrer
@@ -3237,58 +3242,68 @@ export function PosScreen({
                     </button>
                   </div>
 
-                  <div className="mt-3 grid gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        addToCart(cp.id, cp.name, cp.unit, pkgChooser.thumb);
-                        closeAndFocus();
-                      }}
-                      className="flex items-center justify-between gap-2 rounded-md border-2 border-fs-accent bg-fs-accent/[0.06] px-4 py-3 text-left"
-                    >
-                      <span className="text-sm font-bold text-fs-text">Pièce ({cp.unit || "pce"})</span>
-                      <span className="text-sm font-extrabold text-fs-accent">
-                        {formatCurrency(Number(cp.sale_price ?? 0))}
-                      </span>
-                    </button>
+                  {/* Zone défilante : `min-h-0` sinon l'enfant flex refuse de rétrécir
+                      et le panneau repart en débordement. `overscroll-contain` garde le
+                      geste dans le dialogue — arrivé en bout de liste, le doigt ne fait
+                      pas défiler la caisse derrière. */}
+                  <div className="fs-scroll-y min-h-0 flex-1 overscroll-contain">
+                    <div className="grid gap-2 px-4 pb-4 pt-3 sm:px-5 sm:pb-5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          addToCart(cp.id, cp.name, cp.unit, pkgChooser.thumb);
+                          closeAndFocus();
+                        }}
+                        className="flex items-center justify-between gap-2 rounded-md border-2 border-fs-accent bg-fs-accent/[0.06] px-4 py-3 text-left"
+                      >
+                        <span className="text-sm font-bold text-fs-text">Pièce ({cp.unit || "pce"})</span>
+                        <span className="text-sm font-extrabold text-fs-accent">
+                          {formatCurrency(Number(cp.sale_price ?? 0))}
+                        </span>
+                      </button>
 
-                    {pkgs.map((pk) => {
-                      const packTotal =
-                        pk.price != null ? pk.price : Number(cp.sale_price ?? 0) * pk.factor;
-                      return (
-                        <button
-                          key={`${pk.label}-${pk.factor}`}
-                          type="button"
-                          onClick={() => {
-                            addChosenPackaging(cp, pkgChooser.thumb, pk);
-                            closeAndFocus();
-                          }}
-                          className="flex items-center justify-between gap-2 rounded-md border border-black/[0.1] bg-white px-4 py-3 text-left"
-                        >
-                          <span className="min-w-0">
-                            <span className="block text-sm font-bold text-fs-text">{pk.label}</span>
-                            <span className="block text-[11px] text-neutral-500">
-                              {/* Équivalent à la pièce : le vendeur voit immédiatement
-                                  si le lot est mal tarifé (moins cher qu'une pièce). */}
-                              {pk.factor} {cp.unit || "pce"}
-                              {pk.factor > 1
-                                ? ` · ${formatCurrency(packagingPiecePrice(packTotal, pk.factor))} /${cp.unit || "pce"}`
-                                : ""}
-                            </span>
-                            {/* La règle, écrite noir sur blanc : ce tarif n'existe qu'à
-                                partir de ce nombre de pièces — en dessous, prix pièce. */}
-                            {pk.factor > 1 ? (
-                              <span className="mt-0.5 block text-[11px] font-semibold text-fs-accent">
-                                Tarif appliqué dès {pk.factor} {cp.unit || "pce"} au panier
+                      {pkgs.map((pk) => {
+                        const packTotal =
+                          pk.price != null ? pk.price : Number(cp.sale_price ?? 0) * pk.factor;
+                        return (
+                          <button
+                            key={`${pk.label}-${pk.factor}`}
+                            type="button"
+                            onClick={() => {
+                              addChosenPackaging(cp, pkgChooser.thumb, pk);
+                              closeAndFocus();
+                            }}
+                            className="flex items-center justify-between gap-2 rounded-md border border-black/[0.1] bg-white px-4 py-3 text-left"
+                          >
+                            <span className="min-w-0">
+                              <span className="block text-sm font-bold text-fs-text">{pk.label}</span>
+                              <span className="block text-[11px] text-neutral-500">
+                                {/* Équivalent à la pièce : le vendeur voit immédiatement
+                                    si le lot est mal tarifé (moins cher qu'une pièce). */}
+                                {pk.factor} {cp.unit || "pce"}
+                                {pk.factor > 1
+                                  ? ` · ${formatCurrency(packagingPiecePrice(packTotal, pk.factor))} /${cp.unit || "pce"}`
+                                  : ""}
                               </span>
-                            ) : null}
-                          </span>
-                          <span className="text-sm font-extrabold text-fs-accent">
-                            {formatCurrency(packTotal)}
-                          </span>
-                        </button>
-                      );
-                    })}
+                              {/* La règle, écrite noir sur blanc : ce tarif n'existe qu'à
+                                  partir de ce nombre de pièces — en dessous, prix pièce. */}
+                              {pk.factor > 1 ? (
+                                <span className="mt-0.5 block text-[11px] font-semibold text-fs-accent">
+                                  Tarif appliqué dès {pk.factor} {cp.unit || "pce"} au panier
+                                </span>
+                              ) : null}
+                            </span>
+                            <span className="text-sm font-extrabold text-fs-accent">
+                              {formatCurrency(packTotal)}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {/* Voile de bas de liste : « il y a la suite ». Il n'existe QUE si
+                        la liste déborde et s'efface tout seul en arrivant en bas — le
+                        défilement le pilote lui-même, sans JS (voir .fs-scroll-fade). */}
+                    <div className="fs-scroll-fade" aria-hidden />
                   </div>
                 </div>
               </div>,
