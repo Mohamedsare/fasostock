@@ -1,5 +1,6 @@
 "use client";
 
+import { RestrictedAccessScreen } from "@/components/permissions/restricted-access-screen";
 import { useEffect, useMemo, useRef, useState, type ComponentType } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -103,7 +104,6 @@ import {
   MdHelpOutline,
   MdInventory2,
   MdLocalOffer,
-  MdLockPerson,
   MdEdit,
   MdPayments,
   MdPointOfSale,
@@ -879,36 +879,7 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
     );
   }
   if (helpers && !helpers.canSales) {
-    const fallback = getSalesFallbackRoute(helpers);
-    return (
-      <div className="flex flex-1 flex-col items-center justify-center px-4 py-10">
-        <div className="w-full max-w-md rounded-2xl border border-black/[0.08] bg-fs-card p-6 shadow-sm">
-          <div className="flex flex-col items-center text-center">
-            <MdLockPerson className="h-14 w-14 text-red-600" aria-hidden />
-            <h2 className="mt-3 text-xl font-extrabold text-neutral-900">
-              Accès restreint
-            </h2>
-            <p className="mt-2 text-sm leading-relaxed text-neutral-600">
-              Vous n&apos;avez pas accès à cette page.
-            </p>
-            <button
-              type="button"
-              onClick={() => {
-                if (typeof window !== "undefined" && window.history.length > 1) {
-                  router.back();
-                } else {
-                  router.push(fallback);
-                }
-              }}
-              className="mt-6 inline-flex items-center justify-center gap-2 rounded-xl bg-fs-accent px-5 py-2.5 text-sm font-semibold text-white"
-            >
-              <MdArrowBack className="h-4 w-4" aria-hidden />
-              Retour
-            </button>
-          </div>
-        </div>
-      </div>
-    );
+    return <RestrictedAccessScreen fallbackHref={getSalesFallbackRoute(helpers)} />;
   }
 
   const exportExcel = () => {

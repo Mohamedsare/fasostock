@@ -25,6 +25,9 @@
  *
  *  1. UN SEUL CHAMP OBLIGATOIRE, EN HAUT, DÉJÀ FOCALISÉ. Le clavier s'ouvre tout seul,
  *     on tape le nom lu sur l'emballage, on valide. Le reste est facultatif.
+ *  1 bis. DEUX SOURCES POUR LA PHOTO. « Prendre la photo » ouvre l'appareil,
+ *     « Choisir une image » ouvre le téléphone — deux inputs, parce qu'un input qui
+ *     porte `capture` n'ouvre QUE l'appareil et ne propose jamais la galerie.
  *  2. LE BOUTON EST SOUS LE POUCE, TOUJOURS. Barre fixe en bas sur mobile, au-dessus de
  *     la barre de navigation — jamais à aller chercher en bas d'un formulaire.
  *  3. LE FORMULAIRE NE SE VIDE PAS ENTIÈREMENT. Unité et catégorie restent d'un article
@@ -55,6 +58,7 @@ import {
   MdHourglassBottom,
   MdInfoOutline,
   MdLock,
+  MdPhotoLibrary,
   MdQrCodeScanner,
   MdWarningAmber,
 } from "react-icons/md";
@@ -119,7 +123,9 @@ export function DraftProductScreen() {
   const [justAdded, setJustAdded] = useState<JustAdded[]>([]);
 
   const nameRef = useRef<HTMLInputElement | null>(null);
-  const fileRef = useRef<HTMLInputElement | null>(null);
+  /* L'appareil photo et les images du téléphone : deux inputs, cf. l'en-tête (1 bis). */
+  const cameraRef = useRef<HTMLInputElement | null>(null);
+  const galleryRef = useRef<HTMLInputElement | null>(null);
 
   const categoriesQ = useQuery({
     queryKey: queryKeys.categories(companyId),
@@ -176,6 +182,20 @@ export function DraftProductScreen() {
     };
   }, [photoUrl]);
 
+  function openPicker(source: "camera" | "gallery") {
+    const input = source === "camera" ? cameraRef.current : galleryRef.current;
+    if (!input) return;
+    // Sans cette remise à zéro, reprendre DEUX FOIS la même photo ne déclenche pas
+    // `onChange` la seconde fois (même nom de fichier).
+    input.value = "";
+    input.click();
+  }
+
+  function resetPickers() {
+    if (cameraRef.current) cameraRef.current.value = "";
+    if (galleryRef.current) galleryRef.current.value = "";
+  }
+
   function pickPhoto(file: File | null) {
     setPhoto(file);
     setPhotoUrl((prev) => {
@@ -228,7 +248,7 @@ export function DraftProductScreen() {
       setDescription("");
       setNoteOpen(false);
       pickPhoto(null);
-      if (fileRef.current) fileRef.current.value = "";
+      resetPickers();
       // Le clavier reste ouvert et le curseur est au bon endroit : l'article suivant
       // se tape sans toucher l'écran.
       nameRef.current?.focus();
@@ -407,11 +427,24 @@ export function DraftProductScreen() {
             {/* ── Photo : une frappe, l'appareil s'ouvre directement ── */}
             <div>
               <span className={labelClass}>Photo (facultatif)</span>
+              {/*
+                DEUX inputs, et il en faut deux : celui qui porte `capture` n'ouvre que
+                l'appareil photo sur téléphone — jamais la galerie, quoi qu'on mette à
+                côté. Le second, sans `capture`, ouvre les images déjà enregistrées :
+                celle prise hier, celle reçue du fournisseur, le visuel officiel.
+              */}
               <input
-                ref={fileRef}
+                ref={cameraRef}
                 type="file"
                 accept="image/*"
                 capture="environment"
+                className="hidden"
+                onChange={(e) => pickPhoto(e.target.files?.[0] ?? null)}
+              />
+              <input
+                ref={galleryRef}
+                type="file"
+                accept="image/*"
                 className="hidden"
                 onChange={(e) => pickPhoto(e.target.files?.[0] ?? null)}
               />
@@ -430,7 +463,7 @@ export function DraftProductScreen() {
                     type="button"
                     onClick={() => {
                       pickPhoto(null);
-                      if (fileRef.current) fileRef.current.value = "";
+                      resetPickers();
                     }}
                     className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md text-neutral-500 hover:bg-black/5"
                     aria-label="Retirer la photo"
@@ -439,19 +472,24 @@ export function DraftProductScreen() {
                   </button>
                 </div>
               ) : (
-                <button
-                  type="button"
-                  onClick={() => {
-                    // Sans cette remise à zéro, reprendre DEUX FOIS la même photo ne
-                    // déclenche pas `onChange` la seconde fois (même nom de fichier).
-                    if (fileRef.current) fileRef.current.value = "";
-                    fileRef.current?.click();
-                  }}
-                  className="mt-1.5 flex min-h-[68px] w-full items-center justify-center gap-2 rounded-[10px] border border-dashed border-black/15 bg-fs-surface-container text-sm font-semibold text-neutral-700 active:scale-[0.99]"
-                >
-                  <MdAddAPhoto className="h-6 w-6 text-fs-accent" aria-hidden />
-                  Prendre la photo de l&apos;article
-                </button>
+                <div className="mt-1.5 grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => openPicker("camera")}
+                    className="flex min-h-[68px] flex-col items-center justify-center gap-1 rounded-[10px] border border-dashed border-black/15 bg-fs-surface-container px-2 text-center text-xs font-semibold leading-tight text-neutral-700 active:scale-[0.99]"
+                  >
+                    <MdAddAPhoto className="h-6 w-6 text-fs-accent" aria-hidden />
+                    Prendre la photo
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => openPicker("gallery")}
+                    className="flex min-h-[68px] flex-col items-center justify-center gap-1 rounded-[10px] border border-dashed border-black/15 bg-fs-surface-container px-2 text-center text-xs font-semibold leading-tight text-neutral-700 active:scale-[0.99]"
+                  >
+                    <MdPhotoLibrary className="h-6 w-6 text-fs-accent" aria-hidden />
+                    Choisir une image
+                  </button>
+                </div>
               )}
             </div>
 

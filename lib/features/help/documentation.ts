@@ -602,6 +602,7 @@ export const DOC_GROUPS: DocGroup[] = [
             items: [
               "Ouvrez Photos produits. Par défaut, la page n'affiche que les articles SANS photo : c'est le travail qui reste.",
               "Touchez un article, puis « Prendre la photo ». Sur téléphone, l'appareil s'ouvre directement.",
+              "Si la photo existe déjà (prise hier, reçue du fournisseur, téléchargée), touchez la petite pastille galerie en bas à droite de la vignette : elle ouvre les images du téléphone au lieu de l'appareil.",
               "La photo est réduite et envoyée toute seule. La vignette apparaît, et l'article quitte la liste « sans photo ».",
               "Le compteur en haut indique où vous en êtes : « 128 illustrés sur 340 ».",
               "Pour remplacer une photo ratée, passez sur « Tous » et touchez l'article : l'ancienne est remplacée.",
@@ -626,6 +627,7 @@ export const DOC_GROUPS: DocGroup[] = [
           "images",
           "illustrer",
           "appareil photo",
+          "galerie",
           "employé",
           "vendeur",
           "catalogue",

@@ -17,6 +17,18 @@
  *     ouvre directement l'appareil photo (`capture="environment"`). Pas de dialogue,
  *     pas de champ, pas de « valider » : on vise, on déclenche, la photo monte.
  *
+ *     Mais l'appareil photo n'est pas toujours la bonne source : la photo a pu être
+ *     prise hier, envoyée par le fournisseur sur WhatsApp, ou téléchargée sur un PC.
+ *     Un second bouton — la pastille galerie, en bas de la vignette — ouvre le
+ *     téléphone au lieu de l'appareil. Deux boutons plutôt qu'un menu à choix : le
+ *     geste courant reste à une frappe, et l'autre source est visible sans qu'on ait
+ *     à la chercher.
+ *
+ *     C'est `capture` qui impose ces deux entrées. Sur mobile, un input qui le porte
+ *     ouvre l'appareil et RIEN D'AUTRE — la galerie n'y est pas proposée, `multiple`
+ *     ou pas. Il faut donc un second input, sans `capture`, ou la photo déjà prise
+ *     reste inatteignable.
+ *
  *  3. L'AVANCEMENT SE VOIT. Une barre en haut dit « 128 sur 340 ». C'est ce qui fait
  *     qu'un vendeur en fait vingt de plus au lieu de s'arrêter à la troisième — et
  *     c'est la seule raison pour laquelle un catalogue finit par être illustré.
@@ -41,6 +53,7 @@ import {
   MdImageNotSupported,
   MdLock,
   MdPhotoCamera,
+  MdPhotoLibrary,
   MdQrCodeScanner,
   MdSearch,
 } from "react-icons/md";
@@ -107,10 +120,12 @@ export function ProductPhotosScreen() {
   const [preview, setPreview] = useState<{ url: string; name: string } | null>(null);
 
   /**
-   * Un `<input type="file">` par produit serait 340 nœuds cachés dans le DOM. Un seul,
-   * dont on change la cible juste avant de l'ouvrir, suffit — et reste instantané.
+   * Un `<input type="file">` par produit serait 340 nœuds cachés dans le DOM. DEUX
+   * pour toute la grille suffisent — l'appareil photo et le téléphone —, et on change
+   * leur cible juste avant de les ouvrir.
    */
-  const fileRef = useRef<HTMLInputElement | null>(null);
+  const cameraRef = useRef<HTMLInputElement | null>(null);
+  const galleryRef = useRef<HTMLInputElement | null>(null);
   const targetRef = useRef<string | null>(null);
 
   const listQ = useQuery({
@@ -194,9 +209,10 @@ export function ProductPhotosScreen() {
     onSettled: () => setRemoving(null),
   });
 
-  function pickPhotoFor(productId: string) {
+  /** `source` : l'appareil photo (le geste courant) ou les images du téléphone. */
+  function pickPhotoFor(productId: string, source: "camera" | "gallery") {
     targetRef.current = productId;
-    const input = fileRef.current;
+    const input = source === "camera" ? cameraRef.current : galleryRef.current;
     if (!input) return;
     // Sans cette remise à zéro, reprendre DEUX FOIS le même article ne déclenche pas
     // `onChange` la seconde fois (même nom de fichier) : le vendeur croit avoir
@@ -266,7 +282,7 @@ export function ProductPhotosScreen() {
     <FsPage>
       <FsScreenHeader
         title="Photos produits"
-        subtitle="Prenez l'article en photo : elle apparaît aussitôt en caisse et dans le catalogue."
+        subtitle="Prenez l'article en photo, ou choisissez une image déjà dans votre téléphone : elle apparaît aussitôt en caisse et dans le catalogue."
       />
 
       {/* Avancement — la raison pour laquelle on en fait vingt de plus. */}
@@ -398,7 +414,8 @@ export function ProductPhotosScreen() {
               key={p.id}
               product={p}
               busy={uploading[p.id] === true}
-              onAdd={() => pickPhotoFor(p.id)}
+              onCamera={() => pickPhotoFor(p.id, "camera")}
+              onGallery={() => pickPhotoFor(p.id, "gallery")}
               onPreview={(url) => setPreview({ url, name: p.name })}
               onRemove={(imageId) => setRemoving({ imageId, productName: p.name })}
             />
@@ -414,15 +431,31 @@ export function ProductPhotosScreen() {
       ) : null}
 
       {/*
-        Un seul input pour toute la grille. `capture="environment"` demande la caméra
-        arrière : sur téléphone, la frappe ouvre l'appareil photo, pas la galerie.
-        `multiple` reste possible pour qui préfère choisir dans ses images.
+        Deux inputs pour toute la grille, et il en FAUT deux.
+
+        Le premier porte `capture="environment"` : sur téléphone, la frappe ouvre
+        l'appareil photo arrière directement — c'est le geste de la page. Mais un input
+        qui porte `capture` n'ouvre QUE l'appareil : ni galerie, ni fichiers, quoi qu'on
+        mette à côté (`multiple` n'y change rien). Le second, sans `capture`, ouvre donc
+        le sélecteur d'images du téléphone — pour la photo prise hier, celle reçue du
+        fournisseur sur WhatsApp, ou le visuel officiel de l'article.
+
+        Sur ordinateur, `capture` est ignoré : les deux ouvrent la même fenêtre de
+        fichiers, et c'est très bien ainsi.
       */}
       <input
-        ref={fileRef}
+        ref={cameraRef}
         type="file"
         accept="image/*"
         capture="environment"
+        multiple
+        hidden
+        onChange={(e) => onFilesPicked(e.target.files)}
+      />
+      <input
+        ref={galleryRef}
+        type="file"
+        accept="image/*"
         multiple
         hidden
         onChange={(e) => onFilesPicked(e.target.files)}
@@ -488,13 +521,17 @@ export function ProductPhotosScreen() {
 function PhotoCard({
   product,
   busy,
-  onAdd,
+  onCamera,
+  onGallery,
   onPreview,
   onRemove,
 }: {
   product: PhotoCatalogProduct;
   busy: boolean;
-  onAdd: () => void;
+  /** Ouvre l'appareil photo — le geste courant, celui de la vignette entière. */
+  onCamera: () => void;
+  /** Ouvre les images du téléphone — la photo qu'on a déjà. */
+  onGallery: () => void;
   onPreview: (url: string) => void;
   onRemove: (imageId: string) => void;
 }) {
@@ -506,7 +543,7 @@ function PhotoCard({
       <div className="relative">
         <button
           type="button"
-          onClick={first ? () => onPreview(first.url) : onAdd}
+          onClick={first ? () => onPreview(first.url) : onCamera}
           disabled={busy}
           className={cn(
             "flex aspect-square w-full items-center justify-center bg-fs-surface-container transition-opacity",
@@ -526,12 +563,30 @@ function PhotoCard({
               decoding="async"
             />
           ) : (
-            <span className="flex flex-col items-center gap-1 text-neutral-400">
+            <span className="flex flex-col items-center gap-1 px-2 text-center text-neutral-400">
               <MdAddAPhoto className="h-8 w-8" aria-hidden />
               <span className="text-[11px] font-medium">Prendre la photo</span>
             </span>
           )}
         </button>
+
+        {/*
+          La seconde source, à portée de pouce et sans menu à ouvrir : les images déjà
+          dans le téléphone. Posée en bas à droite de la vignette parce que le pied de
+          carte, sur une grille à deux colonnes, n'a pas la place d'un troisième bouton
+          sans tronquer le libellé du premier.
+        */}
+        {!busy ? (
+          <button
+            type="button"
+            onClick={onGallery}
+            className="absolute bottom-1.5 right-1.5 inline-flex h-9 w-9 items-center justify-center rounded-full bg-black/55 text-white backdrop-blur-sm transition-transform active:scale-95"
+            aria-label={`Choisir une image de ${product.name} dans le téléphone`}
+            title="Choisir une image déjà enregistrée"
+          >
+            <MdPhotoLibrary className="h-[18px] w-[18px]" aria-hidden />
+          </button>
+        ) : null}
 
         {busy ? (
           <span
@@ -572,7 +627,7 @@ function PhotoCard({
         <div className="mt-1.5 flex items-center gap-1.5">
           <button
             type="button"
-            onClick={onAdd}
+            onClick={onCamera}
             disabled={busy}
             className="inline-flex min-w-0 flex-1 items-center justify-center gap-1 rounded-[8px] bg-fs-accent px-2 py-1.5 text-[11px] font-semibold text-white disabled:opacity-60"
           >

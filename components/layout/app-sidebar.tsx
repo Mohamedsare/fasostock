@@ -87,7 +87,7 @@ export function AppSidebar({
           : cn(
               "sticky top-0 z-30 flex h-dvh max-h-dvh min-h-0 shrink-0 flex-col self-start",
               "transition-[width] duration-300 ease-[cubic-bezier(0.33,1,0.68,1)]",
-              effectiveCollapsed ? "w-[58px]" : "w-[204px]",
+              effectiveCollapsed ? "w-[58px]" : "w-[232px]",
             ),
         "border-r border-[color-mix(in_srgb,#f97316_16%,rgba(0,0,0,0.1))] dark:border-[#7c3a12]",
         "bg-[color-mix(in_srgb,#f97316_16%,white)] shadow-[inset_-1px_0_0_0_rgba(0,0,0,0.03)] dark:bg-[#31170b] dark:shadow-[inset_-1px_0_0_0_rgba(255,255,255,0.04)]",

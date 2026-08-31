@@ -4,6 +4,7 @@ import {
   DashboardBarChart,
   DashboardPieChart,
 } from "@/components/dashboard/dashboard-charts";
+import { RestrictedAccessScreen } from "@/components/permissions/restricted-access-screen";
 import { FsPullToRefresh } from "@/components/ui/fs-pull-to-refresh";
 import {
   FsCard,
@@ -42,7 +43,6 @@ import { messageFromUnknownError, toast } from "@/lib/toast";
 import { formatCurrency } from "@/lib/utils/currency";
 import { cn } from "@/lib/utils/cn";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
 import {
   useCallback,
   useEffect,
@@ -53,7 +53,6 @@ import {
   type ReactNode,
 } from "react";
 import {
-  MdArrowBack,
   MdBarChart,
   MdCalendarToday,
   MdClose,
@@ -63,7 +62,6 @@ import {
   MdInsights,
   MdInventory2,
   MdLocalShipping,
-  MdLockPerson,
   MdPictureAsPdf,
   MdReceiptLong,
   MdRefresh,
@@ -347,7 +345,6 @@ function SectionCard({
 }
 
 export function ReportsScreen() {
-  const router = useRouter();
   const qc = useQueryClient();
   const {
     data: ctx,
@@ -640,32 +637,11 @@ export function ReportsScreen() {
     const requiredText = parts.length ? parts.join(" + ") : "Voir les rapports";
 
     return (
-      <FsPage>
-        <FsCard padding="p-6" className="mx-auto max-w-md rounded-[6px] text-center sm:rounded-[6px]">
-          <MdLockPerson className="mx-auto h-14 w-14 text-red-600" aria-hidden />
-          <h2 className="mt-3 text-lg font-extrabold text-fs-text">Accès restreint</h2>
-          <p className="mt-2 text-sm text-neutral-600">
-            Vous n&apos;avez pas les permissions nécessaires pour afficher les rapports.
-          </p>
-          <p className="mt-3 text-sm font-bold text-neutral-700">
-            Droit requis : {requiredText}
-          </p>
-          <button
-            type="button"
-            onClick={() => {
-              if (typeof window !== "undefined" && window.history.length > 1) {
-                router.back();
-              } else {
-                router.push(fallbackHref);
-              }
-            }}
-            className="mt-6 inline-flex items-center justify-center gap-2 rounded-[6px] bg-fs-accent px-5 py-2.5 text-sm font-semibold text-white"
-          >
-            <MdArrowBack className="h-5 w-5" aria-hidden />
-            Retour
-          </button>
-        </FsCard>
-      </FsPage>
+      <RestrictedAccessScreen
+        message="Vous n'avez pas les permissions nécessaires pour afficher les rapports."
+        requiredText={requiredText}
+        fallbackHref={fallbackHref}
+      />
     );
   }
 
