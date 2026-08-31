@@ -198,6 +198,15 @@ type CartRow = {
    * tarif de gros suit la quantité, dans les deux sens.
    */
   tierLabel?: string | null;
+  /**
+   * Conditionnement CHOISI explicitement par le vendeur (dialogue « Conditionnement »
+   * ou scan du code-barres du carton). Son tarif fait foi tant que la quantité le
+   * couvre, MÊME s'il revient plus cher à la pièce que le prix catalogue : c'est une
+   * décision du vendeur sur le prix affiché dans le dialogue, pas une déduction
+   * automatique. Sans ce marqueur, un carton tarifé au-dessus du prix pièce était
+   * silencieusement facturé au prix pièce (carton de 200 à 4 100 000 encaissé 400 000).
+   */
+  chosenPackaging?: { label: string; factor: number; price: number | null } | null;
 };
 
 /** Aligné `sale_pos_edit.dart` / liste ventes. */
@@ -1714,8 +1723,10 @@ export function PosScreen({
   /**
    * Ligne du panier recalculée pour une nouvelle quantité : prix catalogue
    * (pièce / gros / promo / arrivage) ou palier de conditionnement s'il est atteint
-   * ET réellement moins cher. Un PU saisi à la main (`linePriceUserSet`) reste
-   * intouchable — c'est une décision du vendeur, pas un tarif du catalogue.
+   * ET réellement moins cher — sauf conditionnement explicitement choisi
+   * (`chosenPackaging`), qui s'impose au prix affiché dans le dialogue. Un PU saisi à
+   * la main (`linePriceUserSet`) reste intouchable — c'est une décision du vendeur,
+   * pas un tarif du catalogue.
    */
   function repricedRow(
     row: CartRow,
@@ -1726,16 +1737,26 @@ export function PosScreen({
     if (row.linePriceUserSet) return { ...row, quantity: qty, lineTotal: undefined };
     const p = products.find((x) => x.id === row.productId);
     const catalog = catalogUnitPrice(row.productId, qty);
-    const tier = p
-      ? bestPackagingTier(
-          validPackagings(p),
-          baseSalePrice(p.id, Number(p.sale_price ?? 0)),
-          qty,
-        )
-      : null;
+    const unitBase = p ? baseSalePrice(p.id, Number(p.sale_price ?? 0)) : 0;
+    const tier = p ? bestPackagingTier(validPackagings(p), unitBase, qty) : null;
     // Le palier ne sert jamais à FAIRE MONTER le prix : s'il est plus cher que le
     // prix du moment (promo, gros, arrivage), on garde le prix du moment.
-    const applied = tier && tier.piecePrice < catalog ? tier : null;
+    const auto = tier && tier.piecePrice < catalog ? tier : null;
+    /*
+     * Conditionnement choisi à la main : il s'applique dès que la quantité l'atteint,
+     * sans passer par le garde-fou ci-dessus — le vendeur a cliqué sur un prix affiché
+     * (« Carton 200 pce · 4 100 000 »), c'est celui-là qu'il facture. Si un palier
+     * automatique est ENCORE moins cher à la pièce, il gagne : le client ne paie jamais
+     * plus que ce que le panier lui aurait donné tout seul.
+     */
+    const chosen = row.chosenPackaging
+      ? bestPackagingTier([row.chosenPackaging], unitBase, qty)
+      : null;
+    const applied = chosen
+      ? auto && auto.piecePrice < chosen.piecePrice
+        ? auto
+        : chosen
+      : auto;
     const nextLabel = applied ? applied.label : null;
     if (!opts?.silent && qty > 0 && nextLabel !== (row.tierLabel ?? null)) {
       announceTier(row.name, row.unit, applied);
@@ -1812,6 +1833,8 @@ export function PosScreen({
     addQty: number,
     fixedUnitPrice: number,
     lineAddTotal: number,
+    /** Conditionnement à l'origine de l'ajout : son tarif est celui qui a été montré. */
+    chosen?: { label: string; factor: number; price: number | null } | null,
   ): boolean {
     if (addQty <= 0) return false;
     // Décision de stock prise de façon SYNCHRONE (état `cart` courant) : le
@@ -1846,12 +1869,15 @@ export function PosScreen({
           // `lineTotal` = prix exact du conditionnement : c'est lui qui fait foi
           // (sous-total, ticket, remise de ligne au checkout).
           lineTotal: lineAddTotal,
+          chosenPackaging: chosen ?? null,
         };
         // Silencieux : l'appelant annonce déjà « Carton · Produit (400) ».
         return [...prev, repricedRow(fresh, addQty, { silent: true })];
       }
       const next = [...prev];
-      next[idx] = repricedRow(prev[idx], prev[idx].quantity + addQty);
+      // Le dernier conditionnement choisi remplace le précédent sur la ligne.
+      const target = chosen ? { ...prev[idx], chosenPackaging: chosen } : prev[idx];
+      next[idx] = repricedRow(target, target.quantity + addQty);
       return next;
     });
     return true;
@@ -1890,6 +1916,8 @@ export function PosScreen({
           pkg.factor,
           pieceUnitPrice,
           packTotal,
+          // Scanner le carton vaut choix explicite du tarif carton.
+          { label: pkg.label, factor: pkg.factor, price: pkg.price ?? null },
         );
         if (added) {
           toast.success(`${pkg.label} · ${prod.name} (${pkg.factor})`);
@@ -1958,7 +1986,16 @@ export function PosScreen({
   ) {
     const packTotal = pkg.price != null ? pkg.price : Number(p.sale_price ?? 0) * pkg.factor;
     const pieceUnitPrice = Math.ceil(packTotal / pkg.factor);
-    const ok = addUnitsToCart(p.id, p.name, p.unit, thumb, pkg.factor, pieceUnitPrice, packTotal);
+    const ok = addUnitsToCart(
+      p.id,
+      p.name,
+      p.unit,
+      thumb,
+      pkg.factor,
+      pieceUnitPrice,
+      packTotal,
+      pkg,
+    );
     if (ok) toast.success(`${pkg.label} · ${p.name} (${pkg.factor})`);
   }
 
@@ -2066,8 +2103,15 @@ export function PosScreen({
     setCart((prev) =>
       prev.map((r) =>
         r.productId === productId
-          ? // PU saisi à la main : le palier automatique lâche la ligne.
-            { ...r, unitPrice: p, lineTotal: undefined, linePriceUserSet: true, tierLabel: null }
+          ? // PU saisi à la main : le palier (automatique OU choisi) lâche la ligne.
+            {
+              ...r,
+              unitPrice: p,
+              lineTotal: undefined,
+              linePriceUserSet: true,
+              tierLabel: null,
+              chosenPackaging: null,
+            }
           : r,
       ),
     );
