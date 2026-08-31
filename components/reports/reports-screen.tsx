@@ -628,21 +628,7 @@ export function ReportsScreen() {
   }
 
   if (!canView) {
-    const needGlobal = !hasPermission(P.reportsViewGlobal);
-    const needStore = !hasPermission(P.reportsViewStore);
-    const parts: string[] = [];
-    if (needGlobal) parts.push("Voir les rapports (global)");
-    if (needStore)
-      parts.push(`Voir les rapports (${terms.storeSingular.toLowerCase()})`);
-    const requiredText = parts.length ? parts.join(" + ") : "Voir les rapports";
-
-    return (
-      <RestrictedAccessScreen
-        message="Vous n'avez pas les permissions nécessaires pour afficher les rapports."
-        requiredText={requiredText}
-        fallbackHref={fallbackHref}
-      />
-    );
+    return <RestrictedAccessScreen fallbackHref={fallbackHref} />;
   }
 
   return (
