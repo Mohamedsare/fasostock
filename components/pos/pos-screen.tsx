@@ -56,6 +56,7 @@ import {
   FACTURE_TAB_SPLIT_PX,
   factureTabStripHeightPx,
 } from "@/lib/utils/facture-tab-layout";
+import { fetchAiCartVisionEnabled, peekAiCartVisionEnabled } from "@/lib/features/settings/ai-cart-vision";
 import { fetchInvoiceTablePosEnabled } from "@/lib/features/settings/invoice-table-pos";
 import {
   fetchPrintFormatChoiceEnabled,
@@ -103,6 +104,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { createClient } from "@/lib/supabase/client";
 import { InvoicePostSaleDialog } from "@/components/invoices/invoice-post-sale-dialog";
+import { PosAiCartDialog } from "@/components/pos/pos-ai-cart-dialog";
 import { PosBarcodeScannerDialog } from "@/components/pos/pos-barcode-scanner-dialog";
 import { ReceiptTicketDialog } from "@/components/pos/receipt-ticket-dialog";
 import type { InvoiceA4Data } from "@/lib/features/invoices/invoice-a4-types";
@@ -122,6 +124,7 @@ import { OFFLINE_SALE_ID_PREFIX } from "@/lib/offline/constants";
 import {
   MdAdd,
   MdArrowBack,
+  MdAutoAwesome,
   MdClose,
   MdDeleteOutline,
   MdDescription,
@@ -295,6 +298,8 @@ export function PosScreen({
   const [lastTicket, setLastTicket] = useState<ReceiptTicketData | null>(null);
   const [quickSettingsOpen, setQuickSettingsOpen] = useState(false);
   const [barcodeScannerOpen, setBarcodeScannerOpen] = useState(false);
+  /** « Panier IA » : photo de la liste du client + discussion (réglage propriétaire). */
+  const [aiCartOpen, setAiCartOpen] = useState(false);
   const [customerCreateOpen, setCustomerCreateOpen] = useState(false);
   const [saleEditBootstrapping, setSaleEditBootstrapping] = useState(() =>
     Boolean(editSaleIdProp?.trim()),
@@ -426,6 +431,20 @@ export function PosScreen({
     enabled: Boolean(companyId && mode === "a4-table" && canAccessA4Table),
     staleTime: 60_000,
   });
+
+  /*
+   * Réglage propriétaire « Panier IA ». Fermé par défaut : la fonction envoie la photo
+   * de la liste du client à un service externe — c'est au propriétaire de l'ouvrir.
+   */
+  const peekAiCart = companyId.length > 0 ? peekAiCartVisionEnabled(companyId) : undefined;
+  const aiCartCompanyQ = useQuery({
+    queryKey: queryKeys.aiCartVisionEnabled(companyId),
+    queryFn: () => fetchAiCartVisionEnabled(companyId),
+    enabled: Boolean(companyId && isA4Like && canAccess),
+    staleTime: 60_000,
+    ...(peekAiCart !== undefined ? { initialData: peekAiCart } : {}),
+  });
+  const aiCartEnabled = isA4Like && aiCartCompanyQ.data === true;
 
   /*
    * Réglage propriétaire « Choisir le format d'impression ». Coupé (le défaut), le
@@ -710,6 +729,17 @@ export function PosScreen({
     [posQ.data?.products, storeCatalog],
   );
   type PosProduct = (typeof products)[number];
+  /** Vue réduite du catalogue pour le « Panier IA » (nom, unité, prix). */
+  const aiCartProducts = useMemo(
+    () =>
+      products.map((p) => ({
+        id: p.id,
+        name: p.name,
+        unit: p.unit || "u",
+        salePrice: Number(p.sale_price ?? 0),
+      })),
+    [products],
+  );
   // Sélecteur de conditionnement à l'ajout au panier (Pièce par défaut).
   const [pkgChooser, setPkgChooser] = useState<{ productId: string; thumb: string | null } | null>(
     null,
@@ -1883,6 +1913,59 @@ export function PosScreen({
     return true;
   }
 
+  /**
+   * Remplissage du panier depuis le « Panier IA » : plusieurs lignes d'un coup.
+   *
+   * Les produits arrivent DÉJÀ choisis et confirmés à l'écran par le caissier ; il
+   * reste au panier à faire ce qu'il fait toujours — borner au stock disponible et
+   * appliquer le prix du catalogue (gros, promo, palier de conditionnement). Aucun
+   * prix ne vient de l'IA. Renvoie le nombre de lignes réellement ajoutées.
+   */
+  function addAiCartLines(rows: Array<{ productId: string; quantity: number }>): number {
+    // Décisions de stock prises de façon SYNCHRONE sur l'état `cart` courant (même
+    // caveat que `addUnitsToCart`), le total ajouté étant renvoyé à l'appelant.
+    const additions: Array<{ product: PosProduct; qty: number }> = [];
+    const takenByProduct = new Map<string, number>();
+    for (const r of rows) {
+      const product = products.find((p) => p.id === r.productId);
+      if (!product) continue;
+      const stock = stockByProductId.get(r.productId) ?? 0;
+      const inCart = cart.find((c) => c.productId === r.productId)?.quantity ?? 0;
+      const taken = takenByProduct.get(r.productId) ?? 0;
+      const room = stock - inCart - taken;
+      if (room <= 0) continue;
+      const qty = Math.min(Math.max(1, Math.floor(r.quantity)), room);
+      takenByProduct.set(r.productId, taken + qty);
+      additions.push({ product, qty });
+    }
+    if (additions.length === 0) return 0;
+
+    setCart((prev) => {
+      const next = [...prev];
+      for (const a of additions) {
+        const idx = next.findIndex((c) => c.productId === a.product.id);
+        if (idx < 0) {
+          const fresh: CartRow = {
+            productId: a.product.id,
+            name: a.product.name,
+            quantity: a.qty,
+            unitPrice: catalogUnitPrice(a.product.id, a.qty),
+            unit: a.product.unit || "u",
+            imageUrl: a.product.product_images?.[0]?.url ?? null,
+            lineTotal: undefined,
+          };
+          // Silencieux : le dialogue annonce déjà le nombre de lignes ajoutées.
+          next.push(repricedRow(fresh, a.qty, { silent: true }));
+        } else {
+          next[idx] = repricedRow(next[idx], next[idx].quantity + a.qty, { silent: true });
+        }
+      }
+      return next;
+    });
+    playPosAddBeep();
+    return additions.length;
+  }
+
   /** Aligné `PosQuickPage._addByBarcode` : barcode exact en priorité, puis SKU exact en fallback. */
   function addByBarcode(code: string) {
     const trimmed = code.replace(/\r|\n/g, "").trim();
@@ -2726,6 +2809,17 @@ export function PosScreen({
                         </option>
                       ))}
                     </select>
+                    {aiCartEnabled ? (
+                      <button
+                        type="button"
+                        title="Panier IA — photo de la liste du client"
+                        aria-label="Panier IA — photo de la liste du client"
+                        onClick={() => setAiCartOpen(true)}
+                        className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-[#F97316] bg-white text-[#F97316] shadow-sm transition hover:bg-[#F97316]/10"
+                      >
+                        <MdAutoAwesome className="h-5 w-5" aria-hidden />
+                      </button>
+                    ) : null}
                     <button
                       type="button"
                       title="Créer un client"
@@ -2797,6 +2891,17 @@ export function PosScreen({
                         </option>
                       ))}
                     </select>
+                    {aiCartEnabled ? (
+                      <button
+                        type="button"
+                        title="Panier IA — photo de la liste du client"
+                        aria-label="Panier IA — photo de la liste du client"
+                        onClick={() => setAiCartOpen(true)}
+                        className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-[#F97316] bg-white text-[#F97316] shadow-sm transition hover:bg-[#F97316]/10"
+                      >
+                        <MdAutoAwesome className="h-5 w-5" aria-hidden />
+                      </button>
+                    ) : null}
                     <button
                       type="button"
                       title="Créer un client"
@@ -3311,6 +3416,20 @@ export function PosScreen({
             );
           })()
         : null}
+
+      {aiCartEnabled && companyId ? (
+        <PosAiCartDialog
+          open={aiCartOpen}
+          onClose={() => setAiCartOpen(false)}
+          companyId={companyId}
+          storeId={storeId}
+          /* Le dialogue ne doit proposer QUE ce que cette boutique peut vendre :
+             `products` est déjà filtré par le catalogue de la boutique. */
+          products={aiCartProducts}
+          stockByProductId={stockByProductId}
+          onApply={addAiCartLines}
+        />
+      ) : null}
 
       {mode === "quick" ? (
         <PosBarcodeScannerDialog

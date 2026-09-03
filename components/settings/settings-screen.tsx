@@ -18,6 +18,11 @@ import {
   uploadCompanyLogo,
 } from "@/lib/features/companies/company-logo";
 import {
+  fetchAiCartVisionEnabled,
+  peekAiCartVisionEnabled,
+  setAiCartVisionEnabled,
+} from "@/lib/features/settings/ai-cart-vision";
+import {
   fetchInvoiceTablePosEnabled,
   peekInvoiceTablePosEnabled,
   setInvoiceTablePosEnabled,
@@ -185,6 +190,7 @@ import {
   MdCreditCard,
   MdInventory2,
   MdAllInbox,
+  MdAutoAwesome,
   MdLibraryAddCheck,
   MdPayments,
   MdSchedule,
@@ -485,6 +491,32 @@ export function SettingsScreen() {
           : "Mode facture (tableau) désactivé.",
       );
       await qc.invalidateQueries({ queryKey: queryKeys.invoiceTablePosEnabled(companyId) });
+    },
+    onError: (e) => toastMutationError("settings", e),
+  });
+
+  const peekAiCart =
+    companyId.length > 0 && isOwner ? peekAiCartVisionEnabled(companyId) : undefined;
+  const aiCartVisionQ = useQuery({
+    queryKey: queryKeys.aiCartVisionEnabled(companyId),
+    queryFn: () => fetchAiCartVisionEnabled(companyId),
+    enabled: Boolean(companyId && isOwner),
+    staleTime: 30_000,
+    ...(peekAiCart !== undefined ? { initialData: peekAiCart } : {}),
+  });
+
+  const aiCartVisionMut = useMutation({
+    mutationFn: async (enabled: boolean) => {
+      if (!companyId) throw new Error("Entreprise introuvable.");
+      await setAiCartVisionEnabled(companyId, enabled);
+    },
+    onSuccess: async (_, enabled) => {
+      toast.success(
+        enabled
+          ? "Panier IA activé. Le bouton apparaît dans les caisses Facture."
+          : "Panier IA désactivé.",
+      );
+      await qc.invalidateQueries({ queryKey: queryKeys.aiCartVisionEnabled(companyId) });
     },
     onError: (e) => toastMutationError("settings", e),
   });
@@ -2997,6 +3029,69 @@ export function SettingsScreen() {
                   disabled={invoiceTablePosMut.isPending}
                   onChange={(e) => {
                     void invoiceTablePosMut.mutateAsync(e.target.checked);
+                  }}
+                />
+              </label>
+            </div>
+          )}
+        </FsCard>
+      ) : null}
+
+      {/* Panier IA — owner uniquement */}
+      {isOwner && companyId ? (
+        <FsCard className="mt-5" padding="p-5">
+          <SettingsCardTitle icon={MdAutoAwesome} title="Panier IA — photo de la liste" />
+          <p className="mt-2 text-xs leading-relaxed text-neutral-600 sm:text-sm">
+            Le client arrive avec sa liste — un papier, un carnet, un message WhatsApp.
+            Aujourd&apos;hui le caissier la lit et cherche chaque article un par un.
+            Avec cette fonction, il <b>prend la liste en photo</b> depuis la caisse Facture :
+            l&apos;assistant lit les articles et les quantités, les rapproche de{" "}
+            <b>votre catalogue</b>, et le panier se remplit en un clic. Il peut préciser par
+            écrit (« le sucre, c&apos;est le paquet de 1 kg », « enlève le savon ») sans
+            recommencer la photo.
+          </p>
+          {/*
+            Les deux points qu'un patron doit lire AVANT d'ouvrir : ce qui sort de sa
+            boutique, et ce que la machine n'a pas le droit de décider seule.
+          */}
+          <p className="mt-2 rounded-[10px] bg-amber-500/10 px-3 py-2 text-xs leading-relaxed text-amber-900 dark:text-amber-200">
+            À savoir : la photo est <b>envoyée à un service d&apos;analyse externe</b> pour être
+            lue — ne l&apos;utilisez pas sur un document que vous ne voulez pas voir sortir de
+            la boutique. En revanche l&apos;assistant ne fixe <b>aucun prix</b> et ne valide
+            aucune vente : les prix restent ceux de votre catalogue (gros, promotions,
+            conditionnements), le stock est respecté, et le caissier <b>confirme chaque ligne</b>{" "}
+            à l&apos;écran avant qu&apos;elle n&apos;entre au panier.
+          </p>
+          {aiCartVisionQ.isPending ? (
+            <div className="mt-4 flex justify-center py-4" role="status" aria-label="Chargement">
+              <div className="h-8 w-8 animate-spin rounded-full border-2 border-fs-accent border-t-transparent" />
+            </div>
+          ) : (
+            <div className="mt-4 space-y-0 rounded-[10px] border border-black/[0.08]">
+              <label
+                className={cn(
+                  "flex cursor-pointer items-start justify-between gap-3 px-3 py-3 sm:px-4",
+                  aiCartVisionMut.isPending && "pointer-events-none opacity-60",
+                )}
+              >
+                <span className="min-w-0">
+                  <span className="block text-sm font-medium text-fs-text">
+                    Activer le panier IA en caisse Facture
+                  </span>
+                  <span className="mt-0.5 block text-xs text-neutral-600">
+                    {aiCartVisionQ.data
+                      ? "Le bouton « Panier IA » apparaît dans les caisses Facture (A4 et tableau)."
+                      : "Désactivé : le bouton n'apparaît nulle part et l'analyse est refusée côté serveur."}
+                  </span>
+                </span>
+                <input
+                  type="checkbox"
+                  role="switch"
+                  className="mt-1 h-5 w-9 shrink-0 cursor-pointer accent-fs-accent"
+                  checked={Boolean(aiCartVisionQ.data)}
+                  disabled={aiCartVisionMut.isPending}
+                  onChange={(e) => {
+                    void aiCartVisionMut.mutateAsync(e.target.checked);
                   }}
                 />
               </label>
