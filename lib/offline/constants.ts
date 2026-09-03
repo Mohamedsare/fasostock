@@ -47,3 +47,23 @@ export const MAX_OUTBOX_ATTEMPTS = 25;
  */
 export const OFFLINE_SALE_ID_PREFIX = "offline:";
 export const OFFLINE_SALE_NUMBER_LABEL = "Hors ligne — en attente sync";
+
+/**
+ * IndexedDB : base dédiée aux **brouillons d'écran** (travail en cours non validé).
+ *
+ * Base séparée de `IDB_RQ_DB` et de la Dexie outbox, et ce n'est pas cosmétique :
+ * `idb-keyval` ouvre la base sans numéro de version, donc son `onupgradeneeded` ne se
+ * déclenche jamais sur une base qui existe déjà. Deux `createStore()` sur le même nom de
+ * base avec des noms de store différents donnent un `NotFoundError` au premier accès.
+ */
+export const IDB_DRAFTS_DB = "fasostock_drafts";
+export const IDB_DRAFTS_STORE = "screen_drafts";
+
+/**
+ * Au-delà, un brouillon retrouvé sur disque est ignoré et supprimé.
+ *
+ * 12 h couvre largement le cas réel — « je quitte la caisse pour vérifier un stock et je
+ * reviens » — sans ressusciter le panier de la veille au matin : entre-temps le stock et
+ * les prix ont bougé, et le caissier encaisserait un client qui n'est plus là.
+ */
+export const DRAFT_MAX_AGE_MS = 1000 * 60 * 60 * 12;

@@ -95,6 +95,14 @@ import {
   filterByStoreCatalog,
   filterTaxonomyByStoreCatalog,
 } from "@/lib/features/stores/store-catalog";
+import { usePersistentDraft } from "@/lib/hooks/use-persistent-draft";
+import type { CartRow } from "@/lib/features/pos/cart-types";
+import {
+  isPosDraftEmpty,
+  POS_DRAFT_VERSION,
+  posDraftKey,
+  type PosDraft,
+} from "@/lib/features/pos/pos-draft";
 import { readPosCartQtyUiForMode } from "@/lib/utils/pos-cart-settings";
 import { playPosAddBeep } from "@/lib/utils/pos-sound";
 import { ensureStringNumberMap } from "@/lib/utils/string-number-map";
@@ -187,34 +195,6 @@ function PosLocationTag({
     </span>
   );
 }
-
-type CartRow = {
-  productId: string;
-  name: string;
-  quantity: number;
-  unitPrice: number;
-  unit: string;
-  imageUrl?: string | null;
-  /** Ligne depuis `sale_items.total` — remises ligne pour RPC update (Flutter). */
-  lineTotal?: number;
-  /** Si true, ne pas recalculer détail/gros quand la qté change (ex. PU saisi ou édition vente). */
-  linePriceUserSet?: boolean;
-  /**
-   * Palier de conditionnement actuellement appliqué à la ligne (« Paquet », « Carton »…),
-   * `null`/absent = prix à la pièce. Recalculé à CHAQUE changement de quantité : le
-   * tarif de gros suit la quantité, dans les deux sens.
-   */
-  tierLabel?: string | null;
-  /**
-   * Conditionnement CHOISI explicitement par le vendeur (dialogue « Conditionnement »
-   * ou scan du code-barres du carton). Son tarif fait foi tant que la quantité le
-   * couvre, MÊME s'il revient plus cher à la pièce que le prix catalogue : c'est une
-   * décision du vendeur sur le prix affiché dans le dialogue, pas une déduction
-   * automatique. Sans ce marqueur, un carton tarifé au-dessus du prix pièce était
-   * silencieusement facturé au prix pièce (carton de 200 à 4 100 000 encaissé 400 000).
-   */
-  chosenPackaging?: { label: string; factor: number; price: number | null } | null;
-};
 
 /** Aligné `sale_pos_edit.dart` / liste ventes. */
 function isA4InvoiceFromSaleItem(s: SaleItem): boolean {
@@ -428,6 +408,94 @@ export function PosScreen({
   const handoffMode = dualCashierOn && (sendToCashier || !selfCheckoutAllowed);
   /** Mot du vendeur au caissier (« il paie en Wave », « le monsieur en boubou bleu »). */
   const [handoffNote, setHandoffNote] = useState("");
+
+  /*
+   * Le panier survit à la navigation.
+   *
+   * Le routeur démonte la page dès qu'on change d'écran : aller vérifier un stock, une
+   * fiche client ou un prix ailleurs dans l'app vidait le panier, et les quinze lignes
+   * déjà scannées étaient à refaire avec le client au comptoir. Le brouillon est relu
+   * au retour, quelle que soit la manière dont on revient (menu, retour navigateur,
+   * rechargement de l'onglet).
+   *
+   * L'édition d'une vente existante (`?editSale=`) en est exclue : cet écran s'ouvre
+   * pré-rempli depuis la base, y injecter un brouillon écraserait la vente à corriger.
+   * Le brouillon en attente reste sur le disque et revient à la vente suivante.
+   */
+  const isSaleEditContext = Boolean(editSaleIdProp?.trim());
+  /* Lu par `onRestore`, qui se déclenche hors rendu : mis à jour dans un effet, jamais pendant. */
+  const cartRef = useRef(cart);
+  useEffect(() => {
+    cartRef.current = cart;
+  });
+  const draftSnapshot = useMemo<PosDraft>(
+    () => ({
+      cart,
+      paymentMethod,
+      quickPayment,
+      mobileProvider,
+      splitCashAmount,
+      discount,
+      amountReceived,
+      amountReceivedTouched,
+      customerId,
+      creditDueDate,
+      prescriptionNumber,
+      handoffNote,
+    }),
+    [
+      cart,
+      paymentMethod,
+      quickPayment,
+      mobileProvider,
+      splitCashAmount,
+      discount,
+      amountReceived,
+      amountReceivedTouched,
+      customerId,
+      creditDueDate,
+      prescriptionNumber,
+      handoffNote,
+    ],
+  );
+
+  usePersistentDraft<PosDraft>({
+    key: companyId && storeId ? posDraftKey(companyId, storeId, mode) : null,
+    version: POS_DRAFT_VERSION,
+    value: draftSnapshot,
+    isEmpty: isPosDraftEmpty,
+    enabled: !isSaleEditContext,
+    onRestore: (d) => {
+      /*
+       * La relecture disque est asynchrone. Si le caissier a déjà scanné un article
+       * pendant ces quelques millisecondes, il vend au client PRÉSENT : le brouillon
+       * d'avant est abandonné plutôt que de recouvrir la vente en cours.
+       */
+      if (cartRef.current.length > 0) return;
+      setCart(d.cart);
+      setPaymentMethod(d.paymentMethod);
+      setQuickPayment(d.quickPayment);
+      setMobileProvider(d.mobileProvider);
+      setSplitCashAmount(d.splitCashAmount);
+      setDiscount(d.discount);
+      setAmountReceived(d.amountReceived);
+      setAmountReceivedTouched(d.amountReceivedTouched);
+      setCustomerId(d.customerId);
+      setCreditDueDate(d.creditDueDate);
+      setPrescriptionNumber(d.prescriptionNumber);
+      setHandoffNote(d.handoffNote);
+      /*
+       * Annoncé, pas silencieux : un panier déjà rempli à l'ouverture de la caisse doit
+       * être reconnu comme celui d'AVANT. Sans ce message, le caissier suivant croit
+       * commencer une vente neuve et encaisse les articles d'un autre client.
+       */
+      toast.info(
+        d.cart.length === 1
+          ? "Panier en cours restauré (1 article)."
+          : `Panier en cours restauré (${d.cart.length} articles).`,
+      );
+    },
+  });
 
   const invoiceTableCompanyQ = useQuery({
     queryKey: queryKeys.invoiceTablePosEnabled(companyId),
