@@ -2,12 +2,19 @@
 
 import { compressImageForUpload } from "@/lib/utils/image-compress";
 
+/** Pièce jointe d'un tour : photo de la liste, ou document PDF (devis, bon de commande). */
+export type AiCartFile = {
+  kind: "image" | "pdf";
+  /** Data URL (`data:image/...;base64,...` ou `data:application/pdf;base64,...`). */
+  dataUrl: string;
+  name: string;
+};
+
 /** Un tour de la discussion tel qu'il part au serveur (`/api/ai/cart-vision`). */
 export type AiCartTurn = {
   role: "user" | "assistant";
   text: string;
-  /** Data URL (`data:image/...;base64,...`) — uniquement sur un tour utilisateur. */
-  image?: string | null;
+  file?: AiCartFile | null;
 };
 
 export type AiCartCandidate = {
@@ -20,11 +27,15 @@ export type AiCartCandidate = {
 };
 
 export type AiCartLine = {
-  /** Le libellé lu sur la photo / dicté, avant rapprochement. */
+  /** Le libellé lu sur le document, avant rapprochement. */
   label: string;
   quantity: number;
   unit: string;
   note: string;
+  /** P.U. écrit sur le document (`null` si le document n'en porte pas). */
+  unitPrice: number | null;
+  /** Total de ligne écrit sur le document. */
+  lineTotal: number | null;
   /** Produit retenu par le rapprochement, `null` si rien de sûr. */
   productId: string | null;
   candidates: AiCartCandidate[];
@@ -32,29 +43,57 @@ export type AiCartLine = {
 
 export type AiCartResult = {
   reply: string;
+  /** Total général écrit sur le document — sert à vérifier la lecture. */
+  documentTotal: number | null;
   lines: AiCartLine[];
 };
 
-/**
- * Photo → data URL, redimensionnée avant l'envoi. Une photo de téléphone brute
- * (4 à 8 Mo) part sur un forfait data payé par le commerçant et n'apporte rien :
- * le modèle lit aussi bien une image bornée à ~1 280 px.
- */
-export async function imageFileToDataUrl(file: File): Promise<string> {
-  const compressed = await compressImageForUpload(file, "product");
-  return await new Promise<string>((resolve, reject) => {
+/** Au-delà, la requête ne passerait pas l'hébergeur (limite de taille du corps). */
+export const MAX_PDF_BYTES = 3 * 1024 * 1024;
+
+function readAsDataUrl(file: Blob): Promise<string> {
+  return new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
-    reader.onerror = () => reject(new Error("Image illisible."));
-    reader.onload = () => {
-      const r = String(reader.result ?? "");
-      if (!r.startsWith("data:image/")) {
-        reject(new Error("Format d'image non pris en charge."));
-        return;
-      }
-      resolve(r);
-    };
-    reader.readAsDataURL(compressed);
+    reader.onerror = () => reject(new Error("Fichier illisible."));
+    reader.onload = () => resolve(String(reader.result ?? ""));
+    reader.readAsDataURL(file);
   });
+}
+
+/**
+ * Fichier choisi par le caissier → pièce jointe prête à partir.
+ *
+ * Une photo est redimensionnée avant l'envoi : une photo de téléphone brute (4 à
+ * 8 Mo) part sur un forfait data payé par le commerçant et n'apporte rien, le
+ * modèle lit aussi bien une image bornée à ~1 280 px. Un PDF part tel quel — le
+ * recompresser abîmerait justement ce qu'on veut lire (les chiffres).
+ */
+export async function attachmentFromFile(file: File): Promise<AiCartFile> {
+  const isPdf =
+    file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+
+  if (isPdf) {
+    if (file.size > MAX_PDF_BYTES) {
+      throw new Error(
+        "PDF trop lourd (3 Mo maximum). Envoyez les pages utiles, ou une photo de la commande.",
+      );
+    }
+    const dataUrl = await readAsDataUrl(file);
+    if (!dataUrl.startsWith("data:application/pdf;base64,")) {
+      throw new Error("Ce fichier n'est pas un PDF lisible.");
+    }
+    return { kind: "pdf", dataUrl, name: file.name || "document.pdf" };
+  }
+
+  if (!file.type.startsWith("image/")) {
+    throw new Error("Envoyez une image (photo de la liste) ou un PDF.");
+  }
+  const compressed = await compressImageForUpload(file, "product");
+  const dataUrl = await readAsDataUrl(compressed);
+  if (!dataUrl.startsWith("data:image/")) {
+    throw new Error("Format d'image non pris en charge.");
+  }
+  return { kind: "image", dataUrl, name: file.name || "photo" };
 }
 
 /** Envoie la discussion complète et récupère la liste d'articles à jour. */
@@ -73,10 +112,10 @@ export async function runAiCartVision(params: {
     body: JSON.stringify({
       companyId: params.companyId,
       storeId: params.storeId,
-      messages: withRecentImagesOnly(params.messages).map((m) => ({
+      messages: withRecentFilesOnly(params.messages).map((m) => ({
         role: m.role,
         text: m.text,
-        image: m.image ?? null,
+        file: m.file ?? null,
       })),
     }),
   });
@@ -89,32 +128,36 @@ export async function runAiCartVision(params: {
   }
   return {
     reply: String(json?.reply ?? ""),
+    documentTotal:
+      typeof json?.documentTotal === "number" && Number.isFinite(json.documentTotal)
+        ? json.documentTotal
+        : null,
     lines: Array.isArray(json?.lines) ? (json.lines as AiCartLine[]) : [],
   };
 }
 
 /**
- * Seules les dernières photos repartent au serveur. Sans ce garde-fou, une
- * discussion de dix tours renverrait dix photos à chaque message : la requête
- * finirait par dépasser la taille admise par l'hébergeur (et la facture data du
- * commerçant avec). Les tours plus anciens gardent leur texte — la liste
- * reconnue, elle, est rappelée dans la réponse de l'assistant.
+ * Seules les dernières pièces jointes repartent au serveur. Sans ce garde-fou, une
+ * discussion de dix tours renverrait dix photos (ou dix PDF) à chaque message : la
+ * requête finirait par dépasser la taille admise par l'hébergeur, et la facture data
+ * du commerçant avec. Les tours plus anciens gardent leur texte — la liste reconnue,
+ * elle, est rappelée dans la réponse de l'assistant.
  */
-const MAX_IMAGES_SENT = 2;
+const MAX_FILES_SENT = 2;
 
-function withRecentImagesOnly(messages: AiCartTurn[]): AiCartTurn[] {
+function withRecentFilesOnly(messages: AiCartTurn[]): AiCartTurn[] {
   let kept = 0;
   const out: AiCartTurn[] = [];
   for (let i = messages.length - 1; i >= 0; i -= 1) {
     const m = messages[i];
-    if (m.image && kept < MAX_IMAGES_SENT) {
+    if (m.file && kept < MAX_FILES_SENT) {
       kept += 1;
       out.unshift(m);
       continue;
     }
-    if (m.image) {
-      // Le tour reste dans l'historique, mais sans sa photo.
-      if (m.text.trim()) out.unshift({ role: m.role, text: m.text, image: null });
+    if (m.file) {
+      // Le tour reste dans l'historique, mais sans sa pièce jointe.
+      if (m.text.trim()) out.unshift({ role: m.role, text: m.text, file: null });
       continue;
     }
     out.unshift(m);

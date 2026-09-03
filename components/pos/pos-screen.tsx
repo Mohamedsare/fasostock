@@ -51,7 +51,11 @@ import { posEffectiveUnitPrice } from "@/lib/features/pos/wholesale-unit-price";
 import { listActiveStorePromotions } from "@/lib/features/promotions/api";
 import { fetchStoreLotPrices } from "@/lib/features/quick-supply/api";
 import { applyPromoPercent } from "@/lib/features/promotions/promo-math";
-import { defaultInvoiceUnitForProduct, INVOICE_UNITS } from "@/lib/features/pos/invoice-units";
+import {
+  defaultInvoiceUnitForProduct,
+  INVOICE_UNITS,
+  invoiceUnitFromLabel,
+} from "@/lib/features/pos/invoice-units";
 import {
   FACTURE_TAB_SPLIT_PX,
   factureTabStripHeightPx,
@@ -440,11 +444,18 @@ export function PosScreen({
   const aiCartCompanyQ = useQuery({
     queryKey: queryKeys.aiCartVisionEnabled(companyId),
     queryFn: () => fetchAiCartVisionEnabled(companyId),
-    enabled: Boolean(companyId && isA4Like && canAccess),
+    enabled: Boolean(companyId && mode === "a4-table" && canAccessA4Table),
     staleTime: 60_000,
     ...(peekAiCart !== undefined ? { initialData: peekAiCart } : {}),
   });
-  const aiCartEnabled = isA4Like && aiCartCompanyQ.data === true;
+  /*
+   * Réservé à la caisse « Facture (tableau) » : c'est le seul écran dont chaque
+   * ligne porte déjà son unité, sa quantité ET son prix unitaire librement saisis.
+   * Reprendre un devis ou une facture fournisseur y est une opération naturelle ;
+   * ailleurs (caisse rapide, facture A4 classique) elle n'aurait pas où se poser.
+   */
+  const aiCartEnabled =
+    mode === "a4-table" && canAccessA4Table && aiCartCompanyQ.data === true;
 
   /*
    * Réglage propriétaire « Choisir le format d'impression ». Coupé (le défaut), le
@@ -1921,10 +1932,24 @@ export function PosScreen({
    * appliquer le prix du catalogue (gros, promo, palier de conditionnement). Aucun
    * prix ne vient de l'IA. Renvoie le nombre de lignes réellement ajoutées.
    */
-  function addAiCartLines(rows: Array<{ productId: string; quantity: number }>): number {
+  function addAiCartLines(
+    rows: Array<{
+      productId: string;
+      quantity: number;
+      /** P.U. lu sur le document. Absent = prix du catalogue. */
+      unitPrice?: number | null;
+      /** Unité lue sur le document, ramenée au menu « Unité » du tableau. */
+      unit?: string | null;
+    }>,
+  ): number {
     // Décisions de stock prises de façon SYNCHRONE sur l'état `cart` courant (même
     // caveat que `addUnitsToCart`), le total ajouté étant renvoyé à l'appelant.
-    const additions: Array<{ product: PosProduct; qty: number }> = [];
+    const additions: Array<{
+      product: PosProduct;
+      qty: number;
+      unitPrice: number | null;
+      unit: string;
+    }> = [];
     const takenByProduct = new Map<string, number>();
     for (const r of rows) {
       const product = products.find((p) => p.id === r.productId);
@@ -1936,7 +1961,16 @@ export function PosScreen({
       if (room <= 0) continue;
       const qty = Math.min(Math.max(1, Math.floor(r.quantity)), room);
       takenByProduct.set(r.productId, taken + qty);
-      additions.push({ product, qty });
+      const price =
+        r.unitPrice != null && Number.isFinite(r.unitPrice) && r.unitPrice >= 0
+          ? Math.min(999_999_999, Math.round(r.unitPrice))
+          : null;
+      additions.push({
+        product,
+        qty,
+        unitPrice: price,
+        unit: invoiceUnitFromLabel(r.unit, product.unit),
+      });
     }
     if (additions.length === 0) return 0;
 
@@ -1944,20 +1978,43 @@ export function PosScreen({
       const next = [...prev];
       for (const a of additions) {
         const idx = next.findIndex((c) => c.productId === a.product.id);
+        /*
+         * P.U. repris du document : la ligne est marquée `linePriceUserSet`, exactement
+         * comme si le vendeur avait tapé ce prix dans la colonne « P.U. ». C'est ce
+         * marqueur qui empêche `repricedRow` de lui substituer le tarif du catalogue
+         * (gros, promo, palier) — un devis se refacture au prix promis, pas au prix
+         * du jour. Sans prix au document, le catalogue reprend la main comme d'habitude.
+         */
         if (idx < 0) {
           const fresh: CartRow = {
             productId: a.product.id,
             name: a.product.name,
             quantity: a.qty,
-            unitPrice: catalogUnitPrice(a.product.id, a.qty),
-            unit: a.product.unit || "u",
+            unitPrice: a.unitPrice ?? catalogUnitPrice(a.product.id, a.qty),
+            unit: a.unit,
             imageUrl: a.product.product_images?.[0]?.url ?? null,
             lineTotal: undefined,
+            ...(a.unitPrice != null ? { linePriceUserSet: true } : {}),
           };
           // Silencieux : le dialogue annonce déjà le nombre de lignes ajoutées.
-          next.push(repricedRow(fresh, a.qty, { silent: true }));
+          next.push(
+            a.unitPrice != null ? fresh : repricedRow(fresh, a.qty, { silent: true }),
+          );
         } else {
-          next[idx] = repricedRow(next[idx], next[idx].quantity + a.qty, { silent: true });
+          const merged: CartRow =
+            a.unitPrice != null
+              ? {
+                  ...next[idx],
+                  unit: a.unit,
+                  unitPrice: a.unitPrice,
+                  linePriceUserSet: true,
+                  tierLabel: null,
+                  chosenPackaging: null,
+                  lineTotal: undefined,
+                  quantity: next[idx].quantity + a.qty,
+                }
+              : repricedRow(next[idx], next[idx].quantity + a.qty, { silent: true });
+          next[idx] = merged;
         }
       }
       return next;
@@ -2812,8 +2869,8 @@ export function PosScreen({
                     {aiCartEnabled ? (
                       <button
                         type="button"
-                        title="Panier IA — photo de la liste du client"
-                        aria-label="Panier IA — photo de la liste du client"
+                        title="Panier IA — photo ou PDF de la commande"
+                        aria-label="Panier IA — photo ou PDF de la commande"
                         onClick={() => setAiCartOpen(true)}
                         className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-[#F97316] bg-white text-[#F97316] shadow-sm transition hover:bg-[#F97316]/10"
                       >
@@ -2891,17 +2948,6 @@ export function PosScreen({
                         </option>
                       ))}
                     </select>
-                    {aiCartEnabled ? (
-                      <button
-                        type="button"
-                        title="Panier IA — photo de la liste du client"
-                        aria-label="Panier IA — photo de la liste du client"
-                        onClick={() => setAiCartOpen(true)}
-                        className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-[#F97316] bg-white text-[#F97316] shadow-sm transition hover:bg-[#F97316]/10"
-                      >
-                        <MdAutoAwesome className="h-5 w-5" aria-hidden />
-                      </button>
-                    ) : null}
                     <button
                       type="button"
                       title="Créer un client"

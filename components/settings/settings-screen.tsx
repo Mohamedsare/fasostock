@@ -513,7 +513,7 @@ export function SettingsScreen() {
     onSuccess: async (_, enabled) => {
       toast.success(
         enabled
-          ? "Panier IA activé. Le bouton apparaît dans les caisses Facture."
+          ? "Panier IA activé. Le bouton apparaît dans la caisse Facture (tableau)."
           : "Panier IA désactivé.",
       );
       await qc.invalidateQueries({ queryKey: queryKeys.aiCartVisionEnabled(companyId) });
@@ -3040,27 +3040,31 @@ export function SettingsScreen() {
       {/* Panier IA — owner uniquement */}
       {isOwner && companyId ? (
         <FsCard className="mt-5" padding="p-5">
-          <SettingsCardTitle icon={MdAutoAwesome} title="Panier IA — photo de la liste" />
+          <SettingsCardTitle icon={MdAutoAwesome} title="Panier IA — photo ou PDF de la commande" />
           <p className="mt-2 text-xs leading-relaxed text-neutral-600 sm:text-sm">
-            Le client arrive avec sa liste — un papier, un carnet, un message WhatsApp.
-            Aujourd&apos;hui le caissier la lit et cherche chaque article un par un.
-            Avec cette fonction, il <b>prend la liste en photo</b> depuis la caisse Facture :
-            l&apos;assistant lit les articles et les quantités, les rapproche de{" "}
-            <b>votre catalogue</b>, et le panier se remplit en un clic. Il peut préciser par
-            écrit (« le sucre, c&apos;est le paquet de 1 kg », « enlève le savon ») sans
-            recommencer la photo.
+            Le client arrive avec sa commande — un papier, un message WhatsApp, ou le{" "}
+            <b>PDF</b> d&apos;un devis, d&apos;un bon de commande ou d&apos;une proforma.
+            Aujourd&apos;hui le caissier la recopie ligne par ligne. Avec cette fonction, il
+            dépose le document dans la caisse <b>Facture (tableau)</b> : l&apos;assistant lit les
+            articles, les quantités, les unités et les <b>prix écrits</b>, les rapproche de{" "}
+            <b>votre catalogue</b>, et le tableau se remplit en un clic. Il peut corriger par
+            écrit (« le sucre, c&apos;est le paquet de 1 kg », « enlève la ligne 3 ») sans
+            renvoyer le document.
           </p>
           {/*
-            Les deux points qu'un patron doit lire AVANT d'ouvrir : ce qui sort de sa
-            boutique, et ce que la machine n'a pas le droit de décider seule.
+            Les trois points qu'un patron doit lire AVANT d'ouvrir : ce qui sort de sa
+            boutique, d'où viennent les prix, et ce que la machine n'a pas le droit de
+            décider seule.
           */}
           <p className="mt-2 rounded-[10px] bg-amber-500/10 px-3 py-2 text-xs leading-relaxed text-amber-900 dark:text-amber-200">
-            À savoir : la photo est <b>envoyée à un service d&apos;analyse externe</b> pour être
-            lue — ne l&apos;utilisez pas sur un document que vous ne voulez pas voir sortir de
-            la boutique. En revanche l&apos;assistant ne fixe <b>aucun prix</b> et ne valide
-            aucune vente : les prix restent ceux de votre catalogue (gros, promotions,
-            conditionnements), le stock est respecté, et le caissier <b>confirme chaque ligne</b>{" "}
-            à l&apos;écran avant qu&apos;elle n&apos;entre au panier.
+            À savoir : le document est <b>envoyé à un service d&apos;analyse externe</b> pour
+            être lu — ne l&apos;utilisez pas sur une pièce que vous ne voulez pas voir sortir de
+            la boutique. Les <b>prix repris sont ceux écrits sur le document</b> (un devis se
+            refacture au prix promis) : ils remplacent le prix du catalogue sur la ligne,
+            exactement comme si le vendeur les avait tapés dans la colonne « P.U. » — et le
+            caissier les voit et peut les corriger avant de valider. Pour le reste rien ne
+            change : le stock est respecté, aucune vente n&apos;est créée, et le caissier{" "}
+            <b>confirme chaque ligne</b> à l&apos;écran avant qu&apos;elle n&apos;entre au tableau.
           </p>
           {aiCartVisionQ.isPending ? (
             <div className="mt-4 flex justify-center py-4" role="status" aria-label="Chargement">
@@ -3076,11 +3080,11 @@ export function SettingsScreen() {
               >
                 <span className="min-w-0">
                   <span className="block text-sm font-medium text-fs-text">
-                    Activer le panier IA en caisse Facture
+                    Activer le panier IA en caisse Facture (tableau)
                   </span>
                   <span className="mt-0.5 block text-xs text-neutral-600">
                     {aiCartVisionQ.data
-                      ? "Le bouton « Panier IA » apparaît dans les caisses Facture (A4 et tableau)."
+                      ? "Le bouton « Panier IA » apparaît dans la caisse Facture (tableau), pour les utilisateurs qui y ont droit."
                       : "Désactivé : le bouton n'apparaît nulle part et l'analyse est refusée côté serveur."}
                   </span>
                 </span>

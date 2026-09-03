@@ -6,14 +6,17 @@ import {
   MdAutoAwesome,
   MdClose,
   MdPhotoCamera,
+  MdPictureAsPdf,
   MdSearch,
   MdSend,
+  MdUploadFile,
 } from "react-icons/md";
 
 import { fsInputClass } from "@/components/ui/fs-screen-primitives";
 import {
-  imageFileToDataUrl,
+  attachmentFromFile,
   runAiCartVision,
+  type AiCartFile,
   type AiCartLine,
   type AiCartTurn,
 } from "@/lib/features/pos/ai-cart-api";
@@ -30,28 +33,43 @@ export type AiCartProduct = {
   salePrice: number;
 };
 
+/** Ce que le dialogue renvoie à la caisse pour remplir le tableau. */
+export type AiCartApplyLine = {
+  productId: string;
+  quantity: number;
+  /** P.U. repris du document, `null` = prix du catalogue. */
+  unitPrice: number | null;
+  unit: string | null;
+};
+
 type DraftLine = {
   label: string;
-  /** Unité écrite par le client (« carton », « sac ») — affichée telle quelle. */
+  /** Unité écrite sur le document (« carton », « sac ») — reprise dans le tableau. */
   unit: string;
   note: string;
   quantity: number;
+  /** P.U. du document, éventuellement corrigé à l'écran. `null` = prix du catalogue. */
+  unitPrice: number | null;
+  /** P.U. tel que lu, gardé pour montrer ce que portait le document. */
+  readUnitPrice: number | null;
   productId: string | null;
   /** Produits proposés par le rapprochement serveur, dans l'ordre. */
   candidateIds: string[];
   include: boolean;
 };
 
-type ChatBubble = { role: "user" | "assistant"; text: string; image: string | null };
+type ChatBubble = { role: "user" | "assistant"; text: string; file: AiCartFile | null };
 
 /**
- * « Panier IA » — le client montre sa liste, le caissier la photographie, discute
- * si besoin (« le sucre c'est le paquet de 1 kg », « enlève le savon »), puis
- * envoie le tout au panier.
+ * « Panier IA » de la caisse Facture (tableau) — le client montre sa liste ou envoie
+ * son bon de commande en PDF, le caissier le dépose ici, discute si besoin (« le
+ * sucre c'est le paquet de 1 kg », « enlève la ligne 3 »), puis remplit le tableau.
  *
- * Rien n'est ajouté sans que le caissier ait vu, ligne à ligne, QUEL produit du
- * catalogue a été retenu : le gain de temps ne doit pas se payer en erreurs de
- * facturation. Les lignes non reconnues restent visibles, décochées.
+ * Deux principes tiennent tout l'écran :
+ *  - le PRIX DU DOCUMENT fait foi quand il y en a un (un devis se refacture au prix
+ *    promis), et il reste modifiable ligne à ligne comme dans le tableau lui-même ;
+ *  - rien n'entre au panier sans que le caissier ait vu QUEL produit du catalogue a
+ *    été retenu. Les lignes non reconnues restent visibles, décochées.
  */
 export function PosAiCartDialog({
   open,
@@ -70,13 +88,14 @@ export function PosAiCartDialog({
   products: AiCartProduct[];
   stockByProductId: Map<string, number>;
   /** Ajoute les lignes retenues au panier. Renvoie le nombre de lignes acceptées. */
-  onApply: (lines: Array<{ productId: string; quantity: number }>) => number;
+  onApply: (lines: AiCartApplyLine[]) => number;
 }) {
   const [turns, setTurns] = useState<AiCartTurn[]>([]);
   const [bubbles, setBubbles] = useState<ChatBubble[]>([]);
   const [draft, setDraft] = useState("");
-  const [pendingImage, setPendingImage] = useState<string | null>(null);
+  const [pendingFile, setPendingFile] = useState<AiCartFile | null>(null);
   const [lines, setLines] = useState<DraftLine[]>([]);
+  const [documentTotal, setDocumentTotal] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [searchFor, setSearchFor] = useState<number | null>(null);
   const [search, setSearch] = useState("");
@@ -91,7 +110,7 @@ export function PosAiCartDialog({
     return m;
   }, [products]);
 
-  // Réinitialisation à la fermeture : la liste d'un client ne doit jamais
+  // Réinitialisation à la fermeture : le document d'un client ne doit jamais
   // réapparaître dans la commande du suivant.
   useEffect(() => {
     if (open) return;
@@ -100,8 +119,9 @@ export function PosAiCartDialog({
     setTurns([]);
     setBubbles([]);
     setDraft("");
-    setPendingImage(null);
+    setPendingFile(null);
     setLines([]);
+    setDocumentTotal(null);
     setBusy(false);
     setSearchFor(null);
     setSearch("");
@@ -115,10 +135,10 @@ export function PosAiCartDialog({
 
   useEffect(() => () => abortRef.current?.abort(), []);
 
-  async function pickImage(file: File | null | undefined) {
+  async function pickFile(file: File | null | undefined) {
     if (!file) return;
     try {
-      setPendingImage(await imageFileToDataUrl(file));
+      setPendingFile(await attachmentFromFile(file));
     } catch (e) {
       toast.error(messageFromUnknownError(e));
     }
@@ -130,13 +150,18 @@ export function PosAiCartDialog({
         // On ne garde que des produits que CETTE caisse peut vendre : un produit
         // hors catalogue boutique n'a rien à faire dans une proposition.
         const candidateIds = l.candidates.map((c) => c.id).filter((id) => productById.has(id));
-        const productId =
-          l.productId && productById.has(l.productId) ? l.productId : null;
+        const productId = l.productId && productById.has(l.productId) ? l.productId : null;
+        const unitPrice =
+          l.unitPrice != null && Number.isFinite(l.unitPrice) && l.unitPrice >= 0
+            ? Math.round(l.unitPrice)
+            : null;
         return {
           label: l.label,
           unit: l.unit,
           note: l.note,
           quantity: Math.max(1, Math.floor(l.quantity || 1)),
+          unitPrice,
+          readUnitPrice: unitPrice,
           productId,
           candidateIds,
           include: productId != null,
@@ -147,18 +172,18 @@ export function PosAiCartDialog({
 
   async function send() {
     const text = draft.trim();
-    if (!text && !pendingImage) {
-      toast.info("Ajoutez une photo de la liste ou écrivez la demande.");
+    if (!text && !pendingFile) {
+      toast.info("Ajoutez une photo ou un PDF, ou écrivez la demande.");
       return;
     }
     if (busy) return;
 
-    const turn: AiCartTurn = { role: "user", text, image: pendingImage };
+    const turn: AiCartTurn = { role: "user", text, file: pendingFile };
     const nextTurns = [...turns, turn];
     setTurns(nextTurns);
-    setBubbles((b) => [...b, { role: "user", text, image: pendingImage }]);
+    setBubbles((b) => [...b, { role: "user", text, file: pendingFile }]);
     setDraft("");
-    setPendingImage(null);
+    setPendingFile(null);
     setBusy(true);
 
     const controller = new AbortController();
@@ -174,23 +199,24 @@ export function PosAiCartDialog({
         res.reply.trim() ||
         (res.lines.length > 0
           ? "Voici ce que j'ai lu."
-          : "Je n'ai rien pu lire sur cette image.");
+          : "Je n'ai rien pu lire sur ce document.");
       /*
        * L'historique garde la réponse ET un rappel compact de la liste retenue.
        * C'est lui qui permet de corriger au tour suivant (« mets 5 sacs », « enlève
-       * le savon ») sans renvoyer la photo — qui, elle, finit par être écartée de
+       * le savon ») sans renvoyer le document — qui, lui, finit par être écarté de
        * la requête pour ne pas la faire grossir sans fin.
        */
       setTurns((t) => [...t, { role: "assistant", text: reply + recapOf(res.lines) }]);
-      setBubbles((b) => [...b, { role: "assistant", text: reply, image: null }]);
+      setBubbles((b) => [...b, { role: "assistant", text: reply, file: null }]);
       applyServerLines(res.lines);
+      setDocumentTotal(res.documentTotal);
     } catch (e) {
       if (controller.signal.aborted) return;
       const msg = messageFromUnknownError(e);
-      // Le tour qui a échoué ne reste pas dans l'historique : le caissier
-      // renvoie sa photo sans se retrouver à la payer deux fois.
+      // Le tour qui a échoué ne reste pas dans l'historique : le caissier renvoie
+      // son document sans se retrouver à le payer deux fois.
       setTurns(turns);
-      setBubbles((b) => [...b, { role: "assistant", text: msg, image: null }]);
+      setBubbles((b) => [...b, { role: "assistant", text: msg, file: null }]);
       toast.error(msg);
     } finally {
       if (abortRef.current === controller) abortRef.current = null;
@@ -206,21 +232,31 @@ export function PosAiCartDialog({
     if (searchFor == null) return [];
     const q = normalizeText(search);
     if (q.length < 2) return [];
-    return products
-      .filter((p) => normalizeText(p.name).includes(q))
-      .slice(0, 12);
+    return products.filter((p) => normalizeText(p.name).includes(q)).slice(0, 12);
   }, [products, search, searchFor]);
 
   const selected = lines.filter((l) => l.include && l.productId != null);
+  /** Ce que donnera le tableau : prix du document quand il y en a un, sinon catalogue. */
   const estimatedTotal = selected.reduce((sum, l) => {
     const p = l.productId ? productById.get(l.productId) : null;
-    return sum + (p ? p.salePrice * l.quantity : 0);
+    const unit = l.unitPrice ?? p?.salePrice ?? 0;
+    return sum + unit * l.quantity;
   }, 0);
+  const anyDocumentPrice = lines.some((l) => l.readUnitPrice != null);
+  /* Contrôle de lecture : le total écrit sur le document face à celui des lignes
+     retenues. Un écart ne bloque rien — il dit au caissier où regarder. */
+  const totalMismatch =
+    documentTotal != null &&
+    anyDocumentPrice &&
+    selected.length === lines.length &&
+    Math.abs(documentTotal - estimatedTotal) > 1;
 
   function apply() {
-    const payload = selected.map((l) => ({
+    const payload: AiCartApplyLine[] = selected.map((l) => ({
       productId: l.productId as string,
       quantity: l.quantity,
+      unitPrice: l.unitPrice,
+      unit: l.unit || null,
     }));
     if (payload.length === 0) {
       toast.info("Aucune ligne à ajouter : cochez au moins un produit.");
@@ -233,7 +269,7 @@ export function PosAiCartDialog({
     }
     toast.success(
       added === payload.length
-        ? `${added} ligne${added > 1 ? "s" : ""} ajoutée${added > 1 ? "s" : ""} au panier.`
+        ? `${added} ligne${added > 1 ? "s" : ""} ajoutée${added > 1 ? "s" : ""} au tableau.`
         : `${added} ligne(s) sur ${payload.length} ajoutées — stock insuffisant pour le reste.`,
     );
     onClose();
@@ -249,14 +285,14 @@ export function PosAiCartDialog({
       aria-modal="true"
       aria-label="Panier IA"
     >
-      <div className="flex h-[92dvh] w-full max-w-3xl flex-col overflow-hidden rounded-t-xl bg-white shadow-xl sm:h-[86dvh] sm:rounded-xl">
+      <div className="flex h-[92dvh] w-full max-w-4xl flex-col overflow-hidden rounded-t-xl bg-white shadow-xl sm:h-[88dvh] sm:rounded-xl">
         <div className="flex shrink-0 items-center justify-between border-b border-black/[0.08] px-4 py-3">
           <div className="flex min-w-0 items-center gap-2">
             <MdAutoAwesome className="h-5 w-5 shrink-0 text-[#F97316]" aria-hidden />
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold text-[#1F2937]">Panier IA</p>
               <p className="truncate text-[11px] text-neutral-600">
-                Photographiez la liste du client, corrigez par écrit si besoin.
+                Photo ou PDF de la commande — les prix du document sont repris tels quels.
               </p>
             </div>
           </div>
@@ -270,15 +306,16 @@ export function PosAiCartDialog({
           </button>
         </div>
 
-        <div className="grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)_minmax(0,1fr)] md:grid-cols-2 md:grid-rows-1">
+        <div className="grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)_minmax(0,1.25fr)] md:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] md:grid-rows-1">
           {/* Discussion */}
           <div className="flex min-h-0 flex-col border-b border-black/[0.08] md:border-b-0 md:border-r">
             <div ref={threadRef} className="min-h-0 flex-1 space-y-2 overflow-y-auto px-3 py-3">
               {bubbles.length === 0 ? (
                 <div className="rounded-lg bg-[#F97316]/5 px-3 py-3 text-[12px] leading-relaxed text-[#1F2937]">
-                  Prenez la liste en photo (papier, écran, message WhatsApp). L&apos;assistant
-                  lit les articles et les quantités, puis les rapproche de votre catalogue.
-                  Vous validez chaque ligne avant qu&apos;elle n&apos;entre au panier.
+                  Déposez le <b>PDF</b> du devis ou du bon de commande, ou prenez la liste{" "}
+                  <b>en photo</b>. L&apos;assistant lit les articles, les quantités et les prix
+                  écrits, les rapproche de votre catalogue, et remplit le tableau. Vous validez
+                  chaque ligne avant qu&apos;elle n&apos;y entre.
                 </div>
               ) : null}
               {bubbles.map((b, i) => (
@@ -291,13 +328,19 @@ export function PosAiCartDialog({
                       : "mr-auto bg-black/[0.05] text-[#1F2937]",
                   )}
                 >
-                  {b.image ? (
+                  {b.file?.kind === "image" ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
-                      src={b.image}
-                      alt="Liste du client"
+                      src={b.file.dataUrl}
+                      alt="Commande du client"
                       className="mb-1.5 max-h-40 w-full rounded object-contain"
                     />
+                  ) : null}
+                  {b.file?.kind === "pdf" ? (
+                    <p className="mb-1.5 flex items-center gap-1.5 rounded bg-white/15 px-2 py-1.5">
+                      <MdPictureAsPdf className="h-4 w-4 shrink-0" aria-hidden />
+                      <span className="truncate">{b.file.name}</span>
+                    </p>
                   ) : null}
                   {b.text ? <p className="whitespace-pre-wrap">{b.text}</p> : null}
                 </div>
@@ -311,20 +354,28 @@ export function PosAiCartDialog({
             </div>
 
             <div className="shrink-0 border-t border-black/[0.08] p-2">
-              {pendingImage ? (
+              {pendingFile ? (
                 <div className="mb-2 flex items-center gap-2 rounded-md bg-black/[0.04] p-2">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={pendingImage}
-                    alt="Photo à envoyer"
-                    className="h-12 w-12 rounded object-cover"
-                  />
-                  <span className="flex-1 text-[11px] text-neutral-600">Photo prête à envoyer</span>
+                  {pendingFile.kind === "image" ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={pendingFile.dataUrl}
+                      alt="Document à envoyer"
+                      className="h-12 w-12 rounded object-cover"
+                    />
+                  ) : (
+                    <span className="flex h-12 w-12 items-center justify-center rounded bg-red-500/10 text-red-600">
+                      <MdPictureAsPdf className="h-6 w-6" aria-hidden />
+                    </span>
+                  )}
+                  <span className="min-w-0 flex-1 truncate text-[11px] text-neutral-600">
+                    {pendingFile.kind === "pdf" ? pendingFile.name : "Photo prête à envoyer"}
+                  </span>
                   <button
                     type="button"
-                    onClick={() => setPendingImage(null)}
+                    onClick={() => setPendingFile(null)}
                     className="rounded-full p-1.5 text-[#1F2937]/70 hover:bg-black/5"
-                    aria-label="Retirer la photo"
+                    aria-label="Retirer le document"
                   >
                     <MdClose className="h-4 w-4" aria-hidden />
                   </button>
@@ -338,37 +389,37 @@ export function PosAiCartDialog({
                   capture="environment"
                   className="hidden"
                   onChange={(e) => {
-                    void pickImage(e.target.files?.[0]);
+                    void pickFile(e.target.files?.[0]);
                     e.target.value = "";
                   }}
                 />
                 <input
                   ref={fileRef}
                   type="file"
-                  accept="image/*"
+                  accept="image/*,application/pdf,.pdf"
                   className="hidden"
                   onChange={(e) => {
-                    void pickImage(e.target.files?.[0]);
+                    void pickFile(e.target.files?.[0]);
                     e.target.value = "";
                   }}
                 />
                 <button
                   type="button"
-                  onClick={() => cameraRef.current?.click()}
+                  onClick={() => fileRef.current?.click()}
                   className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-[#F97316] text-white hover:opacity-95"
-                  aria-label="Prendre la liste en photo"
-                  title="Prendre la liste en photo"
+                  aria-label="Envoyer un PDF ou une image"
+                  title="Envoyer un PDF ou une image"
                 >
-                  <MdPhotoCamera className="h-5 w-5" aria-hidden />
+                  <MdUploadFile className="h-5 w-5" aria-hidden />
                 </button>
                 <button
                   type="button"
-                  onClick={() => fileRef.current?.click()}
+                  onClick={() => cameraRef.current?.click()}
                   className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-[#E5E7EB] text-[#1F2937]/70 hover:bg-black/5"
-                  aria-label="Choisir une image"
-                  title="Choisir une image"
+                  aria-label="Prendre la commande en photo"
+                  title="Prendre la commande en photo"
                 >
-                  <MdAddPhotoAlternate className="h-5 w-5" aria-hidden />
+                  <MdPhotoCamera className="h-5 w-5" aria-hidden />
                 </button>
                 <input
                   className={fsInputClass(
@@ -382,19 +433,24 @@ export function PosAiCartDialog({
                       void send();
                     }
                   }}
-                  placeholder="Précisez (« 3 sacs de riz, pas de savon »)…"
+                  placeholder="Précisez (« garde les prix du devis, enlève la ligne 3 »)…"
                   disabled={busy}
                 />
                 <button
                   type="button"
                   onClick={() => void send()}
-                  disabled={busy || (!draft.trim() && !pendingImage)}
+                  disabled={busy || (!draft.trim() && !pendingFile)}
                   className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-[#1F2937] text-white disabled:opacity-40"
                   aria-label="Envoyer"
                 >
                   <MdSend className="h-[18px] w-[18px]" aria-hidden />
                 </button>
               </div>
+              <p className="mt-1.5 px-0.5 text-[10px] leading-snug text-neutral-500">
+                <MdAddPhotoAlternate className="mr-1 inline h-3 w-3 align-[-1px]" aria-hidden />
+                Images et PDF (3 Mo max). Le document est envoyé à un service d&apos;analyse
+                externe.
+              </p>
             </div>
           </div>
 
@@ -403,8 +459,8 @@ export function PosAiCartDialog({
             <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
               {lines.length === 0 ? (
                 <p className="px-1 py-6 text-center text-[12px] text-neutral-600">
-                  Les articles lus apparaîtront ici, avec le produit de votre catalogue
-                  qui leur correspond.
+                  Les articles lus apparaîtront ici : produit du catalogue, quantité et prix
+                  unitaire du document.
                 </p>
               ) : (
                 <ul className="space-y-2">
@@ -418,6 +474,7 @@ export function PosAiCartDialog({
                     if (product && !options.some((o) => o.id === product.id)) {
                       options.unshift(product);
                     }
+                    const effectivePrice = l.unitPrice ?? product?.salePrice ?? 0;
                     return (
                       <li
                         key={`${l.label}-${i}`}
@@ -439,10 +496,15 @@ export function PosAiCartDialog({
                           />
                           <div className="min-w-0 flex-1">
                             <p className="truncate text-[11px] text-neutral-600">
-                              Lu : « {l.label} »{l.unit ? ` (${l.unit})` : ""}
+                              Lu : « {l.label} »{l.unit ? ` · ${l.unit}` : ""}
+                              {l.readUnitPrice != null
+                                ? ` · P.U. ${formatCurrency(l.readUnitPrice)}`
+                                : " · sans prix"}
                             </p>
                             {l.note ? (
-                              <p className="truncate text-[11px] italic text-neutral-500">{l.note}</p>
+                              <p className="truncate text-[11px] italic text-neutral-500">
+                                {l.note}
+                              </p>
                             ) : null}
 
                             <div className="mt-1.5 flex items-center gap-1.5">
@@ -476,19 +538,53 @@ export function PosAiCartDialog({
                               >
                                 <MdSearch className="h-4 w-4" aria-hidden />
                               </button>
-                              <input
-                                type="number"
-                                min={1}
-                                className={fsInputClass(
-                                  "h-8 w-16 shrink-0 rounded-md border-[#E5E7EB] bg-white px-1.5 text-center text-[12px] text-[#1F2937]",
-                                )}
-                                value={l.quantity}
-                                onChange={(e) => {
-                                  const q = Math.max(1, Math.floor(Number(e.target.value) || 1));
-                                  setLine(i, { quantity: q });
-                                }}
-                                aria-label="Quantité"
-                              />
+                            </div>
+
+                            <div className="mt-1.5 flex items-center gap-1.5">
+                              <label className="flex shrink-0 items-center gap-1 text-[11px] text-neutral-600">
+                                Qté
+                                <input
+                                  type="number"
+                                  min={1}
+                                  className={fsInputClass(
+                                    "h-8 w-16 rounded-md border-[#E5E7EB] bg-white px-1.5 text-center text-[12px] text-[#1F2937]",
+                                  )}
+                                  value={l.quantity}
+                                  onChange={(e) => {
+                                    const q = Math.max(1, Math.floor(Number(e.target.value) || 1));
+                                    setLine(i, { quantity: q });
+                                  }}
+                                  aria-label="Quantité"
+                                />
+                              </label>
+                              <label className="flex min-w-0 flex-1 items-center gap-1 text-[11px] text-neutral-600">
+                                P.U.
+                                <input
+                                  type="number"
+                                  min={0}
+                                  className={fsInputClass(
+                                    "h-8 w-full min-w-0 rounded-md border-[#E5E7EB] bg-white px-1.5 text-right text-[12px] text-[#1F2937]",
+                                  )}
+                                  value={l.unitPrice ?? ""}
+                                  placeholder={
+                                    product ? String(Math.round(product.salePrice)) : "0"
+                                  }
+                                  onChange={(e) => {
+                                    const raw = e.target.value.trim();
+                                    if (!raw) {
+                                      setLine(i, { unitPrice: null });
+                                      return;
+                                    }
+                                    setLine(i, {
+                                      unitPrice: Math.max(0, Math.round(Number(raw) || 0)),
+                                    });
+                                  }}
+                                  aria-label="Prix unitaire"
+                                />
+                              </label>
+                              <span className="shrink-0 text-[12px] font-semibold tabular-nums text-[#F97316]">
+                                {formatCurrency(effectivePrice * l.quantity)}
+                              </span>
                             </div>
 
                             {searchFor === i ? (
@@ -551,6 +647,12 @@ export function PosAiCartDialog({
                               <p className="mt-1 text-[11px] text-red-600">
                                 Stock disponible : {stock}. La quantité sera ajustée.
                               </p>
+                            ) : l.unitPrice != null &&
+                              product.salePrice > 0 &&
+                              l.unitPrice !== Math.round(product.salePrice) ? (
+                              <p className="mt-1 text-[11px] text-neutral-600">
+                                Prix du document — catalogue : {formatCurrency(product.salePrice)}.
+                              </p>
                             ) : null}
                           </div>
                         </div>
@@ -562,13 +664,20 @@ export function PosAiCartDialog({
             </div>
 
             <div className="shrink-0 border-t border-black/[0.08] px-3 py-2.5">
+              {totalMismatch ? (
+                <p className="mb-2 rounded-md bg-amber-500/10 px-2.5 py-1.5 text-[11px] leading-snug text-amber-900">
+                  Total écrit sur le document : <b>{formatCurrency(documentTotal ?? 0)}</b> — les
+                  lignes retenues donnent {formatCurrency(estimatedTotal)}. Vérifiez avant de
+                  remplir (remise, transport ou taxe non repris en ligne).
+                </p>
+              ) : null}
               <div className="mb-2 flex items-center justify-between text-[12px]">
                 <span className="text-neutral-600">
                   {selected.length} ligne{selected.length > 1 ? "s" : ""} retenue
                   {selected.length > 1 ? "s" : ""}
                 </span>
                 <span className="font-semibold text-[#1F2937]">
-                  ≈ {formatCurrency(estimatedTotal)}
+                  {formatCurrency(estimatedTotal)}
                 </span>
               </div>
               <button
@@ -577,7 +686,7 @@ export function PosAiCartDialog({
                 disabled={busy || selected.length === 0}
                 className="inline-flex h-10 w-full items-center justify-center rounded-md bg-[#F97316] text-sm font-semibold text-white shadow-sm transition hover:opacity-95 disabled:opacity-40"
               >
-                Remplir le panier
+                Remplir le tableau
               </button>
             </div>
           </div>
@@ -591,8 +700,12 @@ export function PosAiCartDialog({
 function recapOf(lines: AiCartLine[]): string {
   if (lines.length === 0) return "";
   const items = lines
-    .map((l) => `${l.quantity} x ${l.label}${l.unit ? ` (${l.unit})` : ""}`)
+    .map(
+      (l) =>
+        `${l.quantity} x ${l.label}${l.unit ? ` (${l.unit})` : ""}${
+          l.unitPrice != null ? ` @ ${l.unitPrice}` : ""
+        }`,
+    )
     .join(" ; ");
-  return `
-[liste en cours] ${items}`;
+  return `\n[liste en cours] ${items}`;
 }
