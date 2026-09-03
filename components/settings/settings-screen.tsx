@@ -3040,7 +3040,10 @@ export function SettingsScreen() {
       {/* Panier IA — owner uniquement */}
       {isOwner && companyId ? (
         <FsCard className="mt-5" padding="p-5">
-          <SettingsCardTitle icon={MdAutoAwesome} title="Panier IA — photo ou PDF de la commande" />
+          <SettingsCardTitle
+            icon={MdAutoAwesome}
+            title="Panier IA — photo, PDF ou dictée de la commande"
+          />
           <p className="mt-2 text-xs leading-relaxed text-neutral-600 sm:text-sm">
             Le client arrive avec sa commande — un papier, un message WhatsApp, ou le{" "}
             <b>PDF</b> d&apos;un devis, d&apos;un bon de commande ou d&apos;une proforma.
@@ -3050,6 +3053,12 @@ export function SettingsScreen() {
             <b>votre catalogue</b>, et le tableau se remplit en un clic. Il peut corriger par
             écrit (« le sucre, c&apos;est le paquet de 1 kg », « enlève la ligne 3 ») sans
             renvoyer le document.
+          </p>
+          <p className="mt-2 text-xs leading-relaxed text-neutral-600 sm:text-sm">
+            Rien à lire ? Le caissier peut aussi <b>dicter la commande au micro</b> — ou
+            déposer la note vocale que le client a envoyée sur WhatsApp. La dictée est
+            d&apos;abord transcrite en texte, <b>affiché à l&apos;écran</b> pour qu&apos;un mot
+            mal entendu se voie, puis traitée exactement comme une liste écrite.
           </p>
           {/*
             Les trois points qu'un patron doit lire AVANT d'ouvrir : ce qui sort de sa

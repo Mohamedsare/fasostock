@@ -1,6 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { usePersistentDraft } from "@/lib/hooks/use-persistent-draft";
+import {
+  isRestockDraftEmpty,
+  RESTOCK_DRAFT_VERSION,
+  restockDraftKey,
+  type RestockDraft,
+} from "@/lib/features/restock/restock-draft";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   MdAutoAwesome,
@@ -90,6 +97,64 @@ export function RestockScreen() {
   const [qtyOverrides, setQtyOverrides] = useState<Record<string, number>>({});
   const [advice, setAdvice] = useState<RestockAdvice | null>(null);
   const [orderOpen, setOrderOpen] = useState(false);
+
+  /*
+   * La préparation survit à la navigation.
+   *
+   * Arbitrer un réassort, c'est passer des dizaines de références en revue et corriger
+   * les quantités une à une, en allant vérifier une fiche produit ou un historique
+   * d'achat entre deux décisions. Le routeur démontait la page à chaque aller-retour.
+   *
+   * L'avis de l'IA est le plus coûteux à reperdre : un appel facturé et plusieurs
+   * secondes d'attente.
+   */
+  const draftAnchorRef = useRef({ selected, qtyOverrides, advice });
+  useEffect(() => {
+    draftAnchorRef.current = { selected, qtyOverrides, advice };
+  });
+
+  const draftSnapshot = useMemo<RestockDraft>(
+    () => ({
+      days,
+      coverDays,
+      selected: [...selected],
+      qtyOverrides,
+      advice,
+    }),
+    [days, coverDays, selected, qtyOverrides, advice],
+  );
+
+  usePersistentDraft<RestockDraft>({
+    key: companyId ? restockDraftKey(companyId, storeId) : null,
+    version: RESTOCK_DRAFT_VERSION,
+    value: draftSnapshot,
+    isEmpty: isRestockDraftEmpty,
+    onRestore: (d) => {
+      /*
+       * La relecture disque est asynchrone. Si le gérant a déjà coché une ligne ou
+       * corrigé une quantité pendant ces quelques millisecondes, c'est SON arbitrage qui
+       * vaut : le brouillon d'avant est abandonné plutôt que de le recouvrir.
+       */
+      const cur = draftAnchorRef.current;
+      if (cur.selected.size > 0 || Object.keys(cur.qtyOverrides).length > 0 || cur.advice) {
+        return;
+      }
+      /*
+       * La période d'abord : c'est elle qui commande le recalcul des candidats. Les
+       * quantités corrigées portent sur CES chiffres-là, jamais sur d'autres.
+       */
+      setDays(d.days);
+      setCoverDays(d.coverDays);
+      setSelected(new Set(d.selected));
+      setQtyOverrides(d.qtyOverrides);
+      setAdvice(d.advice);
+      toast.info(
+        d.advice
+          ? "Préparation de réassort restaurée, avis de l'IA compris."
+          : "Préparation de réassort restaurée.",
+      );
+    },
+  });
 
   const enabled = !!companyId && canView && moduleOn;
 

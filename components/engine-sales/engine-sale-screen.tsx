@@ -24,7 +24,14 @@ import { toast } from "@/lib/toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { usePersistentDraft } from "@/lib/hooks/use-persistent-draft";
+import {
+  ENGINE_SALE_DRAFT_VERSION,
+  engineSaleDraftKey,
+  isEngineSaleDraftEmpty,
+  type EngineSaleDraft,
+} from "@/lib/features/engine-sales/sale-draft";
 import { MdArrowBack, MdInventory2, MdSearch, MdTwoWheeler } from "react-icons/md";
 
 const PAYMENT_METHODS: { value: EnginePaymentMethod; label: string }[] = [
@@ -143,7 +150,7 @@ export function EngineSaleScreen({ storeId }: { storeId: string }) {
    * Engin physique choisi (motos identifiées). Vide = saisie manuelle, comme avant.
    * La liste ne contient que les engins encore en cour pour ce modèle.
    */
-  const [engineUnitId, setEngineUnitId] = useState("");
+  const [pickedEngineUnitId, setPickedEngineUnitId] = useState("");
   const engineUnitsQ = useQuery({
     queryKey: queryKeys.engineUnitsAvailable(productId, storeId),
     queryFn: () => listAvailableEngineUnits(productId, storeId),
@@ -152,9 +159,26 @@ export function EngineSaleScreen({ storeId }: { storeId: string }) {
   });
   const availableUnits = useMemo(() => engineUnitsQ.data ?? [], [engineUnitsQ.data]);
 
+  /*
+   * Un brouillon peut dormir des heures, et entre-temps un collègue a pu vendre la moto
+   * choisie. Le lien est donc DÉRIVÉ de la liste réellement disponible plutôt que gardé
+   * tel quel : dès que l'engin n'y est plus, la vente repasse en saisie manuelle, les
+   * champs châssis / moteur / couleur redeviennent modifiables et rien ne part sur un
+   * châssis déjà sorti du stock.
+   *
+   * Dérivé et non « corrigé dans un effet » : il n'existe alors aucun rendu, même bref,
+   * pendant lequel le formulaire pointerait encore l'engin vendu.
+   */
+  const engineUnitVanished =
+    engineUnitsOn &&
+    pickedEngineUnitId !== "" &&
+    engineUnitsQ.isSuccess &&
+    !availableUnits.some((u) => u.id === pickedEngineUnitId);
+  const engineUnitId = engineUnitVanished ? "" : pickedEngineUnitId;
+
   /** Choisir la moto remplit le châssis, le moteur et la couleur — plus de ressaisie. */
   function pickEngineUnit(id: string) {
-    setEngineUnitId(id);
+    setPickedEngineUnitId(id);
     const unit = availableUnits.find((u) => u.id === id);
     if (!unit) return;
     setChassis(unit.chassisNumber);
@@ -187,6 +211,153 @@ export function EngineSaleScreen({ storeId }: { storeId: string }) {
   const [observations, setObservations] = useState("");
   const [internalReference, setInternalReference] = useState("");
 
+  /*
+   * Le formulaire survit à la navigation.
+   *
+   * Une vente d'engin, c'est une trentaine de champs — identité de l'acheteur, châssis,
+   * moteur, garantie, accessoires. Le routeur démonte la page dès qu'on change d'écran :
+   * aller vérifier une disponibilité ou un prix ailleurs effaçait tout, carte d'identité
+   * du client encore en main.
+   */
+  const draftAnchorRef = useRef({ productId, clientName });
+  useEffect(() => {
+    draftAnchorRef.current = { productId, clientName };
+  });
+
+  const draftSnapshot = useMemo<EngineSaleDraft>(
+    () => ({
+      step,
+      productId,
+      quantity,
+      unitPrice,
+      engineUnitId,
+      clientName,
+      civility,
+      profession,
+      idType,
+      idNumber,
+      address,
+      phone,
+      email,
+      wheels,
+      brand,
+      model,
+      designation,
+      chassis,
+      motor,
+      color,
+      condition,
+      paymentMethod,
+      amountPaid,
+      warranty,
+      warrantyDuration,
+      warrantyKm,
+      warrantyCovered,
+      warrantyConditions,
+      accHelmet,
+      accToolkit,
+      accManual,
+      accKeys,
+      accVest,
+      accOther,
+      observations,
+      internalReference,
+    }),
+    [
+      step,
+      productId,
+      quantity,
+      unitPrice,
+      engineUnitId,
+      clientName,
+      civility,
+      profession,
+      idType,
+      idNumber,
+      address,
+      phone,
+      email,
+      wheels,
+      brand,
+      model,
+      designation,
+      chassis,
+      motor,
+      color,
+      condition,
+      paymentMethod,
+      amountPaid,
+      warranty,
+      warrantyDuration,
+      warrantyKm,
+      warrantyCovered,
+      warrantyConditions,
+      accHelmet,
+      accToolkit,
+      accManual,
+      accKeys,
+      accVest,
+      accOther,
+      observations,
+      internalReference,
+    ],
+  );
+
+  const { discard: discardDraft } = usePersistentDraft<EngineSaleDraft>({
+    key: companyId && storeId ? engineSaleDraftKey(companyId, storeId) : null,
+    version: ENGINE_SALE_DRAFT_VERSION,
+    value: draftSnapshot,
+    isEmpty: isEngineSaleDraftEmpty,
+    onRestore: (d) => {
+      /*
+       * La relecture disque est asynchrone. Si le vendeur a déjà choisi un modèle ou
+       * commencé à taper pendant ces quelques millisecondes, il sert le client PRÉSENT :
+       * le brouillon d'avant est abandonné plutôt que de recouvrir la saisie en cours.
+       */
+      const cur = draftAnchorRef.current;
+      if (cur.productId !== "" || cur.clientName.trim() !== "") return;
+
+      setStep(d.step);
+      setProductId(d.productId);
+      setQuantity(d.quantity);
+      setUnitPrice(d.unitPrice);
+      setPickedEngineUnitId(d.engineUnitId);
+      setClientName(d.clientName);
+      setCivility(d.civility);
+      setProfession(d.profession);
+      setIdType(d.idType);
+      setIdNumber(d.idNumber);
+      setAddress(d.address);
+      setPhone(d.phone);
+      setEmail(d.email);
+      setWheels(d.wheels);
+      setBrand(d.brand);
+      setModel(d.model);
+      setDesignation(d.designation);
+      setChassis(d.chassis);
+      setMotor(d.motor);
+      setColor(d.color);
+      setCondition(d.condition);
+      setPaymentMethod(d.paymentMethod);
+      setAmountPaid(d.amountPaid);
+      setWarranty(d.warranty);
+      setWarrantyDuration(d.warrantyDuration);
+      setWarrantyKm(d.warrantyKm);
+      setWarrantyCovered(d.warrantyCovered);
+      setWarrantyConditions(d.warrantyConditions);
+      setAccHelmet(d.accHelmet);
+      setAccToolkit(d.accToolkit);
+      setAccManual(d.accManual);
+      setAccKeys(d.accKeys);
+      setAccVest(d.accVest);
+      setAccOther(d.accOther);
+      setObservations(d.observations);
+      setInternalReference(d.internalReference);
+      toast.info("Vente en cours restaurée.");
+    },
+  });
+
+
   const total = Math.max(0, Math.trunc(quantity)) * Math.max(0, unitPrice);
   const reste = Math.max(0, total - amountPaid);
 
@@ -198,7 +369,7 @@ export function EngineSaleScreen({ storeId }: { storeId: string }) {
       setDesignation(p.name);
     }
     // Changer de modèle invalide l'engin choisi : ses numéros ne sont pas ceux-là.
-    setEngineUnitId("");
+    setPickedEngineUnitId("");
     setChassis("");
     setMotor("");
     setColor("");
@@ -257,6 +428,13 @@ export function EngineSaleScreen({ storeId }: { storeId: string }) {
         internalReference,
       }),
     onSuccess: async (res) => {
+      /*
+       * En premier, avant tout `router.push` : cet écran ne vide pas son formulaire
+       * après enregistrement, il quitte la page. Sans cet oubli explicite, le démontage
+       * sauverait la vente qu'on vient de passer et la visite suivante proposerait de la
+       * reprendre — c'est-à-dire de la saisir deux fois.
+       */
+      discardDraft();
       await qc.invalidateQueries({ queryKey: queryKeys.engineSales({ companyId, storeId }) });
       await qc.invalidateQueries({ queryKey: queryKeys.productInventory(storeId) });
       if (engineUnitsOn) {
@@ -520,6 +698,13 @@ export function EngineSaleScreen({ storeId }: { storeId: string }) {
                     ))}
                   </select>
                 </Field>
+                {engineUnitVanished ? (
+                  <p className="mt-1 text-[11px] font-medium text-red-600">
+                    La moto qui était sélectionnée n&apos;est plus disponible — elle a été
+                    vendue entre-temps. Choisissez-en une autre, ou vérifiez les numéros
+                    ci-dessous avant d&apos;enregistrer.
+                  </p>
+                ) : null}
                 {engineUnitId ? (
                   <p className="mt-1 text-[11px] text-neutral-500">
                     Châssis, moteur et couleur repris de la moto choisie. Elle sortira du

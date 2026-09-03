@@ -2,12 +2,17 @@
 
 import { compressImageForUpload } from "@/lib/utils/image-compress";
 
-/** Pièce jointe d'un tour : photo de la liste, ou document PDF (devis, bon de commande). */
+/**
+ * Pièce jointe d'un tour : photo de la liste, document PDF (devis, bon de commande),
+ * ou dictée du caissier.
+ */
 export type AiCartFile = {
-  kind: "image" | "pdf";
-  /** Data URL (`data:image/...;base64,...` ou `data:application/pdf;base64,...`). */
+  kind: "image" | "pdf" | "audio";
+  /** Data URL (`data:image/…`, `data:application/pdf;…` ou `data:audio/…`). */
   dataUrl: string;
   name: string;
+  /** Dictée : durée enregistrée, affichée sur la bulle. */
+  durationMs?: number;
 };
 
 /** Un tour de la discussion tel qu'il part au serveur (`/api/ai/cart-vision`). */
@@ -43,6 +48,8 @@ export type AiCartLine = {
 
 export type AiCartResult = {
   reply: string;
+  /** Ce que la dictée a donné, `null` s'il n'y en avait pas. */
+  transcript: string | null;
   /** Total général écrit sur le document — sert à vérifier la lecture. */
   documentTotal: number | null;
   lines: AiCartLine[];
@@ -55,6 +62,50 @@ export type AiCartResult = {
  * en production, ce qui est le pire des deux mondes.
  */
 export const MAX_PDF_BYTES = 2 * 1024 * 1024;
+
+/** Même limite de corps de requête. À 24 kbit/s, 2 Mo = plus de dix minutes de parole. */
+export const MAX_AUDIO_BYTES = 2 * 1024 * 1024;
+
+/**
+ * Durée maximale d'une dictée. Ce n'est pas la taille qui la fixe (on tiendrait dix
+ * minutes) mais l'usage : au comptoir, une commande se dicte en une minute ou deux,
+ * et un enregistrement oublié en poche ne doit pas partir à la transcription.
+ */
+export const MAX_RECORDING_MS = 3 * 60_000;
+
+/**
+ * Format d'enregistrement retenu par le navigateur. Chrome/Android donnent du WebM
+ * Opus, Safari/iOS du MP4 — les deux sont acceptés par la transcription, donc on
+ * prend le premier disponible plutôt que d'imposer un format qui échouerait ailleurs.
+ */
+export function pickRecordingMimeType(): string | undefined {
+  if (typeof MediaRecorder === "undefined") return undefined;
+  const candidates = [
+    "audio/webm;codecs=opus",
+    "audio/webm",
+    "audio/mp4",
+    "audio/ogg;codecs=opus",
+  ];
+  return candidates.find((t) => MediaRecorder.isTypeSupported(t));
+}
+
+/** Dictée enregistrée au micro → pièce jointe prête à partir. */
+export async function attachmentFromRecording(
+  blob: Blob,
+  durationMs: number,
+): Promise<AiCartFile> {
+  if (blob.size === 0) {
+    throw new Error("Rien n'a été enregistré.");
+  }
+  if (blob.size > MAX_AUDIO_BYTES) {
+    throw new Error("Dictée trop longue. Enregistrez la commande en plusieurs fois.");
+  }
+  const dataUrl = await readAsDataUrl(blob);
+  if (!dataUrl.startsWith("data:audio/")) {
+    throw new Error("Enregistrement audio non pris en charge par ce navigateur.");
+  }
+  return { kind: "audio", dataUrl, name: "dictee", durationMs };
+}
 
 function readAsDataUrl(file: Blob): Promise<string> {
   return new Promise<string>((resolve, reject) => {
@@ -76,6 +127,17 @@ function readAsDataUrl(file: Blob): Promise<string> {
 export async function attachmentFromFile(file: File): Promise<AiCartFile> {
   const isPdf =
     file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+
+  if (file.type.startsWith("audio/")) {
+    if (file.size > MAX_AUDIO_BYTES) {
+      throw new Error("Enregistrement trop long (2 Mo maximum).");
+    }
+    const dataUrl = await readAsDataUrl(file);
+    if (!dataUrl.startsWith("data:audio/")) {
+      throw new Error("Ce fichier audio n'est pas lisible.");
+    }
+    return { kind: "audio", dataUrl, name: file.name || "dictee" };
+  }
 
   if (isPdf) {
     if (file.size > MAX_PDF_BYTES) {
@@ -133,6 +195,10 @@ export async function runAiCartVision(params: {
   }
   return {
     reply: String(json?.reply ?? ""),
+    transcript:
+      typeof json?.transcript === "string" && json.transcript.trim()
+        ? json.transcript.trim()
+        : null,
     documentTotal:
       typeof json?.documentTotal === "number" && Number.isFinite(json.documentTotal)
         ? json.documentTotal

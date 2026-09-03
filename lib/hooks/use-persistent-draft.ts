@@ -94,7 +94,7 @@ export function usePersistentDraft<T>({
     latestRef.current = { key, version, value, serialized, active, hydrated };
   });
 
-  /** Dernier contenu réellement posé sur le disque — évite de réécrire à l'identique. */
+  /** État réputé déjà sur disque — évite de réécrire à l'identique (voir `discard`). */
   const writtenRef = useRef<string | null>(null);
 
   /** Écrit tout de suite si l'état courant diffère du disque. */
@@ -125,8 +125,18 @@ export function usePersistentDraft<T>({
 
     return () => {
       cancelled = true;
+      /*
+       * Changement de clé (l'utilisateur bascule de boutique) : on écrit d'abord ce qui
+       * restait en attente pour l'ANCIENNE, sinon sa dernière seconde de saisie
+       * disparaît avec le passage à la suivante.
+       *
+       * `latestRef` porte encore les valeurs du rendu précédent : React exécute tous les
+       * nettoyages d'un commit avant d'exécuter le moindre effet, et c'est un effet qui
+       * met ces refs à jour.
+       */
+      flush();
     };
-  }, [key, version, enabled, maxAgeMs]);
+  }, [key, version, enabled, maxAgeMs, flush]);
 
   // Écriture différée.
   useEffect(() => {
@@ -153,7 +163,16 @@ export function usePersistentDraft<T>({
 
   const discard = useCallback(() => {
     const cur = latestRef.current;
-    writtenRef.current = null;
+    /*
+     * L'état courant devient « réputé déjà sur disque », donc le vidage de sortie ne le
+     * réécrira pas.
+     *
+     * C'est le cas d'usage principal : plusieurs écrans enregistrent puis renvoient
+     * ailleurs (`router.push`) SANS vider leur formulaire. Sans cette ligne, le
+     * démontage sauverait le formulaire qu'on vient justement de valider, et la visite
+     * suivante proposerait de reprendre une vente déjà enregistrée.
+     */
+    writtenRef.current = cur.serialized;
     if (cur.key) void clearDraft(cur.key);
   }, []);
 

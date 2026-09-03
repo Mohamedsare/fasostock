@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import OpenAI from "openai";
+import OpenAI, { toFile } from "openai";
 
 import { extractJsonFromModelContent } from "@/lib/features/ai/deepseek-parse";
 import {
@@ -41,8 +41,10 @@ const MAX_LINES = 60;
 const READ_SYSTEM = [
   "Tu assistes un caissier d'un commerce en Afrique de l'Ouest (FasoStock).",
   "Tu reçois la commande d'un client : une photo (liste manuscrite, capture WhatsApp),",
-  "un document PDF (devis, bon de commande, facture, proforma), et/ou des précisions",
-  "dictées par le caissier.",
+  "un document PDF (devis, bon de commande, facture, proforma), et/ou du texte —",
+  "tapé par le caissier, ou transcrit de sa dictée. Un texte transcrit peut contenir",
+  "des mots mal entendus et des chiffres écrits en toutes lettres (« trois cartons »,",
+  "« deux mille cinq cents ») : convertis-les en nombres, et ne devine pas le reste.",
   "",
   "Ta mission : en extraire les articles, leurs quantités, et — s'ils y figurent — leurs",
   "prix unitaires, EXACTEMENT tels qu'ils sont écrits.",
@@ -183,6 +185,42 @@ export async function POST(req: Request) {
 
   const client = new OpenAI({ apiKey: key, timeout: 90_000 });
 
+  /*
+   * Dictées transcrites AVANT toute lecture : le tour porte ensuite du texte, comme
+   * si le caissier l'avait tapé. Le dernier transcrit est renvoyé au client, qui
+   * l'affiche et remplace l'audio dans son historique — la dictée n'est donc
+   * transcrite qu'une fois, pas à chaque message de la discussion.
+   */
+  let transcript: string | null = null;
+  for (const turn of turns) {
+    if (turn.file?.kind !== "audio") continue;
+    try {
+      const text = await transcribe(client, turn.file);
+      turn.file = null;
+      if (!text) continue;
+      transcript = text;
+      turn.text = turn.text ? `${turn.text}\n${text}` : text;
+    } catch (e) {
+      const status = (e as { status?: number } | null)?.status;
+      return NextResponse.json(
+        {
+          error:
+            status != null && status >= 400 && status < 500
+              ? "Dictée refusée par le service de transcription (format ou durée)."
+              : "La transcription de la dictée a échoué. Réessayez ou écrivez la commande.",
+        },
+        { status: 502 },
+      );
+    }
+  }
+  // Une dictée vide (micro coupé, silence) ne doit pas partir en lecture à vide.
+  if (turns.every((t) => !t.text && !t.file)) {
+    return NextResponse.json(
+      { error: "Rien n'a été entendu sur la dictée. Réessayez plus près du micro." },
+      { status: 422 },
+    );
+  }
+
   let read: { reply: string; items: ReadItem[]; documentTotal: number | null };
   try {
     read = await readList(client, turns);
@@ -251,6 +289,7 @@ export async function POST(req: Request) {
 
   return NextResponse.json({
     reply: read.reply,
+    transcript,
     documentTotal: read.documentTotal,
     lines: lines.map((l, i) => ({
       label: l.label,
@@ -278,7 +317,7 @@ function truthy(raw: unknown): boolean {
   return false;
 }
 
-type TurnFile = { kind: "image" | "pdf"; dataUrl: string; name: string };
+type TurnFile = { kind: "image" | "pdf" | "audio"; dataUrl: string; name: string };
 
 type Turn = { role: "user" | "assistant"; text: string; file: TurnFile | null };
 
@@ -296,7 +335,54 @@ function normalizeFile(raw: unknown): TurnFile | null {
     // `filename` est obligatoire côté OpenAI pour une pièce jointe inline.
     return { kind: "pdf", dataUrl, name: name.toLowerCase().endsWith(".pdf") ? name : "document.pdf" };
   }
+  if (/^data:audio\/[a-z0-9.+-]+;base64,[A-Za-z0-9+/=]+$/.test(dataUrl)) {
+    return { kind: "audio", dataUrl, name: name || "dictee" };
+  }
   return null;
+}
+
+/** Extensions acceptées par la transcription, déduites du type MIME enregistré. */
+const AUDIO_EXTENSIONS: Record<string, string> = {
+  "audio/webm": "webm",
+  "audio/ogg": "ogg",
+  "audio/mp4": "mp4",
+  "audio/x-m4a": "m4a",
+  "audio/m4a": "m4a",
+  "audio/mpeg": "mp3",
+  "audio/mp3": "mp3",
+  "audio/wav": "wav",
+  "audio/x-wav": "wav",
+  "audio/wave": "wav",
+};
+
+/**
+ * Dictée du caissier → texte. L'audio ne va JAMAIS au modèle qui remplit le panier :
+ * il est d'abord transcrit, et c'est le texte — que le caissier voit à l'écran — qui
+ * traverse ensuite exactement le même chemin qu'une photo ou un PDF. Une commande
+ * dictée n'a donc pas de traitement de faveur : mêmes règles, même rapprochement,
+ * même confirmation ligne à ligne.
+ */
+async function transcribe(client: OpenAI, file: TurnFile): Promise<string> {
+  const comma = file.dataUrl.indexOf(",");
+  const mime = file.dataUrl.slice(5, file.dataUrl.indexOf(";")).toLowerCase();
+  const bytes = Buffer.from(file.dataUrl.slice(comma + 1), "base64");
+  if (bytes.length === 0) return "";
+  const ext = AUDIO_EXTENSIONS[mime] ?? "webm";
+  const upload = await toFile(bytes, `dictee.${ext}`, { type: mime });
+  const res = await client.audio.transcriptions.create({
+    file: upload,
+    model: "gpt-4o-mini-transcribe",
+    /*
+     * Langue imposée : le commerce se tient en français ici, et laisser la détection
+     * libre faisait basculer une dictée courte (« trois cartons ») vers une autre
+     * langue. Aucun vocabulaire du catalogue n'est soufflé au transcripteur : ce
+     * serait le pousser à ENTENDRE un produit qui n'a pas été prononcé — exactement
+     * ce que tout le reste de cette fonction s'emploie à rendre impossible.
+     */
+    language: "fr",
+    response_format: "json",
+  });
+  return String(res.text ?? "").trim().slice(0, 2000);
 }
 
 function normalizeTurns(raw: unknown): Turn[] {

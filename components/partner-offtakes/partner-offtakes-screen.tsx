@@ -63,6 +63,13 @@ import {
   FsSectionLabel,
   fsInputClass,
 } from "@/components/ui/fs-screen-primitives";
+import { usePersistentDraft } from "@/lib/hooks/use-persistent-draft";
+import {
+  isPartnerOfftakeDraftEmpty,
+  PARTNER_OFFTAKE_DRAFT_VERSION,
+  partnerOfftakeDraftKey,
+  type PartnerOfftakeDraft,
+} from "@/lib/features/partner-offtakes/offtake-draft";
 import { useAppContext } from "@/lib/features/common/app-context";
 import {
   addOfftakePayment,
@@ -213,8 +220,12 @@ export function PartnerOfftakesScreen() {
    * Clé d'idempotence de l'enlèvement EN COURS. Elle vit aussi longtemps que le panier :
    * si la validation part deux fois (réseau qui lâche, double tape), la base reconnaît
    * la même clé et ne sort le stock qu'une fois. Renouvelée après chaque succès.
+   *
+   * En état plutôt qu'en ref : elle fait partie du brouillon persisté, donc du rendu.
+   * Une saisie reprise après coupure repart avec SA clé — c'est ce qui empêche de
+   * compter deux fois une validation dont seule la réponse s'était perdue.
    */
-  const requestIdRef = useRef<string>(newRequestId());
+  const [requestId, setRequestId] = useState<string>(newRequestId);
 
   const enabled = Boolean(companyId && storeId) && canView;
 
@@ -229,8 +240,67 @@ export function PartnerOfftakesScreen() {
     if (storeRef.current === storeId) return;
     storeRef.current = storeId;
     setLines([]);
-    requestIdRef.current = newRequestId();
+    setRequestId(newRequestId());
   }, [storeId]);
+
+  /*
+   * La saisie survit à la navigation.
+   *
+   * Un chargement partenaire se compte en dizaines de lignes, entrecoupées d'allers-
+   * retours vers le stock ou l'historique du même partenaire. Le routeur démontait la
+   * page à chaque fois.
+   *
+   * Déclaré APRÈS l'effet ci-dessus, et ce n'est pas indifférent : au moment où la
+   * boutique est enfin connue, cet effet vide les lignes de façon synchrone tandis que
+   * la relecture disque, elle, est asynchrone. La restauration passe donc bien après le
+   * vidage, jamais avant.
+   */
+  const linesRef = useRef(lines);
+  useEffect(() => {
+    linesRef.current = lines;
+  });
+
+  const draftSnapshot = useMemo<PartnerOfftakeDraft>(
+    () => ({
+      lines,
+      partnerName,
+      partnerPhone,
+      paidText,
+      dueAt,
+      note,
+      requestId,
+    }),
+    [lines, partnerName, partnerPhone, paidText, dueAt, note, requestId],
+  );
+
+  usePersistentDraft<PartnerOfftakeDraft>({
+    key: companyId && storeId ? partnerOfftakeDraftKey(companyId, storeId) : null,
+    version: PARTNER_OFFTAKE_DRAFT_VERSION,
+    value: draftSnapshot,
+    isEmpty: isPartnerOfftakeDraftEmpty,
+    onRestore: (d) => {
+      /*
+       * La relecture disque est asynchrone. Si le commerçant a déjà ajouté une ligne
+       * pendant ces quelques millisecondes, il sert le partenaire PRÉSENT : le brouillon
+       * d'avant est abandonné plutôt que de recouvrir la saisie en cours.
+       */
+      if (linesRef.current.length > 0) return;
+      setLines(d.lines);
+      setPartnerName(d.partnerName);
+      setPartnerPhone(d.partnerPhone);
+      setPaidText(d.paidText);
+      setDueAt(d.dueAt);
+      setNote(d.note);
+      /* Reprendre la clé d'origine, pas en forger une neuve : voir `PartnerOfftakeDraft`. */
+      setRequestId(d.requestId);
+      setTab("new");
+      toast.info(
+        d.lines.length === 1
+          ? "Enlèvement en cours restauré (1 ligne)."
+          : `Enlèvement en cours restauré (${d.lines.length} lignes).`,
+      );
+    },
+  });
 
   const catalogQ = useQuery({
     queryKey: queryKeys.partnerOfftakeCatalog(companyId, storeId ?? ""),
@@ -411,7 +481,7 @@ export function PartnerOfftakesScreen() {
         amountPaid: paidNow,
         dueAt: dueAt || null,
         note: note.trim() || null,
-        clientRequestId: requestIdRef.current,
+        clientRequestId: requestId,
       });
       // On relit l'enlèvement plutôt que de le reconstituer : numéro et totaux sont
       // calculés en base, et c'est CE bon-là qu'on va imprimer et envoyer.
@@ -427,7 +497,7 @@ export function PartnerOfftakesScreen() {
       setNote("");
       // Le nom et le téléphone restent : le même partenaire fait souvent deux
       // chargements de suite (un pour lui, un pour son frère).
-      requestIdRef.current = newRequestId();
+      setRequestId(newRequestId());
       await Promise.all([
         qc.invalidateQueries({ queryKey: ["partner-offtakes", companyId] }),
         qc.invalidateQueries({ queryKey: ["quick-supply", companyId] }),

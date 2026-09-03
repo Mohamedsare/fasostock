@@ -29,6 +29,13 @@ import {
   FsSectionLabel,
   fsInputClass,
 } from "@/components/ui/fs-screen-primitives";
+import { usePersistentDraft } from "@/lib/hooks/use-persistent-draft";
+import {
+  isQuickSupplyDraftEmpty,
+  QUICK_SUPPLY_DRAFT_VERSION,
+  quickSupplyDraftKey,
+  type QuickSupplyDraft,
+} from "@/lib/features/quick-supply/supply-draft";
 import { useAppContext } from "@/lib/features/common/app-context";
 import { usePermissions } from "@/lib/features/permissions/use-permissions";
 import {
@@ -137,8 +144,59 @@ export function QuickSupplyScreen() {
    * Clé d'idempotence de l'arrivage EN COURS. Elle vit aussi longtemps que le panier :
    * si la validation part deux fois (réseau qui lâche, double tape), la base reconnaît
    * la même clé et n'entre le stock qu'une fois. Renouvelée après chaque succès.
+   *
+   * En état plutôt qu'en ref : elle fait partie du brouillon persisté, donc du rendu.
+   * Une saisie reprise après coupure repart avec SA clé — c'est ce qui empêche de
+   * compter deux fois une validation dont seule la réponse s'était perdue.
    */
-  const requestIdRef = useRef<string>(newRequestId());
+  const [requestId, setRequestId] = useState<string>(newRequestId);
+
+  /*
+   * La saisie survit à la navigation.
+   *
+   * Décharger une camionnette prend du temps, et le commerçant fait des allers-retours
+   * vers une fiche produit ou un prix pendant ce temps-là. Le routeur démontait la page
+   * et les vingt lignes déjà saisies étaient à refaire, marchandise au sol.
+   *
+   * La clé est celle de la boutique de destination : deux boutiques ont chacune leur
+   * arrivage en cours, et l'une ne récupère jamais les lignes de l'autre.
+   */
+  const linesRef = useRef(lines);
+  useEffect(() => {
+    linesRef.current = lines;
+  });
+
+  const draftSnapshot = useMemo<QuickSupplyDraft>(
+    () => ({ lines, supplier, paidText, note, requestId }),
+    [lines, supplier, paidText, note, requestId],
+  );
+
+  usePersistentDraft<QuickSupplyDraft>({
+    key: companyId && storeId ? quickSupplyDraftKey(companyId, storeId) : null,
+    version: QUICK_SUPPLY_DRAFT_VERSION,
+    value: draftSnapshot,
+    isEmpty: isQuickSupplyDraftEmpty,
+    onRestore: (d) => {
+      /*
+       * La relecture disque est asynchrone. Si le commerçant a déjà scanné un article
+       * pendant ces quelques millisecondes, il saisit l'arrivage PRÉSENT : le brouillon
+       * d'avant est abandonné plutôt que de recouvrir la saisie en cours.
+       */
+      if (linesRef.current.length > 0) return;
+      setLines(d.lines);
+      setSupplier(d.supplier);
+      setPaidText(d.paidText);
+      setNote(d.note);
+      /* Reprendre la clé d'origine, pas en forger une neuve : voir `QuickSupplyDraft`. */
+      setRequestId(d.requestId);
+      setTab("new");
+      toast.info(
+        d.lines.length === 1
+          ? "Arrivage en cours restauré (1 ligne)."
+          : `Arrivage en cours restauré (${d.lines.length} lignes).`,
+      );
+    },
+  });
 
   const enabled = Boolean(companyId && storeId) && canView;
 
@@ -157,10 +215,14 @@ export function QuickSupplyScreen() {
     setPickedStoreId(nextStoreId);
     if (lines.length > 0) {
       setLines([]);
-      toast.info("Boutique changée : la saisie en cours a été vidée.");
+      // Vidée à l'écran, mais gardée sous la clé de SA boutique : revenir dessus la
+      // retrouve intacte. Ce que l'on refuse, c'est de faire entrer ces lignes-là dans
+      // une autre boutique, pas de les jeter.
+      toast.info("Boutique changée. La saisie précédente est gardée pour son magasin.");
     }
     // Nouvel arrivage, nouvelle clé : il n'a rien à voir avec celui qu'on abandonne.
-    requestIdRef.current = newRequestId();
+    // Un brouillon retrouvé pour la boutique choisie remettra la sienne juste après.
+    setRequestId(newRequestId());
     setQuery("");
     setFocusKey(null);
   }
@@ -400,7 +462,7 @@ export function QuickSupplyScreen() {
         // appels qui ne passeraient pas par cette page.
         amountPaid: Math.max(0, toNumber(paidText)),
         note: note.trim() || null,
-        clientRequestId: requestIdRef.current,
+        clientRequestId: requestId,
       });
     },
     onSuccess: async () => {
@@ -412,7 +474,7 @@ export function QuickSupplyScreen() {
       setSupplier("");
       setPaidText("");
       setNote("");
-      requestIdRef.current = newRequestId();
+      setRequestId(newRequestId());
       // Le stock affiché ici, la caisse, le catalogue : tout ce qui vient de changer.
       await qc.invalidateQueries({ queryKey: ["quick-supply", companyId] });
       await qc.invalidateQueries({ queryKey: ["pos"] });

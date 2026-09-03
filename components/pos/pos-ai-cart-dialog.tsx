@@ -5,16 +5,22 @@ import {
   MdAddPhotoAlternate,
   MdAutoAwesome,
   MdClose,
+  MdGraphicEq,
+  MdMic,
   MdPhotoCamera,
   MdPictureAsPdf,
   MdSearch,
   MdSend,
+  MdStop,
   MdUploadFile,
 } from "react-icons/md";
 
 import { fsInputClass } from "@/components/ui/fs-screen-primitives";
 import {
   attachmentFromFile,
+  attachmentFromRecording,
+  MAX_RECORDING_MS,
+  pickRecordingMimeType,
   runAiCartVision,
   type AiCartFile,
   type AiCartLine,
@@ -106,10 +112,13 @@ export function PosAiCartDialog({
   const [busy, setBusy] = useState(false);
   const [searchFor, setSearchFor] = useState<number | null>(null);
   const [search, setSearch] = useState("");
+  const [recordingMs, setRecordingMs] = useState<number | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
   const cameraRef = useRef<HTMLInputElement | null>(null);
   const threadRef = useRef<HTMLDivElement | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const productById = useMemo(() => {
     const m = new Map<string, AiCartProduct>();
@@ -123,6 +132,8 @@ export function PosAiCartDialog({
     if (open) return;
     abortRef.current?.abort();
     abortRef.current = null;
+    stopAndReleaseMic();
+    setRecordingMs(null);
     setTurns([]);
     setBubbles([]);
     setDraft("");
@@ -140,7 +151,38 @@ export function PosAiCartDialog({
     if (el) el.scrollTop = el.scrollHeight;
   }, [open, bubbles]);
 
-  useEffect(() => () => abortRef.current?.abort(), []);
+  useEffect(
+    () => () => {
+      abortRef.current?.abort();
+      stopAndReleaseMic();
+    },
+    [],
+  );
+
+  /**
+   * Coupe l'enregistrement et rend le micro, sans passer par l'état React : appelé
+   * au démontage et à la fermeture, là où plus aucun rendu ne suivra. Un micro laissé
+   * ouvert après la fermeture du dialogue serait une caméra allumée en pire.
+   */
+  function stopAndReleaseMic() {
+    if (recordingTimerRef.current != null) {
+      clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
+    const recorder = recorderRef.current;
+    recorderRef.current = null;
+    if (recorder == null) return;
+    recorder.ondataavailable = null;
+    recorder.onstop = null;
+    if (recorder.state !== "inactive") {
+      try {
+        recorder.stop();
+      } catch {
+        /* déjà arrêté */
+      }
+    }
+    recorder.stream.getTracks().forEach((t) => t.stop());
+  }
 
   async function pickFile(file: File | null | undefined) {
     if (!file) return;
@@ -149,6 +191,83 @@ export function PosAiCartDialog({
     } catch (e) {
       toast.error(messageFromUnknownError(e));
     }
+  }
+
+  /**
+   * Dictée : on enregistre au micro, on s'arrête tout seul au bout du temps prévu,
+   * et le micro est RELÂCHÉ dès l'arrêt (sinon le voyant du navigateur reste allumé
+   * derrière le comptoir, ce qui n'est acceptable pour personne).
+   */
+  function releaseRecorder(recorder: MediaRecorder | null) {
+    if (recordingTimerRef.current != null) {
+      clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
+    recorder?.stream.getTracks().forEach((t) => t.stop());
+    recorderRef.current = null;
+    setRecordingMs(null);
+  }
+
+  async function startRecording() {
+    if (recorderRef.current || busy) return;
+    if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
+      toast.error("Ce navigateur ne permet pas d'enregistrer le micro.");
+      return;
+    }
+    let stream: MediaStream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch {
+      toast.error("Autorisez l'accès au micro pour dicter la commande.");
+      return;
+    }
+
+    const mimeType = pickRecordingMimeType();
+    let recorder: MediaRecorder;
+    try {
+      recorder = new MediaRecorder(stream, {
+        ...(mimeType ? { mimeType } : {}),
+        // 24 kbit/s suffit largement pour de la parole, et garde la dictée légère
+        // sur une connexion de terrain.
+        audioBitsPerSecond: 24_000,
+      });
+    } catch {
+      stream.getTracks().forEach((t) => t.stop());
+      toast.error("Enregistrement audio non pris en charge par ce navigateur.");
+      return;
+    }
+
+    const chunks: Blob[] = [];
+    const startedAt = Date.now();
+    recorder.ondataavailable = (e) => {
+      if (e.data.size > 0) chunks.push(e.data);
+    };
+    recorder.onstop = () => {
+      const durationMs = Date.now() - startedAt;
+      releaseRecorder(recorder);
+      const blob = new Blob(chunks, { type: recorder.mimeType || mimeType || "audio/webm" });
+      void attachmentFromRecording(blob, durationMs)
+        .then(setPendingFile)
+        .catch((e: unknown) => toast.error(messageFromUnknownError(e)));
+    };
+
+    recorderRef.current = recorder;
+    recorder.start();
+    setRecordingMs(0);
+    recordingTimerRef.current = setInterval(() => {
+      const elapsed = Date.now() - startedAt;
+      setRecordingMs(elapsed);
+      // Arrêt automatique : une dictée oubliée ne part pas en transcription.
+      if (elapsed >= MAX_RECORDING_MS && recorderRef.current?.state === "recording") {
+        recorderRef.current.stop();
+      }
+    }, 250);
+  }
+
+  function stopRecording() {
+    const recorder = recorderRef.current;
+    if (recorder?.state === "recording") recorder.stop();
+    else releaseRecorder(recorder);
   }
 
   function applyServerLines(serverLines: AiCartLine[]) {
@@ -187,6 +306,7 @@ export function PosAiCartDialog({
 
     const turn: AiCartTurn = { role: "user", text, file: pendingFile };
     const nextTurns = [...turns, turn];
+    const userBubbleIndex = bubbles.length;
     setTurns(nextTurns);
     setBubbles((b) => [...b, { role: "user", text, file: pendingFile }]);
     setDraft("");
@@ -213,7 +333,38 @@ export function PosAiCartDialog({
        * le savon ») sans renvoyer le document — qui, lui, finit par être écarté de
        * la requête pour ne pas la faire grossir sans fin.
        */
-      setTurns((t) => [...t, { role: "assistant", text: reply + recapOf(res.lines) }]);
+      /*
+       * Dictée : le texte transcrit REMPLACE l'audio dans l'historique. Sans cela
+       * la même dictée repartait — et se refaisait transcrire — à chaque message
+       * suivant de la discussion. Le caissier voit le transcrit sur sa bulle : c'est
+       * sa seule occasion de constater qu'un mot a été mal entendu.
+       */
+      const settledTurns: AiCartTurn[] = res.transcript
+        ? nextTurns.map((t) =>
+            t.file?.kind === "audio"
+              ? {
+                  role: t.role,
+                  text: t.text ? `${t.text}\n${res.transcript}` : (res.transcript as string),
+                  file: null,
+                }
+              : t,
+          )
+        : nextTurns;
+      setTurns([...settledTurns, { role: "assistant", text: reply + recapOf(res.lines) }]);
+      if (res.transcript) {
+        setBubbles((b) =>
+          b.map((bubble, i) =>
+            i === userBubbleIndex
+              ? {
+                  ...bubble,
+                  text: bubble.text
+                    ? `${bubble.text}\n${res.transcript}`
+                    : (res.transcript as string),
+                }
+              : bubble,
+          ),
+        );
+      }
       setBubbles((b) => [...b, { role: "assistant", text: reply, file: null }]);
       applyServerLines(res.lines);
       setDocumentTotal(res.documentTotal);
@@ -330,10 +481,11 @@ export function PosAiCartDialog({
             <div ref={threadRef} className="min-h-0 flex-1 space-y-2 overflow-y-auto px-3 py-3">
               {bubbles.length === 0 ? (
                 <div className="rounded-lg bg-[#F97316]/5 px-3 py-3 text-[12px] leading-relaxed text-[#1F2937]">
-                  Déposez le <b>PDF</b> du devis ou du bon de commande, ou prenez la liste{" "}
-                  <b>en photo</b>. L&apos;assistant lit les articles, les quantités et les prix
-                  écrits, les rapproche de votre catalogue, et remplit le tableau. Vous validez
-                  chaque ligne avant qu&apos;elle n&apos;y entre.
+                  Déposez le <b>PDF</b> du devis ou du bon de commande, prenez la liste{" "}
+                  <b>en photo</b>, ou <b>dictez la commande</b> au micro. L&apos;assistant lit
+                  les articles, les quantités et les prix écrits, les rapproche de votre
+                  catalogue, et remplit le tableau. Vous validez chaque ligne avant
+                  qu&apos;elle n&apos;y entre.
                 </div>
               ) : null}
               {bubbles.map((b, i) => (
@@ -360,6 +512,12 @@ export function PosAiCartDialog({
                       <span className="truncate">{b.file.name}</span>
                     </p>
                   ) : null}
+                  {b.file?.kind === "audio" ? (
+                    <p className="mb-1.5 flex items-center gap-1.5 rounded bg-white/15 px-2 py-1.5">
+                      <MdGraphicEq className="h-4 w-4 shrink-0" aria-hidden />
+                      <span>Dictée · {formatDuration(b.file.durationMs ?? 0)}</span>
+                    </p>
+                  ) : null}
                   {b.text ? <p className="whitespace-pre-wrap">{b.text}</p> : null}
                 </div>
               ))}
@@ -381,13 +539,21 @@ export function PosAiCartDialog({
                       alt="Document à envoyer"
                       className="h-12 w-12 rounded object-cover"
                     />
+                  ) : pendingFile.kind === "audio" ? (
+                    <span className="flex h-12 w-12 items-center justify-center rounded bg-[#F97316]/10 text-[#F97316]">
+                      <MdGraphicEq className="h-6 w-6" aria-hidden />
+                    </span>
                   ) : (
                     <span className="flex h-12 w-12 items-center justify-center rounded bg-red-500/10 text-red-600">
                       <MdPictureAsPdf className="h-6 w-6" aria-hidden />
                     </span>
                   )}
                   <span className="min-w-0 flex-1 truncate text-[11px] text-neutral-600">
-                    {pendingFile.kind === "pdf" ? pendingFile.name : "Photo prête à envoyer"}
+                    {pendingFile.kind === "pdf"
+                      ? pendingFile.name
+                      : pendingFile.kind === "audio"
+                        ? `Dictée de ${formatDuration(pendingFile.durationMs ?? 0)} prête à envoyer`
+                        : "Photo prête à envoyer"}
                   </span>
                   <button
                     type="button"
@@ -414,7 +580,9 @@ export function PosAiCartDialog({
                 <input
                   ref={fileRef}
                   type="file"
-                  accept="image/*,application/pdf,.pdf"
+                  /* Les notes vocales WhatsApp arrivent en .ogg/.opus : le client
+                     envoie sa commande à l'oral, le caissier la dépose telle quelle. */
+                  accept="image/*,application/pdf,.pdf,audio/*,.ogg,.opus,.m4a"
                   className="hidden"
                   onChange={(e) => {
                     void pickFile(e.target.files?.[0]);
@@ -433,11 +601,36 @@ export function PosAiCartDialog({
                 <button
                   type="button"
                   onClick={() => cameraRef.current?.click()}
-                  className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-[#E5E7EB] text-[#1F2937]/70 hover:bg-black/5"
+                  disabled={recordingMs != null}
+                  className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-[#E5E7EB] text-[#1F2937]/70 hover:bg-black/5 disabled:opacity-40"
                   aria-label="Prendre la commande en photo"
                   title="Prendre la commande en photo"
                 >
                   <MdPhotoCamera className="h-5 w-5" aria-hidden />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => (recordingMs == null ? void startRecording() : stopRecording())}
+                  disabled={busy}
+                  className={cn(
+                    "inline-flex h-9 shrink-0 items-center justify-center gap-1 rounded-md border px-2 disabled:opacity-40",
+                    recordingMs != null
+                      ? "border-red-600 bg-red-600 text-white"
+                      : "w-9 border-[#E5E7EB] text-[#1F2937]/70 hover:bg-black/5",
+                  )}
+                  aria-label={recordingMs != null ? "Arrêter la dictée" : "Dicter la commande"}
+                  title={recordingMs != null ? "Arrêter la dictée" : "Dicter la commande"}
+                >
+                  {recordingMs != null ? (
+                    <>
+                      <MdStop className="h-5 w-5" aria-hidden />
+                      <span className="text-[11px] font-semibold tabular-nums">
+                        {formatDuration(recordingMs)}
+                      </span>
+                    </>
+                  ) : (
+                    <MdMic className="h-5 w-5" aria-hidden />
+                  )}
                 </button>
                 <input
                   className={fsInputClass(
@@ -457,7 +650,7 @@ export function PosAiCartDialog({
                 <button
                   type="button"
                   onClick={() => void send()}
-                  disabled={busy || (!draft.trim() && !pendingFile)}
+                  disabled={busy || recordingMs != null || (!draft.trim() && !pendingFile)}
                   className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-[#1F2937] text-white disabled:opacity-40"
                   aria-label="Envoyer"
                 >
@@ -466,8 +659,8 @@ export function PosAiCartDialog({
               </div>
               <p className="mt-1.5 px-0.5 text-[10px] leading-snug text-neutral-500">
                 <MdAddPhotoAlternate className="mr-1 inline h-3 w-3 align-[-1px]" aria-hidden />
-                Images et PDF (2 Mo max). Le document est envoyé à un service d&apos;analyse
-                externe.
+                Photo, PDF (2 Mo max) ou dictée au micro (3 min max). Le document ou la
+                dictée sont envoyés à un service d&apos;analyse externe.
               </p>
             </div>
           </div>
@@ -738,6 +931,12 @@ export function PosAiCartDialog({
       </div>
     </div>
   );
+}
+
+/** Durée d'une dictée, en `m:ss`. */
+function formatDuration(ms: number): string {
+  const total = Math.max(0, Math.round(ms / 1000));
+  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
 }
 
 /** Rappel de la liste courante, glissé dans l'historique envoyé au modèle. */

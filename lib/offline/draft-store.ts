@@ -1,6 +1,6 @@
 "use client";
 
-import { createStore, del, get, set } from "idb-keyval";
+import { createStore, del, get, set, type UseStore } from "idb-keyval";
 import { DRAFT_MAX_AGE_MS, IDB_DRAFTS_DB, IDB_DRAFTS_STORE } from "./constants";
 
 /**
@@ -15,8 +15,33 @@ import { DRAFT_MAX_AGE_MS, IDB_DRAFTS_DB, IDB_DRAFTS_STORE } from "./constants";
  * gré des invalidations, un panier en cours n'a rien à faire dedans.
  */
 
-const idbStore =
-  typeof window === "undefined" ? null : createStore(IDB_DRAFTS_DB, IDB_DRAFTS_STORE);
+/*
+ * Ouverture paresseuse. `createStore` appelle `indexedDB.open` sur-le-champ : au niveau
+ * du module, importer ce fichier suffirait à ouvrir une connexion, y compris sur un
+ * écran qui n'écrira jamais de brouillon (utilisateur sans entreprise, écran en lecture
+ * seule). La première lecture ou écriture réelle l'ouvre, et une seule fois.
+ */
+let idbStore: UseStore | null = null;
+/** IndexedDB refusé par le navigateur : constaté une fois, on cesse d'insister. */
+let idbUnavailable = false;
+
+function getStore(): UseStore | null {
+  if (typeof window === "undefined" || idbUnavailable) return null;
+  if (!idbStore) {
+    try {
+      idbStore = createStore(IDB_DRAFTS_DB, IDB_DRAFTS_STORE);
+    } catch {
+      /*
+       * Navigation privée, stockage bloqué par une politique : `indexedDB.open` lève.
+       * On le retient au lieu de retenter à chaque frappe — l'écran fonctionne
+       * exactement comme avant les brouillons, il ne garde simplement rien.
+       */
+      idbUnavailable = true;
+      return null;
+    }
+  }
+  return idbStore;
+}
 
 /** Enveloppe persistée : la version permet d'ignorer un brouillon d'un format révolu. */
 type StoredDraft<T> = {
@@ -43,6 +68,7 @@ export async function readDraft<T>(
   version: number,
   maxAgeMs: number = DRAFT_MAX_AGE_MS,
 ): Promise<T | null> {
+  const idbStore = getStore();
   if (!idbStore) return null;
   try {
     const raw = await get<unknown>(key, idbStore);
@@ -62,6 +88,7 @@ export async function readDraft<T>(
 
 /** Écrit (ou remplace) un brouillon. Silencieux en cas de quota ou d'IndexedDB indisponible. */
 export async function writeDraft<T>(key: string, version: number, data: T): Promise<void> {
+  const idbStore = getStore();
   if (!idbStore) return;
   try {
     const payload: StoredDraft<T> = { v: version, savedAt: Date.now(), data };
@@ -73,6 +100,7 @@ export async function writeDraft<T>(key: string, version: number, data: T): Prom
 
 /** Supprime un brouillon (travail validé ou abandonné). */
 export async function clearDraft(key: string): Promise<void> {
+  const idbStore = getStore();
   if (!idbStore) return;
   try {
     await del(key, idbStore);

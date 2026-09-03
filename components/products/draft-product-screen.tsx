@@ -50,6 +50,13 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { usePersistentDraft } from "@/lib/hooks/use-persistent-draft";
+import {
+  DRAFT_PRODUCT_DRAFT_VERSION,
+  draftProductDraftKey,
+  isDraftProductDraftEmpty,
+  type DraftProductDraft,
+} from "@/lib/features/products/draft-product-draft";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   MdAddAPhoto,
@@ -121,6 +128,52 @@ export function DraftProductScreen() {
   const [photo, setPhoto] = useState<File | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [justAdded, setJustAdded] = useState<JustAdded[]>([]);
+
+  /*
+   * La fiche en cours survit à la navigation.
+   *
+   * L'employé saisit debout dans un dépôt et va régulièrement vérifier ailleurs dans
+   * l'app si l'article existe déjà. Le routeur démontait la page : le nom tapé, le
+   * code-barres scanné et la note repartaient à zéro.
+   *
+   * La photo n'est pas gardée — voir `DraftProductDraft` pour la raison. La liste des
+   * articles déjà ajoutés non plus : elle se relit dans le catalogue, ce n'est pas de la
+   * saisie en attente.
+   */
+  const draftAnchorRef = useRef({ name, barcode, description });
+  useEffect(() => {
+    draftAnchorRef.current = { name, barcode, description };
+  });
+
+  const draftSnapshot = useMemo<DraftProductDraft>(
+    () => ({ name, unit, barcode, categoryId, description, noteOpen }),
+    [name, unit, barcode, categoryId, description, noteOpen],
+  );
+
+  usePersistentDraft<DraftProductDraft>({
+    key: companyId ? draftProductDraftKey(companyId) : null,
+    version: DRAFT_PRODUCT_DRAFT_VERSION,
+    value: draftSnapshot,
+    isEmpty: isDraftProductDraftEmpty,
+    onRestore: (d) => {
+      /*
+       * La relecture disque est asynchrone. Si l'employé a déjà commencé à taper pendant
+       * ces quelques millisecondes, c'est l'article qu'il a EN MAIN : le brouillon
+       * d'avant est abandonné plutôt que de recouvrir la saisie en cours.
+       */
+      const cur = draftAnchorRef.current;
+      if (cur.name.trim() || cur.barcode.trim() || cur.description.trim()) return;
+
+      setName(d.name);
+      setUnit(d.unit);
+      setBarcode(d.barcode);
+      setCategoryId(d.categoryId);
+      setDescription(d.description);
+      /* Une note restaurée doit être visible : le volet s'ouvre dès qu'elle n'est pas vide. */
+      setNoteOpen(d.noteOpen || d.description.trim() !== "");
+      toast.info("Fiche en cours restaurée. Reprenez la photo si vous en aviez une.");
+    },
+  });
 
   const nameRef = useRef<HTMLInputElement | null>(null);
   /* L'appareil photo et les images du téléphone : deux inputs, cf. l'en-tête (1 bis). */
