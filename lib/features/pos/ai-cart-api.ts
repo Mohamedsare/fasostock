@@ -48,8 +48,13 @@ export type AiCartResult = {
   lines: AiCartLine[];
 };
 
-/** Au-delà, la requête ne passerait pas l'hébergeur (limite de taille du corps). */
-export const MAX_PDF_BYTES = 3 * 1024 * 1024;
+/**
+ * Un PDF de 2 Mo pèse ~2,8 Mo une fois encodé en base64, et il faut rester sous la
+ * limite de corps de requête de l'hébergeur (4,5 Mo chez Vercel) — historique de la
+ * discussion compris. À 3 Mo le document passait localement et se faisait refuser
+ * en production, ce qui est le pire des deux mondes.
+ */
+export const MAX_PDF_BYTES = 2 * 1024 * 1024;
 
 function readAsDataUrl(file: Blob): Promise<string> {
   return new Promise<string>((resolve, reject) => {
@@ -75,7 +80,7 @@ export async function attachmentFromFile(file: File): Promise<AiCartFile> {
   if (isPdf) {
     if (file.size > MAX_PDF_BYTES) {
       throw new Error(
-        "PDF trop lourd (3 Mo maximum). Envoyez les pages utiles, ou une photo de la commande.",
+        "PDF trop lourd (2 Mo maximum). Envoyez les pages utiles, ou une photo de la commande.",
       );
     }
     const dataUrl = await readAsDataUrl(file);

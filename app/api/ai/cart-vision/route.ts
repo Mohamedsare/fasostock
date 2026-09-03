@@ -31,8 +31,11 @@ export const maxDuration = 120;
 
 const MAX_PRODUCTS = 4000;
 const MAX_TURNS = 12;
-/** Data URL (base64) : au-delà, la requête ne passerait plus l'hébergeur. */
-const MAX_FILE_CHARS = 6_000_000;
+/**
+ * Data URL (base64) : au-delà, la requête ne passerait plus l'hébergeur (4,5 Mo de
+ * corps chez Vercel). Le client borne déjà les PDF à 2 Mo ; ce plafond est le filet.
+ */
+const MAX_FILE_CHARS = 3_500_000;
 const MAX_LINES = 60;
 
 const READ_SYSTEM = [
@@ -184,14 +187,31 @@ export async function POST(req: Request) {
   try {
     read = await readList(client, turns);
   } catch (e) {
-    const status = (e as { status?: number } | null)?.status;
+    const err = e as { status?: number; message?: string } | null;
+    const status = err?.status;
+    if (status === 429) {
+      return NextResponse.json(
+        { error: "L'assistant IA est saturé, réessayez dans un instant." },
+        { status: 502 },
+      );
+    }
+    /*
+     * Un 4xx n'est PAS une panne : c'est le service qui refuse ce qu'on lui envoie
+     * (type de fichier non accepté, document trop lourd, modèle sans lecture de PDF).
+     * Le masquer derrière « injoignable » condamnait à deviner ; on remonte donc le
+     * motif tel quel — les messages de l'API ne contiennent jamais la clé.
+     */
+    if (status != null && status >= 400 && status < 500) {
+      const detail = String(err?.message ?? "").slice(0, 300);
+      return NextResponse.json(
+        {
+          error: `Document refusé par le service d'analyse${detail ? ` : ${detail}` : "."}`,
+        },
+        { status: 502 },
+      );
+    }
     return NextResponse.json(
-      {
-        error:
-          status === 429
-            ? "L'assistant IA est saturé, réessayez dans un instant."
-            : "L'assistant IA est injoignable pour le moment.",
-      },
+      { error: "L'assistant IA est injoignable pour le moment." },
       { status: 502 },
     );
   }

@@ -466,7 +466,7 @@ export function PosAiCartDialog({
               </div>
               <p className="mt-1.5 px-0.5 text-[10px] leading-snug text-neutral-500">
                 <MdAddPhotoAlternate className="mr-1 inline h-3 w-3 align-[-1px]" aria-hidden />
-                Images et PDF (3 Mo max). Le document est envoyé à un service d&apos;analyse
+                Images et PDF (2 Mo max). Le document est envoyé à un service d&apos;analyse
                 externe.
               </p>
             </div>
