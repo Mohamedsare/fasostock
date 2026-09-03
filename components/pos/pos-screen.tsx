@@ -3473,6 +3473,7 @@ export function PosScreen({
              `products` est déjà filtré par le catalogue de la boutique. */
           products={aiCartProducts}
           stockByProductId={stockByProductId}
+          modelsByProduct={partModelsByProduct}
           onApply={addAiCartLines}
         />
       ) : null}

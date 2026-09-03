@@ -93,13 +93,16 @@ function labelScore(queryTokens: string[], target: string): number {
   const targetTokens = tokenize(target);
   if (queryTokens.length === 0 || targetTokens.length === 0) return 0;
   let sum = 0;
-  for (const q of queryTokens) {
+  let headBest = 0;
+  for (let i = 0; i < queryTokens.length; i += 1) {
+    const q = queryTokens[i];
     let best = 0;
     for (const t of targetTokens) {
       const s = wordScore(q, t);
       if (s > best) best = s;
       if (best === 1) break;
     }
+    if (i === 0) headBest = best;
     sum += best;
   }
   const coverage = sum / queryTokens.length;
@@ -107,7 +110,19 @@ function labelScore(queryTokens: string[], target: string): number {
   // produits qui couvrent la demande, le plus proche l'emporte.
   const extra = Math.max(0, targetTokens.length - queryTokens.length);
   const tightness = 1 - Math.min(0.25, extra * 0.04);
-  return coverage * tightness;
+  const score = coverage * tightness;
+
+  /*
+   * Le PREMIER mot dit la NATURE de l'article (« disque », « amortisseur »,
+   * « pile », « savon ») ; le reste dit le modèle. Sans ce garde-fou, une pièce
+   * absente du catalogue passait pour une autre au seul motif qu'elles partagent
+   * leur compatibilité : « CHATAU VIDE 115 FINN SIRIUS » était donné pour sûr
+   * contre « Pompe complète 115 Sirius Finn » (0,67) — deux pièces différentes,
+   * facturées l'une pour l'autre. Nature non retrouvée : la ligne reste
+   * proposée, mais jamais présélectionnée — le modèle puis le caissier tranchent.
+   */
+  if (headBest < 0.6) return Math.min(score, MATCH_SURE - 0.01);
+  return score;
 }
 
 /**

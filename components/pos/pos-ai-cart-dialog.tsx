@@ -78,6 +78,7 @@ export function PosAiCartDialog({
   storeId,
   products,
   stockByProductId,
+  modelsByProduct,
   onApply,
 }: {
   open: boolean;
@@ -87,6 +88,12 @@ export function PosAiCartDialog({
   /** Catalogue réellement vendable dans cette boutique (déjà filtré par la caisse). */
   products: AiCartProduct[];
   stockByProductId: Map<string, number>;
+  /**
+   * Module Pièces : engins compatibles par produit. La caisse fait confirmer la
+   * compatibilité avant d'ajouter une pièce ; ici on l'affiche sur la ligne, pour
+   * que le vendeur voie sur quel engin elle se monte avant de cocher.
+   */
+  modelsByProduct?: Map<string, string[]> | null;
   /** Ajoute les lignes retenues au panier. Renvoie le nombre de lignes acceptées. */
   onApply: (lines: AiCartApplyLine[]) => number;
 }) {
@@ -242,14 +249,25 @@ export function PosAiCartDialog({
     const unit = l.unitPrice ?? p?.salePrice ?? 0;
     return sum + unit * l.quantity;
   }, 0);
-  const anyDocumentPrice = lines.some((l) => l.readUnitPrice != null);
-  /* Contrôle de lecture : le total écrit sur le document face à celui des lignes
-     retenues. Un écart ne bloque rien — il dit au caissier où regarder. */
-  const totalMismatch =
-    documentTotal != null &&
-    anyDocumentPrice &&
-    selected.length === lines.length &&
-    Math.abs(documentTotal - estimatedTotal) > 1;
+
+  /*
+   * Contrôle de LECTURE, indépendant du rapprochement catalogue : les prix lus,
+   * multipliés par les quantités lues, face au total écrit sur le document. C'est
+   * la seule vérification qui dise « l'assistant a bien lu ce papier » — un prix
+   * mal déchiffré (1 400 lu 1 400 000) saute immédiatement aux yeux. Un écart
+   * ne bloque rien : beaucoup de documents portent une remise ou un transport
+   * qui ne figure sur aucune ligne.
+   */
+  const pricedLines = lines.filter((l) => l.readUnitPrice != null);
+  const readTotal = pricedLines.reduce(
+    (sum, l) => sum + (l.readUnitPrice ?? 0) * l.quantity,
+    0,
+  );
+  const readQuantity = lines.reduce((n, l) => n + l.quantity, 0);
+  const readCheck =
+    documentTotal != null && pricedLines.length === lines.length && lines.length > 0
+      ? { total: readTotal, matches: Math.abs(documentTotal - readTotal) <= 1 }
+      : null;
 
   function apply() {
     const payload: AiCartApplyLine[] = selected.map((l) => ({
@@ -475,6 +493,8 @@ export function PosAiCartDialog({
                       options.unshift(product);
                     }
                     const effectivePrice = l.unitPrice ?? product?.salePrice ?? 0;
+                    const models =
+                      (product ? modelsByProduct?.get(product.id) : null) ?? [];
                     return (
                       <li
                         key={`${l.label}-${i}`}
@@ -639,6 +659,13 @@ export function PosAiCartDialog({
                               </div>
                             ) : null}
 
+                            {product != null && models.length > 0 ? (
+                              <p className="mt-1 truncate text-[11px] text-neutral-600">
+                                Compatible : {models.slice(0, 4).join(", ")}
+                                {models.length > 4 ? ` +${models.length - 4}` : ""}
+                              </p>
+                            ) : null}
+
                             {product == null ? (
                               <p className="mt-1 text-[11px] text-amber-800">
                                 Non reconnu : choisissez le produit, ou laissez la ligne de côté.
@@ -664,17 +691,34 @@ export function PosAiCartDialog({
             </div>
 
             <div className="shrink-0 border-t border-black/[0.08] px-3 py-2.5">
-              {totalMismatch ? (
-                <p className="mb-2 rounded-md bg-amber-500/10 px-2.5 py-1.5 text-[11px] leading-snug text-amber-900">
-                  Total écrit sur le document : <b>{formatCurrency(documentTotal ?? 0)}</b> — les
-                  lignes retenues donnent {formatCurrency(estimatedTotal)}. Vérifiez avant de
-                  remplir (remise, transport ou taxe non repris en ligne).
+              {readCheck ? (
+                <p
+                  className={cn(
+                    "mb-2 rounded-md px-2.5 py-1.5 text-[11px] leading-snug",
+                    readCheck.matches
+                      ? "bg-emerald-500/10 text-emerald-900"
+                      : "bg-amber-500/10 text-amber-900",
+                  )}
+                >
+                  {readCheck.matches ? (
+                    <>
+                      Lecture vérifiée : {lines.length} lignes, {readQuantity} articles,{" "}
+                      <b>{formatCurrency(readCheck.total)}</b> — le total du document tombe
+                      juste.
+                    </>
+                  ) : (
+                    <>
+                      Total du document : <b>{formatCurrency(documentTotal ?? 0)}</b> — les lignes
+                      lues donnent {formatCurrency(readCheck.total)}. Vérifiez les prix avant de
+                      remplir (remise, transport ou taxe hors lignes, ou un chiffre mal lu).
+                    </>
+                  )}
                 </p>
               ) : null}
               <div className="mb-2 flex items-center justify-between text-[12px]">
                 <span className="text-neutral-600">
                   {selected.length} ligne{selected.length > 1 ? "s" : ""} retenue
-                  {selected.length > 1 ? "s" : ""}
+                  {selected.length > 1 ? "s" : ""} sur {lines.length}
                 </span>
                 <span className="font-semibold text-[#1F2937]">
                   {formatCurrency(estimatedTotal)}

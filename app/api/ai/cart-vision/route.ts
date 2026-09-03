@@ -50,7 +50,12 @@ const READ_SYSTEM = [
   "- Renvoie la liste COMPLÈTE et à jour après chaque message : si le caissier dit « enlève le savon »",
   "  ou « mets 5 au lieu de 2 », tu renvoies la liste corrigée, pas seulement la modification.",
   "- \"label\" : la désignation de l'article telle qu'elle est écrite, nettoyée (sans numéro de",
-  "  ligne, sans quantité, sans prix). Garde la marque et le format (« Savon Mont Blanc 400g »).",
+  "  ligne, sans quantité, sans prix). Garde la marque, le modèle et le format",
+  "  (« Savon Mont Blanc 400g », « DISQUE EMBRAYAGE (SR) SUZUKI F150 »). Si la désignation",
+  "  est coupée par des points de suspension, recopie-la telle quelle sans la compléter.",
+  "- Ne prends QUE des lignes d'articles. Les lignes de synthèse d'un tableau — TOTAL,",
+  "  sous-total, TVA, remise, transport, acompte, « net à payer » — ne sont pas des articles :",
+  "  ne les mets jamais dans \"items\". Le total va dans \"documentTotal\", rien d'autre.",
   "- \"quantity\" : entier >= 1. Si aucune quantité n'est écrite, mets 1.",
   "- \"unit\" : l'unité écrite si elle existe (carton, paquet, sac, kg, litre, m²...), sinon \"\".",
   "- \"unitPrice\" : le PRIX UNITAIRE écrit sur le document, en nombre entier, sans espace ni",
@@ -386,7 +391,13 @@ async function readList(
   const res = await client.chat.completions.create({
     model: "gpt-4o-mini",
     messages,
-    max_tokens: 1500,
+    /*
+     * Un tableau d'articles de fournisseur fait couramment 30 à 60 lignes, et chaque
+     * ligne pèse ~50 jetons en JSON. Trop court, la réponse est coupée en plein objet :
+     * le JSON ne parse plus et TOUTE la lecture est perdue — un document de 35 lignes
+     * échouait ainsi en bloc. On prévoit donc de quoi rendre `MAX_LINES` lignes.
+     */
+    max_tokens: 4000,
     temperature: 0.1,
     response_format: { type: "json_object" },
   });
@@ -437,10 +448,30 @@ async function readList(
 /** Montant lu sur un document : entier positif, ou `null` si ce n'en est pas un. */
 function money(raw: unknown): number | null {
   if (raw == null) return null;
-  const n =
-    typeof raw === "number"
-      ? raw
-      : Number(String(raw).replace(/[^0-9.,-]/g, "").replace(/\s/g, "").replace(",", "."));
+  let n: number;
+  if (typeof raw === "number") {
+    n = raw;
+  } else {
+    // « 3 500 FCFA », « 1 400 », « 12.500 », « 1,400 » : on ne garde que les chiffres
+    // et les séparateurs, espaces (y compris insécables) compris.
+    const cleaned = String(raw).replace(/[^0-9.,-]/g, "");
+    /*
+     * Pas un seul chiffre : `Number("")` vaut 0, et une ligne serait facturée
+     * ZÉRO franc sur un `unitPrice` vide ou fantaisiste renvoyé par le modèle.
+     * Absence de prix = `null`, ce qui rend la main au prix du catalogue.
+     */
+    if (!/\d/.test(cleaned)) return null;
+    /*
+     * Virgule ou point suivis de TROIS chiffres exactement, sans autre séparateur :
+     * c'est un séparateur de milliers, pas des décimales. Sans cette lecture,
+     * « 1,400 FCFA » (ligne d'un tableau) devenait 1 F et la facture était fausse.
+     * Les centimes n'existent pas en FCFA : rien ne se perd à trancher ainsi.
+     */
+    const thousandsOnly = /^-?\d{1,3}([.,]\d{3})+$/.test(cleaned);
+    n = Number(
+      thousandsOnly ? cleaned.replace(/[.,]/g, "") : cleaned.replace(/,/g, "."),
+    );
+  }
   if (!Number.isFinite(n) || n < 0 || n > 999_999_999) return null;
   return Math.round(n);
 }
@@ -468,7 +499,9 @@ async function pickCandidates(
       { role: "system", content: PICK_SYSTEM },
       { role: "user", content: userContent },
     ],
-    max_tokens: 600,
+    // Même raison que la lecture : coupée, la réponse ne parse plus et tous les
+    // rapprochements du modèle sont perdus d'un coup.
+    max_tokens: Math.min(4000, 200 + lines.length * 40),
     temperature: 0,
     response_format: { type: "json_object" },
   });
