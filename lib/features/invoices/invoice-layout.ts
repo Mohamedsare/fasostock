@@ -41,7 +41,18 @@ export type InvoiceElement = {
    * (la désignation des articles, le nom de la boutique). Il reste renommable.
    */
   locked?: boolean;
+  /**
+   * Longueur maximale du texte. Un intitulé de colonne n'a aucune raison d'être long
+   * — il déformerait le tableau. Un bas de ticket, si : c'est là que se met la mention
+   * « aucun échange ni remboursement », qui est une clause commerciale, pas un mot.
+   */
+  maxLength?: number;
+  /** Texte libre, sur plusieurs lignes si besoin (saisi dans une zone de texte). */
+  multiline?: boolean;
 };
+
+/** Plafond par défaut : suffisant pour un intitulé, trop court pour un discours. */
+export const LABEL_MAX_LENGTH_DEFAULT = 80;
 
 /* ─────────────────────────── Facture A4 ─────────────────────────── */
 
@@ -82,7 +93,15 @@ export const A4_ELEMENTS: InvoiceElement[] = [
 
   // Bas de page
   { key: "a4.signature", group: "Bas de page", name: "Signataire", hint: "Fonction et nom saisis plus haut" },
-  { key: "a4.footer", group: "Bas de page", name: "Pied de page", defaultText: "Merci pour votre confiance." },
+  {
+    key: "a4.footer",
+    group: "Bas de page",
+    name: "Pied de page",
+    defaultText: "Merci pour votre confiance.",
+    hint: "Conditions de vente, mentions légales, remerciement — plusieurs lignes possibles",
+    maxLength: 600,
+    multiline: true,
+  },
 ];
 
 /* ─────────────────────────── Ticket thermique ─────────────────────────── */
@@ -109,11 +128,25 @@ export const TICKET_ELEMENTS: InvoiceElement[] = [
   { key: "t.credit", group: "Totaux et règlement", name: "Bloc crédit", hint: "Acompte, reste à payer, échéance — la preuve de dette du client" },
 
   { key: "t.qr", group: "Bas de page", name: "QR code" },
-  { key: "t.thanks", group: "Bas de page", name: "Remerciement", defaultText: "Merci pour votre achat !" },
+  {
+    key: "t.thanks",
+    group: "Bas de page",
+    name: "Remerciement / mentions",
+    hint: "Ex. « Aucun échange ni remboursement après 48 h » — plusieurs lignes possibles",
+    defaultText: "Merci pour votre achat !",
+    maxLength: 600,
+    multiline: true,
+  },
   { key: "t.powered", group: "Bas de page", name: "Mention « Powered by FasoStock POS »" },
 ];
 
 const ALL_ELEMENTS = [...A4_ELEMENTS, ...TICKET_ELEMENTS];
+const BY_KEY = new Map(ALL_ELEMENTS.map((e) => [e.key, e]));
+
+/** Longueur autorisée pour le libellé d'un élément. */
+export function labelMaxLength(key: string): number {
+  return BY_KEY.get(key)?.maxLength ?? LABEL_MAX_LENGTH_DEFAULT;
+}
 const KNOWN_KEYS = new Set(ALL_ELEMENTS.map((e) => e.key));
 const LOCKED_KEYS = new Set(ALL_ELEMENTS.filter((e) => e.locked).map((e) => e.key));
 
@@ -151,7 +184,7 @@ export function parseInvoiceLayout(raw: unknown): InvoiceLayoutConfig {
   if (typeof o.labels === "object" && o.labels != null) {
     for (const [k, v] of Object.entries(o.labels as Record<string, unknown>)) {
       if (!KNOWN_KEYS.has(k)) continue;
-      const text = String(v ?? "").trim().slice(0, 60);
+      const text = String(v ?? "").trim().slice(0, labelMaxLength(k));
       if (text) labels[k] = text;
     }
   }

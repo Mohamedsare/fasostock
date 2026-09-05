@@ -7,6 +7,7 @@ import { fsInputClass } from "@/components/ui/fs-screen-primitives";
 import {
   groupElements,
   isDefaultLayout,
+  labelMaxLength,
   type InvoiceElement,
   type InvoiceLayoutConfig,
 } from "@/lib/features/invoices/invoice-layout";
@@ -49,7 +50,7 @@ export function InvoiceLayoutEditor({
 
   function setLabel(key: string, text: string) {
     const labels = { ...value.labels };
-    const t = text.slice(0, 60);
+    const t = text.slice(0, labelMaxLength(key));
     // Champ vidé = retour au libellé d'origine, pas un libellé vide.
     if (t.trim()) labels[key] = t;
     else delete labels[key];
@@ -104,6 +105,7 @@ export function InvoiceLayoutEditor({
               const shown = !value.hidden.includes(el.key);
               const custom = value.labels[el.key] ?? "";
               const editing = renaming === el.key;
+              const max = labelMaxLength(el.key);
               return (
                 <li key={el.key} className="border-t border-black/[0.05] first:border-t-0">
                   <div className="flex items-start gap-2 px-3 py-2">
@@ -146,8 +148,11 @@ export function InvoiceLayoutEditor({
                           {el.name}
                         </span>
                         {custom && shown ? (
-                          <span className="rounded bg-[#F97316]/10 px-1.5 py-0.5 text-[10px] text-[#F97316]">
-                            « {custom} »
+                          <span
+                            className="max-w-full truncate rounded bg-[#F97316]/10 px-1.5 py-0.5 text-[10px] text-[#F97316]"
+                            title={custom}
+                          >
+                            « {custom.length > 60 ? `${custom.slice(0, 60)}…` : custom} »
                           </span>
                         ) : null}
                         {el.locked ? (
@@ -159,27 +164,55 @@ export function InvoiceLayoutEditor({
                       ) : null}
 
                       {editing && el.defaultText ? (
-                        <div className="mt-1.5 flex items-center gap-1.5">
-                          <input
-                            className={fsInputClass(
-                              "h-8 min-w-0 flex-1 rounded-md border-[#E5E7EB] bg-white px-2 text-[12px] text-fs-text",
+                        <div className="mt-1.5">
+                          <div className="flex items-start gap-1.5">
+                            {el.multiline ? (
+                              <textarea
+                                className={fsInputClass(
+                                  "min-h-[64px] min-w-0 flex-1 resize-y rounded-md border-[#E5E7EB] bg-white px-2 py-1.5 text-[12px] leading-snug text-fs-text",
+                                )}
+                                value={custom}
+                                placeholder={el.defaultText}
+                                maxLength={max}
+                                rows={3}
+                                autoFocus
+                                onChange={(e) => setLabel(el.key, e.target.value)}
+                                onKeyDown={(e) => {
+                                  // Entrée sert à passer à la ligne ici : seule Échap ferme.
+                                  if (e.key === "Escape") setRenaming(null);
+                                }}
+                              />
+                            ) : (
+                              <input
+                                className={fsInputClass(
+                                  "h-8 min-w-0 flex-1 rounded-md border-[#E5E7EB] bg-white px-2 text-[12px] text-fs-text",
+                                )}
+                                value={custom}
+                                placeholder={el.defaultText}
+                                maxLength={max}
+                                autoFocus
+                                onChange={(e) => setLabel(el.key, e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter" || e.key === "Escape") setRenaming(null);
+                                }}
+                              />
                             )}
-                            value={custom}
-                            placeholder={el.defaultText}
-                            maxLength={60}
-                            autoFocus
-                            onChange={(e) => setLabel(el.key, e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter" || e.key === "Escape") setRenaming(null);
-                            }}
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setRenaming(null)}
-                            className="shrink-0 rounded-md border border-[#E5E7EB] px-2 py-1 text-[11px] text-fs-text hover:bg-black/5"
-                          >
-                            OK
-                          </button>
+                            <button
+                              type="button"
+                              onClick={() => setRenaming(null)}
+                              className="shrink-0 rounded-md border border-[#E5E7EB] px-2 py-1 text-[11px] text-fs-text hover:bg-black/5"
+                            >
+                              OK
+                            </button>
+                          </div>
+                          {/* Le compteur n'apparaît qu'à l'approche de la limite : le
+                              rappeler dès le premier caractère ferait passer une liberté
+                              pour une contrainte. */}
+                          {custom.length > max - 40 ? (
+                            <p className="mt-1 text-[10px] text-neutral-500">
+                              {custom.length} / {max} caractères
+                            </p>
+                          ) : null}
                         </div>
                       ) : null}
                     </div>

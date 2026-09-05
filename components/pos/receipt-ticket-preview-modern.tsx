@@ -239,7 +239,7 @@ export function ReceiptTicketPreviewModern({ data }: { data: ReceiptTicketData }
       {layoutOn(L, "t.thanks") ? (
         <p
           className="text-center"
-          style={{ fontSize: 9, fontWeight: 700, margin: "7px 0 0" }}
+          style={{ fontSize: 9, fontWeight: 700, margin: "7px 0 0", whiteSpace: "pre-line" }}
         >
           {layoutText(L, "t.thanks", "Merci pour votre achat !")}
         </p>

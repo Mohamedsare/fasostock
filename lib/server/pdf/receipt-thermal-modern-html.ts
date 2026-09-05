@@ -275,7 +275,8 @@ export async function renderReceiptThermalModernHtml(
   .qrwrap { text-align: center; }
   .qrwrap img { display: inline-block; }
   .qr-caption { text-align: center; font-size: 6.5px; color: #333; margin-top: 3px; }
-  .thanks { text-align: center; font-size: 9px; font-weight: 700; margin-top: 7px; }
+  /* pre-line : mentions du propriétaire sur plusieurs lignes si besoin. */
+  .thanks { text-align: center; font-size: 9px; font-weight: 700; margin-top: 7px; white-space: pre-line; }
   .powered { text-align: center; font-size: 6.5px; color: #555; }
 </style></head><body>
 ${parts.join("")}

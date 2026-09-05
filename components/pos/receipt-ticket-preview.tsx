@@ -300,6 +300,7 @@ function ReceiptTicketPreviewClassic({ data }: { data: ReceiptTicketData }) {
               fontSize: 8.5,
               fontWeight: 700,
               margin: "7px 0 0",
+              whiteSpace: "pre-line",
             }}
           >
             {layoutText(L, "t.thanks", "Merci pour votre achat !")}

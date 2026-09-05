@@ -265,7 +265,9 @@ export async function renderReceiptThermalClassicHtml(
     margin: 3px 0;
   }
   .row.due { font-weight: 700; }
-  .thanks { font-size: 8.5px; font-weight: 700; text-align: center; margin-top: 7px; }
+  /* pre-line : le propriétaire peut écrire ses mentions sur plusieurs lignes.
+     Sans retour à la ligne dans le texte, le rendu est celui d'avant. */
+  .thanks { font-size: 8.5px; font-weight: 700; text-align: center; margin-top: 7px; white-space: pre-line; }
   .powered { color: #333; }
   .qrwrap { text-align: center; margin-top: 9px; }
   .qrwrap img { display: inline-block; }

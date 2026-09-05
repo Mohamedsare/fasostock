@@ -619,6 +619,8 @@ ${TABLE_PAGINATION_CSS}
     color: #000;
     line-height: 1.35;
     text-align: left;
+    /* Conditions de vente sur plusieurs lignes, si le propriétaire en met. */
+    white-space: pre-line;
   }
 </style></head><body>
 <div class="invoice-sheet">
@@ -928,7 +930,7 @@ ${TABLE_PAGINATION_CSS}
   /* Pied de page */
   .m3-footer { flex-shrink: 0; width: 100%; margin-top: auto; text-align: center; }
   .m3-footer-hr { border: none; border-top: 1px solid #000; margin: 0 0 6px; height: 0; }
-  .m3-footer-text { font-size: 9px; line-height: 1.35; }
+  .m3-footer-text { font-size: 9px; line-height: 1.35; white-space: pre-line; }
 </style></head><body>
 <div class="m3-sheet">
   <div class="m3-main">
