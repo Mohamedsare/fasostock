@@ -126,7 +126,18 @@ function startPrintJob(blob: Blob, releaseSlot: () => void): Promise<boolean> {
 
     const fallbackPrintInNewTab = () => {
       try {
-        const popup = window.open(url, "_blank", "noopener,noreferrer");
+        /*
+         * Sans `noopener` — volontairement.
+         *
+         * Avec, le navigateur renvoie `null` par principe, même quand l'onglet s'est
+         * parfaitement ouvert : tout ce repli était alors déclaré « pop-up bloquée », le
+         * caissier voyait une erreur, et l'onglet du ticket restait là sans jamais
+         * ouvrir la boîte d'impression. Or c'est justement cette poignée qu'il nous faut
+         * pour appeler `print()`. Le risque habituel de `window.opener` ne s'applique
+         * pas ici : la page ouverte est notre propre PDF, sur une URL `blob:` de cette
+         * origine, sans script. `noreferrer` reste inutile pour la même raison.
+         */
+        const popup = window.open(url, "_blank");
         if (!popup) {
           // Pop-up bloquée : rien ne s'imprimera. L'appelant doit le savoir.
           launched(false);

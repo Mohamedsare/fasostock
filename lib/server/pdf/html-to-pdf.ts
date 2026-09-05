@@ -171,6 +171,25 @@ async function withPdfPage<T>(render: (page: Page) => Promise<T>): Promise<T> {
   }
 }
 
+/**
+ * Lance Chromium sans rien rendre, pour qu'il soit déjà debout au premier document.
+ *
+ * Le démarrage à froid (décompression du binaire dans `/tmp`, puis lancement du
+ * processus) se compte en secondes, et il retombe toujours sur la même personne : le
+ * premier client après une accalmie — ouverture du matin, retour de pause. La caisse
+ * appelle donc `/api/pdf/warmup` pendant qu'elle est ouverte, où cette attente ne
+ * dérange personne. Ne lève jamais : un préchauffage raté n'est pas une panne, le
+ * document suivant relancera de lui-même.
+ */
+export async function warmUpPdfBrowser(): Promise<boolean> {
+  try {
+    await withPdfPage(async () => undefined);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** Viewport ~ A4 @96dpi pour que `vh` / flex pousse le pied de page comme MultiPage Flutter. */
 const A4_VIEWPORT = { width: 794, height: 1123 };
 
@@ -258,7 +277,15 @@ export async function htmlToPdfBufferThermal(
       height: 1200,
       deviceScaleFactor: 1,
     });
-    await page.setContent(html, { waitUntil: "load", timeout: 45_000 });
+    /*
+     * `load` — et non `domcontentloaded` — reste indispensable : la hauteur du rouleau
+     * est mesurée juste en dessous, et mesurer avant que le logo soit posé donnerait un
+     * ticket coupé. Ce qui change, c'est ce que `load` attend : la route embarque
+     * désormais le logo en data URL et la police est en base64, donc plus une seule
+     * ressource distante. L'attente est locale, et le plafond peut redescendre au niveau
+     * des autres documents — 45 s n'était utile qu'à un téléchargement qui n'a plus lieu.
+     */
+    await page.setContent(html, { waitUntil: "load", timeout: 20_000 });
     const heightPx = await page.evaluate(() => {
       const el = document.body;
       if (!el) return 400;

@@ -131,6 +131,7 @@ import {
   readQuickAutoPrint,
   writeQuickAutoPrint,
 } from "@/lib/features/receipt/quick-auto-print";
+import { usePdfWarmup } from "@/lib/features/receipt/use-pdf-warmup";
 import type { ReceiptTicketData } from "@/lib/features/receipt/receipt-ticket-types";
 import { OFFLINE_SALE_ID_PREFIX } from "@/lib/offline/constants";
 import {
@@ -352,6 +353,16 @@ export function PosScreen({
         ? canA4
         : canAccessA4Table;
   const isA4Like = mode === "a4" || mode === "a4-table";
+
+  /*
+   * Caisse rapide : on réveille le moteur PDF pendant qu'aucun client n'attend.
+   *
+   * Le ticket thermique est le seul document dont le délai se vit debout au comptoir, et
+   * son premier exemplaire après une accalmie paie le démarrage à froid de Chromium.
+   * Sonner à vide tant que la caisse est à l'écran déplace cette attente là où elle ne
+   * dérange personne. Sans effet sur la vente : voir `usePdfWarmup`.
+   */
+  usePdfWarmup(mode === "quick" && canAccess);
 
   /*
    * Caisse à deux (module activé par le propriétaire).
@@ -1212,6 +1223,8 @@ export function PosScreen({
     kind: "create";
     saleId: string;
     saleNumber: string;
+    /** Date d'enregistrement portée par le ticket ; `null` hors ligne (voir `PosSaleCreated`). */
+    createdAt: string | null;
     invoiceSnap?: {
       cart: CartRow[];
       subtotal: number;
@@ -1411,6 +1424,7 @@ export function PosScreen({
         kind: "create" as const,
         saleId: res.saleId,
         saleNumber: res.saleNumber,
+        createdAt: res.createdAt,
         invoiceSnap,
         receiptSnap,
       };
@@ -1460,13 +1474,23 @@ export function PosScreen({
         );
       }
       setCartOpen(false);
-      await Promise.all([
+      /*
+       * Rafraîchissement lancé, mais pas attendu.
+       *
+       * `invalidateQueries` ne rend la main qu'une fois les requêtes actives réellement
+       * refaites : catalogue, stock et liste des ventes. Attendre ces trois lectures
+       * avant de fabriquer le ticket, c'est faire patienter le client au comptoir pour
+       * un écran qu'il ne regarde pas — et le document, lui, ne dépend d'aucune d'elles :
+       * il est construit sur l'instantané du panier renvoyé par la vente. La grille se
+       * remet à jour quand les réponses arrivent, comme avant.
+       */
+      void Promise.all([
         qc.invalidateQueries({ queryKey: ["pos", mode, companyId, storeId] }),
         qc.invalidateQueries({
           queryKey: queryKeys.sales({ companyId, storeId, status: null, from: "", to: "" }),
         }),
         qc.invalidateQueries({ queryKey: queryKeys.productInventory(storeId) }),
-      ]);
+      ]).catch(() => undefined);
 
       if (isA4Like && store && res.invoiceSnap) {
         if (res.saleId.startsWith(OFFLINE_SALE_ID_PREFIX)) {
@@ -1520,16 +1544,18 @@ export function PosScreen({
 
       if (mode === "quick" && store && res.receiptSnap) {
         const queuedOffline = res.saleId.startsWith(OFFLINE_SALE_ID_PREFIX);
-        let saleDate = new Date();
-        if (!queuedOffline) {
-          try {
-            const { getSaleDetail } = await import("@/lib/features/sales/api");
-            const detail = await getSaleDetail(res.saleId);
-            if (detail?.created_at) saleDate = new Date(detail.created_at);
-          } catch {
-            /* date serveur optionnelle */
-          }
-        }
+        /*
+         * Date d'enregistrement : celle de la base, rapportée par la vente elle-même.
+         *
+         * Elle arrivait jusqu'ici par un `getSaleDetail` — la vente relue entière, avec
+         * ses lignes, les produits joints et les règlements — pour n'en garder que
+         * `created_at`. Une lecture complète, sur le chemin le plus surveillé de
+         * l'application, pour un champ que la caisse tenait déjà. À défaut (vente en
+         * file hors ligne), l'heure du poste, comme avant.
+         */
+        const recordedAt = res.createdAt ? new Date(res.createdAt) : null;
+        const saleDate =
+          recordedAt && !Number.isNaN(recordedAt.getTime()) ? recordedAt : new Date();
         const ticketData = buildReceiptTicketData(
           store,
           res.saleNumber,

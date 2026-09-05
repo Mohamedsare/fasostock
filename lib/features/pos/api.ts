@@ -98,6 +98,17 @@ export async function fetchStoreBestSellerQty(params: {
   return qtyByProduct;
 }
 
+export type PosSaleCreated = {
+  saleId: string;
+  saleNumber: string;
+  /**
+   * Date d'enregistrement telle que la base l'a écrite — celle qui figure en tête du
+   * ticket. `null` pour une vente mise en file hors ligne : elle n'est pas encore
+   * enregistrée, et lui prêter une date serait mentir sur le justificatif.
+   */
+  createdAt: string | null;
+};
+
 export async function createPosSale(params: {
   companyId: string;
   storeId: string;
@@ -119,7 +130,7 @@ export async function createPosSale(params: {
    * (`sales.credit_due_at`) ; sans elle la page Crédit applique J+30 par défaut.
    */
   creditDueAt?: string | null;
-}): Promise<{ saleId: string; saleNumber: string }> {
+}): Promise<PosSaleCreated> {
   const supabase = createClient();
   // Tolère l'absence de réseau : `getUser()` seul faisait échouer la vente hors ligne
   // avant même d'atteindre la mise en file (voir `resolveSaleAuthor`).
@@ -129,7 +140,7 @@ export async function createPosSale(params: {
   const clientRequestId = crypto.randomUUID();
 
   /** Met la vente en file locale — elle partira dès que le réseau revient. */
-  const queueSale = async (): Promise<{ saleId: string; saleNumber: string }> => {
+  const queueSale = async (): Promise<PosSaleCreated> => {
     await enqueueOutbox("pos_sale_create", {
       companyId: params.companyId,
       storeId: params.storeId,
@@ -146,6 +157,8 @@ export async function createPosSale(params: {
     return {
       saleId: `${OFFLINE_SALE_ID_PREFIX}${clientRequestId}`,
       saleNumber: OFFLINE_SALE_NUMBER_LABEL,
+      // La vente n'est pas encore écrite : sa date d'enregistrement n'existe pas.
+      createdAt: null,
     };
   };
 
@@ -222,14 +235,20 @@ export async function createPosSale(params: {
     if (dErr) console.error("Échec écriture échéance crédit:", dErr);
   }
 
+  // `created_at` voyage avec le numéro de vente, dans la lecture qui avait lieu de toute
+  // façon : c'est la date que le ticket porte en tête, et la caisse la relisait jusqu'ici
+  // par un `getSaleDetail` complet — lignes, produits et règlements — juste pour elle,
+  // pendant que le client attendait son ticket.
   const { data: saleRow, error: sErr } = await supabase
     .from("sales")
-    .select("sale_number")
+    .select("sale_number, created_at")
     .eq("id", id)
     .maybeSingle();
   if (sErr) throw sErr;
 
-  const saleNumber = String((saleRow as { sale_number?: string } | null)?.sale_number ?? id);
+  const row = saleRow as { sale_number?: string; created_at?: string } | null;
+  const saleNumber = String(row?.sale_number ?? id);
+  const createdAt = typeof row?.created_at === "string" ? row.created_at : null;
   const subtotal = params.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
   const total = Math.max(0, subtotal - params.discount);
   const pushSale = await notifyCompanyOwnersPush({
@@ -272,6 +291,7 @@ export async function createPosSale(params: {
   return {
     saleId: id,
     saleNumber,
+    createdAt,
   };
 }
 

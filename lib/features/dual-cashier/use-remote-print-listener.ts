@@ -34,8 +34,16 @@ export function writeRemotePrintEnabled(enabled: boolean): void {
   }
 }
 
-/** Cadence alignée sur le reste du module — le client attend son ticket, pas une minute. */
-const POLL_MS = 4000;
+/*
+ * Cadence du guet.
+ *
+ * Ce n'est pas un rafraîchissement d'écran : entre le moment où le caissier demande le
+ * ticket et celui où le poste vendeur s'en aperçoit, il y a un client debout. Quatre
+ * secondes d'attente à vide s'ajoutaient à toute la fabrication du document qui suit.
+ * Deux secondes coûtent une lecture indexée de plus par minute et par poste — la moitié
+ * du temps mort pour un prix qui ne se voit nulle part.
+ */
+const POLL_MS = 2000;
 
 /**
  * Écoute, sur le poste du VENDEUR, les tickets que le caissier lui envoie à imprimer.
