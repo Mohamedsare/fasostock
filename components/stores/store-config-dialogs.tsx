@@ -4,10 +4,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { MdClose, MdOpenInFull, MdPictureAsPdf, MdRefresh } from "react-icons/md";
 import { InvoicePdfPreviewDialog } from "@/components/invoices/invoice-pdf-preview-dialog";
 import { InvoiceLayoutEditor } from "@/components/stores/invoice-layout-editor";
+import { invoiceLayoutColumnSupported } from "@/lib/features/stores/api";
 import {
   A4_ELEMENTS,
   INVOICE_LAYOUT_DEFAULT,
   invoiceLayoutOfStore,
+  isDefaultLayout,
   serializeInvoiceLayout,
   TICKET_ELEMENTS,
   type InvoiceLayoutConfig,
@@ -54,6 +56,14 @@ const fieldCls =
 const smallFieldCls =
   "mt-1 w-full rounded-lg border border-black/[0.12] bg-white px-3 py-2 text-sm text-neutral-900 outline-none focus:border-[#F97316] focus:ring-2 focus:ring-[#F97316]/25 dark:bg-neutral-900 dark:text-neutral-100";
 const labelCls = "block text-xs font-semibold text-neutral-600";
+
+/**
+ * Base pas encore à jour : la personnalisation des documents ne peut pas être gardée.
+ * On le DIT, plutôt que d'afficher « enregistré » sur un réglage qui sera perdu au
+ * prochain chargement — le propriétaire perdrait sa confiance dans tout l'écran.
+ */
+const LAYOUT_NOT_SAVED_MESSAGE =
+  "Réglages enregistrés, sauf la personnalisation des éléments : la base de données doit d'abord recevoir la mise à jour 00218.";
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
@@ -323,7 +333,12 @@ export function StoreInvoiceA4Dialog({
               : "classic",
         invoice_layout: serializeInvoiceLayout(layout),
       });
-      toast.success("Facture A4 mise à jour");
+      if (!isDefaultLayout(layout) && !invoiceLayoutColumnSupported()) {
+        // Le reste est bien enregistré : ne pas annoncer un succès complet.
+        toast.info(LAYOUT_NOT_SAVED_MESSAGE, 8000);
+      } else {
+        toast.success("Facture A4 mise à jour");
+      }
       onUpdated();
       onClose();
     } catch (e) {
@@ -918,7 +933,11 @@ export function StoreReceiptFormatDialog({
       });
       const templateLabel =
         RECEIPT_TEMPLATE_CHOICES.find((t) => t.value === template)?.label ?? "";
-      toast.success(`Ticket ${templateLabel.toLowerCase()} — ${width} mm enregistré`);
+      if (!isDefaultLayout(layout) && !invoiceLayoutColumnSupported()) {
+        toast.info(LAYOUT_NOT_SAVED_MESSAGE, 8000);
+      } else {
+        toast.success(`Ticket ${templateLabel.toLowerCase()} — ${width} mm enregistré`);
+      }
       onUpdated();
       onClose();
     } catch (e) {

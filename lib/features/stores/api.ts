@@ -209,16 +209,61 @@ export async function createStore(input: CreateStoreInput): Promise<Store> {
   return store;
 }
 
+/**
+ * La colonne `invoice_layout` (migration 00218) est-elle utilisable ?
+ *
+ * `false` dès qu'une écriture l'a trouvée absente. Les écrans de configuration
+ * s'en servent pour DIRE au propriétaire que sa mise en page n'a pas été gardée,
+ * au lieu de lui laisser croire qu'elle l'a été.
+ */
+export function invoiceLayoutColumnSupported(): boolean {
+  return invoiceLayoutColumnAvailable;
+}
+
 export async function updateStore(
   id: string,
   patch: Record<string, unknown>,
 ): Promise<Store> {
   const supabase = createClient();
-  const { data, error } = await selectStores((fields) =>
-    supabase.from("stores").update(patch).eq("id", id).select(fields).single(),
+  const askedLayout = Object.prototype.hasOwnProperty.call(patch, "invoice_layout");
+  const effectivePatch =
+    askedLayout && !invoiceLayoutColumnAvailable ? withoutLayout(patch) : patch;
+
+  const first = await selectStores((fields) =>
+    supabase.from("stores").update(effectivePatch).eq("id", id).select(fields).single(),
   );
-  if (error) throw error;
-  return mapStore(data as unknown as Record<string, unknown>);
+
+  /*
+   * Migration 00218 pas encore appliquée : `selectStores` sait retirer la colonne de
+   * ce qu'on LIT, mais pas de ce qu'on ÉCRIT — et une écriture qui la nomme échoue
+   * quand même. Sans ce rattrapage, l'enregistrement de la facture A4 et du ticket
+   * échouait en bloc, y compris pour un propriétaire qui n'avait touché à aucune
+   * mise en page (le champ partait à `null`, ce qui suffit à nommer la colonne).
+   * On réécrit donc sans elle : tous les autres réglages sont sauvés, et
+   * `invoiceLayoutColumnSupported()` permet de prévenir que la mise en page, elle,
+   * ne l'est pas.
+   */
+  if (first.error && askedLayout && isUndefinedColumnError(first.error, "invoice_layout")) {
+    invoiceLayoutColumnAvailable = false;
+    const retry = await selectStores((fields) =>
+      supabase
+        .from("stores")
+        .update(withoutLayout(patch))
+        .eq("id", id)
+        .select(fields)
+        .single(),
+    );
+    if (retry.error) throw retry.error;
+    return mapStore(retry.data as unknown as Record<string, unknown>);
+  }
+
+  if (first.error) throw first.error;
+  return mapStore(first.data as unknown as Record<string, unknown>);
+}
+
+function withoutLayout(patch: Record<string, unknown>): Record<string, unknown> {
+  const { invoice_layout: _dropped, ...rest } = patch;
+  return rest;
 }
 
 export async function fetchStoresPageData(companyId: string): Promise<{
