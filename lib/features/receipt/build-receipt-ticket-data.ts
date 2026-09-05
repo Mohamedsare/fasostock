@@ -2,6 +2,7 @@ import type {
   ReceiptTicketData,
   ReceiptTicketItem,
 } from "./receipt-ticket-types";
+import { invoiceLayoutOfStore } from "@/lib/features/invoices/invoice-layout";
 import type { Store } from "@/lib/features/stores/types";
 import {
   mobileMoneyProviderLabel,
@@ -137,6 +138,7 @@ export function buildReceiptTicketDataFromSale(
     currencyCode: getActiveCurrency(),
     // Mise en forme choisie pour cette boutique — le serveur ne peut pas la deviner.
     receiptTemplate: normalizeReceiptTemplate(store.receipt_template),
+    layout: invoiceLayoutOfStore(store),
     storeName: store.name,
     storeLogoUrl: store.logo_url ?? null,
     storeAddress: store.address ?? null,
@@ -185,6 +187,7 @@ export function buildReceiptTicketData(
     currencyCode: getActiveCurrency(),
     // Mise en forme choisie pour cette boutique — le serveur ne peut pas la deviner.
     receiptTemplate: normalizeReceiptTemplate(store.receipt_template),
+    layout: invoiceLayoutOfStore(store),
     storeName: store.name,
     storeLogoUrl: store.logo_url ?? null,
     storeAddress: store.address ?? null,

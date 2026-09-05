@@ -1,3 +1,5 @@
+import type { InvoiceLayoutConfig } from "@/lib/features/invoices/invoice-layout";
+
 /** Aligné sur `ReceiptTicketData` Flutter (`receipt_ticket_dialog.dart`). */
 export type ReceiptTicketItem = {
   name: string;
@@ -21,6 +23,13 @@ export type ReceiptTicketData = {
    * donc les tickets déjà imprimés restent identiques.
    */
   receiptTemplate?: string | null;
+  /**
+   * Éléments retirés et libellés remplacés par le propriétaire (`stores.invoice_layout`).
+   * Voyage avec le ticket pour la même raison que la devise et le modèle : la génération
+   * serveur est partagée entre requêtes et ne connaît aucune boutique. Absent ⇒ ticket
+   * d'origine, au caractère près.
+   */
+  layout?: InvoiceLayoutConfig | null;
   storeName: string;
   /** `stores.logo_url` — centré en tête (Flutter `ReceiptTicketData.storeLogoUrl`). */
   storeLogoUrl?: string | null;

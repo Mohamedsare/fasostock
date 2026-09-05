@@ -2,7 +2,13 @@
  * Rendu HTML facture A4 — comparaison 1:1 avec
  * `InvoiceA4PdfService.buildDocument` (`invoice_a4_pdf_service.dart`).
  */
-import type { InvoiceA4Data } from "@/lib/features/invoices/invoice-a4-types";
+import type { InvoiceA4Data, InvoiceLineData } from "@/lib/features/invoices/invoice-a4-types";
+import {
+  invoiceLayoutOfStore,
+  layoutOn,
+  layoutText,
+  type InvoiceLayoutConfig,
+} from "@/lib/features/invoices/invoice-layout";
 import {
   formatCurrencyInvoice,
   formatQuantity,
@@ -56,11 +62,12 @@ function storeBlockClassic(
   data: InvoiceA4Data,
   primaryCss: string,
   logoUrl: string | null,
+  L: InvoiceLayoutConfig,
 ): string {
   const store = data.store;
   const shortTitle = (store.invoice_short_title ?? store.description)?.trim();
   const parts: string[] = [];
-  if (shortTitle) {
+  if (shortTitle && layoutOn(L, "a4.shortTitle")) {
     parts.push(
       `<div class="st-short" style="color:${primaryCss}">${txUpper(shortTitle)}</div>`,
     );
@@ -68,7 +75,7 @@ function storeBlockClassic(
   parts.push(
     `<div class="st-name" style="color:${primaryCss}">${txUpper(store.commercial_name ?? store.name)}</div>`,
   );
-  if (store.slogan?.trim()) {
+  if (store.slogan?.trim() && layoutOn(L, "a4.slogan")) {
     for (const line of store.slogan!.trim().split("\n")) {
       if (line === "") continue;
       parts.push(
@@ -77,22 +84,22 @@ function storeBlockClassic(
     }
   }
   const activityStr = (store.activity ?? "").trim();
-  if (activityStr) {
+  if (activityStr && layoutOn(L, "a4.activity")) {
     for (const line of splitLinesActivity(activityStr)) {
       parts.push(`<div class="st-activity-classic">${txUpper(line)}</div>`);
     }
   }
-  if (store.phone?.trim()) {
+  if (store.phone?.trim() && layoutOn(L, "a4.phone")) {
     const phone = stripTelPrefix(store.phone);
     if (phone) parts.push(`<div class="st-small st-phone">${tx(phone)}</div>`);
   }
-  if (store.mobile_money?.trim()) {
+  if (store.mobile_money?.trim() && layoutOn(L, "a4.mobileMoney")) {
     const mm = stripTelPrefix(store.mobile_money);
     if (mm) {
       parts.push(`<div class="st-small st-mm">Mobile money ${tx(mm)}</div>`);
     }
   }
-  if (store.address?.trim()) {
+  if (store.address?.trim() && layoutOn(L, "a4.address")) {
     parts.push(`<div class="st-addr">${tx(store.address.trim())}</div>`);
   }
 
@@ -116,13 +123,14 @@ function storeBlockElof(
   data: InvoiceA4Data,
   primaryCss: string,
   logoUrl: string | null,
+  L: InvoiceLayoutConfig,
 ): string {
   const store = data.store;
   const acronym = (store.invoice_short_title ?? "ELOF").trim().toUpperCase().replace(/\s/g, "");
   const letters =
     acronym.length >= 4 ? acronym.slice(0, 4).split("") : acronym.split("");
   const center: string[] = [];
-  if (letters.length) {
+  if (letters.length && layoutOn(L, "a4.shortTitle")) {
     center.push(
       `<div class="elof-letters" style="color:${primaryCss}">${escapeHtml(letters.join("   "))}</div>`,
     );
@@ -131,25 +139,25 @@ function storeBlockElof(
     `<div class="st-name" style="color:${primaryCss}">${txUpper(store.commercial_name ?? store.name)}</div>`,
   );
   const sloganStr = (store.slogan ?? "").trim();
-  if (sloganStr) {
+  if (sloganStr && layoutOn(L, "a4.slogan")) {
     for (const line of splitLinesSloganElof(sloganStr).slice(0, 2)) {
       center.push(`<div class="elof-slogan">${txUpper(line)}</div>`);
     }
   }
   const activityStr = (store.activity ?? "").trim();
-  if (activityStr) {
+  if (activityStr && layoutOn(L, "a4.activity")) {
     for (const line of splitLinesActivity(activityStr).slice(0, 2)) {
       center.push(`<div class="elof-activity">${txUpper(line)}</div>`);
     }
   }
-  if (store.address?.trim()) {
+  if (store.address?.trim() && layoutOn(L, "a4.address")) {
     center.push(`<div class="elof-addr">${tx(store.address.trim())}</div>`);
   }
-  if (store.phone?.trim()) {
+  if (store.phone?.trim() && layoutOn(L, "a4.phone")) {
     const phone = stripTelPrefix(store.phone);
     if (phone) center.push(`<div class="st-small st-center st-phone">${tx(phone)}</div>`);
   }
-  if (store.mobile_money?.trim()) {
+  if (store.mobile_money?.trim() && layoutOn(L, "a4.mobileMoney")) {
     const mm = stripTelPrefix(store.mobile_money);
     if (mm) {
       center.push(
@@ -170,39 +178,93 @@ function storeBlockElof(
   </div>`;
 }
 
-function buildTable(data: InvoiceA4Data, currency: string, headerBg: string): string {
+/**
+ * Colonnes du tableau d'articles. Le propriétaire peut en retirer : les largeurs
+ * restantes sont alors redistribuées au prorata, sinon un tableau amputé laisserait
+ * une bande blanche à droite et cesserait de ressembler à une facture. La désignation
+ * n'est pas retirable (`locked`) — sans elle, le document ne dit plus ce qui est vendu.
+ */
+function a4Columns(currency: string): Array<{
+  key: string;
+  width: number;
+  th: string;
+  td: string;
+  header: string;
+  cell: (line: InvoiceLineData, index: number) => string;
+}> {
+  return [
+    { key: "a4.colNum", width: 5.32, th: "th-h-num", td: "c-num", header: "N°", cell: (_l, i) => String(i + 1) },
+    { key: "a4.colDesc", width: 42.55, th: "th-h-desc", td: "c-desc", header: "Désignation", cell: (l) => txUpper(l.description) },
+    { key: "a4.colQty", width: 11.7, th: "th-h-qty", td: "c-qty", header: "Quantité", cell: (l) => escapeHtml(formatQuantity(l.quantity)) },
+    { key: "a4.colUnit", width: 10.64, th: "th-h-unit", td: "c-unit", header: "Unité", cell: (l) => tx(l.unit) },
+    { key: "a4.colPrice", width: 14.89, th: "th-h-price", td: "c-price", header: "Prix unit.", cell: (l) => escapeHtml(formatCurrencyInvoice(l.unitPrice, currency)) },
+    { key: "a4.colTotal", width: 14.89, th: "th-h-tot", td: "c-tot", header: "Total", cell: (l) => escapeHtml(formatCurrencyInvoice(l.total, currency)) },
+  ];
+}
+
+function buildTable(
+  data: InvoiceA4Data,
+  currency: string,
+  headerBg: string,
+  L: InvoiceLayoutConfig,
+): string {
+  const cols = a4Columns(currency).filter((c) => layoutOn(L, c.key));
+  const kept = cols.reduce((n, c) => n + c.width, 0);
+  const scale = kept > 0 ? 100 / kept : 1;
+
+  /*
+   * Mise en forme du HTML reproduite a l identique (retours a la ligne, indentation,
+   * colonnes groupees par trois) : a colonnes completes, le document sort octet pour
+   * octet comme avant que cette configuration existe. Une facture deja remise a un
+   * client ne doit pas changer d un cheveu.
+   */
   const rows = data.items.map((line, i) => {
-    const n = i + 1;
-    const qty = formatQuantity(line.quantity);
-    return `<tr>
-      <td class="c-num">${n}</td>
-      <td class="c-desc">${txUpper(line.description)}</td>
-      <td class="c-qty">${escapeHtml(qty)}</td>
-      <td class="c-unit">${tx(line.unit)}</td>
-      <td class="c-price">${escapeHtml(formatCurrencyInvoice(line.unitPrice, currency))}</td>
-      <td class="c-tot">${escapeHtml(formatCurrencyInvoice(line.total, currency))}</td>
+    const cells = cols.map(
+      (c) => `
+      <td class="${c.td}">${c.cell(line, i)}</td>`,
+    );
+    return `<tr>${cells.join("")}
     </tr>`;
   });
-  /* Largeurs proches maquette : Désignation ~42 % (Flutter _cellHeader : N° centre, dés. gauche, prix/tot droite) */
+
+  const colLines: string[] = [];
+  for (let i = 0; i < cols.length; i += 3) {
+    colLines.push(
+      cols
+        .slice(i, i + 3)
+        .map((c) => `<col style="width:${(c.width * scale).toFixed(2)}%" />`)
+        .join(""),
+    );
+  }
+  const colgroup = colLines
+    .map(
+      (l) => `
+      ${l}`,
+    )
+    .join("");
+  const heads = cols
+    .map(
+      (c) => `
+      <th class="${c.th}">${escapeHtml(layoutText(L, c.key, c.header))}</th>`,
+    )
+    .join("");
+
+  /* Largeurs proches maquette : Designation ~42 % (Flutter _cellHeader : N centre, des. gauche, prix/tot droite) */
   return `<table class="inv-table">
-    <colgroup>
-      <col style="width:5.32%" /><col style="width:42.55%" /><col style="width:11.70%" />
-      <col style="width:10.64%" /><col style="width:14.89%" /><col style="width:14.89%" />
+    <colgroup>${colgroup}
     </colgroup>
-    <thead><tr class="inv-head" style="background:${headerBg};color:#fff">
-      <th class="th-h-num">N°</th>
-      <th class="th-h-desc">Désignation</th>
-      <th class="th-h-qty">Quantité</th>
-      <th class="th-h-unit">Unité</th>
-      <th class="th-h-price">Prix unit.</th>
-      <th class="th-h-tot">Total</th>
+    <thead><tr class="inv-head" style="background:${headerBg};color:#fff">${heads}
     </tr></thead>
     <tbody>${rows.join("")}</tbody>
   </table>`;
 }
 
-/** Aligné `InvoiceA4PdfService._buildTotals` (Flutter) : règlement, encaisse vs crédit, statuts. */
-function totalsBlock(data: InvoiceA4Data, currency: string, primaryCss: string): string {
+function totalsBlock(
+  data: InvoiceA4Data,
+  currency: string,
+  primaryCss: string,
+  L: InvoiceLayoutConfig,
+): string {
   const linesList = data.paymentLines;
   let encaisseImmediate = 0;
   if (linesList != null) {
@@ -229,10 +291,10 @@ function totalsBlock(data: InvoiceA4Data, currency: string, primaryCss: string):
    * payer », pas rester muette — sinon le client la lit comme acquittée.
    */
   const showReglement =
-    totalPositive && (hasLines || data.depositAmount != null);
+    totalPositive && (hasLines || data.depositAmount != null) && layoutOn(L, "a4.payments");
 
   let statutHtml = "";
-  if (showReglement) {
+  if (showReglement && layoutOn(L, "a4.paymentStatus")) {
     if (resteDu < 0.01) {
       statutHtml = `<div class="pay-stat">${tx("Statut : facture intégralement réglée")}</div>`;
     } else if (encaisseEffectif < 0.01) {
@@ -241,34 +303,42 @@ function totalsBlock(data: InvoiceA4Data, currency: string, primaryCss: string):
       statutHtml = `<div class="pay-stat">${tx("Statut : règlement partiel — solde à régler")}</div>`;
     }
     const due = data.creditDueLabel?.trim();
-    if (due && resteDu >= 0.01) {
+    if (due && resteDu >= 0.01 && layoutOn(L, "a4.creditDue")) {
       statutHtml += `<div class="pay-due">${tx(`Solde à régler avant le ${due}`)}</div>`;
     }
   }
 
   const rows: string[] = [];
-  if (data.discount > 0) {
+  if (data.discount > 0 && layoutOn(L, "a4.subtotal")) {
     rows.push(
-      `<div class="tot-line"><span>Sous-total</span><span>${escapeHtml(formatCurrencyInvoice(data.subtotal, currency))}</span></div>`,
-    );
-    rows.push(
-      `<div class="tot-line"><span>Remise</span><span>${escapeHtml(formatCurrencyInvoice(-data.discount, currency))}</span></div>`,
+      `<div class="tot-line"><span>${escapeHtml(layoutText(L, "a4.subtotal", "Sous-total"))}</span><span>${escapeHtml(formatCurrencyInvoice(data.subtotal, currency))}</span></div>`,
     );
   }
-  if (data.tax > 0) {
+  if (data.discount > 0 && layoutOn(L, "a4.discount")) {
     rows.push(
-      `<div class="tot-line"><span>TVA</span><span>${escapeHtml(formatCurrencyInvoice(data.tax, currency))}</span></div>`,
+      `<div class="tot-line"><span>${escapeHtml(layoutText(L, "a4.discount", "Remise"))}</span><span>${escapeHtml(formatCurrencyInvoice(-data.discount, currency))}</span></div>`,
+    );
+  }
+  if (data.tax > 0 && layoutOn(L, "a4.tax")) {
+    rows.push(
+      `<div class="tot-line"><span>${escapeHtml(layoutText(L, "a4.tax", "TVA"))}</span><span>${escapeHtml(formatCurrencyInvoice(data.tax, currency))}</span></div>`,
     );
   }
   rows.push(`<div class="tot-sp"></div>`);
-  const totalLabel = data.tax > 0 ? "Montant total TTC" : "Montant total";
+  const totalLabel = layoutText(
+    L,
+    "a4.total",
+    data.tax > 0 ? "Montant total TTC" : "Montant total",
+  );
   rows.push(
     `<div class="tot-block"><span class="tot-lbl" style="background:${primaryCss}">${escapeHtml(totalLabel)}</span><span class="tot-val">${escapeHtml(formatCurrencyInvoice(data.total, currency))}</span></div>`,
   );
 
   if (showReglement) {
     rows.push(`<div class="tot-pay-sep"></div>`);
-    rows.push(`<div class="pay-title" style="color:${primaryCss}">${tx("Règlement")}</div>`);
+    rows.push(
+      `<div class="pay-title" style="color:${primaryCss}">${tx(layoutText(L, "a4.payments", "Règlement"))}</div>`,
+    );
     rows.push(`<div class="tot-sp-sm"></div>`);
     if (linesList != null && linesList.length > 0) {
       for (const pl of linesList) {
@@ -295,16 +365,20 @@ function totalsBlock(data: InvoiceA4Data, currency: string, primaryCss: string):
   return `<div class="tot-wrap no-break">${rows.join("")}</div>`;
 }
 
-function customerBlock(data: InvoiceA4Data): string {
+function customerBlock(data: InvoiceA4Data, L: InvoiceLayoutConfig): string {
+  if (!layoutOn(L, "a4.customer")) return "";
   if (!data.customerName && !data.customerPhone && !data.customerAddress) return "";
-  const inner: string[] = [`<div class="cust-title">Client</div>`];
+  const inner: string[] = [
+    `<div class="cust-title">${escapeHtml(layoutText(L, "a4.customer", "Client"))}</div>`,
+  ];
   if (data.customerName) inner.push(`<div class="cust-line">${tx(data.customerName)}</div>`);
   if (data.customerPhone) inner.push(`<div class="cust-line">${tx(data.customerPhone)}</div>`);
   if (data.customerAddress) inner.push(`<div class="cust-line">${tx(data.customerAddress)}</div>`);
   return `<div class="cust-box">${inner.join("")}</div>`;
 }
 
-function signatureBlock(store: InvoiceA4Data["store"]): string {
+function signatureBlock(store: InvoiceA4Data["store"], L: InvoiceLayoutConfig): string {
+  if (!layoutOn(L, "a4.signature")) return `<div class="sig-sp"></div>`;
   const has =
     (store.invoice_signer_title?.trim() ?? "").length > 0 ||
     (store.invoice_signer_name?.trim() ?? "").length > 0;
@@ -328,19 +402,22 @@ export function renderInvoiceA4Html(data: InvoiceA4Data): string {
   const currency = store.currency ?? "XOF";
   const { r, g, b } = hexToRgb(store.primary_color);
   const headerBg = `rgb(${r}, ${g}, ${b})`;
+  const L = invoiceLayoutOfStore(store);
   const { dateStr, timeStr } = formatInvoiceDateFlutter(data.date);
-  const logoUrl = data.logoBytes?.length
-    ? bytesToImageDataUrl(data.logoBytes)
-    : null;
+  const logoUrl =
+    data.logoBytes?.length && layoutOn(L, "a4.logo")
+      ? bytesToImageDataUrl(data.logoBytes)
+      : null;
   const elof = isElofTemplate(store.invoice_template);
   const storeHtml = elof
-    ? storeBlockElof(data, primaryCss, logoUrl)
-    : storeBlockClassic(data, primaryCss, logoUrl);
+    ? storeBlockElof(data, primaryCss, logoUrl, L)
+    : storeBlockClassic(data, primaryCss, logoUrl, L);
 
-  const cust = customerBlock(data);
-  const amountWords = data.amountInWords?.trim()
-    ? `<div class="amount-words">Montant en lettres : ${tx(data.amountInWords)}</div>`
-    : "";
+  const cust = customerBlock(data, L);
+  const amountWords =
+    data.amountInWords?.trim() && layoutOn(L, "a4.amountWords")
+      ? `<div class="amount-words">Montant en lettres : ${tx(data.amountInWords)}</div>`
+      : "";
 
   return `<!DOCTYPE html>
 <html lang="fr"><head><meta charset="utf-8"/>
@@ -546,26 +623,42 @@ ${TABLE_PAGINATION_CSS}
 </style></head><body>
 <div class="invoice-sheet">
   <div class="invoice-main">
-  <header class="hdr">
+  ${
+    layoutOn(L, "a4.headerBar")
+      ? `<header class="hdr">
     <div class="hdr-l">${tx(store.commercial_name ?? store.name)}</div>
     <div class="hdr-r">${tx(`Facture ${data.saleNumber} - ${dateStr} ${timeStr}`)}</div>
-  </header>
+  </header>`
+      : ""
+  }
   <div class="store-wrap">${storeHtml}</div>
   <div class="sp-16"></div>
   ${cust}
   <div class="sp-16"></div>
-  <div class="h-fact">Facture n° ${tx(data.saleNumber)}</div>
-  <div class="date-line">${tx(`Date : ${dateStr} - ${timeStr}`)}</div>
-  ${buildTable(data, currency, headerBg)}
-  ${totalsBlock(data, currency, primaryCss)}
+  ${
+    layoutOn(L, "a4.invoiceNumber")
+      ? `<div class="h-fact">${escapeHtml(layoutText(L, "a4.invoiceNumber", "Facture n°"))} ${tx(data.saleNumber)}</div>`
+      : ""
+  }
+  ${
+    layoutOn(L, "a4.date")
+      ? `<div class="date-line">${tx(`${layoutText(L, "a4.date", "Date")} : ${dateStr} - ${timeStr}`)}</div>`
+      : ""
+  }
+  ${buildTable(data, currency, headerBg, L)}
+  ${totalsBlock(data, currency, primaryCss, L)}
   ${amountWords}
   <div style="height:72px"></div>
-  ${signatureBlock(store)}
+  ${signatureBlock(store, L)}
   </div>
-  <footer class="footer">
+  ${
+    layoutOn(L, "a4.footer")
+      ? `<footer class="footer">
     <hr class="footer-rule" />
-    <div class="footer-text">${tx(store.footer_text ?? "Merci pour votre confiance.")}</div>
-  </footer>
+    <div class="footer-text">${tx(layoutText(L, "a4.footer", store.footer_text ?? "Merci pour votre confiance."))}</div>
+  </footer>`
+      : ""
+  }
 </div>
 </body></html>`;
 }
@@ -592,42 +685,43 @@ function groupThousands(n: number): string {
   return neg ? `-${s}` : s;
 }
 
-function model3HeaderLines(store: InvoiceA4Data["store"]): string[] {
+function model3HeaderLines(store: InvoiceA4Data["store"], L: InvoiceLayoutConfig): string[] {
   const lines: string[] = [];
   const slogan = (store.slogan ?? "").trim();
-  if (slogan) {
+  if (slogan && layoutOn(L, "a4.slogan")) {
     for (const l of slogan.split(/\r\n|\n|\r/)) {
       if (l.trim()) lines.push(`<div class="m3-sub">${tx(l.trim())}</div>`);
     }
   }
   const activity = (store.activity ?? "").trim();
-  if (activity) {
+  if (activity && layoutOn(L, "a4.activity")) {
     for (const l of activity.split(/\r\n|\n|\r/)) {
       if (l.trim()) lines.push(`<div class="m3-sub">${tx(l.trim())}</div>`);
     }
   }
-  if (store.phone?.trim()) {
+  if (store.phone?.trim() && layoutOn(L, "a4.phone")) {
     const phone = stripTelPrefix(store.phone);
     if (phone) lines.push(`<div class="m3-contact">Tél : ${tx(phone)}</div>`);
   }
-  if (store.mobile_money?.trim()) {
+  if (store.mobile_money?.trim() && layoutOn(L, "a4.mobileMoney")) {
     const mm = stripTelPrefix(store.mobile_money);
     if (mm) lines.push(`<div class="m3-contact">Mobile money ${tx(mm)}</div>`);
   }
-  if (store.address?.trim()) {
+  if (store.address?.trim() && layoutOn(L, "a4.address")) {
     lines.push(`<div class="m3-contact">${tx(store.address.trim())}</div>`);
   }
-  if (store.city?.trim()) {
+  if (store.city?.trim() && layoutOn(L, "a4.address")) {
     lines.push(`<div class="m3-contact">${tx(store.city.trim())}</div>`);
   }
-  if (store.country?.trim()) {
+  if (store.country?.trim() && layoutOn(L, "a4.address")) {
     lines.push(`<div class="m3-contact">${tx(store.country.trim())}</div>`);
   }
   return lines;
 }
 
 /** Bloc « DOIT : … » (client destinataire de la facture). */
-function model3DoitBlock(data: InvoiceA4Data): string {
+function model3DoitBlock(data: InvoiceA4Data, L: InvoiceLayoutConfig): string {
+  if (!layoutOn(L, "a4.customer")) return "";
   if (!data.customerName && !data.customerPhone && !data.customerAddress) return "";
   const parts: string[] = [];
   if (data.customerName) {
@@ -637,19 +731,19 @@ function model3DoitBlock(data: InvoiceA4Data): string {
   if (data.customerPhone) extra.push(tx(data.customerPhone));
   if (data.customerAddress) extra.push(tx(data.customerAddress));
   const extraHtml = extra.length ? `<div class="m3-doit-extra">${extra.join(" — ")}</div>` : "";
-  return `<div class="m3-doit"><span class="m3-doit-lbl">DOIT :</span> ${parts.join("")}${extraHtml}</div>`;
+  return `<div class="m3-doit"><span class="m3-doit-lbl">${escapeHtml(layoutText(L, "a4.customer", "DOIT"))} :</span> ${parts.join("")}${extraHtml}</div>`;
 }
 
-function model3Table(data: InvoiceA4Data, currency: string): string {
+function model3Table(data: InvoiceA4Data, currency: string, L: InvoiceLayoutConfig): string {
   /*
    * Sous-total / remise / TVA : sans ces lignes, le TOTAL ne correspond pas à la
    * somme de la colonne « P. Total » et le client conteste la facture.
    */
   const adjustments: string[] = [];
-  if (data.discount > 0) {
+  if (data.discount > 0 && layoutOn(L, "a4.subtotal")) {
     adjustments.push(
       `<tr class="m3-adj-row">
-        <td class="m3-adj-lbl" colspan="3">Sous-total</td>
+        <td class="m3-adj-lbl" colspan="3">${escapeHtml(layoutText(L, "a4.subtotal", "Sous-total"))}</td>
         <td class="m3-adj-val">${escapeHtml(formatCurrencyInvoice(data.subtotal, currency))}</td>
       </tr>`,
       `<tr class="m3-adj-row">
@@ -698,7 +792,7 @@ function model3Table(data: InvoiceA4Data, currency: string): string {
 }
 
 /** Règlement compact (encaissé / reste), aligné sur la logique de `totalsBlock`. */
-function model3Reglement(data: InvoiceA4Data, currency: string): string {
+function model3Reglement(data: InvoiceA4Data, currency: string, L: InvoiceLayoutConfig): string {
   const linesList = data.paymentLines;
   let encaisseImmediate = 0;
   if (linesList != null) {
@@ -713,11 +807,12 @@ function model3Reglement(data: InvoiceA4Data, currency: string): string {
   const resteDu = Math.max(0, data.total - encaisseEffectif);
   const totalPositive = data.total > 0.001;
   // Même règle que `totalsBlock` : un règlement connu s'affiche, fût-il nul.
-  const showReglement = totalPositive && (hasLines || data.depositAmount != null);
+  const showReglement =
+    totalPositive && (hasLines || data.depositAmount != null) && layoutOn(L, "a4.payments");
   if (!showReglement) return "";
 
   const rows: string[] = [
-    `<div class="m3-reg-title">RÈGLEMENT</div>`,
+    `<div class="m3-reg-title">${escapeHtml(layoutText(L, "a4.payments", "RÈGLEMENT").toUpperCase())}</div>`,
   ];
   if (linesList != null && linesList.length > 0) {
     for (const pl of linesList) {
@@ -746,16 +841,17 @@ function model3Reglement(data: InvoiceA4Data, currency: string): string {
 
 export function renderInvoiceA4Model3Html(data: InvoiceA4Data): string {
   const store = data.store;
+  const L = invoiceLayoutOfStore(store);
   const currency = store.currency ?? "XOF";
   // Modèle 3 : en-tête texte uniquement, sans logo (volontaire).
   const storeTitle = store.commercial_name ?? store.name;
 
-  const headerLines = model3HeaderLines(store);
+  const headerLines = model3HeaderLines(store, L);
   const cityForDate = store.city?.trim() || store.address?.trim() || "";
   const dateLong = formatLongDateFr(data.date);
   const dateLineText = cityForDate ? `${cityForDate}, ${dateLong}` : dateLong;
 
-  const doit = model3DoitBlock(data);
+  const doit = model3DoitBlock(data, L);
 
   const words = data.amountInWords?.trim();
   const amountLine = words
@@ -842,22 +938,30 @@ ${TABLE_PAGINATION_CSS}
     </div>
     <hr class="m3-hr" />
     <hr class="m3-hr-thin" />
-    <div class="m3-date">${tx(dateLineText)}</div>
-    <div class="m3-title">FACTURE N° ${tx(data.saleNumber)}</div>
+    ${layoutOn(L, "a4.date") ? `<div class="m3-date">${tx(dateLineText)}</div>` : ""}
+    ${
+      layoutOn(L, "a4.invoiceNumber")
+        ? `<div class="m3-title">${escapeHtml(layoutText(L, "a4.invoiceNumber", "FACTURE N°").toUpperCase())} ${tx(data.saleNumber)}</div>`
+        : ""
+    }
     ${doit}
-    ${model3Table(data, currency)}
-    ${model3Reglement(data, currency)}
-    <div class="m3-amount">${amountLine}</div>
+    ${model3Table(data, currency, L)}
+    ${model3Reglement(data, currency, L)}
+    ${layoutOn(L, "a4.amountWords") ? `<div class="m3-amount">${amountLine}</div>` : ""}
     <div class="m3-sign no-break">
-      <div class="m3-sign-title">${txUpper(signerTitle)}</div>
-      ${signerName ? `<div class="m3-sign-name">${txUpper(signerName)}</div>` : ""}
+      ${layoutOn(L, "a4.signature") ? `<div class="m3-sign-title">${txUpper(signerTitle)}</div>` : ""}
+      ${signerName && layoutOn(L, "a4.signature") ? `<div class="m3-sign-name">${txUpper(signerName)}</div>` : ""}
       <div class="m3-sign-space"></div>
     </div>
   </div>
-  <footer class="m3-footer">
+  ${
+    layoutOn(L, "a4.footer")
+      ? `<footer class="m3-footer">
     <hr class="m3-footer-hr" />
-    <div class="m3-footer-text">${tx(store.footer_text ?? "Merci pour votre confiance.")}</div>
-  </footer>
+    <div class="m3-footer-text">${tx(layoutText(L, "a4.footer", store.footer_text ?? "Merci pour votre confiance."))}</div>
+  </footer>`
+      : ""
+  }
 </div>
 </body></html>`;
 }

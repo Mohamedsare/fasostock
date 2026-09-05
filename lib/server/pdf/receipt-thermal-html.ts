@@ -8,6 +8,7 @@ import {
   telLine,
 } from "@/lib/features/receipt/receipt-ticket-format";
 import { normalizeReceiptTemplate } from "@/lib/features/receipt/receipt-ticket-template";
+import { layoutOn, layoutText, parseInvoiceLayout } from "@/lib/features/invoices/invoice-layout";
 import { renderReceiptThermalModernHtml } from "./receipt-thermal-modern-html";
 import { currencySymbolOf } from "@/lib/config/currencies";
 import { formatCurrencyFlutter } from "@/lib/utils/currency";
@@ -55,6 +56,7 @@ export async function renderReceiptThermalClassicHtml(
   data: ReceiptTicketData,
   paperWidthMm: 58 | 80 = 80,
 ): Promise<string> {
+  const L = parseInvoiceLayout(data.layout);
   const narrow = paperWidthMm === 58;
   // Largeurs fixes calibrées pour 72 mm ; réduites pour tenir dans 48 mm (58 mm).
   const logoMaxWidthPx = narrow ? 160 : 248;
@@ -70,14 +72,16 @@ export async function renderReceiptThermalClassicHtml(
   const currency = currencySymbolOf(data.currencyCode ?? undefined);
   // 48 mm : « PU » seul rend 40 px à la colonne des noms. La devise reste lisible
   // juste en dessous, sur chaque ligne de total.
-  const puHeader = narrow ? "PU" : `PU (${currency})`;
+  const puHeader = layoutText(L, "t.colPrice", narrow ? "PU" : `PU (${currency})`);
 
   const tel = telLine(data.storePhone);
   const payU = paymentUppercase(data.paymentMethod);
   const isCash = payU === "ESPECES";
   // Contenu du QR inchangé (montant sans séparateurs, libellés d'origine) : il sert de
   // preuve scannable sur des tickets déjà remis, il ne doit pas bouger avec la mise en forme.
-  const qrDataUrl = await QRCode.toDataURL(buildReceiptQrPayload(data), {
+  const qrDataUrl = !layoutOn(L, "t.qr")
+    ? ""
+    : await QRCode.toDataURL(buildReceiptQrPayload(data), {
     width: 216,
     margin: 1,
     errorCorrectionLevel: "M",
@@ -88,69 +92,81 @@ export async function renderReceiptThermalClassicHtml(
     `<div class="row mono${cls ? ` ${cls}` : ""}"><span class="lbl">${tx(label)}</span><span class="val">${tx(value)}</span></div>`;
 
   const parts: string[] = [];
-  const logoUrl = data.storeLogoUrl?.trim();
+  const logoUrl = layoutOn(L, "t.logo") ? data.storeLogoUrl?.trim() : "";
   if (logoUrl) {
     parts.push(
       `<div class="logo-wrap"><img src="${escapeHtml(logoUrl)}" alt="" /></div>`,
     );
   }
   parts.push(`<div class="store">${tx(data.storeName).toUpperCase()}</div>`);
-  if (data.storeAddress?.trim()) {
+  if (data.storeAddress?.trim() && layoutOn(L, "t.address")) {
     parts.push(
       `<div class="small center mono">${tx(data.storeAddress.trim())}</div>`,
     );
   }
-  if (tel) {
+  if (tel && layoutOn(L, "t.phone")) {
     parts.push(`<div class="small center mono">${tx(tel)}</div>`);
   }
-  parts.push(
-    `<div class="meta mono center">${tx(metaFactureDateHeureLine(data.saleNumber, data.date))}</div>`,
-  );
+  if (layoutOn(L, "t.meta")) {
+    parts.push(
+      `<div class="meta mono center">${tx(metaFactureDateHeureLine(data.saleNumber, data.date))}</div>`,
+    );
+  }
 
   parts.push(`<div class="sep"></div>`);
+  // Colonnes chiffrées retirables : un ticket sans prix reste un bon de remise.
+  const showQty = layoutOn(L, "t.colQty");
+  const showPu = layoutOn(L, "t.colPrice");
+  const showTot = layoutOn(L, "t.colTotal");
   parts.push(`<table class="grid mono"><thead><tr>
-    <th class="left">Produit</th>
-    <th class="cqty">Qté</th>
-    <th class="cnum">${escapeHtml(puHeader)}</th>
-    <th class="cnum">Total</th>
+    <th class="left">${escapeHtml(layoutText(L, "t.colDesc", "Produit"))}</th>
+    ${showQty ? `<th class="cqty">${escapeHtml(layoutText(L, "t.colQty", "Qté"))}</th>` : ""}
+    ${showPu ? `<th class="cnum">${escapeHtml(puHeader)}</th>` : ""}
+    ${showTot ? `<th class="cnum">${escapeHtml(layoutText(L, "t.colTotal", "Total"))}</th>` : ""}
   </tr></thead><tbody>`);
   for (const item of data.items) {
     // Nom complet : il passe à la ligne dans sa colonne, les chiffres restent alignés.
     parts.push(`<tr>
       <td class="left">${tx(item.name.trim())}</td>
-      <td class="cqty">${item.quantity}</td>
-      <td class="cnum">${escapeHtml(num(item.unitPrice))}</td>
-      <td class="cnum">${escapeHtml(num(item.total))}</td>
+      ${showQty ? `<td class="cqty">${item.quantity}</td>` : ""}
+      ${showPu ? `<td class="cnum">${escapeHtml(num(item.unitPrice))}</td>` : ""}
+      ${showTot ? `<td class="cnum">${escapeHtml(num(item.total))}</td>` : ""}
     </tr>`);
   }
   parts.push(`</tbody></table>`);
   parts.push(`<div class="sep"></div>`);
 
-  parts.push(row("Sous-total", money(data.subtotal)));
-  if (data.discount > 0) {
-    parts.push(row("Remise", `- ${money(data.discount)}`));
+  if (layoutOn(L, "t.subtotal")) {
+    parts.push(row(layoutText(L, "t.subtotal", "Sous-total"), money(data.subtotal)));
+  }
+  if (data.discount > 0 && layoutOn(L, "t.discount")) {
+    parts.push(row(layoutText(L, "t.discount", "Remise"), `- ${money(data.discount)}`));
   }
   parts.push(`<div class="sep solid"></div>`);
-  parts.push(row("TOTAL", money(data.total), "total"));
+  parts.push(row(layoutText(L, "t.total", "TOTAL"), money(data.total), "total"));
   parts.push(`<div class="sep solid"></div>`);
 
-  parts.push(row("Paiement", payU, "strong"));
-  // Vente réglée en deux moyens (espèces + mobile money) : le détail fait la preuve.
-  for (const split of data.paymentSplit ?? []) {
-    parts.push(row(split.label, money(split.amount)));
+  if (layoutOn(L, "t.payment")) {
+    parts.push(row(layoutText(L, "t.payment", "Paiement"), payU, "strong"));
+    // Vente réglée en deux moyens (espèces + mobile money) : le détail fait la preuve.
+    for (const split of data.paymentSplit ?? []) {
+      parts.push(row(split.label, money(split.amount)));
+    }
   }
-  if (isCash) {
-    parts.push(row("Reçu", money(data.amountReceived ?? data.total)));
-    parts.push(row("Rendu", money(data.change ?? 0)));
+  if (isCash && layoutOn(L, "t.received")) {
+    parts.push(row(layoutText(L, "t.received", "Reçu"), money(data.amountReceived ?? data.total)));
+  }
+  if (isCash && layoutOn(L, "t.change")) {
+    parts.push(row(layoutText(L, "t.change", "Rendu"), money(data.change ?? 0)));
   }
   // Client associé à la vente (facultatif au comptant, obligatoire à crédit).
-  if (data.customerName?.trim()) {
-    parts.push(row("Client", data.customerName.trim()));
+  if (data.customerName?.trim() && layoutOn(L, "t.customer")) {
+    parts.push(row(layoutText(L, "t.customer", "Client"), data.customerName.trim()));
   }
 
   // Vente à crédit : le ticket sert de preuve de dette (acompte, reste, échéance).
   const creditRemaining = Math.max(0, data.creditRemaining ?? 0);
-  if (creditRemaining > 0) {
+  if (creditRemaining > 0 && layoutOn(L, "t.credit")) {
     parts.push(`<div class="sep"></div>`);
     parts.push(row("Acompte", money(data.creditPaid ?? 0)));
     parts.push(row("RESTE À PAYER", money(creditRemaining), "due"));
@@ -159,12 +175,20 @@ export async function renderReceiptThermalClassicHtml(
     }
   }
 
-  parts.push(
-    `<div class="qrwrap"><img src="${qrDataUrl}" width="52" height="52" alt="" /></div>`,
-  );
-  parts.push(`<div class="thanks mono">Merci pour votre achat !</div>`);
-  parts.push(`<div class="sep"></div>`);
-  parts.push(`<div class="powered small center mono">Powered by FasoStock POS</div>`);
+  if (qrDataUrl) {
+    parts.push(
+      `<div class="qrwrap"><img src="${qrDataUrl}" width="52" height="52" alt="" /></div>`,
+    );
+  }
+  if (layoutOn(L, "t.thanks")) {
+    parts.push(
+      `<div class="thanks mono">${tx(layoutText(L, "t.thanks", "Merci pour votre achat !"))}</div>`,
+    );
+  }
+  if (layoutOn(L, "t.powered")) {
+    parts.push(`<div class="sep"></div>`);
+    parts.push(`<div class="powered small center mono">Powered by FasoStock POS</div>`);
+  }
 
   return `<!DOCTYPE html>
 <html lang="fr"><head><meta charset="utf-8"/>

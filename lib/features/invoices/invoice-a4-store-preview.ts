@@ -1,3 +1,8 @@
+import {
+  INVOICE_LAYOUT_DEFAULT,
+  serializeInvoiceLayout,
+  type InvoiceLayoutConfig,
+} from "@/lib/features/invoices/invoice-layout";
 import type { Store } from "@/lib/features/stores/types";
 import { fetchLogoBytes } from "@/lib/features/invoices/generate-invoice-pdf";
 import { buildInvoiceA4Data } from "./build-invoice-a4-data";
@@ -38,6 +43,8 @@ export type StoreEditFormFields = {
   invoiceSignerTitle: string;
   invoiceSignerName: string;
   invoiceTemplate: "classic" | "elof" | "model3";
+  /** Éléments retirés / libellés remplacés — pour que l'aperçu montre le vrai document. */
+  invoiceLayout?: InvoiceLayoutConfig | null;
 };
 
 /**
@@ -79,6 +86,8 @@ export function storeFromEditForm(base: Store, f: StoreEditFormFields): Store {
         : f.invoiceTemplate === "model3"
           ? "model3"
           : "classic",
+    invoice_layout:
+      f.invoiceLayout === undefined ? base.invoice_layout : serializeInvoiceLayout(f.invoiceLayout ?? INVOICE_LAYOUT_DEFAULT),
   };
 }
 

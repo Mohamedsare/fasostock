@@ -3,6 +3,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { MdClose, MdOpenInFull, MdPictureAsPdf, MdRefresh } from "react-icons/md";
 import { InvoicePdfPreviewDialog } from "@/components/invoices/invoice-pdf-preview-dialog";
+import { InvoiceLayoutEditor } from "@/components/stores/invoice-layout-editor";
+import {
+  A4_ELEMENTS,
+  INVOICE_LAYOUT_DEFAULT,
+  invoiceLayoutOfStore,
+  serializeInvoiceLayout,
+  TICKET_ELEMENTS,
+  type InvoiceLayoutConfig,
+} from "@/lib/features/invoices/invoice-layout";
 import { ReceiptTicketPreview } from "@/components/pos/receipt-ticket-preview";
 import {
   buildDemoInvoiceA4Data,
@@ -124,6 +133,8 @@ export function StoreInvoiceA4Dialog({
   const [invoiceTemplate, setInvoiceTemplate] = useState<
     "classic" | "elof" | "model3"
   >("classic");
+  /** Éléments retirés / renommés sur la facture (`stores.invoice_layout`). */
+  const [layout, setLayout] = useState<InvoiceLayoutConfig>(INVOICE_LAYOUT_DEFAULT);
 
   const [previewBlob, setPreviewBlob] = useState<Blob | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -158,6 +169,7 @@ export function StoreInvoiceA4Dialog({
     setEngineExtraPhones(store.engine_invoice_extra_phones ?? "");
     const t = (store.invoice_template ?? "classic").toLowerCase().trim();
     setInvoiceTemplate(t === "elof" ? "elof" : t === "model3" ? "model3" : "classic");
+    setLayout(invoiceLayoutOfStore(store));
     setError(null);
     setLoading(false);
     setMobileTab("form");
@@ -227,6 +239,7 @@ export function StoreInvoiceA4Dialog({
       invoiceSignerTitle,
       invoiceSignerName,
       invoiceTemplate,
+      invoiceLayout: layout,
     };
   }
 
@@ -308,6 +321,7 @@ export function StoreInvoiceA4Dialog({
             : invoiceTemplate === "model3"
               ? "model3"
               : "classic",
+        invoice_layout: serializeInvoiceLayout(layout),
       });
       toast.success("Facture A4 mise à jour");
       onUpdated();
@@ -700,6 +714,23 @@ export function StoreInvoiceA4Dialog({
           />
         </label>
       </div>
+
+      <div className="mt-5">
+        <SectionTitle>Ce qui apparaît sur la facture</SectionTitle>
+        <p className="mb-2 text-xs leading-relaxed text-neutral-600">
+          Retirez ce dont vous ne voulez pas, renommez ce qui doit l&apos;être. L&apos;aperçu
+          à droite montre le résultat exact. Rien n&apos;est retiré tant que vous n&apos;y
+          touchez pas.
+        </p>
+        <InvoiceLayoutEditor
+          elements={A4_ELEMENTS}
+          value={layout}
+          onChange={(next) => {
+            setLayout(next);
+            markStale();
+          }}
+        />
+      </div>
     </div>
   );
 
@@ -834,6 +865,8 @@ export function StoreReceiptFormatDialog({
 }) {
   const [width, setWidth] = useState<58 | 80>(80);
   const [template, setTemplate] = useState<ReceiptTicketTemplate>("classic");
+  /** Éléments retirés / renommés sur le ticket — même réglage que la facture A4. */
+  const [layout, setLayout] = useState<InvoiceLayoutConfig>(INVOICE_LAYOUT_DEFAULT);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -841,6 +874,7 @@ export function StoreReceiptFormatDialog({
     if (!store || !open) return;
     setWidth(store.receipt_paper_width_mm === 58 ? 58 : 80);
     setTemplate(normalizeReceiptTemplate(store.receipt_template));
+    setLayout(invoiceLayoutOfStore(store));
     setError(null);
     setLoading(false);
   }, [store, open]);
@@ -849,6 +883,9 @@ export function StoreReceiptFormatDialog({
     if (!store) return null;
     const prefix = (store.invoice_prefix ?? "FAC").trim() || "FAC";
     return {
+      // L'aperçu se règle sur la configuration EN COURS d'édition, pas sur celle
+      // enregistrée : le propriétaire voit son ticket bouger pendant qu'il décide.
+      layout,
       storeName: store.name,
       storeLogoUrl: store.logo_url,
       storeAddress: store.address,
@@ -867,7 +904,7 @@ export function StoreReceiptFormatDialog({
       change: 2500,
       date: new Date(),
     };
-  }, [store]);
+  }, [store, layout]);
 
   async function submit() {
     if (!store) return;
@@ -877,6 +914,7 @@ export function StoreReceiptFormatDialog({
       await updateStore(store.id, {
         receipt_paper_width_mm: width,
         receipt_template: template,
+        invoice_layout: serializeInvoiceLayout(layout),
       });
       const templateLabel =
         RECEIPT_TEMPLATE_CHOICES.find((t) => t.value === template)?.label ?? "";
@@ -1031,6 +1069,18 @@ export function StoreReceiptFormatDialog({
                 );
               })}
             </div>
+
+            <SectionTitle>Ce qui apparaît sur le ticket</SectionTitle>
+            <p className="mb-2 text-xs leading-relaxed text-neutral-600">
+              Retirez ce dont vous ne voulez pas, renommez ce qui doit l&apos;être.
+              L&apos;aperçu suit en direct. Rien n&apos;est retiré tant que vous n&apos;y
+              touchez pas.
+            </p>
+            <InvoiceLayoutEditor
+              elements={TICKET_ELEMENTS}
+              value={layout}
+              onChange={setLayout}
+            />
           </div>
 
           {/* Aperçu du ticket */}

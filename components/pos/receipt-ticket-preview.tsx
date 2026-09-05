@@ -2,6 +2,11 @@
 
 import { Archivo_Black } from "next/font/google";
 import QRCode from "react-qr-code";
+import {
+  layoutOn,
+  layoutText,
+  parseInvoiceLayout,
+} from "@/lib/features/invoices/invoice-layout";
 import { useEffect, useState } from "react";
 import type { ReceiptTicketData } from "@/lib/features/receipt/receipt-ticket-types";
 import {
@@ -61,10 +66,11 @@ function ReceiptTicketPreviewClassic({ data }: { data: ReceiptTicketData }) {
   const isCashLike = payU === "ESPECES";
   /** Vente à crédit : preuve de dette au client (acompte + reste dû). */
   const creditRemaining = Math.max(0, data.creditRemaining ?? 0);
+  const L = parseInvoiceLayout(data.layout);
   const tel = telLine(data.storePhone);
   const qrPayload = buildReceiptQrPayload(data);
   const [logoErr, setLogoErr] = useState(false);
-  const logoUrl = data.storeLogoUrl?.trim() ?? "";
+  const logoUrl = layoutOn(L, "t.logo") ? (data.storeLogoUrl?.trim() ?? "") : "";
   const money = (n: number) =>
     formatCurrencyFlutter(Math.round(n), data.currencyCode);
   const num = (n: number) => receiptGroupedNumber(n, data.currencyCode);
@@ -113,7 +119,7 @@ function ReceiptTicketPreviewClassic({ data }: { data: ReceiptTicketData }) {
         >
           {data.storeName.toUpperCase()}
         </p>
-        {data.storeAddress?.trim() ? (
+        {data.storeAddress?.trim() && layoutOn(L, "t.address") ? (
           <p
             className="text-center"
             style={{ fontFamily: mono, fontSize: 7, margin: 0 }}
@@ -121,7 +127,7 @@ function ReceiptTicketPreviewClassic({ data }: { data: ReceiptTicketData }) {
             {data.storeAddress.trim()}
           </p>
         ) : null}
-        {tel ? (
+        {tel && layoutOn(L, "t.phone") ? (
           <p
             className="text-center"
             style={{ fontFamily: mono, fontSize: 7, margin: 0 }}
@@ -129,12 +135,14 @@ function ReceiptTicketPreviewClassic({ data }: { data: ReceiptTicketData }) {
             {tel}
           </p>
         ) : null}
-        <p
-          className="text-center"
-          style={{ fontFamily: mono, fontSize: 8.5, margin: "6px 0 0" }}
-        >
-          {metaFactureDateHeureLine(data.saleNumber, data.date)}
-        </p>
+        {layoutOn(L, "t.meta") ? (
+          <p
+            className="text-center"
+            style={{ fontFamily: mono, fontSize: 8.5, margin: "6px 0 0" }}
+          >
+            {metaFactureDateHeureLine(data.saleNumber, data.date)}
+          </p>
+        ) : null}
 
         <Separator />
         <table
@@ -143,12 +151,24 @@ function ReceiptTicketPreviewClassic({ data }: { data: ReceiptTicketData }) {
         >
           <thead>
             <tr style={{ fontWeight: 700 }}>
-              <th className="whitespace-nowrap pb-[3px] text-left">Produit</th>
-              <th className="whitespace-nowrap px-[6px] pb-[3px] text-center">Qté</th>
-              <th className="whitespace-nowrap pb-[3px] pl-[8px] text-right">
-                PU ({currency})
+              <th className="whitespace-nowrap pb-[3px] text-left">
+                {layoutText(L, "t.colDesc", "Produit")}
               </th>
-              <th className="whitespace-nowrap pb-[3px] pl-[8px] text-right">Total</th>
+              {layoutOn(L, "t.colQty") ? (
+                <th className="whitespace-nowrap px-[6px] pb-[3px] text-center">
+                  {layoutText(L, "t.colQty", "Qté")}
+                </th>
+              ) : null}
+              {layoutOn(L, "t.colPrice") ? (
+                <th className="whitespace-nowrap pb-[3px] pl-[8px] text-right">
+                  {layoutText(L, "t.colPrice", `PU (${currency})`)}
+                </th>
+              ) : null}
+              {layoutOn(L, "t.colTotal") ? (
+                <th className="whitespace-nowrap pb-[3px] pl-[8px] text-right">
+                  {layoutText(L, "t.colTotal", "Total")}
+                </th>
+              ) : null}
             </tr>
           </thead>
           <tbody>
@@ -161,47 +181,85 @@ function ReceiptTicketPreviewClassic({ data }: { data: ReceiptTicketData }) {
                 >
                   {item.name.trim()}
                 </td>
-                <td className="whitespace-nowrap px-[6px] pb-[3px] text-center align-top">
-                  {item.quantity}
-                </td>
-                <td className="whitespace-nowrap pb-[3px] pl-[8px] text-right align-top">
-                  {num(item.unitPrice)}
-                </td>
-                <td className="whitespace-nowrap pb-[3px] pl-[8px] text-right align-top">
-                  {num(item.total)}
-                </td>
+                {layoutOn(L, "t.colQty") ? (
+                  <td className="whitespace-nowrap px-[6px] pb-[3px] text-center align-top">
+                    {item.quantity}
+                  </td>
+                ) : null}
+                {layoutOn(L, "t.colPrice") ? (
+                  <td className="whitespace-nowrap pb-[3px] pl-[8px] text-right align-top">
+                    {num(item.unitPrice)}
+                  </td>
+                ) : null}
+                {layoutOn(L, "t.colTotal") ? (
+                  <td className="whitespace-nowrap pb-[3px] pl-[8px] text-right align-top">
+                    {num(item.total)}
+                  </td>
+                ) : null}
               </tr>
             ))}
           </tbody>
         </table>
         <Separator />
 
-        <AmountRow label="Sous-total" value={money(data.subtotal)} size={8} />
-        {data.discount > 0 ? (
-          <AmountRow label="Remise" value={`- ${money(data.discount)}`} size={8} />
+        {layoutOn(L, "t.subtotal") ? (
+          <AmountRow
+            label={layoutText(L, "t.subtotal", "Sous-total")}
+            value={money(data.subtotal)}
+            size={8}
+          />
+        ) : null}
+        {data.discount > 0 && layoutOn(L, "t.discount") ? (
+          <AmountRow
+            label={layoutText(L, "t.discount", "Remise")}
+            value={`- ${money(data.discount)}`}
+            size={8}
+          />
         ) : null}
         <Separator solid />
-        <AmountRow label="TOTAL" value={money(data.total)} size={12} bold />
+        <AmountRow
+          label={layoutText(L, "t.total", "TOTAL")}
+          value={money(data.total)}
+          size={12}
+          bold
+        />
         <Separator solid />
 
-        <AmountRow label="Paiement" value={payU} size={8} boldValue />
-        {(data.paymentSplit ?? []).map((p, i) => (
-          <AmountRow key={i} label={p.label} value={money(p.amount)} size={8} />
-        ))}
-        {isCashLike ? (
+        {layoutOn(L, "t.payment") ? (
           <>
             <AmountRow
-              label="Reçu"
-              value={money(data.amountReceived ?? data.total)}
+              label={layoutText(L, "t.payment", "Paiement")}
+              value={payU}
               size={8}
+              boldValue
             />
-            <AmountRow label="Rendu" value={money(data.change ?? 0)} size={8} />
+            {(data.paymentSplit ?? []).map((p, i) => (
+              <AmountRow key={i} label={p.label} value={money(p.amount)} size={8} />
+            ))}
           </>
         ) : null}
-        {data.customerName?.trim() ? (
-          <AmountRow label="Client" value={data.customerName.trim()} size={8} />
+        {isCashLike && layoutOn(L, "t.received") ? (
+          <AmountRow
+            label={layoutText(L, "t.received", "Reçu")}
+            value={money(data.amountReceived ?? data.total)}
+            size={8}
+          />
         ) : null}
-        {creditRemaining > 0 ? (
+        {isCashLike && layoutOn(L, "t.change") ? (
+          <AmountRow
+            label={layoutText(L, "t.change", "Rendu")}
+            value={money(data.change ?? 0)}
+            size={8}
+          />
+        ) : null}
+        {data.customerName?.trim() && layoutOn(L, "t.customer") ? (
+          <AmountRow
+            label={layoutText(L, "t.customer", "Client")}
+            value={data.customerName.trim()}
+            size={8}
+          />
+        ) : null}
+        {creditRemaining > 0 && layoutOn(L, "t.credit") ? (
           <>
             <Separator />
             <AmountRow label="Acompte" value={money(data.creditPaid ?? 0)} size={8} />
@@ -221,40 +279,48 @@ function ReceiptTicketPreviewClassic({ data }: { data: ReceiptTicketData }) {
           </>
         ) : null}
 
-        <div className="flex justify-center" style={{ marginTop: 9 }}>
-          <div className="bg-white" style={{ padding: 0 }}>
-            <QRCode
-              value={qrPayload}
-              size={52}
-              level="M"
-              fgColor="#000000"
-              bgColor="#FFFFFF"
-            />
+        {layoutOn(L, "t.qr") ? (
+          <div className="flex justify-center" style={{ marginTop: 9 }}>
+            <div className="bg-white" style={{ padding: 0 }}>
+              <QRCode
+                value={qrPayload}
+                size={52}
+                level="M"
+                fgColor="#000000"
+                bgColor="#FFFFFF"
+              />
+            </div>
           </div>
-        </div>
-        <p
-          className="text-center"
-          style={{
-            fontFamily: mono,
-            fontSize: 8.5,
-            fontWeight: 700,
-            margin: "7px 0 0",
-          }}
-        >
-          Merci pour votre achat !
-        </p>
-        <Separator />
-        <p
-          className="text-center"
-          style={{
-            fontFamily: mono,
-            fontSize: 7,
-            color: "#333333",
-            margin: 0,
-          }}
-        >
-          Powered by FasoStock POS
-        </p>
+        ) : null}
+        {layoutOn(L, "t.thanks") ? (
+          <p
+            className="text-center"
+            style={{
+              fontFamily: mono,
+              fontSize: 8.5,
+              fontWeight: 700,
+              margin: "7px 0 0",
+            }}
+          >
+            {layoutText(L, "t.thanks", "Merci pour votre achat !")}
+          </p>
+        ) : null}
+        {layoutOn(L, "t.powered") ? (
+          <>
+            <Separator />
+            <p
+              className="text-center"
+              style={{
+                fontFamily: mono,
+                fontSize: 7,
+                color: "#333333",
+                margin: 0,
+              }}
+            >
+              Powered by FasoStock POS
+            </p>
+          </>
+        ) : null}
       </div>
     </div>
   );

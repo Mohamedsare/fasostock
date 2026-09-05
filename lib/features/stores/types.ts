@@ -43,4 +43,10 @@ export type Store = {
   receipt_template: string | null;
   /** true = la boutique partage tout le catalogue de l'entreprise (défaut). false = catalogue personnalisé (table store_products). */
   shares_company_catalog: boolean;
+  /**
+   * Mise en page des documents décidée par le propriétaire (migration 00218) :
+   * éléments masqués et libellés remplacés, pour la facture A4 comme pour le ticket.
+   * `null` (le cas de toutes les boutiques existantes) = documents d'origine.
+   */
+  invoice_layout?: unknown;
 };

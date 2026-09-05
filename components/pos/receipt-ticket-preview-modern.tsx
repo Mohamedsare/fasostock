@@ -2,6 +2,11 @@
 
 import { Archivo_Black } from "next/font/google";
 import QRCode from "react-qr-code";
+import {
+  layoutOn,
+  layoutText,
+  parseInvoiceLayout,
+} from "@/lib/features/invoices/invoice-layout";
 import { useEffect, useState } from "react";
 import type { ReceiptTicketData } from "@/lib/features/receipt/receipt-ticket-types";
 import {
@@ -43,7 +48,8 @@ export function ReceiptTicketPreviewModern({ data }: { data: ReceiptTicketData }
   const tel = telLine(data.storePhone);
   const qrPayload = buildReceiptQrPayload(data);
   const [logoErr, setLogoErr] = useState(false);
-  const logoUrl = data.storeLogoUrl?.trim() ?? "";
+  const L = parseInvoiceLayout(data.layout);
+  const logoUrl = layoutOn(L, "t.logo") ? (data.storeLogoUrl?.trim() ?? "") : "";
   const money = (n: number) =>
     formatCurrencyFlutter(Math.round(n), data.currencyCode);
   const unitPrice = (n: number) => receiptGroupedNumber(n, data.currencyCode);
@@ -52,7 +58,12 @@ export function ReceiptTicketPreviewModern({ data }: { data: ReceiptTicketData }
     setLogoErr(false);
   }, [logoUrl]);
 
-  const subLine = [data.storeAddress?.trim(), tel].filter(Boolean).join(" · ");
+  const subLine = [
+    layoutOn(L, "t.address") ? data.storeAddress?.trim() : "",
+    layoutOn(L, "t.phone") ? tel : "",
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
     <div
@@ -104,17 +115,21 @@ export function ReceiptTicketPreviewModern({ data }: { data: ReceiptTicketData }
       ) : null}
 
       <Rule strong />
-      <Kv label="Reçu n°" value={data.saleNumber} strong />
-      <Kv
-        label="Date"
-        value={`${formatDateStrFr(data.date)} · ${formatTimeStrFr(data.date)}`}
-      />
-      {data.customerName?.trim() ? (
-        <Kv label="Client" value={data.customerName.trim()} />
+      {layoutOn(L, "t.meta") ? (
+        <>
+          <Kv label="Reçu n°" value={data.saleNumber} strong />
+          <Kv
+            label="Date"
+            value={`${formatDateStrFr(data.date)} · ${formatTimeStrFr(data.date)}`}
+          />
+        </>
+      ) : null}
+      {data.customerName?.trim() && layoutOn(L, "t.customer") ? (
+        <Kv label={layoutText(L, "t.customer", "Client")} value={data.customerName.trim()} />
       ) : null}
       <Rule />
 
-      <p style={tagStyle}>Articles</p>
+      <p style={tagStyle}>{layoutText(L, "t.colDesc", "Articles")}</p>
       {data.items.map((item, i) => (
         <div key={i} style={{ marginBottom: 5 }}>
           <div style={{ fontSize: 8.5, fontWeight: 600, lineHeight: 1.25 }}>
@@ -125,19 +140,26 @@ export function ReceiptTicketPreviewModern({ data }: { data: ReceiptTicketData }
             style={{ fontSize: 8, lineHeight: 1.3, marginTop: 1 }}
           >
             <span style={{ color: "#333" }}>
-              {item.quantity} × {unitPrice(item.unitPrice)}
+              {[
+                layoutOn(L, "t.colQty") ? String(item.quantity) : "",
+                layoutOn(L, "t.colPrice") ? unitPrice(item.unitPrice) : "",
+              ]
+                .filter(Boolean)
+                .join(" × ")}
             </span>
             <span style={{ fontWeight: 700, whiteSpace: "nowrap" }}>
-              {money(item.total)}
+              {layoutOn(L, "t.colTotal") ? money(item.total) : ""}
             </span>
           </div>
         </div>
       ))}
       <Rule />
 
-      <Kv label="Sous-total" value={money(data.subtotal)} />
-      {data.discount > 0 ? (
-        <Kv label="Remise" value={`- ${money(data.discount)}`} />
+      {layoutOn(L, "t.subtotal") ? (
+        <Kv label={layoutText(L, "t.subtotal", "Sous-total")} value={money(data.subtotal)} />
+      ) : null}
+      {data.discount > 0 && layoutOn(L, "t.discount") ? (
+        <Kv label={layoutText(L, "t.discount", "Remise")} value={`- ${money(data.discount)}`} />
       ) : null}
 
       <div
@@ -154,22 +176,29 @@ export function ReceiptTicketPreviewModern({ data }: { data: ReceiptTicketData }
           printColorAdjust: "exact",
         }}
       >
-        <span>TOTAL</span>
+        <span>{layoutText(L, "t.total", "TOTAL")}</span>
         <span style={{ whiteSpace: "nowrap" }}>{money(data.total)}</span>
       </div>
 
-      <Kv label="Paiement" value={payU} strong />
-      {(data.paymentSplit ?? []).map((p, i) => (
-        <Kv key={i} label={p.label} value={money(p.amount)} />
-      ))}
-      {isCashLike ? (
+      {layoutOn(L, "t.payment") ? (
         <>
-          <Kv label="Reçu" value={money(data.amountReceived ?? data.total)} />
-          <Kv label="Rendu" value={money(data.change ?? 0)} />
+          <Kv label={layoutText(L, "t.payment", "Paiement")} value={payU} strong />
+          {(data.paymentSplit ?? []).map((p, i) => (
+            <Kv key={i} label={p.label} value={money(p.amount)} />
+          ))}
         </>
       ) : null}
+      {isCashLike && layoutOn(L, "t.received") ? (
+        <Kv
+          label={layoutText(L, "t.received", "Reçu")}
+          value={money(data.amountReceived ?? data.total)}
+        />
+      ) : null}
+      {isCashLike && layoutOn(L, "t.change") ? (
+        <Kv label={layoutText(L, "t.change", "Rendu")} value={money(data.change ?? 0)} />
+      ) : null}
 
-      {creditRemaining > 0 ? (
+      {creditRemaining > 0 && layoutOn(L, "t.credit") ? (
         <div style={{ border: "1px solid #000", padding: "4px 6px", marginTop: 5 }}>
           <Kv label="Acompte versé" value={money(data.creditPaid ?? 0)} />
           <div
@@ -186,33 +215,43 @@ export function ReceiptTicketPreviewModern({ data }: { data: ReceiptTicketData }
       ) : null}
 
       <Rule />
-      <div className="flex justify-center" style={{ marginTop: 2 }}>
-        <div className="bg-white">
-          <QRCode
-            value={qrPayload}
-            size={58}
-            level="M"
-            fgColor="#000000"
-            bgColor="#FFFFFF"
-          />
-        </div>
-      </div>
-      <p
-        className="text-center"
-        style={{ fontSize: 6.5, color: "#333", margin: "3px 0 0" }}
-      >
-        Scannez pour vérifier ce ticket
-      </p>
-      <p
-        className="text-center"
-        style={{ fontSize: 9, fontWeight: 700, margin: "7px 0 0" }}
-      >
-        Merci pour votre achat !
-      </p>
-      <Rule />
-      <p className="text-center" style={{ fontSize: 6.5, color: "#555", margin: 0 }}>
-        Powered by FasoStock POS
-      </p>
+      {layoutOn(L, "t.qr") ? (
+        <>
+          <div className="flex justify-center" style={{ marginTop: 2 }}>
+            <div className="bg-white">
+              <QRCode
+                value={qrPayload}
+                size={58}
+                level="M"
+                fgColor="#000000"
+                bgColor="#FFFFFF"
+              />
+            </div>
+          </div>
+          <p
+            className="text-center"
+            style={{ fontSize: 6.5, color: "#333", margin: "3px 0 0" }}
+          >
+            Scannez pour vérifier ce ticket
+          </p>
+        </>
+      ) : null}
+      {layoutOn(L, "t.thanks") ? (
+        <p
+          className="text-center"
+          style={{ fontSize: 9, fontWeight: 700, margin: "7px 0 0" }}
+        >
+          {layoutText(L, "t.thanks", "Merci pour votre achat !")}
+        </p>
+      ) : null}
+      {layoutOn(L, "t.powered") ? (
+        <>
+          <Rule />
+          <p className="text-center" style={{ fontSize: 6.5, color: "#555", margin: 0 }}>
+            Powered by FasoStock POS
+          </p>
+        </>
+      ) : null}
     </div>
   );
 }

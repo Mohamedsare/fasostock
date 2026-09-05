@@ -1,5 +1,6 @@
 import { sanitizeForPdf } from "@/lib/features/invoices/invoice-a4-helpers";
 import type { ReceiptTicketData } from "@/lib/features/receipt/receipt-ticket-types";
+import { layoutOn, layoutText, parseInvoiceLayout } from "@/lib/features/invoices/invoice-layout";
 import {
   buildReceiptQrPayload,
   formatDateStrFr,
@@ -33,6 +34,7 @@ export async function renderReceiptThermalModernHtml(
   data: ReceiptTicketData,
   paperWidthMm: 58 | 80 = 80,
 ): Promise<string> {
+  const L = parseInvoiceLayout(data.layout);
   const narrow = paperWidthMm === 58;
   const logoMaxWidthPx = narrow ? 150 : 240;
   const storeFontPx = narrow ? 15 : 19;
@@ -53,7 +55,9 @@ export async function renderReceiptThermalModernHtml(
   const tel = telLine(data.storePhone);
   const payU = paymentUppercase(data.paymentMethod);
   const isCash = payU === "ESPECES";
-  const qrDataUrl = await QRCode.toDataURL(buildReceiptQrPayload(data), {
+  const qrDataUrl = !layoutOn(L, "t.qr")
+    ? ""
+    : await QRCode.toDataURL(buildReceiptQrPayload(data), {
     width: 216,
     margin: 1,
     errorCorrectionLevel: "M",
@@ -64,61 +68,85 @@ export async function renderReceiptThermalModernHtml(
     `<div class="kv${strong ? " strong" : ""}"><span class="k">${tx(label)}</span><span class="v">${tx(value)}</span></div>`;
 
   const parts: string[] = [];
-  const logoUrl = data.storeLogoUrl?.trim();
+  const logoUrl = layoutOn(L, "t.logo") ? data.storeLogoUrl?.trim() : "";
   if (logoUrl) {
     parts.push(
       `<div class="logo-wrap"><img src="${escapeHtml(logoUrl)}" alt="" /></div>`,
     );
   }
   parts.push(`<div class="store">${tx(data.storeName).toUpperCase()}</div>`);
-  const subLine = [data.storeAddress?.trim(), tel].filter(Boolean).join(" · ");
+  const subLine = [
+    layoutOn(L, "t.address") ? data.storeAddress?.trim() : "",
+    layoutOn(L, "t.phone") ? tel : "",
+  ]
+    .filter(Boolean)
+    .join(" · ");
   if (subLine) {
     parts.push(`<div class="sub">${tx(subLine)}</div>`);
   }
 
   parts.push(`<div class="rule strong"></div>`);
-  parts.push(kv("Reçu n°", data.saleNumber, true));
-  parts.push(
-    kv("Date", `${formatDateStrFr(data.date)} · ${formatTimeStrFr(data.date)}`),
-  );
-  if (data.customerName?.trim()) {
-    parts.push(kv("Client", data.customerName.trim()));
+  if (layoutOn(L, "t.meta")) {
+    parts.push(kv("Reçu n°", data.saleNumber, true));
+    parts.push(
+      kv("Date", `${formatDateStrFr(data.date)} · ${formatTimeStrFr(data.date)}`),
+    );
+  }
+  if (data.customerName?.trim() && layoutOn(L, "t.customer")) {
+    parts.push(kv(layoutText(L, "t.customer", "Client"), data.customerName.trim()));
   }
   parts.push(`<div class="rule"></div>`);
 
-  parts.push(`<div class="tag">Articles</div>`);
+  parts.push(`<div class="tag">${tx(layoutText(L, "t.colDesc", "Articles"))}</div>`);
+  /* Ligne chiffrée du modèle moderne : « 2 × 5 000 » à gauche, total à droite. Retirer
+     l'une ou l'autre laisse la ligne, mais muette du côté retiré. */
+  const showQtyPu = layoutOn(L, "t.colQty") || layoutOn(L, "t.colPrice");
+  const showLineTotal = layoutOn(L, "t.colTotal");
   for (const item of data.items) {
+    const qtyText = layoutOn(L, "t.colQty") ? String(item.quantity) : "";
+    const puText = layoutOn(L, "t.colPrice") ? escapeHtml(unitPrice(item.unitPrice)) : "";
+    const qtyPu = [qtyText, puText].filter(Boolean).join(" × ");
     parts.push(`<div class="item">
       <div class="item-name">${tx(item.name.trim())}</div>
-      <div class="item-line">
-        <span class="qty">${item.quantity} × ${escapeHtml(unitPrice(item.unitPrice))}</span>
-        <span class="line-total">${escapeHtml(money(item.total))}</span>
-      </div>
+      ${
+        showQtyPu || showLineTotal
+          ? `<div class="item-line">
+        <span class="qty">${qtyPu}</span>
+        <span class="line-total">${showLineTotal ? escapeHtml(money(item.total)) : ""}</span>
+      </div>`
+          : ""
+      }
     </div>`);
   }
   parts.push(`<div class="rule"></div>`);
 
-  parts.push(kv("Sous-total", money(data.subtotal)));
-  if (data.discount > 0) {
-    parts.push(kv("Remise", `- ${money(data.discount)}`));
+  if (layoutOn(L, "t.subtotal")) {
+    parts.push(kv(layoutText(L, "t.subtotal", "Sous-total"), money(data.subtotal)));
+  }
+  if (data.discount > 0 && layoutOn(L, "t.discount")) {
+    parts.push(kv(layoutText(L, "t.discount", "Remise"), `- ${money(data.discount)}`));
   }
   parts.push(
-    `<div class="total-band"><span>TOTAL</span><span>${escapeHtml(money(data.total))}</span></div>`,
+    `<div class="total-band"><span>${tx(layoutText(L, "t.total", "TOTAL"))}</span><span>${escapeHtml(money(data.total))}</span></div>`,
   );
 
-  parts.push(kv("Paiement", payU, true));
-  // Vente réglée en deux moyens (espèces + mobile money) : le détail fait la preuve.
-  for (const split of data.paymentSplit ?? []) {
-    parts.push(kv(split.label, money(split.amount)));
+  if (layoutOn(L, "t.payment")) {
+    parts.push(kv(layoutText(L, "t.payment", "Paiement"), payU, true));
+    // Vente réglée en deux moyens (espèces + mobile money) : le détail fait la preuve.
+    for (const split of data.paymentSplit ?? []) {
+      parts.push(kv(split.label, money(split.amount)));
+    }
   }
-  if (isCash) {
-    parts.push(kv("Reçu", money(data.amountReceived ?? data.total)));
-    parts.push(kv("Rendu", money(data.change ?? 0)));
+  if (isCash && layoutOn(L, "t.received")) {
+    parts.push(kv(layoutText(L, "t.received", "Reçu"), money(data.amountReceived ?? data.total)));
+  }
+  if (isCash && layoutOn(L, "t.change")) {
+    parts.push(kv(layoutText(L, "t.change", "Rendu"), money(data.change ?? 0)));
   }
 
   // Vente à crédit : le ticket sert de preuve de dette (acompte, reste, échéance).
   const creditRemaining = Math.max(0, data.creditRemaining ?? 0);
-  if (creditRemaining > 0) {
+  if (creditRemaining > 0 && layoutOn(L, "t.credit")) {
     const inner: string[] = [kv("Acompte versé", money(data.creditPaid ?? 0))];
     inner.push(
       `<div class="due"><span>RESTE À PAYER</span><span>${escapeHtml(money(creditRemaining))}</span></div>`,
@@ -130,13 +158,21 @@ export async function renderReceiptThermalModernHtml(
   }
 
   parts.push(`<div class="rule"></div>`);
-  parts.push(
-    `<div class="qrwrap"><img src="${qrDataUrl}" width="${qrPx}" height="${qrPx}" alt="" /></div>`,
-  );
-  parts.push(`<div class="qr-caption">Scannez pour vérifier ce ticket</div>`);
-  parts.push(`<div class="thanks">Merci pour votre achat !</div>`);
-  parts.push(`<div class="rule"></div>`);
-  parts.push(`<div class="powered">Powered by FasoStock POS</div>`);
+  if (qrDataUrl) {
+    parts.push(
+      `<div class="qrwrap"><img src="${qrDataUrl}" width="${qrPx}" height="${qrPx}" alt="" /></div>`,
+    );
+    parts.push(`<div class="qr-caption">Scannez pour vérifier ce ticket</div>`);
+  }
+  if (layoutOn(L, "t.thanks")) {
+    parts.push(
+      `<div class="thanks">${tx(layoutText(L, "t.thanks", "Merci pour votre achat !"))}</div>`,
+    );
+  }
+  if (layoutOn(L, "t.powered")) {
+    parts.push(`<div class="rule"></div>`);
+    parts.push(`<div class="powered">Powered by FasoStock POS</div>`);
+  }
 
   return `<!DOCTYPE html>
 <html lang="fr"><head><meta charset="utf-8"/>
