@@ -63,6 +63,13 @@ const QUEUE_SLOT_MAX_MS = 90_000;
 const IFRAME_LOAD_TIMEOUT_MS = 2500;
 /** Filet de sécurité si `afterprint` n'arrive jamais (URL blob + iframe libérées). */
 const PRINT_JOB_MAX_LIFETIME_MS = 10 * 60_000;
+/**
+ * Délai avant de retirer le document, une fois la boîte d'impression refermée. Le
+ * créneau de la file, lui, est rendu tout de suite : c'est le ticket suivant qui
+ * attendait. Ces quelques secondes ne servent qu'au spouleur, qui peut encore être en
+ * train de lire le PDF au moment où le dialogue disparaît.
+ */
+const CLEANUP_AFTER_PRINT_MS = 5_000;
 
 /**
  * Envoie un PDF à l'imprimante.
@@ -145,12 +152,27 @@ function startPrintJob(blob: Blob, releaseSlot: () => void): Promise<boolean> {
           window.setTimeout(revokeUrl, 2_000);
           return;
         }
+        /*
+         * Une seule demande d'impression, quel que soit le déclencheur.
+         *
+         * `tryPrint` est armé deux fois — au chargement de l'onglet, et à 1,2 s pour le
+         * cas où ce chargement ne serait jamais annoncé. Sans ce verrou, les deux
+         * partent : `print()` étant modal, le caissier referme la première boîte et une
+         * seconde s'ouvre aussitôt sur le même ticket.
+         */
+        let printAsked = false;
         const tryPrint = () => {
+          if (printAsked) return;
+          printAsked = true;
           try {
             popup.focus();
             popup.print();
+            // Modal : la main revient une fois la boîte refermée. Le ticket suivant
+            // n'a plus de raison d'attendre — l'onglet, lui, reste ouvert.
+            releaseTurn();
           } catch {
             // L'utilisateur peut imprimer manuellement (Ctrl/Cmd+P) si le navigateur bloque.
+            releaseTurn();
           }
         };
         launched(true);
@@ -213,18 +235,44 @@ function startPrintJob(blob: Blob, releaseSlot: () => void): Promise<boolean> {
         return;
       }
       const cleanupIframe = () => {
+        window.removeEventListener("afterprint", onTopAfterPrint);
         removeIframe();
         revokeUrl();
         releaseTurn();
       };
-      // Nettoyage après impression réelle (plus fiable que délai fixe).
+      /*
+       * `afterprint` n'arrive pas toujours — et c'est ce qui immobilisait la caisse.
+       *
+       * Le document chargé dans l'iframe est un PDF : il est affiché par le lecteur
+       * interne de Chrome, qui ne dispatche pas cet événement de façon fiable sur la
+       * fenêtre du cadre. Le créneau de la file ne se libérait alors qu'au garde-fou —
+       * quatre-vingt-dix secondes. Le premier ticket sortait normalement, le suivant
+       * restait bloqué à attendre son tour, sans que rien ne l'explique à l'écran.
+       *
+       * On écoute donc les deux fenêtres : certains navigateurs remontent l'événement
+       * au document de tête plutôt qu'à celui du cadre. Et surtout, on ne compte plus
+       * dessus (voir juste en dessous).
+       */
+      const onTopAfterPrint = () => cleanupIframe();
       win.addEventListener("afterprint", cleanupIframe, { once: true });
-      // Filet de sécurité si `afterprint` n'est pas déclenché.
+      window.addEventListener("afterprint", onTopAfterPrint, { once: true });
+      // Filet de sécurité si aucun des deux n'est déclenché.
       window.setTimeout(cleanupIframe, PRINT_JOB_MAX_LIFETIME_MS);
       try {
         win.focus();
         win.print();
         launched(true);
+        /*
+         * `print()` est modal : quand il rend la main, la boîte de dialogue est déjà
+         * refermée et le travail est parti au spouleur. C'est le seul signal certain de
+         * fin d'impression, et il n'a besoin d'aucun événement — le ticket suivant peut
+         * donc partir immédiatement.
+         *
+         * Le document, lui, reste en place quelques secondes : le retirer dans la
+         * seconde risquerait de couper la lecture d'un travail encore en cours d'envoi.
+         */
+        releaseTurn();
+        window.setTimeout(cleanupIframe, CLEANUP_AFTER_PRINT_MS);
       } catch {
         removeIframe();
         fallbackPrintInNewTab();
