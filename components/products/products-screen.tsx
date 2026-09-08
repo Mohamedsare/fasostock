@@ -102,6 +102,19 @@ import { ensureStringNumberMap } from "@/lib/utils/string-number-map";
 
 const PAGE_SIZE = 20;
 
+/*
+ * Actions d'une fiche produit.
+ *
+ * Sur un téléphone de 360 px, cinq icônes serrées à droite du nom mangeaient la
+ * moitié de la ligne : le produit devenait « Huile moteur 5… » et chaque bouton
+ * tombait sous les 30 px, donc sous le pouce. Ici les actions passent SOUS la
+ * fiche, se partagent la largeur et font 44 px de haut ; à partir de 600 px on
+ * retrouve exactement la colonne d'icônes compacte d'avant.
+ */
+const ACTION_BTN_CLASS =
+  "inline-flex min-h-11 flex-1 basis-0 min-w-[56px] items-center justify-center gap-1 rounded-md border text-xs font-semibold min-[600px]:min-h-0 min-[600px]:flex-none min-[600px]:basis-auto min-[600px]:min-w-0 min-[600px]:rounded-sm min-[600px]:px-2 min-[600px]:py-1";
+const ACTION_ICON_CLASS = "h-5 w-5 shrink-0 min-[600px]:h-4 min-[600px]:w-4";
+
 /** Aligné sur `ProductsPageProvider.defaultStockThreshold` / tuile Flutter. */
 const DEFAULT_STOCK_THRESHOLD = 5;
 
@@ -505,6 +518,14 @@ export function ProductsScreen() {
   const canAddBrandInline =
     newBrand.trim().length > 0 && !mutateCreateBrand.isPending;
 
+  /*
+   * Une fiche sans aucune action (employé en lecture seule) ne doit pas afficher
+   * le trait de séparation de la barre d'actions : la carte s'arrêterait sur une
+   * ligne vide.
+   */
+  const hasRowActions =
+    canUpdateProduct || canDeleteProduct || activityCfg.batchTracking;
+
   if (ctx.isLoading || permLoading) return <LoadingState />;
   if (!ctx.data) {
     return (
@@ -591,7 +612,7 @@ export function ProductsScreen() {
                       }
                     })();
                   }}
-                  className="fs-touch-target inline-flex items-center justify-center gap-2 rounded-md border border-black/[0.1] bg-fs-card px-4 py-3 text-sm font-semibold text-neutral-800 disabled:opacity-40"
+                  className="fs-touch-target inline-flex min-w-[9.5rem] flex-1 basis-0 items-center justify-center gap-2 rounded-md border border-black/[0.1] bg-fs-card px-4 py-3 text-sm font-semibold text-neutral-800 disabled:opacity-40 min-[600px]:flex-none min-[600px]:basis-auto"
                 >
                   <MdDownload className="h-[18px] w-[18px] shrink-0" aria-hidden />
                   Exporter Excel
@@ -600,7 +621,7 @@ export function ProductsScreen() {
                   <button
                     type="button"
                     onClick={() => setShowImportCsv(true)}
-                    className="fs-touch-target inline-flex items-center justify-center gap-2 rounded-md border border-black/[0.1] bg-fs-card px-4 py-3 text-sm font-semibold text-neutral-800"
+                    className="fs-touch-target inline-flex min-w-[9.5rem] flex-1 basis-0 items-center justify-center gap-2 rounded-md border border-black/[0.1] bg-fs-card px-4 py-3 text-sm font-semibold text-neutral-800 min-[600px]:flex-none min-[600px]:basis-auto"
                   >
                     <MdUpload className="h-[18px] w-[18px] shrink-0" aria-hidden />
                     Importer CSV
@@ -657,8 +678,11 @@ export function ProductsScreen() {
                 className={fsInputClass("pl-10")}
               />
             </div>
-            <div className="flex flex-col gap-2 min-[340px]:flex-row min-[340px]:gap-2">
-              <div className="min-w-0 flex-1">
+            {/* Trois selects côte à côte dès 340 px, c'était « Conditionnem… » sur
+                110 px de large. Deux colonnes sur téléphone, trois à partir de
+                600 px : chaque libellé reste lisible en entier. */}
+            <div className="grid grid-cols-1 gap-2 min-[380px]:grid-cols-2 min-[600px]:grid-cols-3">
+              <div className="min-w-0">
                 <label className="mb-1 block text-xs font-medium text-neutral-600">
                   Catégorie
                 </label>
@@ -678,7 +702,7 @@ export function ProductsScreen() {
                   ))}
                 </select>
               </div>
-              <div className="min-w-0 flex-1">
+              <div className="min-w-0">
                 <label className="mb-1 block text-xs font-medium text-neutral-600">
                   Marque
                 </label>
@@ -698,7 +722,7 @@ export function ProductsScreen() {
                   ))}
                 </select>
               </div>
-              <div className="min-w-0 flex-1">
+              <div className="min-w-0 min-[380px]:col-span-2 min-[600px]:col-span-1">
                 <label className="mb-1 block text-xs font-medium text-neutral-600">
                   Conditionnement
                 </label>
@@ -730,211 +754,232 @@ export function ProductsScreen() {
                   key={p.id}
                   className="rounded-md border border-black/[0.06] bg-fs-card p-3 shadow-sm"
                 >
-                  <div className="flex items-start gap-3">
-                    <ProductListThumbnail imageUrl={thumbUrl} previewOnTap className="rounded-sm" />
-                    <div className="min-w-0 flex-1">
-                      <h3
-                        className={cn(
-                          "truncate text-sm font-semibold text-fs-text",
-                          !p.is_active && "line-through opacity-70",
-                        )}
-                      >
-                        {p.name}
-                      </h3>
-                      {p.awaiting_pricing === true ? (
-                        /*
-                          Le barré d'un produit inactif dit « ne se vend pas » mais pas
-                          POURQUOI. Ici la raison est précise et l'action évidente : il
-                          manque un prix, et c'est au patron de le poser.
-                        */
-                        <span className="mt-0.5 inline-flex items-center rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800">
-                          Attend son prix
-                        </span>
-                      ) : null}
-                      {p.prescription_required || p.dosage_form ? (
-                        <div className="mt-0.5 flex flex-wrap items-center gap-1">
-                          {p.prescription_required ? (
-                            <span className="inline-flex items-center rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold text-red-700">
-                              Sur ordonnance
-                            </span>
-                          ) : null}
-                          {p.dosage_form ? (
-                            <span className="inline-flex items-center rounded bg-fs-accent/10 px-1.5 py-0.5 text-[10px] font-medium text-fs-accent">
-                              {p.dosage_form}
-                            </span>
-                          ) : null}
-                        </div>
-                      ) : null}
-                      <p className="mt-0.5 line-clamp-2 text-xs text-neutral-500">
-                        {p.sku || "—"}
-                        {canSeePrices ? ` · ${formatCurrency(p.sale_price)}` : ""} ·{" "}
-                        {p.category?.name ?? "—"} · {p.brand?.name ?? "—"}
-                      </p>
-                      {(p.product_packagings?.length ?? 0) > 0 ? (
-                        <div className="mt-1 flex flex-wrap items-center gap-1">
-                          {(p.product_packagings ?? [])
-                            .slice()
-                            .sort((a, b) => a.position - b.position)
-                            .map((pk) => {
-                              const effPrice = pk.price ?? pk.factor * p.sale_price;
-                              /* Un lot moins cher qu'une pièce = prix saisi à l'envers.
-                                 Signalé en rouge ici pour être repéré sans ouvrir la fiche.
-                                 Le message cite le prix d'achat : il ne s'adresse donc
-                                 qu'à qui a le droit de le lire — et de le corriger. */
-                              const problem = canSeePrices
-                                ? packagingPriceProblem({
-                                    label: pk.label,
-                                    factor: pk.factor,
-                                    price: pk.price ?? null,
-                                    unitSalePrice: p.sale_price,
-                                    purchasePrice: p.purchase_price,
-                                  })
-                                : null;
-                              return (
-                                <span
-                                  key={pk.id}
-                                  className={cn(
-                                    "inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium",
-                                    problem
-                                      ? "bg-red-100 text-red-700"
-                                      : "bg-fs-surface-container text-neutral-600",
-                                  )}
-                                  title={
-                                    problem ??
-                                    (canSeePrices
-                                      ? `${pk.label} = ${pk.factor} pièce${pk.factor > 1 ? "s" : ""} · ${formatCurrency(
-                                          packagingPiecePrice(effPrice, pk.factor),
-                                        )} la pièce${pk.barcode ? ` · code-barres ${pk.barcode}` : ""}`
-                                      : `${pk.label} = ${pk.factor} pièce${pk.factor > 1 ? "s" : ""}${
-                                          pk.barcode ? ` · code-barres ${pk.barcode}` : ""
-                                        }`)
-                                  }
-                                >
-                                  <MdInventory2
-                                    className={cn(
-                                      "h-3 w-3 shrink-0",
-                                      problem ? "text-red-600" : "text-fs-accent",
-                                    )}
-                                    aria-hidden
-                                  />
-                                  <span className={cn("font-semibold", problem ? "" : "text-fs-text")}>
-                                    {pk.label}
-                                  </span>
-                                  <span className={problem ? "" : "text-neutral-400"}>×{pk.factor}</span>
-                                  {canSeePrices ? (
-                                    <span className={problem ? "" : "text-neutral-500"}>
-                                      {formatCurrency(effPrice)}
-                                    </span>
-                                  ) : null}
-                                </span>
-                              );
-                            })}
-                        </div>
-                      ) : null}
-                      {/* Autres noms : discrets, mais visibles — le patron doit
-                          voir d'un coup d'œil ce qui rendra l'article trouvable. */}
-                      {productAliasesOn && productSearchAliases(p).length > 0 ? (
-                        <p
-                          className="mt-1 line-clamp-1 text-[11px] text-neutral-500"
-                          title={productSearchAliases(p).join(" · ")}
-                        >
-                          Aussi : {productSearchAliases(p).join(" · ")}
-                        </p>
-                      ) : null}
-                      {locationByProduct?.get(p.id) ? (
-                        <div className="mt-1">
-                          <span
-                            className="inline-flex max-w-full items-center gap-1 rounded bg-sky-500/12 px-1.5 py-0.5 text-[10px] font-semibold text-sky-800 dark:text-sky-200"
-                            title={
-                              locationByProduct.get(p.id)?.detail
-                                ? `${locationByProduct.get(p.id)!.pathLabel} — ${locationByProduct.get(p.id)!.detail}`
-                                : locationByProduct.get(p.id)!.pathLabel
-                            }
-                          >
-                            <MdPlace className="h-3 w-3 shrink-0" aria-hidden />
-                            <span className="truncate">
-                              {locationByProduct.get(p.id)!.pathLabel}
-                            </span>
-                          </span>
-                        </div>
-                      ) : null}
-                      {storeId ? (
-                        <div className="mt-1">
-                          <StockRangeIndicator
-                            quantity={qty}
-                            alertThreshold={threshold}
-                          />
-                        </div>
-                      ) : null}
-                    </div>
-                    <div className="flex shrink-0 gap-1">
-                      {canUpdateProduct ? (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setEditing(p);
-                            setShowForm(true);
-                          }}
-                          className="rounded-sm border border-black/[0.08] bg-fs-card px-2 py-1 text-xs font-semibold text-fs-accent"
-                          aria-label="Modifier"
-                        >
-                          <MdEdit className="h-4 w-4" aria-hidden />
-                        </button>
-                      ) : null}
-                      {canUpdateProduct ? (
-                        <button
-                          type="button"
-                          onClick={() => setQuickPkgProduct(p)}
-                          className="rounded-sm border border-fs-accent/30 bg-fs-accent/[0.06] px-2 py-1 text-xs font-semibold text-fs-accent"
-                          aria-label="Ajouter un conditionnement"
-                          title="Ajouter rapidement un conditionnement (carton, paquet…)"
-                        >
-                          <MdInventory2 className="h-4 w-4" aria-hidden />
-                        </button>
-                      ) : null}
-                      {activityCfg.batchTracking ? (
-                        <button
-                          type="button"
-                          onClick={() => setBatchesProduct(p)}
-                          className="inline-flex items-center gap-1 rounded-sm border border-fs-accent/30 bg-fs-accent/[0.06] px-2 py-1 text-xs font-semibold text-fs-accent"
-                          aria-label="Dates de péremption"
-                          title="Enregistrer / voir les dates de péremption"
-                        >
-                          <MdCalendarToday className="h-4 w-4" aria-hidden />
-                          <span className="hidden min-[420px]:inline">Péremption</span>
-                        </button>
-                      ) : null}
-                      {canUpdateProduct ? (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            mutateToggle.mutate({ id: p.id, active: !p.is_active })
-                          }
-                          className="rounded-sm border border-black/[0.08] bg-fs-card px-2 py-1 text-xs font-semibold text-neutral-700"
-                          aria-label={p.is_active ? "Désactiver" : "Activer"}
-                        >
-                          {p.is_active ? (
-                            <MdToggleOn className="h-4 w-4 text-fs-accent" aria-hidden />
-                          ) : (
-                            <MdToggleOff className="h-4 w-4 text-neutral-500" aria-hidden />
+                  <div className="flex flex-col gap-2 min-[600px]:flex-row min-[600px]:items-start min-[600px]:gap-3">
+                    <div className="flex min-w-0 items-start gap-3 min-[600px]:flex-1">
+                      <ProductListThumbnail imageUrl={thumbUrl} previewOnTap className="rounded-sm" />
+                      <div className="min-w-0 flex-1">
+                        <h3
+                          className={cn(
+                            /* Le nom est ce qu'on cherche : deux lignes sur téléphone
+                               plutôt qu'un nom coupé au troisième mot. */
+                            "line-clamp-2 break-words text-[15px] font-semibold leading-snug text-fs-text min-[600px]:line-clamp-1 min-[600px]:text-sm",
+                            !p.is_active && "line-through opacity-70",
                           )}
-                        </button>
-                      ) : null}
-                      {canDeleteProduct ? (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (confirm(`Supprimer "${p.name}" ?`)) {
-                              mutateDelete.mutate(p.id);
-                            }
-                          }}
-                          className="rounded-sm border border-black/[0.08] bg-fs-card px-2 py-1 text-xs font-semibold text-red-600"
-                          aria-label="Supprimer"
                         >
-                          <MdDeleteOutline className="h-4 w-4" aria-hidden />
-                        </button>
-                      ) : null}
+                          {p.name}
+                        </h3>
+                        {p.awaiting_pricing === true ? (
+                          /*
+                            Le barré d'un produit inactif dit « ne se vend pas » mais pas
+                            POURQUOI. Ici la raison est précise et l'action évidente : il
+                            manque un prix, et c'est au patron de le poser.
+                          */
+                          <span className="mt-0.5 inline-flex items-center rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800">
+                            Attend son prix
+                          </span>
+                        ) : null}
+                        {p.prescription_required || p.dosage_form ? (
+                          <div className="mt-0.5 flex flex-wrap items-center gap-1">
+                            {p.prescription_required ? (
+                              <span className="inline-flex items-center rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold text-red-700">
+                                Sur ordonnance
+                              </span>
+                            ) : null}
+                            {p.dosage_form ? (
+                              <span className="inline-flex items-center rounded bg-fs-accent/10 px-1.5 py-0.5 text-[10px] font-medium text-fs-accent">
+                                {p.dosage_form}
+                              </span>
+                            ) : null}
+                          </div>
+                        ) : null}
+                        <p className="mt-0.5 line-clamp-2 text-xs text-neutral-500">
+                          {p.sku || "—"}
+                          {canSeePrices ? ` · ${formatCurrency(p.sale_price)}` : ""} ·{" "}
+                          {p.category?.name ?? "—"} · {p.brand?.name ?? "—"}
+                        </p>
+                        {(p.product_packagings?.length ?? 0) > 0 ? (
+                          <div className="mt-1 flex flex-wrap items-center gap-1">
+                            {(p.product_packagings ?? [])
+                              .slice()
+                              .sort((a, b) => a.position - b.position)
+                              .map((pk) => {
+                                const effPrice = pk.price ?? pk.factor * p.sale_price;
+                                /* Un lot moins cher qu'une pièce = prix saisi à l'envers.
+                                   Signalé en rouge ici pour être repéré sans ouvrir la fiche.
+                                   Le message cite le prix d'achat : il ne s'adresse donc
+                                   qu'à qui a le droit de le lire — et de le corriger. */
+                                const problem = canSeePrices
+                                  ? packagingPriceProblem({
+                                      label: pk.label,
+                                      factor: pk.factor,
+                                      price: pk.price ?? null,
+                                      unitSalePrice: p.sale_price,
+                                      purchasePrice: p.purchase_price,
+                                    })
+                                  : null;
+                                return (
+                                  <span
+                                    key={pk.id}
+                                    className={cn(
+                                      "inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium",
+                                      problem
+                                        ? "bg-red-100 text-red-700"
+                                        : "bg-fs-surface-container text-neutral-600",
+                                    )}
+                                    title={
+                                      problem ??
+                                      (canSeePrices
+                                        ? `${pk.label} = ${pk.factor} pièce${pk.factor > 1 ? "s" : ""} · ${formatCurrency(
+                                            packagingPiecePrice(effPrice, pk.factor),
+                                          )} la pièce${pk.barcode ? ` · code-barres ${pk.barcode}` : ""}`
+                                        : `${pk.label} = ${pk.factor} pièce${pk.factor > 1 ? "s" : ""}${
+                                            pk.barcode ? ` · code-barres ${pk.barcode}` : ""
+                                          }`)
+                                    }
+                                  >
+                                    <MdInventory2
+                                      className={cn(
+                                        "h-3 w-3 shrink-0",
+                                        problem ? "text-red-600" : "text-fs-accent",
+                                      )}
+                                      aria-hidden
+                                    />
+                                    <span className={cn("font-semibold", problem ? "" : "text-fs-text")}>
+                                      {pk.label}
+                                    </span>
+                                    <span className={problem ? "" : "text-neutral-400"}>×{pk.factor}</span>
+                                    {canSeePrices ? (
+                                      <span className={problem ? "" : "text-neutral-500"}>
+                                        {formatCurrency(effPrice)}
+                                      </span>
+                                    ) : null}
+                                  </span>
+                                );
+                              })}
+                          </div>
+                        ) : null}
+                        {/* Autres noms : discrets, mais visibles — le patron doit
+                            voir d'un coup d'œil ce qui rendra l'article trouvable. */}
+                        {productAliasesOn && productSearchAliases(p).length > 0 ? (
+                          <p
+                            className="mt-1 line-clamp-1 text-[11px] text-neutral-500"
+                            title={productSearchAliases(p).join(" · ")}
+                          >
+                            Aussi : {productSearchAliases(p).join(" · ")}
+                          </p>
+                        ) : null}
+                        {locationByProduct?.get(p.id) ? (
+                          <div className="mt-1">
+                            <span
+                              className="inline-flex max-w-full items-center gap-1 rounded bg-sky-500/12 px-1.5 py-0.5 text-[10px] font-semibold text-sky-800 dark:text-sky-200"
+                              title={
+                                locationByProduct.get(p.id)?.detail
+                                  ? `${locationByProduct.get(p.id)!.pathLabel} — ${locationByProduct.get(p.id)!.detail}`
+                                  : locationByProduct.get(p.id)!.pathLabel
+                              }
+                            >
+                              <MdPlace className="h-3 w-3 shrink-0" aria-hidden />
+                              <span className="truncate">
+                                {locationByProduct.get(p.id)!.pathLabel}
+                              </span>
+                            </span>
+                          </div>
+                        ) : null}
+                        {storeId ? (
+                          <div className="mt-1">
+                            <StockRangeIndicator
+                              quantity={qty}
+                              alertThreshold={threshold}
+                            />
+                          </div>
+                        ) : null}
+                      </div>
                     </div>
+                    {hasRowActions ? (
+                      <div className="flex flex-wrap gap-1.5 border-t border-black/[0.05] pt-2 min-[600px]:shrink-0 min-[600px]:flex-nowrap min-[600px]:gap-1 min-[600px]:border-0 min-[600px]:pt-0">
+                        {canUpdateProduct ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditing(p);
+                              setShowForm(true);
+                            }}
+                            className={cn(
+                              ACTION_BTN_CLASS,
+                              "border-black/[0.08] bg-fs-card text-fs-accent",
+                            )}
+                            aria-label="Modifier"
+                          >
+                            <MdEdit className={ACTION_ICON_CLASS} aria-hidden />
+                          </button>
+                        ) : null}
+                        {canUpdateProduct ? (
+                          <button
+                            type="button"
+                            onClick={() => setQuickPkgProduct(p)}
+                            className={cn(
+                              ACTION_BTN_CLASS,
+                              "border-fs-accent/30 bg-fs-accent/[0.06] text-fs-accent",
+                            )}
+                            aria-label="Ajouter un conditionnement"
+                            title="Ajouter rapidement un conditionnement (carton, paquet…)"
+                          >
+                            <MdInventory2 className={ACTION_ICON_CLASS} aria-hidden />
+                          </button>
+                        ) : null}
+                        {activityCfg.batchTracking ? (
+                          <button
+                            type="button"
+                            onClick={() => setBatchesProduct(p)}
+                            className={cn(
+                              ACTION_BTN_CLASS,
+                              "border-fs-accent/30 bg-fs-accent/[0.06] text-fs-accent",
+                            )}
+                            aria-label="Dates de péremption"
+                            title="Enregistrer / voir les dates de péremption"
+                          >
+                            <MdCalendarToday className={ACTION_ICON_CLASS} aria-hidden />
+                            <span className="hidden min-[900px]:inline">Péremption</span>
+                          </button>
+                        ) : null}
+                        {canUpdateProduct ? (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              mutateToggle.mutate({ id: p.id, active: !p.is_active })
+                            }
+                            className={cn(
+                              ACTION_BTN_CLASS,
+                              "border-black/[0.08] bg-fs-card text-neutral-700",
+                            )}
+                            aria-label={p.is_active ? "Désactiver" : "Activer"}
+                          >
+                            {p.is_active ? (
+                              <MdToggleOn className={cn(ACTION_ICON_CLASS, "text-fs-accent")} aria-hidden />
+                            ) : (
+                              <MdToggleOff className={cn(ACTION_ICON_CLASS, "text-neutral-500")} aria-hidden />
+                            )}
+                          </button>
+                        ) : null}
+                        {canDeleteProduct ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (confirm(`Supprimer "${p.name}" ?`)) {
+                                mutateDelete.mutate(p.id);
+                              }
+                            }}
+                            className={cn(
+                              ACTION_BTN_CLASS,
+                              "border-black/[0.08] bg-fs-card text-red-600",
+                            )}
+                            aria-label="Supprimer"
+                          >
+                            <MdDeleteOutline className={ACTION_ICON_CLASS} aria-hidden />
+                          </button>
+                        ) : null}
+                      </div>
+                    ) : null}
                   </div>
                 </article>
               );
@@ -1003,7 +1048,7 @@ export function ProductsScreen() {
       ) : null}
 
       {tab === "categories" ? (
-        <FsCard padding="p-5" className="rounded-md sm:rounded-md">
+        <FsCard padding="p-4 sm:p-5" className="rounded-md sm:rounded-md">
           <h2 className="text-base font-semibold text-neutral-900">Catégories</h2>
           {!readOnlyCategoriesBrands ? (
             <div className="mt-3 flex gap-2">

@@ -1991,8 +1991,15 @@ function SaleCard({
     sale.status === "completed" && canEdit ? saleEditHref(sale.store_id, sale) : null;
   const delivery = saleDelivery(sale);
 
+  /*
+   * Jusqu'à cinq icônes se tassaient à droite du montant : sur un téléphone de
+   * 360 px il ne restait plus rien pour lire « 1 250 000 CFA », et chaque bouton
+   * faisait 40 px. Sur mobile la barre passe sous le montant et les boutons se
+   * partagent la largeur en 44 px de haut ; dès 600 px on retrouve la rangée
+   * d'icônes compacte d'origine.
+   */
   const iconRowBtn =
-    "inline-flex min-h-10 min-w-10 shrink-0 items-center justify-center rounded-lg p-2";
+    "inline-flex min-h-11 flex-1 basis-0 items-center justify-center rounded-lg p-2 min-[600px]:min-h-10 min-[600px]:min-w-10 min-[600px]:flex-none min-[600px]:basis-auto min-[600px]:shrink-0";
 
   return (
     <article
@@ -2007,10 +2014,13 @@ function SaleCard({
       role="button"
       tabIndex={0}
     >
-      {/* même Row que Flutter : Expanded(numéro) | chip | 8px | statut */}
-      <div className="flex min-w-0 flex-row items-center">
-        <div className="min-w-0 flex-1 pr-2">
-          <p className="text-left text-sm font-bold leading-tight text-fs-text">
+      {/* Flutter : Expanded(numéro) | chip | 8px | statut — mais à 360 px les
+          quatre puces écrasaient le numéro de vente contre le bord gauche. Sur
+          téléphone le numéro garde sa ligne et les puces s'alignent dessous ; dès
+          600 px on retrouve la Row d'origine. */}
+      <div className="flex min-w-0 flex-col gap-1.5 min-[600px]:flex-row min-[600px]:items-center min-[600px]:gap-0">
+        <div className="min-w-0 min-[600px]:flex-1 min-[600px]:pr-2">
+          <p className="text-left text-[15px] font-bold leading-tight text-fs-text min-[600px]:text-sm">
             {sale.sale_number}
           </p>
           {sale.prescription_number ? (
@@ -2019,7 +2029,7 @@ function SaleCard({
             </span>
           ) : null}
         </div>
-        <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
+        <div className="flex min-w-0 flex-wrap items-center gap-1.5 min-[600px]:shrink-0 min-[600px]:justify-end">
           <DocumentTypeChip sale={sale} />
           <SaleSettlementChip sale={sale} />
           {pickupEnabled ? <SaleDeliveryChip sale={sale} /> : null}
@@ -2041,7 +2051,7 @@ function SaleCard({
       <p className="mt-2 text-xs leading-normal text-neutral-600">
         {formatDateTime(sale.created_at)}
       </p>
-      <p className="mt-1 line-clamp-2 text-xs leading-normal text-neutral-800">
+      <p className="mt-1 line-clamp-2 text-[13px] leading-normal text-neutral-800 min-[600px]:text-xs">
         {subtitle}
       </p>
       {salePaymentDisplays(sale.sale_payments).length > 0 ? (
@@ -2050,12 +2060,12 @@ function SaleCard({
         </div>
       ) : null}
       <div
-        className="mt-3 flex items-center"
+        className="mt-3 flex flex-col gap-2 min-[600px]:flex-row min-[600px]:items-center min-[600px]:gap-0"
         onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.stopPropagation()}
       >
         <span className="min-w-0">
-          <span className="block text-base font-bold text-fs-text">
+          <span className="block text-lg font-bold leading-tight text-fs-text min-[600px]:text-base">
             {formatCurrency(sale.total)}
           </span>
           {showProfit && saleProfitCountable(sale) ? (
@@ -2083,7 +2093,7 @@ function SaleCard({
             );
           })()}
         </span>
-        <span className="ml-auto flex items-center">
+        <span className="flex items-center gap-1.5 border-t border-black/[0.05] pt-2 min-[600px]:ml-auto min-[600px]:gap-0 min-[600px]:border-0 min-[600px]:pt-0">
           <button
             type="button"
             onClick={onDetail}
