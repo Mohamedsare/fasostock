@@ -110,7 +110,7 @@ function SoftCard({
   return (
     <div
       className={cn(
-        "min-w-0 rounded-[10px] border border-black/6 bg-fs-card text-fs-text shadow-[0_2px_12px_rgba(0,0,0,0.04)] dark:shadow-[0_4px_24px_rgba(0,0,0,0.35)]",
+        "min-w-0 rounded-[8px] border border-black/6 bg-fs-card text-fs-text shadow-[0_2px_12px_rgba(0,0,0,0.04)] dark:shadow-[0_4px_24px_rgba(0,0,0,0.35)]",
         className,
       )}
     >
@@ -208,7 +208,7 @@ function SoftScrollListCard({
           role={isWide ? "group" : undefined}
           aria-label={isWide ? ariaLabel : undefined}
           className={cn(
-            "min-w-0 rounded-md",
+            "min-w-0 rounded-sm",
             isWide
               ? "fs-scroll-y max-h-[15.5rem] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--owner-accent)]/40"
               : cn(
@@ -239,7 +239,7 @@ function SoftScrollListCard({
           type="button"
           onClick={() => setExpanded((v) => !v)}
           aria-expanded={expanded}
-          className="mt-1 flex min-h-11 w-full touch-manipulation items-center justify-center gap-1 rounded-md text-[11px] font-bold text-[var(--owner-accent)] active:bg-[var(--owner-accent)]/8"
+          className="mt-1 flex min-h-11 w-full touch-manipulation items-center justify-center gap-1 rounded-sm text-[11px] font-bold text-[var(--owner-accent)] active:bg-[var(--owner-accent)]/8"
         >
           {expanded ? "Réduire" : `Tout afficher (${count})`}
           {expanded ? (
@@ -320,7 +320,7 @@ function OwnerKpiCardShell({
   return (
     <div
       className={cn(
-        "group relative flex h-full flex-col overflow-hidden rounded-md",
+        "group relative flex h-full flex-col overflow-hidden rounded-sm",
         compact ? "min-h-[4.25rem]" : "min-h-[5.75rem]",
         className,
       )}
@@ -424,7 +424,7 @@ function KpiTile({
     <div className="flex min-h-0 min-w-0 flex-col overflow-hidden">
       <div className="flex items-start justify-between gap-2">
         <span
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[6px] sm:h-8 sm:w-8"
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[4px] sm:h-8 sm:w-8"
           style={{ backgroundColor: iconBg, color: iconColor }}
         >
           <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" aria-hidden />
@@ -756,7 +756,7 @@ export function OwnerDashboardUi(props: OwnerDashboardUiProps) {
             </h1>
             <p className="mt-1 text-sm font-medium leading-snug text-neutral-500">{description}</p>
           </div>
-          <div className="flex flex-col gap-2 rounded-[10px] border border-black/6 bg-neutral-100/80 p-2 dark:bg-fs-surface-container/90 sm:flex-row sm:items-center sm:justify-end">
+          <div className="flex flex-col gap-2 rounded-[8px] border border-black/6 bg-neutral-100/80 p-2 dark:bg-fs-surface-container/90 sm:flex-row sm:items-center sm:justify-end">
             <div className="flex min-h-9 flex-wrap items-center gap-2 touch-manipulation">
               <MdCalendarToday className="h-4 w-4 shrink-0 text-neutral-400" aria-hidden />
               <input
@@ -766,7 +766,7 @@ export function OwnerDashboardUi(props: OwnerDashboardUiProps) {
                 onChange={(e) =>
                   startTransition(() => setSelectedDay(e.target.value))
                 }
-                className="min-h-9 min-w-0 flex-1 rounded-md border border-black/8 bg-fs-card px-2 py-1.5 text-base font-semibold text-neutral-800 min-[900px]:max-w-[11rem] min-[900px]:text-sm"
+                className="min-h-9 min-w-0 flex-1 rounded-sm border border-black/8 bg-fs-card px-2 py-1.5 text-base font-semibold text-neutral-800 min-[900px]:max-w-[11rem] min-[900px]:text-sm"
               />
               <button
                 type="button"
@@ -775,7 +775,7 @@ export function OwnerDashboardUi(props: OwnerDashboardUiProps) {
                     setSelectedDay(operationTodayYmd()),
                   )
                 }
-                className="min-h-9 shrink-0 rounded-md bg-fs-card px-3 py-1.5 text-xs font-bold text-[var(--owner-accent)] ring-1 ring-black/8 touch-manipulation min-[900px]:text-xs dark:ring-white/12"
+                className="min-h-9 shrink-0 rounded-sm bg-fs-card px-3 py-1.5 text-xs font-bold text-[var(--owner-accent)] ring-1 ring-black/8 touch-manipulation min-[900px]:text-xs dark:ring-white/12"
               >
                 Aujourd&apos;hui
               </button>
@@ -860,7 +860,7 @@ export function OwnerDashboardUi(props: OwnerDashboardUiProps) {
                 const salesPct = total > 0 ? (sales / total) * 100 : 0;
                 const creditPct = total > 0 ? 100 - salesPct : 0;
                 return (
-                  <div className="mt-2.5 rounded-lg border border-black/[0.06] bg-fs-surface-container/60 p-3 dark:border-white/10">
+                  <div className="mt-2.5 rounded-md border border-black/[0.06] bg-fs-surface-container/60 p-3 dark:border-white/10">
                     {/*
                       Deux légendes côte à côte à 360 px, c'était « Ventes du jour »
                       cassé sur trois lignes et le montant des crédits poussé HORS de
@@ -921,7 +921,7 @@ export function OwnerDashboardUi(props: OwnerDashboardUiProps) {
               type="button"
               aria-expanded={stockPanelOpen}
               onClick={() => setStockPanelOpen((o) => !o)}
-              className="flex min-h-12 w-full items-center justify-between gap-2 rounded-lg bg-red-50 px-3 py-2.5 text-left text-sm font-bold text-red-700 ring-1 ring-red-100 transition hover:bg-red-50/90 touch-manipulation dark:bg-red-950/35 dark:text-red-300 dark:ring-red-500/25 dark:hover:bg-red-950/45"
+              className="flex min-h-12 w-full items-center justify-between gap-2 rounded-md bg-red-50 px-3 py-2.5 text-left text-sm font-bold text-red-700 ring-1 ring-red-100 transition hover:bg-red-50/90 touch-manipulation dark:bg-red-950/35 dark:text-red-300 dark:ring-red-500/25 dark:hover:bg-red-950/45"
             >
               <span className="min-w-0 text-left leading-snug">
                 {d.lowStockCount} alerte{d.lowStockCount > 1 ? "s" : ""} stock
@@ -939,7 +939,7 @@ export function OwnerDashboardUi(props: OwnerDashboardUiProps) {
             </button>
             {stockPanelOpen ? (
               <div
-                className="mt-2 space-y-1.5 rounded-lg border border-red-100 bg-red-50/80 p-2.5 dark:border-red-500/25 dark:bg-red-950/35"
+                className="mt-2 space-y-1.5 rounded-md border border-red-100 bg-red-50/80 p-2.5 dark:border-red-500/25 dark:bg-red-950/35"
                 role="region"
                 aria-label="Alertes stock détaillées"
               >
@@ -961,7 +961,7 @@ export function OwnerDashboardUi(props: OwnerDashboardUiProps) {
                       {d.stockWatchSamples.map((s, idx) => (
                         <li
                           key={`${s.storeName ?? ""}-${s.productName}-${idx}`}
-                          className="flex items-center justify-between gap-2 rounded-md bg-fs-card/90 px-2.5 py-2 text-xs ring-1 ring-black/5 dark:ring-white/10"
+                          className="flex items-center justify-between gap-2 rounded-sm bg-fs-card/90 px-2.5 py-2 text-xs ring-1 ring-black/5 dark:ring-white/10"
                         >
                           <span className="min-w-0 truncate font-medium text-neutral-800 dark:text-fs-text">
                             {s.productName}
@@ -971,7 +971,7 @@ export function OwnerDashboardUi(props: OwnerDashboardUiProps) {
                               </span>
                             ) : null}
                           </span>
-                          <span className="shrink-0 rounded-sm bg-red-100 px-1.5 py-0.5 text-[10px] font-bold leading-tight text-red-800 dark:bg-red-950/60 dark:text-red-200">
+                          <span className="shrink-0 rounded-xs bg-red-100 px-1.5 py-0.5 text-[10px] font-bold leading-tight text-red-800 dark:bg-red-950/60 dark:text-red-200">
                             {s.quantity} en stock
                             {s.threshold > 0 ? ` · min. ${s.threshold}` : ""}
                           </span>
@@ -1006,7 +1006,7 @@ export function OwnerDashboardUi(props: OwnerDashboardUiProps) {
                   })
                 }
                 className={cn(
-                  "min-h-9 touch-manipulation rounded-md px-3 py-1.5 text-sm font-bold transition-colors",
+                  "min-h-9 touch-manipulation rounded-sm px-3 py-1.5 text-sm font-bold transition-colors",
                   scope === "company"
                     ? "bg-[color-mix(in_srgb,var(--owner-accent)_16%,white)] text-[var(--owner-accent)] ring-1 ring-[color-mix(in_srgb,var(--owner-accent)_35%,transparent)] dark:bg-[color-mix(in_oklab,var(--owner-accent)_26%,var(--fs-surface-container))] dark:ring-[color-mix(in_srgb,var(--owner-accent)_45%,transparent)]"
                     : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200/80 dark:bg-fs-surface-container dark:hover:bg-white/[0.08]",
@@ -1026,7 +1026,7 @@ export function OwnerDashboardUi(props: OwnerDashboardUiProps) {
                     });
                   }}
                   className={cn(
-                    "min-h-9 touch-manipulation rounded-md px-3 py-1.5 text-sm font-bold transition-colors",
+                    "min-h-9 touch-manipulation rounded-sm px-3 py-1.5 text-sm font-bold transition-colors",
                     scope === "store"
                       ? "bg-[color-mix(in_srgb,var(--owner-accent)_16%,white)] text-[var(--owner-accent)] ring-1 ring-[color-mix(in_srgb,var(--owner-accent)_35%,transparent)] dark:bg-[color-mix(in_oklab,var(--owner-accent)_26%,var(--fs-surface-container))] dark:ring-[color-mix(in_srgb,var(--owner-accent)_45%,transparent)]"
                       : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200/80 dark:bg-fs-surface-container dark:hover:bg-white/[0.08]",
@@ -1050,7 +1050,7 @@ export function OwnerDashboardUi(props: OwnerDashboardUiProps) {
                       if (id) syncGlobalStoreFromDashboard(id);
                     });
                   }}
-                  className="min-h-9 w-full min-w-0 rounded-md border border-black/10 bg-fs-card px-2 py-1.5 text-base font-semibold text-neutral-800 touch-manipulation min-[900px]:text-sm"
+                  className="min-h-9 w-full min-w-0 rounded-sm border border-black/10 bg-fs-card px-2 py-1.5 text-base font-semibold text-neutral-800 touch-manipulation min-[900px]:text-sm"
                 >
                   {stores.map((s) => (
                     <option key={s.id} value={s.id}>
@@ -1064,7 +1064,7 @@ export function OwnerDashboardUi(props: OwnerDashboardUiProps) {
                 <span className="text-[11px] font-bold uppercase tracking-wide text-neutral-400">
                   Boutique
                 </span>
-                <span className="rounded-md bg-neutral-50 px-3 py-1.5 text-sm font-semibold text-neutral-500 ring-1 ring-black/5 dark:ring-white/10">
+                <span className="rounded-sm bg-neutral-50 px-3 py-1.5 text-sm font-semibold text-neutral-500 ring-1 ring-black/5 dark:ring-white/10">
                   Toutes les boutiques
                 </span>
               </div>
@@ -1095,7 +1095,7 @@ export function OwnerDashboardUi(props: OwnerDashboardUiProps) {
                     });
                   }}
                   className={cn(
-                    "min-h-9 touch-manipulation rounded-md px-2.5 py-1.5 text-xs font-bold",
+                    "min-h-9 touch-manipulation rounded-sm px-2.5 py-1.5 text-xs font-bold",
                     period === p
                       ? "bg-[color-mix(in_srgb,var(--owner-accent)_16%,white)] text-[var(--owner-accent)] dark:bg-[color-mix(in_oklab,var(--owner-accent)_26%,var(--fs-surface-container))]"
                       : "bg-neutral-100 text-neutral-700 dark:bg-fs-surface-container dark:hover:bg-white/[0.06]",
@@ -1113,7 +1113,7 @@ export function OwnerDashboardUi(props: OwnerDashboardUiProps) {
                 value="previous"
                 aria-label="Période de comparaison"
                 onChange={() => undefined}
-                className="min-h-9 w-full rounded-md border border-black/8 bg-neutral-50 px-3 py-1.5 text-base font-semibold text-neutral-800 ring-1 ring-black/6 touch-manipulation min-[900px]:text-sm dark:bg-fs-surface-low"
+                className="min-h-9 w-full rounded-sm border border-black/8 bg-neutral-50 px-3 py-1.5 text-base font-semibold text-neutral-800 ring-1 ring-black/6 touch-manipulation min-[900px]:text-sm dark:bg-fs-surface-low"
               >
                 <option value="previous">Période précédente</option>
               </select>
@@ -1129,7 +1129,7 @@ export function OwnerDashboardUi(props: OwnerDashboardUiProps) {
                   onChange={(e) =>
                     startTransition(() => setCustomFrom(e.target.value || null))
                   }
-                  className="ml-1 min-h-9 rounded-md border border-black/10 bg-fs-card px-2 py-1.5 text-base touch-manipulation min-[900px]:text-sm"
+                  className="ml-1 min-h-9 rounded-sm border border-black/10 bg-fs-card px-2 py-1.5 text-base touch-manipulation min-[900px]:text-sm"
                 />
               </label>
               <label className="text-xs font-semibold text-neutral-600">
@@ -1140,7 +1140,7 @@ export function OwnerDashboardUi(props: OwnerDashboardUiProps) {
                   onChange={(e) =>
                     startTransition(() => setCustomTo(e.target.value || null))
                   }
-                  className="ml-1 min-h-9 rounded-md border border-black/10 bg-fs-card px-2 py-1.5 text-base touch-manipulation min-[900px]:text-sm"
+                  className="ml-1 min-h-9 rounded-sm border border-black/10 bg-fs-card px-2 py-1.5 text-base touch-manipulation min-[900px]:text-sm"
                 />
               </label>
               {/*
@@ -1354,7 +1354,7 @@ export function OwnerDashboardUi(props: OwnerDashboardUiProps) {
                     <span className="flex min-w-0 flex-1 items-center gap-1.5 truncate font-medium text-neutral-800 min-[900px]:gap-2">
                       <span
                         className={cn(
-                          "inline-flex h-4 min-w-4 shrink-0 items-center justify-center rounded-sm px-1 text-[9px] font-bold tabular-nums min-[900px]:h-5 min-[900px]:min-w-5 min-[900px]:text-[10px]",
+                          "inline-flex h-4 min-w-4 shrink-0 items-center justify-center rounded-xs px-1 text-[9px] font-bold tabular-nums min-[900px]:h-5 min-[900px]:min-w-5 min-[900px]:text-[10px]",
                           i < 3
                             ? "bg-[var(--owner-accent)]/12 text-[var(--owner-accent)]"
                             : "bg-neutral-100 text-neutral-600 dark:bg-white/10 dark:text-neutral-300",
@@ -1422,7 +1422,7 @@ export function OwnerDashboardUi(props: OwnerDashboardUiProps) {
                   <span className="min-w-0 flex-1 truncate font-medium text-neutral-800">
                     {s.productName}
                   </span>
-                  <span className="max-w-[45%] shrink-0 rounded-sm bg-red-50 px-1.5 py-0.5 text-center text-[8px] font-bold uppercase leading-tight text-red-700 ring-1 ring-red-100 min-[900px]:max-w-none min-[900px]:px-2 min-[900px]:text-[9px] dark:bg-red-950/50 dark:text-red-300 dark:ring-red-500/25">
+                  <span className="max-w-[45%] shrink-0 rounded-xs bg-red-50 px-1.5 py-0.5 text-center text-[8px] font-bold uppercase leading-tight text-red-700 ring-1 ring-red-100 min-[900px]:max-w-none min-[900px]:px-2 min-[900px]:text-[9px] dark:bg-red-950/50 dark:text-red-300 dark:ring-red-500/25">
                     Stock {s.quantity}
                   </span>
                 </li>
@@ -1435,7 +1435,7 @@ export function OwnerDashboardUi(props: OwnerDashboardUiProps) {
                   <span className="min-w-0 flex-1 truncate font-medium text-neutral-800">
                     {p.productName}
                   </span>
-                  <span className="max-w-[45%] shrink-0 rounded-sm bg-amber-50 px-1.5 py-0.5 text-center text-[8px] font-bold uppercase leading-tight text-amber-800 ring-1 ring-amber-100 min-[900px]:max-w-none min-[900px]:px-2 min-[900px]:text-[9px] dark:bg-amber-950/45 dark:text-amber-200 dark:ring-amber-500/25">
+                  <span className="max-w-[45%] shrink-0 rounded-xs bg-amber-50 px-1.5 py-0.5 text-center text-[8px] font-bold uppercase leading-tight text-amber-800 ring-1 ring-amber-100 min-[900px]:max-w-none min-[900px]:px-2 min-[900px]:text-[9px] dark:bg-amber-950/45 dark:text-amber-200 dark:ring-amber-500/25">
                     Faible CA
                   </span>
                 </li>
@@ -1466,7 +1466,7 @@ export function OwnerDashboardUi(props: OwnerDashboardUiProps) {
               >
                 <div
                   className={cn(
-                    "flex min-h-[96px] min-w-0 flex-col items-center justify-center gap-1 overflow-hidden rounded-[10px] p-2.5 text-center ring-1 transition group-active:scale-[0.99] min-[1100px]:min-h-[88px] min-[1100px]:p-3 dark:ring-white/10",
+                    "flex min-h-[96px] min-w-0 flex-col items-center justify-center gap-1 overflow-hidden rounded-[8px] p-2.5 text-center ring-1 transition group-active:scale-[0.99] min-[1100px]:min-h-[88px] min-[1100px]:p-3 dark:ring-white/10",
                     t.bg,
                   )}
                 >

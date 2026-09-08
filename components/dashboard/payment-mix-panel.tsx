@@ -158,7 +158,7 @@ export function PaymentMixPanel({
   const hasData = !loading && entries.length > 0 && sum > 0;
 
   return (
-    <div className="mt-3 overflow-hidden rounded-lg border border-black/[0.07] bg-fs-surface-container/50 dark:border-white/10 dark:bg-white/[0.03]">
+    <div className="mt-3 overflow-hidden rounded-md border border-black/[0.07] bg-fs-surface-container/50 dark:border-white/10 dark:bg-white/[0.03]">
       <button
         type="button"
         onClick={toggle}
@@ -210,7 +210,7 @@ export function PaymentMixPanel({
           <div className="border-t border-black/[0.06] px-3 pb-3 pt-3 dark:border-white/10">
             {loading ? (
               <div
-                className="h-16 w-full rounded-md bg-black/[0.05] motion-safe:animate-pulse dark:bg-white/10"
+                className="h-16 w-full rounded-sm bg-black/[0.05] motion-safe:animate-pulse dark:bg-white/10"
                 aria-label="Calcul en cours"
               />
             ) : !hasData ? (
@@ -221,7 +221,7 @@ export function PaymentMixPanel({
               <>
                 {/* 1. La question du soir : combien de liquide, combien sur les comptes. */}
                 <div className="grid grid-cols-2 gap-2">
-                  <div className="rounded-md bg-emerald-500/10 px-2.5 py-2">
+                  <div className="rounded-sm bg-emerald-500/10 px-2.5 py-2">
                     <p className="text-[9px] font-bold uppercase leading-tight tracking-wide text-emerald-800 dark:text-emerald-300 min-[900px]:text-[10px]">
                       En espèces
                     </p>
@@ -232,7 +232,7 @@ export function PaymentMixPanel({
                       {formatShare(drawer, sum)} · dans la caisse
                     </p>
                   </div>
-                  <div className="rounded-md bg-violet-500/10 px-2.5 py-2">
+                  <div className="rounded-sm bg-violet-500/10 px-2.5 py-2">
                     <p className="text-[9px] font-bold uppercase leading-tight tracking-wide text-violet-800 dark:text-violet-300 min-[900px]:text-[10px]">
                       Sur vos comptes
                     </p>

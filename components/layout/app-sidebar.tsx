@@ -125,7 +125,7 @@ export function AppSidebar({
                     effectiveCollapsed ? "h-9 w-9" : "h-8 w-8",
                   )
                 : cn(
-                    "overflow-hidden rounded-xl bg-[color-mix(in_srgb,var(--fs-accent)_14%,transparent)]",
+                    "overflow-hidden rounded-lg bg-[color-mix(in_srgb,var(--fs-accent)_14%,transparent)]",
                     "ring-1 ring-[color-mix(in_srgb,var(--fs-accent)_22%,transparent)]",
                     effectiveCollapsed ? "h-9 w-9" : "h-8 w-8",
                   ),
@@ -158,7 +158,7 @@ export function AppSidebar({
 
       <nav
         className={cn(
-          "relative z-[1] flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overflow-x-hidden",
+          "relative z-[1] flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto overflow-x-hidden",
           "px-2.5 py-3 [scrollbar-gutter:stable]",
         )}
         aria-label="Sections de l’application"
@@ -173,7 +173,7 @@ export function AppSidebar({
                   key={`${item.href}-${item.label}`}
                   onClick={() => toggleSection(item.href)}
                   className={cn(
-                    "mt-3 flex w-full items-center justify-between rounded-xl px-2 py-1.5 text-left",
+                    "mt-3 flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-left",
                     "text-[11px] font-extrabold uppercase tracking-wide text-black/70 transition-colors",
                     "hover:bg-black/[0.04] dark:text-neutral-200/85 dark:hover:bg-white/[0.06]",
                     effectiveCollapsed && "sr-only",
@@ -205,12 +205,12 @@ export function AppSidebar({
                 title={effectiveCollapsed ? item.label : undefined}
                 onClick={() => onNavigate?.()}
                 className={cn(
-                  "group/nav relative flex items-center rounded-2xl text-[13px] font-semibold leading-tight tracking-tight",
+                  "group/nav relative flex items-center rounded-sm text-[13px] font-semibold leading-tight tracking-tight",
                   "outline-none transition-[color,background-color,transform,box-shadow] duration-200 ease-out",
                   "focus-visible:ring-2 focus-visible:ring-[var(--fs-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-fs-card",
                   effectiveCollapsed
-                    ? "justify-center px-2 py-3"
-                    : cn("gap-3 px-3 py-2.5", item.child && "pl-6"),
+                    ? "justify-center px-2 py-2.5"
+                    : cn("gap-3 px-3 py-2", item.child && "pl-6"),
                   active
                     ? [
                         "bg-black/5.5 text-fs-text dark:bg-white/12 dark:text-white",
@@ -231,7 +231,7 @@ export function AppSidebar({
                 ) : null}
                 <span
                   className={cn(
-                    "flex shrink-0 items-center justify-center rounded-lg transition-[opacity,box-shadow] duration-200",
+                    "flex shrink-0 items-center justify-center rounded-xs transition-[opacity,box-shadow] duration-200",
                     effectiveCollapsed ? "h-10 w-10" : "h-9 w-9",
                     !active && "opacity-85 group-hover/nav:opacity-100",
                     active && "shadow-[0_2px_8px_rgba(0,0,0,0.22)]",
@@ -325,7 +325,7 @@ export function AppSidebar({
             {!effectiveCollapsed ? (
               <div className="flex items-center gap-2.5">
                 <span
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[color-mix(in_srgb,var(--fs-accent)_12%,transparent)] text-[10px] font-bold tabular-nums text-[var(--fs-accent)] ring-1 ring-[color-mix(in_srgb,var(--fs-accent)_20%,transparent)]"
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[color-mix(in_srgb,var(--fs-accent)_12%,transparent)] text-[10px] font-bold tabular-nums text-[var(--fs-accent)] ring-1 ring-[color-mix(in_srgb,var(--fs-accent)_20%,transparent)]"
                   aria-hidden
                 >
                   {navInitials(userEmail)}
@@ -339,7 +339,7 @@ export function AppSidebar({
               </div>
             ) : (
               <span
-                className="flex h-9 w-9 items-center justify-center rounded-xl bg-[color-mix(in_srgb,var(--fs-accent)_12%,transparent)] text-[10px] font-bold tabular-nums text-[var(--fs-accent)] ring-1 ring-[color-mix(in_srgb,var(--fs-accent)_20%,transparent)]"
+                className="flex h-9 w-9 items-center justify-center rounded-lg bg-[color-mix(in_srgb,var(--fs-accent)_12%,transparent)] text-[10px] font-bold tabular-nums text-[var(--fs-accent)] ring-1 ring-[color-mix(in_srgb,var(--fs-accent)_20%,transparent)]"
                 title={userEmail}
               >
                 {navInitials(userEmail)}
