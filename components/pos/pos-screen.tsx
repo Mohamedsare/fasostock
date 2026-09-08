@@ -147,6 +147,7 @@ import {
   MdPlace,
   MdLogout,
   MdLock,
+  MdMoreVert,
   MdPayments,
   MdPersonAdd,
   MdPrint,
@@ -282,6 +283,15 @@ export function PosScreen({
    */
   const [lastTicket, setLastTicket] = useState<ReceiptTicketData | null>(null);
   const [quickSettingsOpen, setQuickSettingsOpen] = useState(false);
+  /*
+   * Menu de la caisse rapide sur telephone.
+   *
+   * La barre orange coutait 56 px en haut d'un ecran de 640 : une rangee de
+   * produits en moins, toute la journee. Elle disparait donc sous 900 px et ses
+   * quatre actions (dernier ticket, historique, parametres, quitter) se replient
+   * ici. Rien n'est perdu : sans cela, le caissier ne pourrait plus sortir du POS.
+   */
+  const [posMenuOpen, setPosMenuOpen] = useState(false);
   const [barcodeScannerOpen, setBarcodeScannerOpen] = useState(false);
   /** « Panier IA » : photo de la liste du client + discussion (réglage propriétaire). */
   const [aiCartOpen, setAiCartOpen] = useState(false);
@@ -2604,8 +2614,17 @@ export function PosScreen({
 
   return (
     <div className="box-border flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden overflow-x-hidden bg-[#F8F9FA] px-3 overscroll-none sm:px-[18px]">
-      {/* Header — hauteur réduite pour densité bureau (zoom visuel à 100 % navigateur) */}
-      <header className="z-30 flex h-14 shrink-0 items-center gap-2 bg-[#f97316] px-3 text-white sm:h-[52px] sm:px-4">
+      {/* Header — hauteur réduite pour densité bureau (zoom visuel à 100 % navigateur).
+          En caisse rapide, il ne s'affiche qu'à partir de 900 px : sur téléphone la
+          place va aux produits et ses actions passent dans le menu de la barre de
+          recherche. Les modes A4 le gardent — leur mise en page dense n'a pas de
+          rangée où loger le menu. */}
+      <header
+        className={cn(
+          "z-30 flex h-14 shrink-0 items-center gap-2 bg-[#f97316] px-3 text-white sm:h-[52px] sm:px-4",
+          mode === "quick" && "hidden min-[900px]:flex",
+        )}
+      >
         {mode === "quick" ? (
           <MdStore className="h-5 w-5 shrink-0 sm:h-6 sm:w-6" aria-hidden />
         ) : mode === "a4-table" ? (
@@ -2865,45 +2884,58 @@ export function PosScreen({
               )}
             >
               {mode === "quick" ? (
-                <div className="relative h-9">
+                <div className="flex items-center gap-2">
+                  <div className="relative h-9 min-w-0 flex-1">
+                    <button
+                      type="button"
+                      className="absolute left-0.5 top-1/2 z-[1] -translate-y-1/2 rounded-full p-0.5 text-[#F97316] hover:bg-black/5"
+                      title="Ouvrir le scan caméra"
+                      aria-label="Ouvrir le scan caméra"
+                      onClick={() => {
+                        setBarcodeScannerOpen(true);
+                      }}
+                    >
+                      <MdQrCodeScanner className="h-[22px] w-[22px]" aria-hidden />
+                    </button>
+                    <MdSearch
+                      className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-[#F97316]"
+                      aria-hidden
+                    />
+                    <input
+                      ref={searchInputRef}
+                      className={fsInputClass(
+                        // fsInputClass inclut `sm:px-3` : sans `sm:pl-*` explicite, le padding gauche
+                        // repasse à ~12px au breakpoint sm et le placeholder chevauche l’icône scanner.
+                        "h-9 w-full rounded-md border-[#E5E7EB] bg-white py-1 pl-11 pr-9 text-xs leading-snug text-[#1F2937] placeholder:text-[#1F2937]/50 sm:pl-12 sm:pr-10 sm:text-[13px]",
+                      )}
+                      value={search}
+                      onChange={(e) => {
+                        setSearch(e.target.value);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          const v = (e.currentTarget as HTMLInputElement).value;
+                          addByBarcode(v);
+                        }
+                      }}
+                      placeholder="Scanner ou rechercher un produit..."
+                      autoComplete="off"
+                      spellCheck={false}
+                      enterKeyHint="done"
+                      autoFocus
+                    />
+                  </div>
+                  {/* Remplace la barre orange sur téléphone : boutique, dernier
+                      ticket, historique, réglages et sortie du POS. */}
                   <button
                     type="button"
-                    className="absolute left-0.5 top-1/2 z-[1] -translate-y-1/2 rounded-full p-0.5 text-[#F97316] hover:bg-black/5"
-                    title="Ouvrir le scan caméra"
-                    aria-label="Ouvrir le scan caméra"
-                    onClick={() => {
-                      setBarcodeScannerOpen(true);
-                    }}
+                    onClick={() => setPosMenuOpen(true)}
+                    className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-[#E5E7EB] bg-white text-[#1F2937] min-[900px]:hidden"
+                    aria-label="Menu de la caisse"
+                    title="Menu de la caisse"
                   >
-                    <MdQrCodeScanner className="h-[22px] w-[22px]" aria-hidden />
+                    <MdMoreVert className="h-5 w-5" aria-hidden />
                   </button>
-                  <MdSearch
-                    className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-[#F97316]"
-                    aria-hidden
-                  />
-                  <input
-                    ref={searchInputRef}
-                    className={fsInputClass(
-                      // fsInputClass inclut `sm:px-3` : sans `sm:pl-*` explicite, le padding gauche
-                      // repasse à ~12px au breakpoint sm et le placeholder chevauche l’icône scanner.
-                      "h-9 w-full rounded-md border-[#E5E7EB] bg-white py-1 pl-11 pr-9 text-xs leading-snug text-[#1F2937] placeholder:text-[#1F2937]/50 sm:pl-12 sm:pr-10 sm:text-[13px]",
-                    )}
-                    value={search}
-                    onChange={(e) => {
-                      setSearch(e.target.value);
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        const v = (e.currentTarget as HTMLInputElement).value;
-                        addByBarcode(v);
-                      }
-                    }}
-                    placeholder="Scanner ou rechercher un produit..."
-                    autoComplete="off"
-                    spellCheck={false}
-                    enterKeyHint="done"
-                    autoFocus
-                  />
                 </div>
               ) : mode === "a4-table" ? (
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
@@ -3361,6 +3393,92 @@ export function PosScreen({
             >
               Voir / Payer
             </button>
+          </div>
+        </div>
+      ) : null}
+
+      {/*
+        Menu de la caisse (téléphone) — l'exact contenu de la barre orange masquée :
+        identité de la boutique, dernier ticket, historique, réglages, sortie.
+      */}
+      {mode === "quick" && posMenuOpen && !isWide ? (
+        <div
+          className="fixed inset-0 z-[60] flex items-end bg-black/35 min-[900px]:hidden"
+          role="presentation"
+          onClick={() => setPosMenuOpen(false)}
+        >
+          <div
+            className="w-full rounded-t-lg bg-white shadow-[0_-4px_20px_rgba(0,0,0,0.2)]"
+            style={{ paddingBottom: "max(12px, env(safe-area-inset-bottom))" }}
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Menu de la caisse"
+          >
+            <div className="flex items-center gap-2.5 border-b border-[#E5E7EB] px-4 py-3.5">
+              <MdStore className="h-6 w-6 shrink-0 text-[#F97316]" aria-hidden />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-bold text-[#1F2937]">
+                  {store?.name ?? "Boutique"}
+                </p>
+                <p className="truncate text-xs text-[#1F2937]/70">
+                  POS Caisse Rapide · {clock}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPosMenuOpen(false)}
+                className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full hover:bg-black/5"
+                aria-label="Fermer le menu"
+              >
+                <MdClose className="h-6 w-6 text-[#1F2937]" aria-hidden />
+              </button>
+            </div>
+            <div className="flex flex-col p-2">
+              {lastTicket ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPosMenuOpen(false);
+                    setReceiptDialog(lastTicket);
+                  }}
+                  className="flex min-h-12 items-center gap-3 rounded-md px-3 text-left text-sm font-semibold text-[#1F2937] active:bg-black/5"
+                >
+                  <MdPrint className="h-5 w-5 shrink-0 text-[#F97316]" aria-hidden />
+                  Réimprimer le dernier ticket
+                </button>
+              ) : null}
+              <Link
+                href={`${ROUTES.sales}?store=${encodeURIComponent(storeId)}`}
+                onClick={() => setPosMenuOpen(false)}
+                className="flex min-h-12 items-center gap-3 rounded-md px-3 text-left text-sm font-semibold text-[#1F2937] active:bg-black/5"
+              >
+                <MdHistory className="h-5 w-5 shrink-0 text-[#F97316]" aria-hidden />
+                Historique des ventes
+              </Link>
+              <button
+                type="button"
+                onClick={() => {
+                  setPosMenuOpen(false);
+                  setQuickSettingsOpen(true);
+                }}
+                className="flex min-h-12 items-center gap-3 rounded-md px-3 text-left text-sm font-semibold text-[#1F2937] active:bg-black/5"
+              >
+                <MdSettings className="h-5 w-5 shrink-0 text-[#F97316]" aria-hidden />
+                Paramètres caisse
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setPosMenuOpen(false);
+                  exitPos();
+                }}
+                className="mt-1 flex min-h-12 items-center gap-3 rounded-md border-t border-[#E5E7EB] px-3 pt-3 text-left text-sm font-bold text-[#DC2626] active:bg-black/5"
+              >
+                <MdLogout className="h-5 w-5 shrink-0" aria-hidden />
+                Quitter le POS
+              </button>
+            </div>
           </div>
         </div>
       ) : null}
