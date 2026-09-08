@@ -109,7 +109,7 @@ export function AppSidebar({
         <Link
           href="/dashboard"
           className={cn(
-            "flex min-w-0 items-center rounded-2xl outline-none transition-[transform,box-shadow] duration-200",
+            "flex min-w-0 items-center rounded-xl outline-none transition-[transform,box-shadow] duration-200",
             "focus-visible:ring-2 focus-visible:ring-[var(--fs-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-fs-card",
             effectiveCollapsed ? "justify-center p-1.5" : "gap-3 p-1 pr-2",
           )}
@@ -288,7 +288,7 @@ export function AppSidebar({
             type="button"
             onClick={onToggleCollapsed}
             className={cn(
-              "group/collapse flex w-full items-center rounded-2xl border border-black/[0.07] bg-fs-surface-container/60 text-fs-on-surface-variant",
+              "group/collapse flex w-full items-center rounded-xl border border-black/[0.07] bg-fs-surface-container/60 text-fs-on-surface-variant",
               "shadow-sm transition-[color,background-color,transform,border-color] duration-200",
               "hover:border-black/[0.1] hover:bg-fs-surface-container hover:text-fs-text",
               "active:scale-[0.98] dark:border-white/[0.18] dark:bg-white/[0.08] dark:text-white dark:hover:border-white/[0.26] dark:hover:bg-white/[0.13]",
@@ -317,7 +317,7 @@ export function AppSidebar({
         {userEmail ? (
           <div
             className={cn(
-              "rounded-2xl border border-black/[0.05] bg-fs-surface-low/90 px-2.5 py-2 dark:border-white/[0.07] dark:bg-white/[0.04]",
+              "rounded-xl border border-black/[0.05] bg-fs-surface-low/90 px-2.5 py-2 dark:border-white/[0.07] dark:bg-white/[0.04]",
               "dark:border-white/[0.16] dark:bg-white/[0.07]",
               effectiveCollapsed && "flex justify-center border-0 bg-transparent p-0",
             )}

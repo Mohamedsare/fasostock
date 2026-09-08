@@ -70,7 +70,7 @@ export function RepairBillDialog({
               discount,
             })
           }
-          className="fs-touch-target w-full rounded-xl bg-fs-accent py-3 text-sm font-semibold text-white disabled:opacity-60"
+          className="fs-touch-target w-full rounded-lg bg-fs-accent py-3 text-sm font-semibold text-white disabled:opacity-60"
         >
           {busy
             ? "Facturation…"
@@ -81,7 +81,7 @@ export function RepairBillDialog({
       }
     >
       {/* Récapitulatif */}
-      <div className="rounded-xl border border-black/[0.07] bg-fs-surface-container/50 p-3 dark:border-white/10">
+      <div className="rounded-lg border border-black/[0.07] bg-fs-surface-container/50 p-3 dark:border-white/10">
         <Row label="Pièces" value={formatCurrency(split.parts)} />
         <Row label="Main-d'œuvre" value={formatCurrency(split.labor)} />
         {discount > 0 ? (
@@ -123,7 +123,7 @@ export function RepairBillDialog({
                 type="button"
                 onClick={() => setMethod(m.id)}
                 className={cn(
-                  "inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl border px-2 py-2 text-xs font-semibold transition-colors",
+                  "inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border px-2 py-2 text-xs font-semibold transition-colors",
                   method === m.id
                     ? "border-transparent bg-fs-accent text-white"
                     : "border-black/[0.1] bg-fs-card text-neutral-600 hover:border-fs-accent/40 dark:border-white/10 dark:text-neutral-300",

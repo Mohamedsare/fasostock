@@ -251,7 +251,7 @@ export function AiScreen() {
           type="button"
           onClick={() => void onGenerate()}
           disabled={loading}
-          className="mt-4 flex w-full items-center justify-center gap-2 rounded-[10px] bg-fs-accent px-4 py-3 text-sm font-semibold text-white shadow-sm disabled:opacity-60"
+          className="mt-4 flex w-full items-center justify-center gap-2 rounded-[8px] bg-fs-accent px-4 py-3 text-sm font-semibold text-white shadow-sm disabled:opacity-60"
         >
           {loading ? (
             <span className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
@@ -265,7 +265,7 @@ export function AiScreen() {
           type="button"
           onClick={() => void onGenerate()}
           disabled={loading}
-          className="inline-flex shrink-0 items-center gap-2 rounded-[10px] bg-fs-accent px-4 py-2.5 text-sm font-semibold text-white shadow-sm disabled:opacity-60"
+          className="inline-flex shrink-0 items-center gap-2 rounded-[8px] bg-fs-accent px-4 py-2.5 text-sm font-semibold text-white shadow-sm disabled:opacity-60"
         >
           {loading ? (
             <span className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
@@ -462,7 +462,7 @@ export function AiScreen() {
                         </div>
                         <span
                           className={cn(
-                            "shrink-0 rounded-xl px-2.5 py-1 text-[11px] font-semibold",
+                            "shrink-0 rounded-lg px-2.5 py-1 text-[11px] font-semibold",
                             pr.className,
                           )}
                         >

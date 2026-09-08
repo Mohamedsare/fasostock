@@ -169,7 +169,7 @@ export function ProgressivePlanDetail({
             </button>
           </div>
 
-          <div className="mt-3 rounded-xl bg-[color-mix(in_srgb,var(--fs-accent)_9%,transparent)] p-3">
+          <div className="mt-3 rounded-lg bg-[color-mix(in_srgb,var(--fs-accent)_9%,transparent)] p-3">
             <div className="flex flex-wrap items-end justify-between gap-2">
               <div>
                 <p className="text-[11px] uppercase tracking-wide text-neutral-500">
@@ -220,7 +220,7 @@ export function ProgressivePlanDetail({
               <button
                 type="button"
                 onClick={onDeposit}
-                className="inline-flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-xl bg-fs-accent px-3 text-xs font-bold text-white sm:flex-none sm:px-4"
+                className="inline-flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-lg bg-fs-accent px-3 text-xs font-bold text-white sm:flex-none sm:px-4"
               >
                 <MdAddCard className="h-4 w-4" aria-hidden />
                 Nouveau versement
@@ -229,7 +229,7 @@ export function ProgressivePlanDetail({
                 type="button"
                 onClick={onRefund}
                 disabled={plan.balance <= 0}
-                className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl border border-black/10 px-3 text-xs font-bold text-amber-700 disabled:opacity-40 dark:border-white/10"
+                className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg border border-black/10 px-3 text-xs font-bold text-amber-700 disabled:opacity-40 dark:border-white/10"
               >
                 <MdUndo className="h-4 w-4" aria-hidden />
                 Rembourser
@@ -237,7 +237,7 @@ export function ProgressivePlanDetail({
               <button
                 type="button"
                 onClick={onEdit}
-                className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl border border-black/10 px-3 text-xs font-bold text-neutral-700 dark:border-white/10 dark:text-neutral-200"
+                className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg border border-black/10 px-3 text-xs font-bold text-neutral-700 dark:border-white/10 dark:text-neutral-200"
               >
                 <MdEdit className="h-4 w-4" aria-hidden />
                 Modifier
@@ -245,7 +245,7 @@ export function ProgressivePlanDetail({
               <button
                 type="button"
                 onClick={onCancelPlan}
-                className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl border border-black/10 px-3 text-xs font-bold text-red-600 dark:border-white/10"
+                className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg border border-black/10 px-3 text-xs font-bold text-red-600 dark:border-white/10"
                 title={
                   plan.balance > 0
                     ? "Clôture le dossier et rembourse l'épargne au client"
@@ -259,7 +259,7 @@ export function ProgressivePlanDetail({
                 <button
                   type="button"
                   onClick={onDeletePlan}
-                  className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl border border-red-500/40 px-3 text-xs font-bold text-red-600"
+                  className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg border border-red-500/40 px-3 text-xs font-bold text-red-600"
                   title="Supprimer définitivement (solde remboursé exigé)"
                 >
                   <MdDeleteForever className="h-4 w-4" aria-hidden />
@@ -273,7 +273,7 @@ export function ProgressivePlanDetail({
                 <button
                   type="button"
                   onClick={onRefund}
-                  className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl border border-black/10 px-3 text-xs font-bold text-amber-700 dark:border-white/10"
+                  className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg border border-black/10 px-3 text-xs font-bold text-amber-700 dark:border-white/10"
                 >
                   <MdUndo className="h-4 w-4" aria-hidden />
                   Rembourser le reliquat ({formatCurrency(plan.balance)})
@@ -283,7 +283,7 @@ export function ProgressivePlanDetail({
                 <button
                   type="button"
                   onClick={onDeletePlan}
-                  className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl border border-red-500/40 px-3 text-xs font-bold text-red-600"
+                  className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg border border-red-500/40 px-3 text-xs font-bold text-red-600"
                 >
                   <MdDeleteForever className="h-4 w-4" aria-hidden />
                   Supprimer définitivement
@@ -316,13 +316,13 @@ export function ProgressivePlanDetail({
                 <div className="h-6 w-6 animate-spin rounded-full border-2 border-fs-accent border-t-transparent" />
               </div>
             ) : selection.length === 0 ? (
-              <p className="rounded-xl border border-dashed border-black/15 p-4 text-center text-xs text-neutral-500 dark:border-white/15">
+              <p className="rounded-lg border border-dashed border-black/15 p-4 text-center text-xs text-neutral-500 dark:border-white/15">
                 Aucun {terms.singular} choisi. Utilisez « Modifier » pour composer la sélection
                 du client (plusieurs {terms.plural}, quantité et prix convenus).
               </p>
             ) : (
               <>
-                <ul className="divide-y divide-black/[0.06] overflow-hidden rounded-xl border border-black/[0.07] dark:divide-white/10 dark:border-white/10">
+                <ul className="divide-y divide-black/[0.06] overflow-hidden rounded-lg border border-black/[0.07] dark:divide-white/10 dark:border-white/10">
                   {selection.map((it) => (
                     <li key={it.id} className="flex items-center gap-3 px-3 py-2">
                       <span className="flex h-7 min-w-7 shrink-0 items-center justify-center rounded-lg bg-black/[0.05] px-1.5 text-xs font-bold text-neutral-600 dark:bg-white/10 dark:text-neutral-300">
@@ -357,7 +357,7 @@ export function ProgressivePlanDetail({
                     type="button"
                     onClick={onConvertSelection}
                     disabled={!selectionCovered}
-                    className="mt-2 inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-3 text-xs font-bold text-white disabled:opacity-40"
+                    className="mt-2 inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-3 text-xs font-bold text-white disabled:opacity-40"
                     title={
                       selectionCovered
                         ? "Enregistrer la vente de toute la sélection"
@@ -382,7 +382,7 @@ export function ProgressivePlanDetail({
                 Ce que son argent vaut aujourd&apos;hui
               </h4>
               {eligible.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-black/15 p-4 text-center text-xs text-neutral-500 dark:border-white/15">
+                <div className="rounded-lg border border-dashed border-black/15 p-4 text-center text-xs text-neutral-500 dark:border-white/15">
                   L&apos;épargne ne couvre encore aucun {terms.singular} disponible en boutique.
                   {nearly.length > 0 ? (
                     <div className="mt-3 space-y-1.5 text-left">
@@ -409,7 +409,7 @@ export function ProgressivePlanDetail({
                     {eligible.map((e) => (
                       <li
                         key={e.productId}
-                        className="flex gap-3 rounded-xl border border-black/[0.07] bg-fs-surface-container/60 p-2.5 dark:border-white/10"
+                        className="flex gap-3 rounded-lg border border-black/[0.07] bg-fs-surface-container/60 p-2.5 dark:border-white/10"
                       >
                         <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-black/5 dark:bg-white/10">
                           {e.imageUrl ? (
@@ -458,7 +458,7 @@ export function ProgressivePlanDetail({
                 <div className="h-7 w-7 animate-spin rounded-full border-2 border-fs-accent border-t-transparent" />
               </div>
             ) : (ledgerQ.data ?? []).length === 0 ? (
-              <p className="rounded-xl border border-dashed border-black/15 p-4 text-center text-xs text-neutral-500 dark:border-white/15">
+              <p className="rounded-lg border border-dashed border-black/15 p-4 text-center text-xs text-neutral-500 dark:border-white/15">
                 Aucun mouvement — enregistrez le premier versement.
               </p>
             ) : (
@@ -475,7 +475,7 @@ export function ProgressivePlanDetail({
               <h4 className="mb-1 text-xs font-bold uppercase tracking-wide text-neutral-500">
                 Note interne
               </h4>
-              <p className="whitespace-pre-line rounded-xl border border-black/[0.07] p-3 text-sm text-neutral-700 dark:border-white/10 dark:text-neutral-200">
+              <p className="whitespace-pre-line rounded-lg border border-black/[0.07] p-3 text-sm text-neutral-700 dark:border-white/10 dark:text-neutral-200">
                 {plan.notes}
               </p>
             </section>
@@ -496,7 +496,7 @@ function LedgerRow({
   const isDeposit = entry.kind === "deposit";
   const isSettlement = entry.kind === "settlement";
   return (
-    <li className="flex items-center gap-3 rounded-xl border border-black/[0.06] bg-fs-surface-container/50 px-3 py-2 dark:border-white/10">
+    <li className="flex items-center gap-3 rounded-lg border border-black/[0.06] bg-fs-surface-container/50 px-3 py-2 dark:border-white/10">
       <span
         className={cn(
           "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-sm font-black",

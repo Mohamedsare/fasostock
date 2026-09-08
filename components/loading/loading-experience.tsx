@@ -99,7 +99,7 @@ export function LoadingExperience({
   const rootClass = cn(
     "relative flex flex-col overflow-hidden text-fs-text",
     isOverlay
-      ? "w-full max-w-[min(100%,22rem)] items-center rounded-3xl border border-black/8 bg-fs-card/95 px-6 py-8 text-center shadow-[0_12px_48px_-10px_rgb(0_0_0/0.2)] backdrop-blur-xl dark:border-white/10"
+      ? "w-full max-w-[min(100%,22rem)] items-center rounded-2xl border border-black/8 bg-fs-card/95 px-6 py-8 text-center shadow-[0_12px_48px_-10px_rgb(0_0_0/0.2)] backdrop-blur-xl dark:border-white/10"
       : isEmbedded
         ? "min-h-[min(72dvh,100%)] w-full flex-1 items-center justify-center px-4 py-10"
         : "min-h-[100dvh] w-full items-center justify-center px-5 py-10 sm:px-8",
@@ -167,13 +167,13 @@ export function LoadingExperience({
             className="fs-loading-ring absolute inset-0 m-auto h-[88px] w-[88px] rounded-full sm:h-[96px] sm:w-[96px]"
             aria-hidden
           />
-          <div className="relative flex h-[72px] w-[72px] items-center justify-center rounded-2xl bg-fs-card shadow-lg ring-1 ring-black/6 dark:ring-white/10 sm:h-20 sm:w-20">
+          <div className="relative flex h-[72px] w-[72px] items-center justify-center rounded-xl bg-fs-card shadow-lg ring-1 ring-black/6 dark:ring-white/10 sm:h-20 sm:w-20">
             <Image
               src="/fs.png"
               alt=""
               width={48}
               height={48}
-              className="fs-loading-logo-pulse rounded-xl"
+              className="fs-loading-logo-pulse rounded-lg"
               priority
             />
           </div>
@@ -182,7 +182,7 @@ export function LoadingExperience({
         {/* Convoyeur */}
         {!isOverlay ? (
           <div
-            className="fs-loading-enter w-full max-w-xs overflow-hidden rounded-2xl border border-black/8 bg-fs-card/80 px-3 py-3 shadow-md backdrop-blur-md dark:border-white/10"
+            className="fs-loading-enter w-full max-w-xs overflow-hidden rounded-xl border border-black/8 bg-fs-card/80 px-3 py-3 shadow-md backdrop-blur-md dark:border-white/10"
             style={{ animationDelay: "80ms" }}
           >
             <div className="mb-2 flex items-center justify-between px-1">
@@ -193,7 +193,7 @@ export function LoadingExperience({
                 {Math.round(progress)}%
               </span>
             </div>
-            <div className="relative h-14 overflow-hidden rounded-xl bg-fs-surface-container/90">
+            <div className="relative h-14 overflow-hidden rounded-lg bg-fs-surface-container/90">
               <div className="fs-loading-conveyor absolute inset-y-0 flex w-[200%] items-center gap-3 px-2">
                 {Array.from({ length: 8 }).map((_, i) => (
                   <div
@@ -271,7 +271,7 @@ export function LoadingExperience({
               <div
                 key={i}
                 className={cn(
-                  "flex h-10 w-10 items-center justify-center rounded-xl border transition-all duration-500",
+                  "flex h-10 w-10 items-center justify-center rounded-lg border transition-all duration-500",
                   step === i
                     ? "scale-110 border-fs-accent/40 bg-fs-accent/15 text-fs-accent shadow-md shadow-fs-accent/15"
                     : "border-black/6 bg-fs-card/60 text-fs-on-surface-variant/70 dark:border-white/8",

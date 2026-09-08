@@ -152,7 +152,7 @@ export function AdminAiScreen() {
 
   return (
     <div className="h-[calc(100dvh-0.75rem)] bg-[#F7F7F5] p-1.5 md:h-[calc(100dvh-1rem)] md:p-2">
-      <div className="mx-auto flex h-full w-full max-w-[99vw] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_20px_60px_-35px_rgba(15,23,42,0.35)]">
+      <div className="mx-auto flex h-full w-full max-w-[99vw] flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_20px_60px_-35px_rgba(15,23,42,0.35)]">
         <div className="border-b border-slate-200 px-3 py-2 md:px-4">
           <AdminPageHeader
             title="IA"
@@ -182,7 +182,7 @@ export function AdminAiScreen() {
           className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-[#FAFAF8] px-2.5 py-3 md:px-4"
         >
           {chat.length === 0 ? (
-            <div className="mx-auto max-w-3xl rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
+            <div className="mx-auto max-w-3xl rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
               Pose ta question sur le SaaS FasoStock (performance, abonnements, risques, entreprise specifique) puis execute les actions proposees si necessaire.
             </div>
           ) : null}
@@ -191,20 +191,20 @@ export function AdminAiScreen() {
               key={`${m.at}-${idx}`}
               className={
                 m.role === "user"
-                  ? "ml-auto max-w-[78%] rounded-2xl bg-[#111827] px-4 py-3 text-sm text-white"
-                  : "mr-auto w-full max-w-[99%] rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800"
+                  ? "ml-auto max-w-[78%] rounded-xl bg-[#111827] px-4 py-3 text-sm text-white"
+                  : "mr-auto w-full max-w-[99%] rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800"
               }
             >
               {m.role === "assistant" && m.structured ? (
                 <div className="space-y-4">
                   <p className="text-sm font-semibold text-slate-900">{m.structured.intro}</p>
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
                     <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Reponse directe</p>
                     <p className="mt-1 text-sm leading-6 text-slate-900">{m.structured.direct_answer}</p>
                   </div>
                   <div>
                     <p className="mb-2 text-sm font-semibold text-slate-900">{m.structured.table_title}</p>
-                    <FsHorizontalScroll className="rounded-xl border border-slate-200">
+                    <FsHorizontalScroll className="rounded-lg border border-slate-200">
                       <table className="min-w-full text-sm">
                         <thead className="bg-slate-50">
                           <tr>
@@ -230,7 +230,7 @@ export function AdminAiScreen() {
                     </FsHorizontalScroll>
                   </div>
                   <div className="grid gap-3 md:grid-cols-2">
-                    <div className="rounded-xl border border-slate-200 bg-white p-3">
+                    <div className="rounded-lg border border-slate-200 bg-white p-3">
                       <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Chiffres cles</p>
                       <ul className="mt-2 space-y-1">
                         {m.structured.key_figures.map((k, kidx) => (
@@ -240,7 +240,7 @@ export function AdminAiScreen() {
                         ))}
                       </ul>
                     </div>
-                    <div className="rounded-xl border border-slate-200 bg-white p-3">
+                    <div className="rounded-lg border border-slate-200 bg-white p-3">
                       <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Actions recommandees</p>
                       <ol className="mt-2 list-decimal space-y-1 pl-5">
                         {m.structured.recommended_actions.map((a, aidx) => (
@@ -258,7 +258,7 @@ export function AdminAiScreen() {
             </div>
           ))}
           {ask.isPending ? (
-            <div className="mr-auto max-w-[94%] rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-500">
+            <div className="mr-auto max-w-[94%] rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-500">
               L&apos;IA analyse les donnees...
             </div>
           ) : null}
@@ -280,7 +280,7 @@ export function AdminAiScreen() {
 
           <div className="flex items-end gap-2">
             <textarea
-              className="max-h-40 min-h-[46px] flex-1 resize-y rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+              className="max-h-40 min-h-[46px] flex-1 resize-y rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
               placeholder="Ecris ton message..."
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
@@ -295,7 +295,7 @@ export function AdminAiScreen() {
               type="button"
               onClick={onAsk}
               disabled={ask.isPending || !prompt.trim()}
-              className="inline-flex h-[46px] items-center gap-2 rounded-xl bg-slate-900 px-3 text-sm font-semibold text-white hover:bg-black disabled:opacity-60"
+              className="inline-flex h-[46px] items-center gap-2 rounded-lg bg-slate-900 px-3 text-sm font-semibold text-white hover:bg-black disabled:opacity-60"
             >
               <MdSend className="h-5 w-5" />
               Envoyer
@@ -303,12 +303,12 @@ export function AdminAiScreen() {
           </div>
 
           {pendingActions.length > 0 ? (
-            <div className="mt-3 space-y-2 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+            <div className="mt-3 space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
               <p className="text-sm font-semibold text-slate-900">Actions proposees par l&apos;IA</p>
               {pendingActions.map((a) => (
                 <div
                   key={a.id}
-                  className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-white p-3 sm:flex-row sm:items-center sm:justify-between"
+                  className="flex flex-col gap-2 rounded-lg border border-slate-200 bg-white p-3 sm:flex-row sm:items-center sm:justify-between"
                 >
                   <div className="text-sm text-slate-800">
                     <p className="font-semibold">

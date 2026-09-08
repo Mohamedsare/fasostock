@@ -136,7 +136,7 @@ export function AccountingSettingsTab({
               type="button"
               onClick={() => saveMut.mutate(edits)}
               disabled={saveMut.isPending || !dirty}
-              className="rounded-xl bg-fs-accent px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+              className="rounded-lg bg-fs-accent px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
             >
               {saveMut.isPending ? "Enregistrement…" : "Enregistrer les paramètres"}
             </button>
@@ -182,7 +182,7 @@ export function AccountingSettingsTab({
             type="button"
             onClick={() => backfillMut.mutate()}
             disabled={backfillMut.isPending}
-            className="rounded-xl border border-fs-accent/40 bg-fs-accent/10 px-4 py-2 text-sm font-semibold text-fs-accent disabled:opacity-50"
+            className="rounded-lg border border-fs-accent/40 bg-fs-accent/10 px-4 py-2 text-sm font-semibold text-fs-accent disabled:opacity-50"
           >
             {backfillMut.isPending ? "Reprise en cours…" : "Reprendre la période"}
           </button>

@@ -128,7 +128,7 @@ export function DraftProductDialog({
             Dit une fois, clairement, ce que l'employé va produire. Sans cette phrase il
             croit avoir mal fait son travail en ne trouvant pas les champs de prix.
           */}
-          <p className="flex items-start gap-2 rounded-[10px] bg-sky-500/10 px-3 py-2 text-xs leading-relaxed text-sky-900 dark:text-sky-200">
+          <p className="flex items-start gap-2 rounded-[8px] bg-sky-500/10 px-3 py-2 text-xs leading-relaxed text-sky-900 dark:text-sky-200">
             <MdInfoOutline className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
             <span>
               L&apos;article sera enregistré <strong>sans prix</strong> : il n&apos;est

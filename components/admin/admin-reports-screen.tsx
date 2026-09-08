@@ -470,13 +470,13 @@ export function AdminReportsScreen() {
         onShare={() => void handleShare()}
       />
       {exportingPdf ? (
-        <AdminCard className="rounded-2xl border border-slate-200 bg-white p-3 text-sm text-slate-600 shadow-sm">
+        <AdminCard className="rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-600 shadow-sm">
           Génération du PDF en cours...
         </AdminCard>
       ) : null}
 
       <ReportFilters>
-        <select className="h-10 rounded-xl border border-slate-300 px-2 text-sm" value={rangePreset} onChange={(e) => setRangePreset(e.target.value as RangePreset)}>
+        <select className="h-10 rounded-lg border border-slate-300 px-2 text-sm" value={rangePreset} onChange={(e) => setRangePreset(e.target.value as RangePreset)}>
           <option value="today">Aujourd’hui</option>
           <option value="7d">7 jours</option>
           <option value="30d">30 jours</option>
@@ -484,7 +484,7 @@ export function AdminReportsScreen() {
           <option value="year">Année</option>
           <option value="custom">Personnalisé</option>
         </select>
-        <select className="h-10 rounded-xl border border-slate-300 px-2 text-sm" value={companyId} onChange={(e) => setCompanyId(e.target.value)}>
+        <select className="h-10 rounded-lg border border-slate-300 px-2 text-sm" value={companyId} onChange={(e) => setCompanyId(e.target.value)}>
           <option value="all">Entreprise</option>
           {companies.map((c) => (
             <option key={c.id} value={c.id}>
@@ -492,7 +492,7 @@ export function AdminReportsScreen() {
             </option>
           ))}
         </select>
-        <select className="h-10 rounded-xl border border-slate-300 px-2 text-sm" value={storeId} onChange={(e) => setStoreId(e.target.value)}>
+        <select className="h-10 rounded-lg border border-slate-300 px-2 text-sm" value={storeId} onChange={(e) => setStoreId(e.target.value)}>
           <option value="all">Boutique</option>
           {stores.filter((s) => companyId === "all" || s.companyId === companyId).map((s) => (
             <option key={s.id} value={s.id}>
@@ -500,18 +500,18 @@ export function AdminReportsScreen() {
             </option>
           ))}
         </select>
-        <select className="h-10 rounded-xl border border-slate-300 px-2 text-sm" value={city} onChange={(e) => setCity(e.target.value)}>
+        <select className="h-10 rounded-lg border border-slate-300 px-2 text-sm" value={city} onChange={(e) => setCity(e.target.value)}>
           {cityOptions.map((c) => (
             <option key={c} value={c}>
               {c === "all" ? "Ville" : c}
             </option>
           ))}
         </select>
-        <select className="h-10 rounded-xl border border-slate-300 px-2 text-sm" value={sector} onChange={(e) => setSector(e.target.value)}>
+        <select className="h-10 rounded-lg border border-slate-300 px-2 text-sm" value={sector} onChange={(e) => setSector(e.target.value)}>
           <option value="all">Secteur d’activité</option>
           <option value="all">Tous (fallback)</option>
         </select>
-        <select className="h-10 rounded-xl border border-slate-300 px-2 text-sm" value={subStatus} onChange={(e) => setSubStatus(e.target.value)}>
+        <select className="h-10 rounded-lg border border-slate-300 px-2 text-sm" value={subStatus} onChange={(e) => setSubStatus(e.target.value)}>
           <option value="all">Statut abonnement</option>
           <option value="active">Actif</option>
           <option value="trialing">Essai</option>
@@ -519,36 +519,36 @@ export function AdminReportsScreen() {
           <option value="expired">Expiré</option>
           <option value="canceled">Annulé</option>
         </select>
-        <select className="h-10 rounded-xl border border-slate-300 px-2 text-sm" value={planType} onChange={(e) => setPlanType(e.target.value)}>
+        <select className="h-10 rounded-lg border border-slate-300 px-2 text-sm" value={planType} onChange={(e) => setPlanType(e.target.value)}>
           <option value="all">Type de plan</option>
           <option value="basic">Basic</option>
           <option value="pro">Pro</option>
           <option value="enterprise">Enterprise</option>
           <option value="unknown">Non renseigné</option>
         </select>
-        <select className="h-10 rounded-xl border border-slate-300 px-2 text-sm" value={activityLevel} onChange={(e) => setActivityLevel(e.target.value)}>
+        <select className="h-10 rounded-lg border border-slate-300 px-2 text-sm" value={activityLevel} onChange={(e) => setActivityLevel(e.target.value)}>
           <option value="all">Niveau d’activité</option>
           <option value="high">Élevé</option>
           <option value="medium">Moyen</option>
           <option value="low">Faible</option>
         </select>
-        <select className="h-10 rounded-xl border border-slate-300 px-2 text-sm" value={riskLevel} onChange={(e) => setRiskLevel(e.target.value)}>
+        <select className="h-10 rounded-lg border border-slate-300 px-2 text-sm" value={riskLevel} onChange={(e) => setRiskLevel(e.target.value)}>
           <option value="all">Risque client</option>
           <option value="high">Élevé</option>
           <option value="medium">Moyen</option>
           <option value="low">Faible</option>
         </select>
-        <div className="flex items-center justify-between gap-2 rounded-xl border border-slate-200 px-3">
+        <div className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 px-3">
           <span className="text-xs font-semibold text-slate-600">Comparer période précédente</span>
           <input type="checkbox" checked={comparePrevious} onChange={(e) => setComparePrevious(e.target.checked)} />
         </div>
-        <select className="h-10 rounded-xl border border-slate-300 px-2 text-sm" value={viewMode} onChange={(e) => setViewMode(e.target.value as ViewMode)}>
+        <select className="h-10 rounded-lg border border-slate-300 px-2 text-sm" value={viewMode} onChange={(e) => setViewMode(e.target.value as ViewMode)}>
           <option value="platform">Vue plateforme</option>
           <option value="company">Vue entreprise</option>
           <option value="store">Vue boutique</option>
         </select>
-        <input type="date" className="h-10 rounded-xl border border-slate-300 px-2 text-sm" value={customStart} onChange={(e) => setCustomStart(e.target.value)} />
-        <input type="date" className="h-10 rounded-xl border border-slate-300 px-2 text-sm" value={customEnd} onChange={(e) => setCustomEnd(e.target.value)} />
+        <input type="date" className="h-10 rounded-lg border border-slate-300 px-2 text-sm" value={customStart} onChange={(e) => setCustomStart(e.target.value)} />
+        <input type="date" className="h-10 rounded-lg border border-slate-300 px-2 text-sm" value={customEnd} onChange={(e) => setCustomEnd(e.target.value)} />
       </ReportFilters>
 
       <div className="grid gap-6 xl:grid-cols-[1.2fr_1fr]">
@@ -575,7 +575,7 @@ export function AdminReportsScreen() {
       </div>
 
       <RevenueCharts>
-        <AdminCard className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <AdminCard className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <p className="text-sm font-bold text-slate-900">Évolution du CA commerçants</p>
           <div className="mt-3 h-72">
             <ResponsiveContainer width="100%" height="100%">
@@ -595,7 +595,7 @@ export function AdminReportsScreen() {
             </ResponsiveContainer>
           </div>
         </AdminCard>
-        <AdminCard className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <AdminCard className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <p className="text-sm font-bold text-slate-900">Ventes par jour</p>
           <div className="mt-3 h-72">
             <ResponsiveContainer width="100%" height="100%">
@@ -609,7 +609,7 @@ export function AdminReportsScreen() {
             </ResponsiveContainer>
           </div>
         </AdminCard>
-        <AdminCard className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <AdminCard className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <p className="text-sm font-bold text-slate-900">Revenus FasoStock par période</p>
           <div className="mt-3 h-72">
             <ResponsiveContainer width="100%" height="100%">
@@ -623,7 +623,7 @@ export function AdminReportsScreen() {
             </ResponsiveContainer>
           </div>
         </AdminCard>
-        <AdminCard className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <AdminCard className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <p className="text-sm font-bold text-slate-900">Abonnements par statut</p>
           <div className="mt-3 h-72">
             <ResponsiveContainer width="100%" height="100%">
@@ -638,7 +638,7 @@ export function AdminReportsScreen() {
             </ResponsiveContainer>
           </div>
         </AdminCard>
-        <AdminCard className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <AdminCard className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <p className="text-sm font-bold text-slate-900">Top entreprises par CA</p>
           <div className="mt-3 h-72">
             <ResponsiveContainer width="100%" height="100%">
@@ -652,7 +652,7 @@ export function AdminReportsScreen() {
             </ResponsiveContainer>
           </div>
         </AdminCard>
-        <AdminCard className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <AdminCard className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <p className="text-sm font-bold text-slate-900">Top entreprises par ventes</p>
           <div className="mt-3 h-72">
             <ResponsiveContainer width="100%" height="100%">
@@ -669,7 +669,7 @@ export function AdminReportsScreen() {
       </RevenueCharts>
 
       <div className="grid gap-6 xl:grid-cols-2">
-        <AdminCard className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <AdminCard className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <p className="text-sm font-bold text-slate-900">Répartition par ville</p>
           <div className="mt-3 h-72">
             <ResponsiveContainer width="100%" height="100%">
@@ -683,7 +683,7 @@ export function AdminReportsScreen() {
             </ResponsiveContainer>
           </div>
         </AdminCard>
-        <AdminCard className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <AdminCard className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <p className="text-sm font-bold text-slate-900">Utilisation des modules</p>
           <div className="mt-3 h-72">
             <ResponsiveContainer width="100%" height="100%">

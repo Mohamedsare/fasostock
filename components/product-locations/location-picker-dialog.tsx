@@ -64,7 +64,7 @@ export function LocationPickerDialog({
       }}
     >
       <FsCard
-        className="flex max-h-[85vh] w-full max-w-lg flex-col rounded-b-none shadow-xl sm:rounded-xl"
+        className="flex max-h-[85vh] w-full max-w-lg flex-col rounded-b-none shadow-xl sm:rounded-lg"
         padding="p-4 sm:p-5"
       >
         <div className="flex items-center gap-2.5">
@@ -108,7 +108,7 @@ export function LocationPickerDialog({
                       onClick={() => onPick(n.id)}
                       style={q === "" ? { paddingLeft: `${0.75 + n.depth * 1}rem` } : undefined}
                       className={cn(
-                        "flex w-full items-center gap-2 rounded-[10px] border px-3 py-2.5 text-left transition-colors disabled:opacity-60",
+                        "flex w-full items-center gap-2 rounded-[8px] border px-3 py-2.5 text-left transition-colors disabled:opacity-60",
                         on
                           ? "border-fs-accent bg-fs-accent/10"
                           : "border-black/[0.06] bg-fs-card hover:bg-black/[0.03]",
@@ -147,7 +147,7 @@ export function LocationPickerDialog({
               type="button"
               disabled={busy}
               onClick={() => onPick(null)}
-              className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-black/[0.08] px-4 py-2.5 text-sm font-semibold text-neutral-700 disabled:opacity-60"
+              className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-black/[0.08] px-4 py-2.5 text-sm font-semibold text-neutral-700 disabled:opacity-60"
             >
               <MdLayersClear className="h-4 w-4" aria-hidden />
               Retirer l&apos;emplacement
@@ -159,7 +159,7 @@ export function LocationPickerDialog({
             type="button"
             onClick={onClose}
             disabled={busy}
-            className="rounded-xl px-4 py-2.5 text-sm font-semibold text-neutral-700 hover:bg-black/[0.04] disabled:opacity-60"
+            className="rounded-lg px-4 py-2.5 text-sm font-semibold text-neutral-700 hover:bg-black/[0.04] disabled:opacity-60"
           >
             Fermer
           </button>

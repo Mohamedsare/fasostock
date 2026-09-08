@@ -44,13 +44,13 @@ export default function AppSectionError({
         <button
           type="button"
           onClick={() => reset()}
-          className="rounded-xl bg-fs-accent px-5 py-2.5 text-sm font-semibold text-white"
+          className="rounded-lg bg-fs-accent px-5 py-2.5 text-sm font-semibold text-white"
         >
           Réessayer
         </button>
         <Link
           href={ROUTES.dashboard}
-          className="rounded-xl border border-black/12 px-5 py-2.5 text-sm font-semibold text-fs-text"
+          className="rounded-lg border border-black/12 px-5 py-2.5 text-sm font-semibold text-fs-text"
         >
           Tableau de bord
         </Link>

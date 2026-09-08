@@ -69,7 +69,7 @@ function StatTile({
     info: "text-sky-600",
   }[tone];
   return (
-    <div className="rounded-xl border border-black/[0.06] bg-fs-surface-container px-3 py-2.5">
+    <div className="rounded-lg border border-black/[0.06] bg-fs-surface-container px-3 py-2.5">
       <p className="text-[11px] font-semibold uppercase tracking-wide text-neutral-500">
         {label}
       </p>
@@ -186,7 +186,7 @@ export function SupplierDetailPanel({
             <button
               type="button"
               onClick={onAddDebt}
-              className="inline-flex min-h-12 items-center justify-center gap-1.5 rounded-xl border border-black/[0.1] bg-fs-card text-sm font-bold text-fs-text"
+              className="inline-flex min-h-12 items-center justify-center gap-1.5 rounded-lg border border-black/[0.1] bg-fs-card text-sm font-bold text-fs-text"
             >
               <MdAddCard className="h-5 w-5" aria-hidden />
               Ajouter une dette
@@ -194,7 +194,7 @@ export function SupplierDetailPanel({
             <button
               type="button"
               onClick={() => onPay()}
-              className="inline-flex min-h-12 items-center justify-center gap-1.5 rounded-xl bg-emerald-600 text-sm font-bold text-white shadow-sm"
+              className="inline-flex min-h-12 items-center justify-center gap-1.5 rounded-lg bg-emerald-600 text-sm font-bold text-white shadow-sm"
             >
               <MdPayments className="h-5 w-5" aria-hidden />
               Payer
@@ -236,7 +236,7 @@ export function SupplierDetailPanel({
       </div>
 
       {account.overLimit ? (
-        <div className="flex items-start gap-2 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2.5 dark:border-amber-900 dark:bg-amber-950/40">
+        <div className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2.5 dark:border-amber-900 dark:bg-amber-950/40">
           <MdWarningAmber className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" aria-hidden />
           <p className="text-xs text-amber-900 dark:text-amber-200">
             Encours de {formatCurrency(account.stats.balance)} au-dessus du plafond fixé à{" "}
@@ -249,7 +249,7 @@ export function SupplierDetailPanel({
         <button
           type="button"
           onClick={onApplyCredit}
-          className="flex w-full items-center justify-between gap-2 rounded-xl border border-sky-300 bg-sky-50 px-3 py-2.5 text-left dark:border-sky-900 dark:bg-sky-950/40"
+          className="flex w-full items-center justify-between gap-2 rounded-lg border border-sky-300 bg-sky-50 px-3 py-2.5 text-left dark:border-sky-900 dark:bg-sky-950/40"
         >
           <span className="min-w-0 text-xs text-sky-900 dark:text-sky-200">
             Une avance de {formatCurrency(account.stats.creditAvailable)} peut être imputée
@@ -382,7 +382,7 @@ export function SupplierDetailPanel({
             <div className="h-7 w-7 animate-spin rounded-full border-2 border-fs-accent border-t-transparent" />
           </div>
         ) : visible.length === 0 ? (
-          <p className="rounded-xl border border-black/[0.08] bg-fs-surface-container px-3 py-6 text-center text-xs text-neutral-500">
+          <p className="rounded-lg border border-black/[0.08] bg-fs-surface-container px-3 py-6 text-center text-xs text-neutral-500">
             Aucun mouvement.
           </p>
         ) : (
@@ -436,7 +436,7 @@ function InvoiceRow({
   return (
     <li
       className={cn(
-        "rounded-xl border bg-fs-card px-3 py-2.5",
+        "rounded-lg border bg-fs-card px-3 py-2.5",
         invoice.status === "cancelled"
           ? "border-black/[0.06] opacity-60"
           : urgency === "overdue"
@@ -556,7 +556,7 @@ function PaymentRow({
 }) {
   const unallocated = Math.max(0, payment.amount - payment.allocatedAmount);
   return (
-    <li className="rounded-xl border border-emerald-500/30 bg-emerald-50/40 px-3 py-2.5 dark:bg-emerald-950/20">
+    <li className="rounded-lg border border-emerald-500/30 bg-emerald-50/40 px-3 py-2.5 dark:bg-emerald-950/20">
       <div className="flex items-start gap-2.5">
         <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60">
           <MdArrowDownward className="h-4 w-4" aria-hidden />

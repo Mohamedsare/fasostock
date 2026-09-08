@@ -369,7 +369,7 @@ export function ShipmentsScreen() {
           <button
             type="button"
             onClick={() => setFormOpen(true)}
-            className="inline-flex items-center gap-1.5 rounded-[10px] bg-fs-accent px-3.5 py-2.5 text-sm font-semibold text-white"
+            className="inline-flex items-center gap-1.5 rounded-[8px] bg-fs-accent px-3.5 py-2.5 text-sm font-semibold text-white"
           >
             <MdAdd className="h-5 w-5" aria-hidden />
             Nouvelle expédition

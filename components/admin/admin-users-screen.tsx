@@ -200,7 +200,7 @@ export function AdminUsersScreen() {
             type="email"
             inputMode="email"
             autoComplete="off"
-            className="min-w-60 flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm"
+            className="min-w-60 flex-1 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm"
             placeholder="email@exemple.com"
             value={unlockEmail}
             onChange={(e) => {
@@ -213,7 +213,7 @@ export function AdminUsersScreen() {
           />
           <button
             type="button"
-            className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 disabled:opacity-50"
+            className="rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 disabled:opacity-50"
             disabled={!typedEmail || checkLock.isPending}
             onClick={() => checkLock.mutate(typedEmail)}
           >
@@ -221,7 +221,7 @@ export function AdminUsersScreen() {
           </button>
           <button
             type="button"
-            className="rounded-xl bg-orange-600 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+            className="rounded-lg bg-orange-600 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
             disabled={!typedEmail || unlock.isPending}
             onClick={() => unlock.mutate(typedEmail)}
           >
@@ -279,7 +279,7 @@ export function AdminUsersScreen() {
       </AdminCard>
 
       <input
-        className="w-full max-w-xl rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm"
+        className="w-full max-w-xl rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm"
         placeholder="Rechercher par nom, email, entreprise…"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
@@ -387,13 +387,13 @@ export function AdminUsersScreen() {
 
       {edit ? (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4">
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-xl">
+          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
             <h3 className="text-lg font-bold text-slate-900">Modifier l&apos;utilisateur</h3>
             <p className="mt-1 text-sm text-slate-500">{edit.email ?? "—"}</p>
             <label className="mt-4 block text-sm font-medium">
               Nom
               <input
-                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
                 value={editName}
                 onChange={(e) => setEditName(e.target.value)}
               />
@@ -407,7 +407,7 @@ export function AdminUsersScreen() {
               Super admin
             </label>
             <p className="mt-4 text-sm font-medium text-slate-700">Entreprises rattachées</p>
-            <div className="mt-2 max-h-40 overflow-y-auto rounded-xl border border-slate-200 p-2">
+            <div className="mt-2 max-h-40 overflow-y-auto rounded-lg border border-slate-200 p-2">
               {(companiesQ.data ?? []).map((c) => (
                 <label key={c.id} className="flex items-center gap-2 py-1 text-sm">
                   <input
@@ -425,14 +425,14 @@ export function AdminUsersScreen() {
             <div className="mt-6 flex justify-end gap-2">
               <button
                 type="button"
-                className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold"
+                className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold"
                 onClick={() => setEdit(null)}
               >
                 Annuler
               </button>
               <button
                 type="button"
-                className="rounded-xl bg-orange-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                className="rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
                 disabled={saveEdit.isPending}
                 onClick={() => saveEdit.mutate()}
               >

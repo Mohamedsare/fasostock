@@ -436,11 +436,11 @@ export function AdminDashboardScreen() {
     return (
       <div className="min-h-dvh bg-linear-to-b from-slate-100 via-white to-slate-50 px-4 py-10 md:px-8">
         <div className="mx-auto max-w-[1600px] space-y-8 animate-pulse">
-          <div className="h-36 rounded-3xl bg-slate-200/70" />
-          <div className="h-24 rounded-3xl bg-slate-200/50" />
+          <div className="h-36 rounded-2xl bg-slate-200/70" />
+          <div className="h-24 rounded-2xl bg-slate-200/50" />
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="h-32 rounded-2xl bg-slate-200/45" />
+              <div key={i} className="h-32 rounded-xl bg-slate-200/45" />
             ))}
           </div>
         </div>
@@ -451,7 +451,7 @@ export function AdminDashboardScreen() {
   if (q.isError) {
     return (
       <div className="flex min-h-dvh items-center justify-center bg-slate-50 px-4 py-16">
-        <div className="max-w-md rounded-3xl border border-red-200/80 bg-white p-8 text-center shadow-lg ring-1 ring-red-100/60">
+        <div className="max-w-md rounded-2xl border border-red-200/80 bg-white p-8 text-center shadow-lg ring-1 ring-red-100/60">
           <p className="text-sm font-bold text-red-700">Impossible de charger le tableau de bord</p>
           <p className="mt-2 text-sm text-slate-600">{(q.error as Error)?.message ?? "Erreur inconnue"}</p>
         </div>
@@ -482,7 +482,7 @@ export function AdminDashboardScreen() {
             </div>
 
             <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              <div className="group relative min-h-0 min-w-0 overflow-hidden rounded-2xl border border-white/15 bg-linear-to-br from-white/14 to-white/5 p-5 shadow-xl ring-1 ring-white/10 backdrop-blur-xl transition hover:border-orange-400/30 hover:shadow-orange-500/10">
+              <div className="group relative min-h-0 min-w-0 overflow-hidden rounded-xl border border-white/15 bg-linear-to-br from-white/14 to-white/5 p-5 shadow-xl ring-1 ring-white/10 backdrop-blur-xl transition hover:border-orange-400/30 hover:shadow-orange-500/10">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                   <div className="min-w-0 flex-1 space-y-2">
                     <p className="text-xs font-bold uppercase tracking-wide text-slate-300">CA ventes — toute la plateforme</p>
@@ -493,13 +493,13 @@ export function AdminDashboardScreen() {
                       {historicSalesN.toLocaleString("fr-FR")} ventes complétées
                     </p>
                   </div>
-                  <div className="shrink-0 rounded-xl bg-white/10 p-3 text-orange-300 ring-1 ring-white/15 sm:mt-0">
+                  <div className="shrink-0 rounded-lg bg-white/10 p-3 text-orange-300 ring-1 ring-white/15 sm:mt-0">
                     <MdTrendingUp className="h-6 w-6" aria-hidden />
                   </div>
                 </div>
               </div>
 
-              <div className="group relative min-h-0 min-w-0 overflow-hidden rounded-2xl border border-white/15 bg-linear-to-br from-white/14 to-white/5 p-5 shadow-xl ring-1 ring-white/10 backdrop-blur-xl transition hover:border-cyan-400/25 hover:shadow-cyan-500/10">
+              <div className="group relative min-h-0 min-w-0 overflow-hidden rounded-xl border border-white/15 bg-linear-to-br from-white/14 to-white/5 p-5 shadow-xl ring-1 ring-white/10 backdrop-blur-xl transition hover:border-cyan-400/25 hover:shadow-cyan-500/10">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                   <div className="min-w-0 flex-1 space-y-2">
                     <p className="text-xs font-bold uppercase tracking-wide text-slate-300">Référentiel produits</p>
@@ -510,13 +510,13 @@ export function AdminDashboardScreen() {
                       Nombre d’articles enregistrés dans le catalogue, cumulé sur toutes les sociétés.
                     </p>
                   </div>
-                  <div className="shrink-0 rounded-xl bg-white/10 p-3 text-cyan-200 ring-1 ring-white/15">
+                  <div className="shrink-0 rounded-lg bg-white/10 p-3 text-cyan-200 ring-1 ring-white/15">
                     <MdInventory2 className="h-6 w-6" aria-hidden />
                   </div>
                 </div>
               </div>
 
-              <div className="group relative min-h-0 min-w-0 overflow-hidden rounded-2xl border border-white/15 bg-linear-to-br from-white/14 to-white/5 p-5 shadow-xl ring-1 ring-white/10 backdrop-blur-xl transition hover:border-emerald-400/25 hover:shadow-emerald-500/10 sm:col-span-2 xl:col-span-1">
+              <div className="group relative min-h-0 min-w-0 overflow-hidden rounded-xl border border-white/15 bg-linear-to-br from-white/14 to-white/5 p-5 shadow-xl ring-1 ring-white/10 backdrop-blur-xl transition hover:border-emerald-400/25 hover:shadow-emerald-500/10 sm:col-span-2 xl:col-span-1">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                   <div className="min-w-0 flex-1 space-y-2">
                     <p className="text-xs font-bold uppercase tracking-wide text-slate-300">Carnet clients (module Clients)</p>
@@ -525,14 +525,14 @@ export function AdminDashboardScreen() {
                     </p>
                     <p className="text-xs leading-relaxed text-slate-400">Fiches module Clients, toutes entreprises — pas les comptes utilisateurs.</p>
                   </div>
-                  <div className="shrink-0 rounded-xl bg-white/10 p-3 text-emerald-300 ring-1 ring-white/15">
+                  <div className="shrink-0 rounded-lg bg-white/10 p-3 text-emerald-300 ring-1 ring-white/15">
                     <MdGroups className="h-6 w-6" aria-hidden />
                   </div>
                 </div>
               </div>
             </div>
           </div>
-          <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3.5 text-xs text-slate-300 shadow-inner backdrop-blur-md sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-8">
+          <div className="flex flex-col gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3.5 text-xs text-slate-300 shadow-inner backdrop-blur-md sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-8">
             <span className="inline-flex items-center gap-2">
               <MdUpdate className="h-4 w-4 shrink-0 text-orange-400" aria-hidden />
               <span>
@@ -556,17 +556,17 @@ export function AdminDashboardScreen() {
 
       <div className="relative z-10 mx-auto mt-6 max-w-[1600px] space-y-10 px-4 md:px-8">
         {salesSampleIncomplete ? (
-          <div className="rounded-3xl border border-amber-200/90 bg-linear-to-r from-amber-50 to-orange-50/60 px-5 py-4 text-sm text-amber-950 shadow-md ring-1 ring-amber-100/80">
+          <div className="rounded-2xl border border-amber-200/90 bg-linear-to-r from-amber-50 to-orange-50/60 px-5 py-4 text-sm text-amber-950 shadow-md ring-1 ring-amber-100/80">
             <span className="font-bold">Échantillon ventes.</span> Les graphiques et classements utilisent les{" "}
             {sales.length.toLocaleString("fr-FR")} ventes les plus récentes (plafond {salesLoadedCap.toLocaleString("fr-FR")}). Les
             totaux « CA » et « carnet » dans l’en-tête restent calculés sur la base complète.
           </div>
         ) : null}
 
-        <AdminCard className="rounded-3xl border border-slate-200/70 bg-linear-to-br from-white via-white to-orange-50/25 p-6 shadow-[0_20px_50px_-28px_rgba(15,23,42,0.12)] ring-1 ring-slate-100/90">
+        <AdminCard className="rounded-2xl border border-slate-200/70 bg-linear-to-br from-white via-white to-orange-50/25 p-6 shadow-[0_20px_50px_-28px_rgba(15,23,42,0.12)] ring-1 ring-slate-100/90">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex gap-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-linear-to-br from-orange-500/15 to-amber-500/10 text-orange-600 ring-1 ring-orange-500/25">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-linear-to-br from-orange-500/15 to-amber-500/10 text-orange-600 ring-1 ring-orange-500/25">
                 <MdFilterList className="h-6 w-6" aria-hidden />
               </div>
               <div>
@@ -580,7 +580,7 @@ export function AdminDashboardScreen() {
             </div>
           </div>
           <div className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-6">
-            <select className="h-12 rounded-2xl border border-slate-200/80 bg-slate-50/90 px-3 text-sm font-semibold text-slate-800 shadow-sm outline-none transition focus:border-orange-300 focus:bg-white focus:ring-2 focus:ring-orange-500/30" value={rangePreset} onChange={(e) => setRangePreset(e.target.value as RangePreset)}>
+            <select className="h-12 rounded-xl border border-slate-200/80 bg-slate-50/90 px-3 text-sm font-semibold text-slate-800 shadow-sm outline-none transition focus:border-orange-300 focus:bg-white focus:ring-2 focus:ring-orange-500/30" value={rangePreset} onChange={(e) => setRangePreset(e.target.value as RangePreset)}>
               <option value="today">Aujourd’hui</option>
               <option value="7d">7 jours</option>
               <option value="30d">30 jours</option>
@@ -588,7 +588,7 @@ export function AdminDashboardScreen() {
               <option value="year">Année</option>
               <option value="custom">Personnalisé</option>
             </select>
-            <select className="h-12 rounded-2xl border border-slate-200/80 bg-slate-50/90 px-3 text-sm font-semibold text-slate-800 shadow-sm outline-none transition focus:border-orange-300 focus:bg-white focus:ring-2 focus:ring-orange-500/30" value={selectedCompanyId} onChange={(e) => setSelectedCompanyId(e.target.value)}>
+            <select className="h-12 rounded-xl border border-slate-200/80 bg-slate-50/90 px-3 text-sm font-semibold text-slate-800 shadow-sm outline-none transition focus:border-orange-300 focus:bg-white focus:ring-2 focus:ring-orange-500/30" value={selectedCompanyId} onChange={(e) => setSelectedCompanyId(e.target.value)}>
               <option value="all">Entreprise (toutes)</option>
               {companies.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -596,7 +596,7 @@ export function AdminDashboardScreen() {
                 </option>
               ))}
             </select>
-            <select className="h-12 rounded-2xl border border-slate-200/80 bg-slate-50/90 px-3 text-sm font-semibold text-slate-800 shadow-sm outline-none transition focus:border-orange-300 focus:bg-white focus:ring-2 focus:ring-orange-500/30" value={selectedStoreId} onChange={(e) => setSelectedStoreId(e.target.value)}>
+            <select className="h-12 rounded-xl border border-slate-200/80 bg-slate-50/90 px-3 text-sm font-semibold text-slate-800 shadow-sm outline-none transition focus:border-orange-300 focus:bg-white focus:ring-2 focus:ring-orange-500/30" value={selectedStoreId} onChange={(e) => setSelectedStoreId(e.target.value)}>
               <option value="all">Boutique (toutes)</option>
               {stores
                 .filter((s) => selectedCompanyId === "all" || s.companyId === selectedCompanyId)
@@ -606,7 +606,7 @@ export function AdminDashboardScreen() {
                   </option>
                 ))}
             </select>
-            <select className="h-12 rounded-2xl border border-slate-200/80 bg-slate-50/90 px-3 text-sm font-semibold text-slate-800 shadow-sm outline-none transition focus:border-orange-300 focus:bg-white focus:ring-2 focus:ring-orange-500/30" value={selectedSubStatus} onChange={(e) => setSelectedSubStatus(e.target.value)}>
+            <select className="h-12 rounded-xl border border-slate-200/80 bg-slate-50/90 px-3 text-sm font-semibold text-slate-800 shadow-sm outline-none transition focus:border-orange-300 focus:bg-white focus:ring-2 focus:ring-orange-500/30" value={selectedSubStatus} onChange={(e) => setSelectedSubStatus(e.target.value)}>
               <option value="all">Abonnement (tous)</option>
               <option value="active">Actif</option>
               <option value="trialing">Essai</option>
@@ -614,7 +614,7 @@ export function AdminDashboardScreen() {
               <option value="expired">Expiré</option>
               <option value="canceled">Annulé</option>
             </select>
-            <select className="h-12 rounded-2xl border border-slate-200/80 bg-slate-50/90 px-3 text-sm font-semibold text-slate-800 shadow-sm outline-none transition focus:border-orange-300 focus:bg-white focus:ring-2 focus:ring-orange-500/30" value={selectedCity} onChange={(e) => setSelectedCity(e.target.value)}>
+            <select className="h-12 rounded-xl border border-slate-200/80 bg-slate-50/90 px-3 text-sm font-semibold text-slate-800 shadow-sm outline-none transition focus:border-orange-300 focus:bg-white focus:ring-2 focus:ring-orange-500/30" value={selectedCity} onChange={(e) => setSelectedCity(e.target.value)}>
               {cities.map((city) => (
                 <option key={city} value={city}>
                   {city === "all" ? "Ville (toutes)" : city}
@@ -622,8 +622,8 @@ export function AdminDashboardScreen() {
               ))}
             </select>
             <div className="grid grid-cols-2 gap-2">
-              <input type="date" className="h-12 rounded-2xl border border-slate-200/80 bg-slate-50/90 px-2 text-xs font-semibold text-slate-800 shadow-sm outline-none focus:ring-2 focus:ring-orange-500/30" value={customStart} onChange={(e) => setCustomStart(e.target.value)} />
-              <input type="date" className="h-12 rounded-2xl border border-slate-200/80 bg-slate-50/90 px-2 text-xs font-semibold text-slate-800 shadow-sm outline-none focus:ring-2 focus:ring-orange-500/30" value={customEnd} onChange={(e) => setCustomEnd(e.target.value)} />
+              <input type="date" className="h-12 rounded-xl border border-slate-200/80 bg-slate-50/90 px-2 text-xs font-semibold text-slate-800 shadow-sm outline-none focus:ring-2 focus:ring-orange-500/30" value={customStart} onChange={(e) => setCustomStart(e.target.value)} />
+              <input type="date" className="h-12 rounded-xl border border-slate-200/80 bg-slate-50/90 px-2 text-xs font-semibold text-slate-800 shadow-sm outline-none focus:ring-2 focus:ring-orange-500/30" value={customEnd} onChange={(e) => setCustomEnd(e.target.value)} />
             </div>
           </div>
         </AdminCard>
@@ -749,7 +749,7 @@ export function AdminDashboardScreen() {
               score={healthScore}
               subtitle={`${companiesActiveToday} entreprise(s) ont encaissé au moins une vente · ${storesSoldToday} boutique(s) concernée(s) · ${usersActive24h} personne(s) distincte(s) dans l’audit.`}
             />
-            <AdminCard className="rounded-3xl border border-slate-200/70 bg-linear-to-b from-white to-slate-50/50 p-6 shadow-[0_16px_48px_-24px_rgba(15,23,42,0.14)] ring-1 ring-slate-100/80">
+            <AdminCard className="rounded-2xl border border-slate-200/70 bg-linear-to-b from-white to-slate-50/50 p-6 shadow-[0_16px_48px_-24px_rgba(15,23,42,0.14)] ring-1 ring-slate-100/80">
               <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-cyan-700/85">Activité live</p>
               <p className="mt-1 text-base font-bold text-slate-900">Détail court terme</p>
               <p className="mt-1 text-sm text-slate-600">Complète le score de santé : utile pour voir si le réseau « bouge » aujourd’hui.</p>
@@ -808,7 +808,7 @@ export function AdminDashboardScreen() {
           description="Chaque graphique respecte les filtres (dates, société, boutique, ville). Comparez la courbe orange (CA) au volume bleu (nombre de tickets)."
         >
           <div className="grid gap-6 xl:grid-cols-2">
-            <AdminCard className="rounded-3xl border border-slate-200/70 bg-linear-to-b from-white to-slate-50/40 p-6 shadow-[0_14px_44px_-22px_rgba(15,23,42,0.12)] ring-1 ring-slate-100/80">
+            <AdminCard className="rounded-2xl border border-slate-200/70 bg-linear-to-b from-white to-slate-50/40 p-6 shadow-[0_14px_44px_-22px_rgba(15,23,42,0.12)] ring-1 ring-slate-100/80">
               <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-orange-600/90">Courbe</p>
               <p className="mt-1 text-base font-bold text-slate-900">Chiffre d’affaires par jour</p>
               <p className="mt-1 text-xs text-slate-600">Montants par jour sur la période filtrée.</p>
@@ -831,7 +831,7 @@ export function AdminDashboardScreen() {
               </div>
             </AdminCard>
 
-            <AdminCard className="rounded-3xl border border-slate-200/70 bg-linear-to-b from-white to-slate-50/40 p-6 shadow-[0_14px_44px_-22px_rgba(15,23,42,0.12)] ring-1 ring-slate-100/80">
+            <AdminCard className="rounded-2xl border border-slate-200/70 bg-linear-to-b from-white to-slate-50/40 p-6 shadow-[0_14px_44px_-22px_rgba(15,23,42,0.12)] ring-1 ring-slate-100/80">
               <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-blue-700/85">Histogramme</p>
               <p className="mt-1 text-base font-bold text-slate-900">Nombre de ventes par jour</p>
               <p className="mt-1 text-xs text-slate-600">Compte les tickets sur la même fenêtre que la courbe CA.</p>
@@ -850,7 +850,7 @@ export function AdminDashboardScreen() {
           </div>
 
           <div className="mt-6 grid gap-6 xl:grid-cols-3">
-            <AdminCard className="rounded-3xl border border-slate-200/70 bg-linear-to-b from-white to-slate-50/40 p-6 shadow-[0_14px_44px_-22px_rgba(15,23,42,0.12)] ring-1 ring-slate-100/80">
+            <AdminCard className="rounded-2xl border border-slate-200/70 bg-linear-to-b from-white to-slate-50/40 p-6 shadow-[0_14px_44px_-22px_rgba(15,23,42,0.12)] ring-1 ring-slate-100/80">
               <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Mix abonnements</p>
               <p className="mt-1 text-base font-bold text-slate-900">Statuts (filtre courant)</p>
               <p className="mt-1 text-xs text-slate-600">Répartition des souscriptions sélectionnées.</p>
@@ -868,7 +868,7 @@ export function AdminDashboardScreen() {
               </div>
             </AdminCard>
 
-            <AdminCard className="rounded-3xl border border-slate-200/70 bg-linear-to-b from-white to-slate-50/40 p-6 shadow-[0_14px_44px_-22px_rgba(15,23,42,0.12)] ring-1 ring-slate-100/80">
+            <AdminCard className="rounded-2xl border border-slate-200/70 bg-linear-to-b from-white to-slate-50/40 p-6 shadow-[0_14px_44px_-22px_rgba(15,23,42,0.12)] ring-1 ring-slate-100/80">
               <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-emerald-700/85">Carte chaude</p>
               <p className="mt-1 text-base font-bold text-slate-900">Boutiques par ville</p>
               <p className="mt-1 text-xs text-slate-600">Dénombre les points de vente déclarés (toutes sociétés).</p>
@@ -885,7 +885,7 @@ export function AdminDashboardScreen() {
               </div>
             </AdminCard>
 
-            <AdminCard className="rounded-3xl border border-slate-200/70 bg-linear-to-b from-white to-violet-50/30 p-6 shadow-[0_14px_44px_-22px_rgba(15,23,42,0.12)] ring-1 ring-slate-100/80">
+            <AdminCard className="rounded-2xl border border-slate-200/70 bg-linear-to-b from-white to-violet-50/30 p-6 shadow-[0_14px_44px_-22px_rgba(15,23,42,0.12)] ring-1 ring-slate-100/80">
               <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-violet-700/85">Usage produit</p>
               <p className="mt-1 text-base font-bold text-slate-900">Modules les plus touchés</p>
               <p className="mt-1 text-xs text-slate-600">Basé sur les journaux d’audit récents chargés.</p>
@@ -975,43 +975,43 @@ export function AdminDashboardScreen() {
           </div>
         </DashboardSection>
 
-        <AdminCard className="rounded-3xl border border-slate-200/70 bg-linear-to-br from-slate-50/80 via-white to-orange-50/30 p-6 shadow-[0_20px_50px_-28px_rgba(15,23,42,0.12)] ring-1 ring-slate-100/90">
+        <AdminCard className="rounded-2xl border border-slate-200/70 bg-linear-to-br from-slate-50/80 via-white to-orange-50/30 p-6 shadow-[0_20px_50px_-28px_rgba(15,23,42,0.12)] ring-1 ring-slate-100/90">
           <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-orange-600/90">Navigation</p>
           <p className="mt-1 text-lg font-bold text-slate-900">Accès directs</p>
           <p className="mt-1 text-sm text-slate-600">Liens utiles pour agir depuis ce tableau de bord.</p>
           <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            <Link href="/admin/companies" className="group inline-flex items-center gap-3 rounded-2xl border border-slate-200/80 bg-white px-4 py-3 text-sm font-semibold text-slate-800 shadow-sm ring-1 ring-slate-100/80 transition hover:border-orange-300 hover:shadow-md hover:ring-orange-100/60">
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-500/10 text-orange-600 ring-1 ring-orange-500/20 transition group-hover:bg-orange-500/15">
+            <Link href="/admin/companies" className="group inline-flex items-center gap-3 rounded-xl border border-slate-200/80 bg-white px-4 py-3 text-sm font-semibold text-slate-800 shadow-sm ring-1 ring-slate-100/80 transition hover:border-orange-300 hover:shadow-md hover:ring-orange-100/60">
+              <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-orange-500/10 text-orange-600 ring-1 ring-orange-500/20 transition group-hover:bg-orange-500/15">
                 <MdAddBusiness className="h-5 w-5" />
               </span>
               Nouvelle entreprise
             </Link>
-            <Link href="/admin/settings" className="group inline-flex items-center gap-3 rounded-2xl border border-slate-200/80 bg-white px-4 py-3 text-sm font-semibold text-slate-800 shadow-sm ring-1 ring-slate-100/80 transition hover:border-orange-300 hover:shadow-md hover:ring-orange-100/60">
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-500/10 text-orange-600 ring-1 ring-orange-500/20 transition group-hover:bg-orange-500/15">
+            <Link href="/admin/settings" className="group inline-flex items-center gap-3 rounded-xl border border-slate-200/80 bg-white px-4 py-3 text-sm font-semibold text-slate-800 shadow-sm ring-1 ring-slate-100/80 transition hover:border-orange-300 hover:shadow-md hover:ring-orange-100/60">
+              <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-orange-500/10 text-orange-600 ring-1 ring-orange-500/20 transition group-hover:bg-orange-500/15">
                 <MdCardMembership className="h-5 w-5" />
               </span>
               Abonnements
             </Link>
-            <Link href="/admin/messages" className="group inline-flex items-center gap-3 rounded-2xl border border-slate-200/80 bg-white px-4 py-3 text-sm font-semibold text-slate-800 shadow-sm ring-1 ring-slate-100/80 transition hover:border-orange-300 hover:shadow-md hover:ring-orange-100/60">
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-500/10 text-orange-600 ring-1 ring-orange-500/20 transition group-hover:bg-orange-500/15">
+            <Link href="/admin/messages" className="group inline-flex items-center gap-3 rounded-xl border border-slate-200/80 bg-white px-4 py-3 text-sm font-semibold text-slate-800 shadow-sm ring-1 ring-slate-100/80 transition hover:border-orange-300 hover:shadow-md hover:ring-orange-100/60">
+              <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-orange-500/10 text-orange-600 ring-1 ring-orange-500/20 transition group-hover:bg-orange-500/15">
                 <MdCampaign className="h-5 w-5" />
               </span>
               Campagnes / relances
             </Link>
-            <Link href="/admin/reports" className="group inline-flex items-center gap-3 rounded-2xl border border-slate-200/80 bg-white px-4 py-3 text-sm font-semibold text-slate-800 shadow-sm ring-1 ring-slate-100/80 transition hover:border-orange-300 hover:shadow-md hover:ring-orange-100/60">
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-500/10 text-orange-600 ring-1 ring-orange-500/20 transition group-hover:bg-orange-500/15">
+            <Link href="/admin/reports" className="group inline-flex items-center gap-3 rounded-xl border border-slate-200/80 bg-white px-4 py-3 text-sm font-semibold text-slate-800 shadow-sm ring-1 ring-slate-100/80 transition hover:border-orange-300 hover:shadow-md hover:ring-orange-100/60">
+              <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-orange-500/10 text-orange-600 ring-1 ring-orange-500/20 transition group-hover:bg-orange-500/15">
                 <MdDownload className="h-5 w-5" />
               </span>
               Exports & rapports
             </Link>
-            <Link href="/help" className="group inline-flex items-center gap-3 rounded-2xl border border-slate-200/80 bg-white px-4 py-3 text-sm font-semibold text-slate-800 shadow-sm ring-1 ring-slate-100/80 transition hover:border-orange-300 hover:shadow-md hover:ring-orange-100/60">
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-500/10 text-orange-600 ring-1 ring-orange-500/20 transition group-hover:bg-orange-500/15">
+            <Link href="/help" className="group inline-flex items-center gap-3 rounded-xl border border-slate-200/80 bg-white px-4 py-3 text-sm font-semibold text-slate-800 shadow-sm ring-1 ring-slate-100/80 transition hover:border-orange-300 hover:shadow-md hover:ring-orange-100/60">
+              <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-orange-500/10 text-orange-600 ring-1 ring-orange-500/20 transition group-hover:bg-orange-500/15">
                 <MdSupportAgent className="h-5 w-5" />
               </span>
               Centre d’aide
             </Link>
-            <Link href="/admin/maps" className="group inline-flex items-center gap-3 rounded-2xl border border-slate-200/80 bg-white px-4 py-3 text-sm font-semibold text-slate-800 shadow-sm ring-1 ring-slate-100/80 transition hover:border-orange-300 hover:shadow-md hover:ring-orange-100/60">
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-500/10 text-orange-600 ring-1 ring-orange-500/20 transition group-hover:bg-orange-500/15">
+            <Link href="/admin/maps" className="group inline-flex items-center gap-3 rounded-xl border border-slate-200/80 bg-white px-4 py-3 text-sm font-semibold text-slate-800 shadow-sm ring-1 ring-slate-100/80 transition hover:border-orange-300 hover:shadow-md hover:ring-orange-100/60">
+              <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-orange-500/10 text-orange-600 ring-1 ring-orange-500/20 transition group-hover:bg-orange-500/15">
                 <MdMap className="h-5 w-5" />
               </span>
               Carte live

@@ -470,7 +470,7 @@ export function ProductLocationsScreen() {
     return (
       <li key={node.id}>
         <div
-          className="group flex items-center gap-2 rounded-[10px] border border-black/[0.06] bg-fs-card px-2.5 py-2 shadow-sm"
+          className="group flex items-center gap-2 rounded-[8px] border border-black/[0.06] bg-fs-card px-2.5 py-2 shadow-sm"
           style={{ marginLeft: `${node.depth * 0.85}rem` }}
         >
           <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-fs-accent/10">
@@ -574,7 +574,7 @@ export function ProductLocationsScreen() {
             <button
               type="button"
               onClick={() => setEditingModel(true)}
-              className="rounded-[10px] border border-black/[0.08] bg-fs-card px-3 py-2 text-xs font-semibold text-neutral-700"
+              className="rounded-[8px] border border-black/[0.08] bg-fs-card px-3 py-2 text-xs font-semibold text-neutral-700"
             >
               Modifier le modèle
             </button>
@@ -583,7 +583,7 @@ export function ProductLocationsScreen() {
                 type="button"
                 disabled={statusMut.isPending || totalLocations === 0}
                 onClick={() => void statusMut.mutateAsync("active")}
-                className="inline-flex items-center gap-1.5 rounded-[10px] bg-fs-accent px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-[8px] bg-fs-accent px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
                 title={
                   totalLocations === 0
                     ? "Créez au moins un emplacement avant d'activer"
@@ -598,7 +598,7 @@ export function ProductLocationsScreen() {
                 type="button"
                 disabled={statusMut.isPending}
                 onClick={() => void statusMut.mutateAsync("draft")}
-                className="rounded-[10px] border border-black/[0.08] bg-fs-card px-3 py-2 text-xs font-semibold text-neutral-700 disabled:opacity-50"
+                className="rounded-[8px] border border-black/[0.08] bg-fs-card px-3 py-2 text-xs font-semibold text-neutral-700 disabled:opacity-50"
               >
                 Repasser en brouillon
               </button>
@@ -635,7 +635,7 @@ export function ProductLocationsScreen() {
               onClick={() =>
                 setNodeDialog({ open: true, editing: null, parent: null, depth: 0 })
               }
-              className="inline-flex items-center gap-1.5 rounded-[10px] bg-fs-accent px-3.5 py-2.5 text-sm font-semibold text-white"
+              className="inline-flex items-center gap-1.5 rounded-[8px] bg-fs-accent px-3.5 py-2.5 text-sm font-semibold text-white"
             >
               <MdAdd className="h-4 w-4" aria-hidden />
               Ajouter : {levelLabel(levels, 0)}
@@ -743,7 +743,7 @@ export function ProductLocationsScreen() {
                     <li key={p.id}>
                       <div
                         className={cn(
-                          "flex items-center gap-2.5 rounded-[10px] border bg-fs-card px-2.5 py-2.5 shadow-sm transition-colors",
+                          "flex items-center gap-2.5 rounded-[8px] border bg-fs-card px-2.5 py-2.5 shadow-sm transition-colors",
                           checked ? "border-fs-accent/60 bg-fs-accent/[0.04]" : "border-black/[0.06]",
                         )}
                       >
@@ -817,7 +817,7 @@ export function ProductLocationsScreen() {
                   <button
                     type="button"
                     onClick={() => setPager({ sig: listSignature, count: visibleCount + PAGE_SIZE })}
-                    className="rounded-[10px] border border-black/[0.08] bg-fs-card px-4 py-2.5 text-sm font-semibold text-neutral-700"
+                    className="rounded-[8px] border border-black/[0.08] bg-fs-card px-4 py-2.5 text-sm font-semibold text-neutral-700"
                   >
                     Afficher plus ({filteredProducts.length - shownProducts.length} restants)
                   </button>
@@ -829,7 +829,7 @@ export function ProductLocationsScreen() {
           {/* Barre d'action multi-sélection */}
           {selected.size > 0 ? (
             <div className="fixed inset-x-0 bottom-[calc(3.75rem+var(--fs-safe-bottom))] z-30 mx-auto w-full max-w-3xl px-3 min-[900px]:bottom-5">
-              <div className="flex items-center gap-3 rounded-xl border border-black/[0.08] bg-fs-card px-3 py-2.5 shadow-lg">
+              <div className="flex items-center gap-3 rounded-lg border border-black/[0.08] bg-fs-card px-3 py-2.5 shadow-lg">
                 <span className="text-sm font-semibold text-fs-text">
                   {selected.size} sélectionné{selected.size > 1 ? "s" : ""}
                 </span>
@@ -843,7 +843,7 @@ export function ProductLocationsScreen() {
                 <button
                   type="button"
                   onClick={() => setPicker({ kind: "bulk" })}
-                  className="ml-auto inline-flex items-center gap-1.5 rounded-[10px] bg-fs-accent px-3.5 py-2 text-sm font-semibold text-white"
+                  className="ml-auto inline-flex items-center gap-1.5 rounded-[8px] bg-fs-accent px-3.5 py-2 text-sm font-semibold text-white"
                 >
                   <MdEditLocationAlt className="h-4 w-4" aria-hidden />
                   Ranger
@@ -908,7 +908,7 @@ export function ProductLocationsScreen() {
               {(searchQ.data ?? []).map((hit) => (
                 <li
                   key={hit.productId}
-                  className="rounded-[10px] border border-black/[0.06] bg-fs-card p-3 shadow-sm"
+                  className="rounded-[8px] border border-black/[0.06] bg-fs-card p-3 shadow-sm"
                 >
                   <div className="flex items-start gap-3">
                     <ProductListThumbnail
@@ -937,7 +937,7 @@ export function ProductLocationsScreen() {
                     </span>
                   </div>
                   {hit.pathLabel ? (
-                    <div className="mt-2 rounded-[10px] bg-sky-500/[0.08] px-3 py-2">
+                    <div className="mt-2 rounded-[8px] bg-sky-500/[0.08] px-3 py-2">
                       <p className="flex items-center gap-1.5 text-sm font-bold text-sky-900 dark:text-sky-200">
                         <MdPlace className="h-4 w-4 shrink-0" aria-hidden />
                         {hit.pathLabel}
@@ -954,7 +954,7 @@ export function ProductLocationsScreen() {
                       ) : null}
                     </div>
                   ) : (
-                    <div className="mt-2 flex flex-wrap items-center gap-2 rounded-[10px] bg-neutral-500/[0.08] px-3 py-2">
+                    <div className="mt-2 flex flex-wrap items-center gap-2 rounded-[8px] bg-neutral-500/[0.08] px-3 py-2">
                       <p className="text-sm font-semibold text-neutral-600">
                         Pas encore rangé
                       </p>

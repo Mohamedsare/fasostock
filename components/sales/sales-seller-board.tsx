@@ -206,7 +206,7 @@ export function SalesSellerBoard({
   const multiDay = (focused?.byDay.length ?? 0) > 1;
 
   return (
-    <section className="rounded-lg border border-black/[0.06] bg-fs-card shadow-sm sm:rounded-xl">
+    <section className="rounded-lg border border-black/[0.06] bg-fs-card shadow-sm sm:rounded-lg">
       <header className="flex items-center gap-2 border-b border-black/[0.06] px-3 py-2.5">
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[6px] bg-fs-accent/15 text-fs-accent">
           <MdGroups className="h-[18px] w-[18px]" aria-hidden />

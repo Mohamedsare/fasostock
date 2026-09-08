@@ -349,7 +349,7 @@ export function PackagingsScreen() {
         </div>
 
         {/* Où en est le catalogue : le chiffre qui dit s'il reste du travail. */}
-        <FsCard padding="p-3 sm:p-4" className="mt-4 rounded-[10px] sm:rounded-[10px]">
+        <FsCard padding="p-3 sm:p-4" className="mt-4 rounded-[8px] sm:rounded-[8px]">
           <div className="grid grid-cols-2 gap-3 min-[560px]:grid-cols-4">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-wide text-neutral-500">
@@ -408,7 +408,7 @@ export function PackagingsScreen() {
           ) : null}
         </FsCard>
 
-        <FsCard padding="p-0" className="mt-4 overflow-hidden rounded-[10px] sm:rounded-[10px]">
+        <FsCard padding="p-0" className="mt-4 overflow-hidden rounded-[8px] sm:rounded-[8px]">
           <div className="border-b border-black/[0.06] p-4 sm:p-5">
             <div className="flex flex-wrap items-start gap-3">
               <div className="relative min-w-0 flex-1 basis-[min(100%,280px)]">
@@ -591,7 +591,7 @@ export function PackagingsScreen() {
                        * attend donc le mode avant de le monter, plutôt que de le
                        * rattraper après coup.
                        */
-                      <p className="mt-3 rounded-[10px] border border-black/[0.08] bg-fs-surface-container/40 px-3 py-3 text-[11px] text-neutral-500">
+                      <p className="mt-3 rounded-[8px] border border-black/[0.08] bg-fs-surface-container/40 px-3 py-3 text-[11px] text-neutral-500">
                         Vérification du mode de saisie des prix…
                       </p>
                     ) : null}

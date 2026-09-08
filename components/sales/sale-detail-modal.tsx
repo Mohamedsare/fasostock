@@ -282,10 +282,10 @@ export function SaleDetailModal({
   return (
     <>
       <div className="fixed inset-0 z-[70] flex items-end justify-center bg-black/45 p-0 sm:items-center sm:p-4">
-        <div className="flex max-h-[min(560px,90vh)] w-full max-w-[460px] flex-col rounded-t-2xl bg-[#ECEFF1] shadow-2xl sm:rounded-2xl">
+        <div className="flex max-h-[min(560px,90vh)] w-full max-w-[460px] flex-col rounded-t-xl bg-[#ECEFF1] shadow-2xl sm:rounded-xl">
           <div className="flex min-h-0 flex-1 flex-col p-4">
             {/* En-tête — proche du DecoratedBox Flutter */}
-            <div className="shrink-0 rounded-xl bg-white/90 p-3 shadow-sm ring-1 ring-black/5">
+            <div className="shrink-0 rounded-lg bg-white/90 p-3 shadow-sm ring-1 ring-black/5">
               <div className="flex items-start gap-3">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-orange-100 text-[#c2410c]">
                   <MdReceiptLong className="h-6 w-6" aria-hidden />
@@ -351,7 +351,7 @@ export function SaleDetailModal({
                   {/* Payée mais pas emportée : c'est la première chose à savoir en
                       ouvrant la vente — avant les articles, avant le paiement. */}
                   {pickupTrackingEnabled && saleDelivery(sale).awaiting ? (
-                    <div className="rounded-xl border border-amber-500/40 bg-amber-50 p-3 dark:bg-amber-950/30">
+                    <div className="rounded-lg border border-amber-500/40 bg-amber-50 p-3 dark:bg-amber-950/30">
                       <p className="flex items-center gap-1.5 text-xs font-bold text-amber-800 dark:text-amber-300">
                         <MdInventory2 className="h-4 w-4 shrink-0" aria-hidden />
                         Marchandise pas encore emportée
@@ -363,7 +363,7 @@ export function SaleDetailModal({
                   ) : null}
 
                   {(sale.sale_payments ?? []).length > 0 ? (
-                    <div className="rounded-xl border border-black/10 bg-white p-3">
+                    <div className="rounded-lg border border-black/10 bg-white p-3">
                       <p className="text-xs font-semibold text-neutral-500">
                         Mode de paiement
                       </p>
@@ -398,7 +398,7 @@ export function SaleDetailModal({
                         {(sale.sale_items ?? []).map((it) => (
                           <article
                             key={it.id}
-                            className="rounded-xl border border-black/10 bg-white px-3 py-2.5"
+                            className="rounded-lg border border-black/10 bg-white px-3 py-2.5"
                           >
                             <div className="flex items-start justify-between gap-2">
                               <div className="min-w-0">
@@ -428,7 +428,7 @@ export function SaleDetailModal({
                         />
                         Paiements
                       </h4>
-                      <div className="space-y-1 rounded-xl border border-black/10 bg-white px-3 py-2">
+                      <div className="space-y-1 rounded-lg border border-black/10 bg-white px-3 py-2">
                         {(sale.sale_payments ?? []).map((p) => (
                           <div
                             key={p.id}
@@ -447,7 +447,7 @@ export function SaleDetailModal({
                   ) : null}
 
                   {showCreditEncaissement ? (
-                    <div className="rounded-xl border border-[#F97316]/35 bg-orange-50/90 p-3 dark:border-orange-500/40 dark:bg-orange-950/40">
+                    <div className="rounded-lg border border-[#F97316]/35 bg-orange-50/90 p-3 dark:border-orange-500/40 dark:bg-orange-950/40">
                       <p className="text-xs font-bold text-neutral-700 dark:text-neutral-200">
                         Encours à recouvrer
                       </p>
@@ -500,7 +500,7 @@ export function SaleDetailModal({
                   {storeFull && hasItems ? (
                     <div className="border-t border-black/10 pt-3">
                       {showInvoiceBlock ? (
-                        <div className="rounded-xl bg-[#F5F5F5] px-3 py-3 sm:px-4 sm:py-3.5">
+                        <div className="rounded-lg bg-[#F5F5F5] px-3 py-3 sm:px-4 sm:py-3.5">
                           <p className="mb-3 text-[11px] font-bold tracking-[0.06em] text-neutral-700 sm:text-xs">
                             FACTURE A4
                           </p>
@@ -548,7 +548,7 @@ export function SaleDetailModal({
                       {showTicketBlock ? (
                         <div
                           className={cn(
-                            "rounded-xl bg-[#F5F5F5] px-3 py-3 sm:px-4",
+                            "rounded-lg bg-[#F5F5F5] px-3 py-3 sm:px-4",
                             showInvoiceBlock && "mt-2",
                           )}
                         >
@@ -645,7 +645,7 @@ function ActionButton({
          * l'icône du voisin et « Télécharger » se coupait en deux lignes. En colonne,
          * chaque bouton tient dans sa case quelle que soit la fenêtre.
          */
-        "inline-flex min-h-12 min-w-0 flex-col items-center justify-center gap-1 rounded-[10px] px-1 py-2 text-center text-[11px] font-bold leading-tight shadow-sm transition-opacity active:opacity-90",
+        "inline-flex min-h-12 min-w-0 flex-col items-center justify-center gap-1 rounded-[8px] px-1 py-2 text-center text-[11px] font-bold leading-tight shadow-sm transition-opacity active:opacity-90",
         primary
           ? "bg-[#FF7000] text-white hover:bg-[#F97316] disabled:opacity-45"
           : "border border-black/10 bg-white text-neutral-800 hover:bg-neutral-50 disabled:opacity-50",

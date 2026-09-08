@@ -129,7 +129,7 @@ export function CreateTransferDialog({
       aria-modal="true"
       aria-labelledby="transfer-create-title"
     >
-      <div className="flex max-h-[min(92dvh,720px)] w-full flex-col rounded-t-2xl bg-fs-surface shadow-2xl sm:max-h-[90vh] sm:max-w-lg sm:rounded-2xl">
+      <div className="flex max-h-[min(92dvh,720px)] w-full flex-col rounded-t-xl bg-fs-surface shadow-2xl sm:max-h-[90vh] sm:max-w-lg sm:rounded-xl">
         <div className="flex items-center justify-between border-b border-black/6 px-4 py-3">
           <h2 id="transfer-create-title" className="text-base font-bold text-fs-text">
             Nouveau transfert
@@ -137,7 +137,7 @@ export function CreateTransferDialog({
           <button
             type="button"
             onClick={onClose}
-            className="fs-touch-target rounded-xl p-2 text-neutral-600"
+            className="fs-touch-target rounded-lg p-2 text-neutral-600"
             aria-label="Fermer"
           >
             <MdClose className="h-6 w-6" />
@@ -192,7 +192,7 @@ export function CreateTransferDialog({
               return (
               <div
                 key={i}
-                className="flex flex-wrap items-end gap-2 rounded-xl border border-black/6 bg-fs-card p-3"
+                className="flex flex-wrap items-end gap-2 rounded-lg border border-black/6 bg-fs-card p-3"
               >
                 <div className="flex min-w-0 flex-1 basis-[200px] items-end gap-2">
                   <ProductListThumbnail imageUrl={lineImageUrl} className="h-10 w-10 shrink-0 rounded-lg" />
@@ -239,7 +239,7 @@ export function CreateTransferDialog({
           <button
             type="button"
             onClick={addLine}
-            className="fs-touch-target mt-3 inline-flex w-full items-center justify-center gap-2 rounded-[10px] border border-black/8 bg-fs-card py-3 text-sm font-semibold text-fs-text"
+            className="fs-touch-target mt-3 inline-flex w-full items-center justify-center gap-2 rounded-[8px] border border-black/8 bg-fs-card py-3 text-sm font-semibold text-fs-text"
           >
             <MdAdd className="h-5 w-5" />
             Ajouter une ligne
@@ -253,7 +253,7 @@ export function CreateTransferDialog({
             type="button"
             onClick={() => void submit()}
             disabled={!canSubmit}
-            className="fs-touch-target inline-flex w-full items-center justify-center gap-2 rounded-[10px] bg-fs-accent py-3.5 text-sm font-semibold text-white disabled:opacity-50"
+            className="fs-touch-target inline-flex w-full items-center justify-center gap-2 rounded-[8px] bg-fs-accent py-3.5 text-sm font-semibold text-white disabled:opacity-50"
           >
             {busy ? (
               <span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />

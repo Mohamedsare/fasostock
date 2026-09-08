@@ -9,7 +9,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 const inputClass =
-  "mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-orange-400";
+  "mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-orange-400";
 
 /**
  * « Mon compte super admin » : changement de l'email de connexion et/ou du mot de
@@ -100,12 +100,12 @@ export function AdminAccountCard() {
       </p>
 
       <p className="mt-4 text-xs font-medium text-slate-500">Email actuel</p>
-      <div className="mt-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800">
+      <div className="mt-1 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800">
         {emailQ.isLoading ? "…" : currentEmail || "—"}
       </div>
 
       {err ? (
-        <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700">
+        <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700">
           {err}
         </div>
       ) : null}
@@ -173,7 +173,7 @@ export function AdminAccountCard() {
 
       <button
         type="button"
-        className="mt-4 rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+        className="mt-4 rounded-lg bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
         disabled={mut.isPending}
         onClick={submit}
       >

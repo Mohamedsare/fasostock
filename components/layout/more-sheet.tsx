@@ -33,8 +33,8 @@ export function MoreSheet({ open, onClose, items }: MoreSheetProps) {
       />
       <div
         className={cn(
-          "relative z-10 max-h-[85dvh] w-full overflow-hidden rounded-t-[22px] border-t border-black/[0.07] bg-fs-card text-fs-text shadow-[0_-8px_40px_rgba(0,0,0,0.12)] dark:border-white/[0.08] dark:shadow-[0_-12px_48px_rgba(0,0,0,0.45)]",
-          "sm:max-h-[90dvh] sm:max-w-lg sm:rounded-2xl sm:border sm:border-black/[0.06] sm:shadow-2xl dark:sm:border-white/[0.1]",
+          "relative z-10 max-h-[85dvh] w-full overflow-hidden rounded-t-[18px] border-t border-black/[0.07] bg-fs-card text-fs-text shadow-[0_-8px_40px_rgba(0,0,0,0.12)] dark:border-white/[0.08] dark:shadow-[0_-12px_48px_rgba(0,0,0,0.45)]",
+          "sm:max-h-[90dvh] sm:max-w-lg sm:rounded-xl sm:border sm:border-black/[0.06] sm:shadow-2xl dark:sm:border-white/[0.1]",
         )}
         role="dialog"
         aria-modal="true"
@@ -61,7 +61,7 @@ export function MoreSheet({ open, onClose, items }: MoreSheetProps) {
                     href={item.href}
                     onClick={onClose}
                     className={cn(
-                      "flex min-h-[60px] flex-col items-center justify-center gap-0.5 rounded-xl border border-black/[0.07] bg-fs-surface-container px-0.5 py-1.5 text-center text-[10px] font-semibold leading-tight tracking-tight text-fs-text sm:rounded-2xl",
+                      "flex min-h-[60px] flex-col items-center justify-center gap-0.5 rounded-lg border border-black/[0.07] bg-fs-surface-container px-0.5 py-1.5 text-center text-[10px] font-semibold leading-tight tracking-tight text-fs-text sm:rounded-xl",
                       "shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] transition-[transform,background-color,border-color,box-shadow] duration-200",
                       "hover:border-[color-mix(in_srgb,var(--fs-accent)_38%,transparent)] hover:bg-[color-mix(in_srgb,var(--fs-accent)_11%,transparent)] hover:shadow-[0_1px_3px_rgba(0,0,0,0.06)]",
                       "active:scale-[0.98] dark:border-white/[0.09] dark:bg-fs-surface-low dark:shadow-none",
@@ -72,7 +72,7 @@ export function MoreSheet({ open, onClose, items }: MoreSheetProps) {
                     <span
                       className={cn(
                         "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[color-mix(in_srgb,var(--fs-accent)_14%,transparent)] ring-1 ring-[color-mix(in_srgb,var(--fs-accent)_22%,transparent)]",
-                        "sm:h-11 sm:w-11 sm:rounded-xl",
+                        "sm:h-11 sm:w-11 sm:rounded-lg",
                       )}
                       aria-hidden
                     >

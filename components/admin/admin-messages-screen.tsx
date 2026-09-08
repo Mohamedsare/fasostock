@@ -71,7 +71,7 @@ export function AdminMessagesScreen() {
           <label className="mt-4 block text-sm font-medium text-slate-700">
             Destinataire
             <select
-              className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
               value={userId}
               onChange={(e) => setUserId(e.target.value)}
             >
@@ -88,7 +88,7 @@ export function AdminMessagesScreen() {
         <label className="mt-4 block text-sm font-medium text-slate-700">
           Titre *
           <input
-            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+            className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
           />
@@ -96,7 +96,7 @@ export function AdminMessagesScreen() {
         <label className="mt-3 block text-sm font-medium text-slate-700">
           Message (optionnel)
           <textarea
-            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+            className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
             rows={4}
             value={body}
             onChange={(e) => setBody(e.target.value)}
@@ -104,7 +104,7 @@ export function AdminMessagesScreen() {
         </label>
         <button
           type="button"
-          className="mt-6 rounded-xl bg-orange-600 px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+          className="mt-6 rounded-lg bg-orange-600 px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
           disabled={send.isPending}
           onClick={() => send.mutate()}
         >

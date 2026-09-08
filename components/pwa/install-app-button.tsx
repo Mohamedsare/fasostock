@@ -75,8 +75,8 @@ export function InstallAppButton({ className, compact = false }: InstallAppButto
         className={
           className ??
           (compact
-            ? "inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-fs-accent/45 bg-white px-3 text-xs font-bold text-fs-accent"
-            : "inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-fs-accent/45 bg-white px-4 py-2 text-sm font-bold text-fs-accent")
+            ? "inline-flex h-10 items-center justify-center gap-1.5 rounded-lg border border-fs-accent/45 bg-white px-3 text-xs font-bold text-fs-accent"
+            : "inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-fs-accent/45 bg-white px-4 py-2 text-sm font-bold text-fs-accent")
         }
       >
         <MdDownload className="h-4 w-4" />
@@ -85,13 +85,13 @@ export function InstallAppButton({ className, compact = false }: InstallAppButto
 
       {showHelp ? (
         <div className="fixed inset-0 z-[120] flex items-end justify-center bg-black/45 p-3 sm:items-center">
-          <div className="w-full max-w-sm rounded-2xl bg-white p-4 shadow-2xl">
+          <div className="w-full max-w-sm rounded-xl bg-white p-4 shadow-2xl">
             <p className="text-base font-black text-[#1f2937]">Installer FasoStock</p>
             <p className="mt-2 text-sm text-neutral-700">{helpText}</p>
             <button
               type="button"
               onClick={() => setShowHelp(false)}
-              className="mt-4 inline-flex h-10 w-full items-center justify-center rounded-xl bg-fs-accent text-sm font-bold text-white"
+              className="mt-4 inline-flex h-10 w-full items-center justify-center rounded-lg bg-fs-accent text-sm font-bold text-white"
             >
               Compris
             </button>

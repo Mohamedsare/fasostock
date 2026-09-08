@@ -435,7 +435,7 @@ function CreditReminderNudgeFor({ companyId }: { companyId: string }) {
         onPointerLeave={() => setPaused(false)}
         onFocus={() => setPaused(true)}
         onBlur={() => setPaused(false)}
-        className="pointer-events-auto overflow-hidden rounded-xl border border-black/[0.08] bg-fs-card shadow-2xl"
+        className="pointer-events-auto overflow-hidden rounded-lg border border-black/[0.08] bg-fs-card shadow-2xl"
       >
         {/*
           Barre de progression du pas en cours. `animation-play-state` suit la pause :

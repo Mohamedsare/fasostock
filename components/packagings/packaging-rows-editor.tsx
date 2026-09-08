@@ -234,7 +234,7 @@ export function PackagingRowsEditor({
 
   return (
     <div
-      className="rounded-[10px] border border-fs-accent/25 bg-fs-accent/[0.04] p-3 sm:p-4"
+      className="rounded-[8px] border border-fs-accent/25 bg-fs-accent/[0.04] p-3 sm:p-4"
       onKeyDown={onKeyDown}
     >
       <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -288,7 +288,7 @@ export function PackagingRowsEditor({
           return (
             <div
               key={r.key}
-              className="rounded-[10px] border border-black/[0.08] bg-fs-card p-2.5 sm:p-3"
+              className="rounded-[8px] border border-black/[0.08] bg-fs-card p-2.5 sm:p-3"
             >
               {/* Type — un tap suffit ; la saisie libre reste dans la fiche produit. */}
               <div className="flex flex-wrap items-center gap-1.5">
@@ -424,7 +424,7 @@ export function PackagingRowsEditor({
       </button>
 
       {error ? (
-        <p className="mt-3 rounded-[10px] bg-red-50 px-3 py-2 text-xs font-semibold leading-relaxed text-red-700">
+        <p className="mt-3 rounded-[8px] bg-red-50 px-3 py-2 text-xs font-semibold leading-relaxed text-red-700">
           {error}
         </p>
       ) : null}

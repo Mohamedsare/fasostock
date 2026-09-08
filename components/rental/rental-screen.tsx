@@ -496,7 +496,7 @@ export function RentalScreen() {
                       <button
                         type="button"
                         onClick={() => setDetailLeaseId(l.id)}
-                        className="flex w-full items-center justify-between gap-2 rounded-xl border border-red-500/25 bg-red-500/[0.06] px-3 py-2 text-left"
+                        className="flex w-full items-center justify-between gap-2 rounded-lg border border-red-500/25 bg-red-500/[0.06] px-3 py-2 text-left"
                       >
                         <div className="min-w-0">
                           <p className="truncate text-sm font-semibold text-fs-text">
@@ -661,7 +661,7 @@ export function RentalScreen() {
                   setEditingProperty(null);
                   setPropertyFormOpen(true);
                 }}
-                className="mt-1 inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-fs-accent px-5 text-sm font-bold text-white"
+                className="mt-1 inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-fs-accent px-5 text-sm font-bold text-white"
               >
                 <MdAddHome className="h-5 w-5" aria-hidden />
                 Ajouter mon premier bien
@@ -724,7 +724,7 @@ export function RentalScreen() {
               <li key={t.id}>
                 <FsCard className="h-full" padding="p-3">
                   <div className="flex items-start gap-3">
-                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[color-mix(in_srgb,var(--fs-accent)_12%,transparent)] text-sm font-black text-fs-accent">
+                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-[color-mix(in_srgb,var(--fs-accent)_12%,transparent)] text-sm font-black text-fs-accent">
                       {initials(t.fullName)}
                     </span>
                     <div className="min-w-0 flex-1">
@@ -1182,7 +1182,7 @@ function Kpi({
       <div className="flex items-start gap-2.5">
         <span
           className={cn(
-            "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl",
+            "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
             tone === "accent"
               ? "bg-[color-mix(in_srgb,var(--fs-accent)_14%,transparent)] text-fs-accent"
               : tone === "success"
@@ -1241,7 +1241,7 @@ function LeaseCard({
           <button
             type="button"
             onClick={onOpen}
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[color-mix(in_srgb,var(--fs-accent)_12%,transparent)] text-sm font-black text-fs-accent"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-[color-mix(in_srgb,var(--fs-accent)_12%,transparent)] text-sm font-black text-fs-accent"
             aria-label={`Ouvrir le bail de ${lease.tenantName}`}
           >
             {initials(lease.tenantName)}
@@ -1401,7 +1401,7 @@ function PropertyCard({
             {units.map((u) => (
               <li
                 key={u.id}
-                className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-black/[0.07] px-3 py-2 dark:border-white/10"
+                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-black/[0.07] px-3 py-2 dark:border-white/10"
               >
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold text-fs-text">{u.label}</p>
@@ -1459,7 +1459,7 @@ function Tile({
   tone?: "default" | "danger" | "success";
 }) {
   return (
-    <div className="rounded-xl bg-black/[0.03] px-2.5 py-2 dark:bg-white/[0.05]">
+    <div className="rounded-lg bg-black/[0.03] px-2.5 py-2 dark:bg-white/[0.05]">
       <p className="truncate text-[10px] font-medium text-neutral-500">{label}</p>
       <p
         className={cn(

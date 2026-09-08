@@ -95,7 +95,7 @@ export function ProgressiveMovementDialog({
       onClick={() => (mut.isPending ? null : onClose())}
     >
       <div
-        className="flex max-h-[92vh] w-full max-w-lg flex-col rounded-t-2xl bg-fs-card shadow-2xl min-[560px]:rounded-2xl"
+        className="flex max-h-[92vh] w-full max-w-lg flex-col rounded-t-xl bg-fs-card shadow-2xl min-[560px]:rounded-xl"
         role="dialog"
         aria-modal="true"
         aria-label={isRefund ? "Rembourser le client" : "Nouveau versement"}
@@ -127,7 +127,7 @@ export function ProgressiveMovementDialog({
         </div>
 
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
-          <div className="rounded-xl bg-[color-mix(in_srgb,var(--fs-accent)_8%,transparent)] p-3">
+          <div className="rounded-lg bg-[color-mix(in_srgb,var(--fs-accent)_8%,transparent)] p-3">
             <p className="text-xs text-neutral-600">Épargne actuelle</p>
             <p className="text-xl font-extrabold tabular-nums text-fs-text">
               {formatCurrency(plan.balance)}
@@ -221,7 +221,7 @@ export function ProgressiveMovementDialog({
           </div>
 
           {value > 0 ? (
-            <div className="rounded-xl border border-black/[0.07] bg-fs-surface-container/60 p-3 dark:border-white/10">
+            <div className="rounded-lg border border-black/[0.07] bg-fs-surface-container/60 p-3 dark:border-white/10">
               <div className="flex items-baseline justify-between gap-2">
                 <span className="text-xs text-neutral-600">Nouvelle épargne</span>
                 <span className="text-lg font-extrabold tabular-nums text-emerald-600">
@@ -253,7 +253,7 @@ export function ProgressiveMovementDialog({
             disabled={!canSubmit || mut.isPending}
             onClick={() => mut.mutate()}
             className={cn(
-              "inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl text-sm font-bold text-white shadow-sm disabled:opacity-50",
+              "inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-lg text-sm font-bold text-white shadow-sm disabled:opacity-50",
               isRefund ? "bg-amber-600" : "bg-fs-accent",
             )}
           >

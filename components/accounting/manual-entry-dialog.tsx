@@ -127,14 +127,14 @@ export function ManualEntryDialog({
         if (e.target === e.currentTarget && !saving) onClose();
       }}
     >
-      <div className="flex h-full w-full max-w-3xl flex-col overflow-hidden bg-fs-card shadow-xl sm:h-auto sm:max-h-[92vh] sm:rounded-2xl">
+      <div className="flex h-full w-full max-w-3xl flex-col overflow-hidden bg-fs-card shadow-xl sm:h-auto sm:max-h-[92vh] sm:rounded-xl">
         <div className="flex shrink-0 items-center justify-between gap-3 border-b border-black/6 px-4 py-3">
           <h2 className="text-base font-bold text-fs-text">Nouvelle écriture</h2>
           <button
             type="button"
             onClick={onClose}
             disabled={saving}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-[10px] border border-black/8 bg-fs-card text-neutral-700 disabled:opacity-50"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-[8px] border border-black/8 bg-fs-card text-neutral-700 disabled:opacity-50"
             aria-label="Fermer"
           >
             <MdClose className="h-5 w-5" aria-hidden />
@@ -208,7 +208,7 @@ export function ManualEntryDialog({
               {lines.map((l) => (
                 <div
                   key={l.key}
-                  className="grid grid-cols-1 gap-2 rounded-xl border border-black/[0.06] bg-fs-surface/40 p-2 sm:grid-cols-[1.6fr_1.4fr_1fr_1fr_auto] sm:items-center"
+                  className="grid grid-cols-1 gap-2 rounded-lg border border-black/[0.06] bg-fs-surface/40 p-2 sm:grid-cols-[1.6fr_1.4fr_1fr_1fr_auto] sm:items-center"
                 >
                   <select
                     className={fsInputClass("text-sm")}
@@ -287,7 +287,7 @@ export function ManualEntryDialog({
               type="button"
               onClick={onClose}
               disabled={saving}
-              className="rounded-xl border border-black/10 px-4 py-2 text-sm font-semibold text-fs-text disabled:opacity-50"
+              className="rounded-lg border border-black/10 px-4 py-2 text-sm font-semibold text-fs-text disabled:opacity-50"
             >
               Annuler
             </button>
@@ -295,7 +295,7 @@ export function ManualEntryDialog({
               type="button"
               onClick={handleSave}
               disabled={!canSave}
-              className="rounded-xl bg-fs-accent px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
+              className="rounded-lg bg-fs-accent px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
             >
               {saving ? "Enregistrement…" : "Enregistrer"}
             </button>

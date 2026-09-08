@@ -137,7 +137,7 @@ export function AdminOnlineStoreScreen() {
             void companiesQ.refetch();
             void storesQ.refetch();
           }}
-          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-50"
+          className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-50"
         >
           <MdRefresh className="h-5 w-5" aria-hidden />
           Rafraîchir
@@ -178,17 +178,17 @@ export function AdminOnlineStoreScreen() {
       <AdminCard>
         <h3 className="text-base font-bold text-slate-900">Comment ça marche</h3>
         <ol className="mt-3 grid gap-3 text-sm text-slate-600 md:grid-cols-3">
-          <li className="rounded-xl bg-slate-50 p-3">
+          <li className="rounded-lg bg-slate-50 p-3">
             <span className="font-bold text-slate-900">1. Stock synchronisé.</span> Le
             catalogue lit le stock réel de la boutique. Un article vendu en caisse
             disparaît du web : impossible de vendre en ligne ce qui n&apos;existe plus.
           </li>
-          <li className="rounded-xl bg-slate-50 p-3">
+          <li className="rounded-lg bg-slate-50 p-3">
             <span className="font-bold text-slate-900">2. Un seul écran.</span> Caisse,
             web et WhatsApp arrivent au même endroit. Le gestionnaire valide, encaisse,
             et le reçu part comme une vente normale.
           </li>
-          <li className="rounded-xl bg-slate-50 p-3">
+          <li className="rounded-lg bg-slate-50 p-3">
             <span className="font-bold text-slate-900">3. Lien catalogue.</span> Pas de
             site à construire : FasoStock génère un lien propre à partager sur WhatsApp
             ou Facebook.
@@ -206,7 +206,7 @@ export function AdminOnlineStoreScreen() {
             </p>
           </div>
           <input
-            className="min-w-[200px] rounded-xl border border-slate-200 px-3 py-2 text-sm"
+            className="min-w-[200px] rounded-lg border border-slate-200 px-3 py-2 text-sm"
             placeholder="Rechercher une entreprise…"
             value={companySearch}
             onChange={(e) => setCompanySearch(e.target.value)}
@@ -259,7 +259,7 @@ export function AdminOnlineStoreScreen() {
           </div>
           <div className="flex flex-wrap gap-2">
             <select
-              className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
+              className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
               value={companyFilter}
               onChange={(e) => setCompanyFilter(e.target.value)}
             >
@@ -271,12 +271,12 @@ export function AdminOnlineStoreScreen() {
               ))}
             </select>
             <input
-              className="min-w-[180px] rounded-xl border border-slate-200 px-3 py-2 text-sm"
+              className="min-w-[180px] rounded-lg border border-slate-200 px-3 py-2 text-sm"
               placeholder="Rechercher une boutique / un lien…"
               value={storeSearch}
               onChange={(e) => setStoreSearch(e.target.value)}
             />
-            <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-600">
+            <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-600">
               <input
                 type="checkbox"
                 className="h-4 w-4 accent-emerald-600"
@@ -419,9 +419,9 @@ function StatTile({
     violet: "bg-violet-50 text-violet-700",
   };
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       <div className="flex items-center gap-2">
-        <span className={`grid h-8 w-8 place-items-center rounded-xl ${tones[tone]}`}>{icon}</span>
+        <span className={`grid h-8 w-8 place-items-center rounded-lg ${tones[tone]}`}>{icon}</span>
         <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
           {label}
         </span>

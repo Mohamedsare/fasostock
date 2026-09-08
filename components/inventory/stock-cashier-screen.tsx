@@ -48,7 +48,7 @@ function StockCashierPagination({
   return (
     <FsCard
       padding="px-4 py-3"
-      className="mt-3 rounded-xl border border-black/6 shadow-none sm:rounded-xl"
+      className="mt-3 rounded-lg border border-black/6 shadow-none sm:rounded-lg"
     >
       <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
         {!narrow ? (
@@ -108,7 +108,7 @@ function SummaryChip({
   return (
     <div
       className={cn(
-        "flex h-full min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 rounded-[12px] border bg-fs-card px-3 py-3 shadow-none sm:px-4",
+        "flex h-full min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 rounded-[10px] border bg-fs-card px-3 py-3 shadow-none sm:px-4",
         borderClass,
       )}
     >
@@ -134,7 +134,7 @@ function ProductStockTile({
   const qty = row.availableQuantity;
   const t = threshold <= 0 ? 5 : threshold;
   return (
-    <div className="mb-2 rounded-xl border border-black/6 bg-fs-card shadow-sm">
+    <div className="mb-2 rounded-lg border border-black/6 bg-fs-card shadow-sm">
       <div className="flex items-center gap-3 px-3 py-2.5">
         <ProductListThumbnail imageUrl={row.imageUrl} className="h-11 w-11 shrink-0 rounded-lg" />
         <div className="min-w-0 flex-1">
@@ -271,7 +271,7 @@ export function StockCashierScreen() {
         <p className="mt-1 text-sm leading-relaxed text-neutral-600">
           Sélectionnez une boutique pour voir les ruptures et alertes.
         </p>
-        <FsCard className="mt-6 rounded-2xl border border-black/6 shadow-none" padding="p-8">
+        <FsCard className="mt-6 rounded-xl border border-black/6 shadow-none" padding="p-8">
           <div className="flex flex-col items-center text-center">
             <MdStorefront className="h-16 w-16 text-fs-accent/80" aria-hidden />
             <p className="mt-4 text-base font-semibold text-neutral-700">Choisissez une boutique</p>
@@ -301,7 +301,7 @@ export function StockCashierScreen() {
           {dataQ.isError ? (
             <div className="mt-3">
               <FsQueryErrorPanel
-                className="rounded-xl border border-red-200/70 bg-red-600/8 shadow-none"
+                className="rounded-lg border border-red-200/70 bg-red-600/8 shadow-none"
                 error={dataQ.error}
                 onRetry={() => dataQ.refetch()}
               />
@@ -335,7 +335,7 @@ export function StockCashierScreen() {
               <h2 className="mt-6 text-base font-semibold leading-snug text-red-600">Rupture de stock</h2>
               {rupture.length === 0 ? (
                 <FsCard
-                  className="mt-2 rounded-xl border border-black/6 shadow-none"
+                  className="mt-2 rounded-lg border border-black/6 shadow-none"
                   padding="p-4"
                 >
                   <p className="text-center text-sm leading-relaxed text-neutral-800">
@@ -364,7 +364,7 @@ export function StockCashierScreen() {
               </h2>
               {alertes.length === 0 ? (
                 <FsCard
-                  className="mt-2 rounded-xl border border-black/6 shadow-none"
+                  className="mt-2 rounded-lg border border-black/6 shadow-none"
                   padding="p-4"
                 >
                   <p className="text-center text-sm leading-relaxed text-neutral-800">Aucune alerte</p>

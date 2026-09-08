@@ -59,7 +59,7 @@ export function AdminSettingsScreen() {
         <label className="mt-4 block text-sm font-medium text-slate-700">
           Nom de la plateforme
           <input
-            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+            className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
             value={get("platform_name")}
             onChange={(e) => set("platform_name", e.target.value)}
             placeholder="FasoStock"
@@ -69,7 +69,7 @@ export function AdminSettingsScreen() {
           Email de contact
           <input
             type="email"
-            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+            className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
             value={get("contact_email")}
             onChange={(e) => set("contact_email", e.target.value)}
           />
@@ -77,7 +77,7 @@ export function AdminSettingsScreen() {
         <label className="mt-3 block text-sm font-medium text-slate-700">
           Téléphone
           <input
-            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+            className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
             value={get("contact_phone")}
             onChange={(e) => set("contact_phone", e.target.value)}
           />
@@ -85,7 +85,7 @@ export function AdminSettingsScreen() {
         <label className="mt-3 block text-sm font-medium text-slate-700">
           WhatsApp (landing)
           <input
-            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+            className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
             value={get("contact_whatsapp")}
             onChange={(e) => set("contact_whatsapp", e.target.value)}
           />
@@ -131,7 +131,7 @@ export function AdminSettingsScreen() {
 
       <button
         type="button"
-        className="rounded-xl bg-orange-600 px-6 py-3 text-sm font-semibold text-white disabled:opacity-50"
+        className="rounded-lg bg-orange-600 px-6 py-3 text-sm font-semibold text-white disabled:opacity-50"
         disabled={save.isPending}
         onClick={() => save.mutate()}
       >

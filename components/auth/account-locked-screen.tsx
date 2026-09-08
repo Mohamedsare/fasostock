@@ -27,7 +27,7 @@ export function AccountLockedScreen({
     >
       <AuthCard>
         <div className="flex justify-center">
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-red-50 ring-1 ring-red-100">
+          <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-red-50 ring-1 ring-red-100">
             <Lock
               className="h-9 w-9 text-red-600"
               strokeWidth={1.75}
@@ -48,7 +48,7 @@ export function AccountLockedScreen({
             href={waUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="fs-touch-target flex items-center justify-center gap-2 rounded-xl border-2 px-4 py-3 text-sm font-semibold transition-opacity active:opacity-90"
+            className="fs-touch-target flex items-center justify-center gap-2 rounded-lg border-2 px-4 py-3 text-sm font-semibold transition-opacity active:opacity-90"
             style={{ borderColor: "#25D366", color: "#25D366" }}
           >
             <span className="relative block size-[22px] shrink-0 overflow-hidden" aria-hidden>
@@ -64,7 +64,7 @@ export function AccountLockedScreen({
           </a>
           <a
             href={telUrl}
-            className="fs-touch-target flex items-center justify-center gap-2 rounded-xl border border-black/[0.08] bg-white/80 px-4 py-3 text-sm font-semibold text-fs-accent shadow-sm"
+            className="fs-touch-target flex items-center justify-center gap-2 rounded-lg border border-black/[0.08] bg-white/80 px-4 py-3 text-sm font-semibold text-fs-accent shadow-sm"
           >
             Appeler {SUPPORT_PHONE_DISPLAY}
           </a>
@@ -72,7 +72,7 @@ export function AccountLockedScreen({
         <button
           type="button"
           onClick={onBackToLogin}
-          className="mt-6 w-full rounded-xl py-3 text-center text-sm font-semibold text-fs-accent underline-offset-4 hover:underline"
+          className="mt-6 w-full rounded-lg py-3 text-center text-sm font-semibold text-fs-accent underline-offset-4 hover:underline"
         >
           Retour à la connexion
         </button>

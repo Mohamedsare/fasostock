@@ -226,7 +226,7 @@ export function AdminCompaniesScreen() {
         />
         <button
           type="button"
-          className="inline-flex items-center gap-2 rounded-xl bg-orange-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-orange-700"
+          className="inline-flex items-center gap-2 rounded-lg bg-orange-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-orange-700"
           onClick={() => {
             setCreateForm(EMPTY_CREATE_FORM);
             setCreateOpen(true);
@@ -413,7 +413,7 @@ export function AdminCompaniesScreen() {
 
       {createOpen ? (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4">
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-xl">
+          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
             <h3 className="text-lg font-bold text-slate-900">Créer une entreprise</h3>
             <p className="mt-1 text-sm text-slate-500">
               Le compte propriétaire est créé avec email confirmé automatiquement — le
@@ -424,7 +424,7 @@ export function AdminCompaniesScreen() {
               <label className="block text-sm font-medium text-slate-700">
                 Nom de l&apos;entreprise *
                 <input
-                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
                   value={createForm.companyName}
                   onChange={(e) => setCreateForm((f) => ({ ...f, companyName: e.target.value }))}
                   placeholder="Ex. ETS COULIBALY"
@@ -434,7 +434,7 @@ export function AdminCompaniesScreen() {
               <label className="block text-sm font-medium text-slate-700">
                 Type d&apos;activité
                 <select
-                  className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                  className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
                   value={createForm.businessTypeSlug}
                   onChange={(e) => setCreateForm((f) => ({ ...f, businessTypeSlug: e.target.value }))}
                 >
@@ -460,7 +460,7 @@ export function AdminCompaniesScreen() {
               <label className="block text-sm font-medium text-slate-700">
                 Nom de la première boutique *
                 <input
-                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
                   value={createForm.firstStoreName}
                   onChange={(e) => setCreateForm((f) => ({ ...f, firstStoreName: e.target.value }))}
                   placeholder="Ex. Boutique principale"
@@ -470,7 +470,7 @@ export function AdminCompaniesScreen() {
               <label className="block text-sm font-medium text-slate-700">
                 Téléphone de la boutique
                 <input
-                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
                   value={createForm.firstStorePhone}
                   onChange={(e) => setCreateForm((f) => ({ ...f, firstStorePhone: e.target.value }))}
                   placeholder="Ex. 70 00 00 00"
@@ -484,7 +484,7 @@ export function AdminCompaniesScreen() {
               <label className="block text-sm font-medium text-slate-700">
                 Nom du propriétaire
                 <input
-                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
                   value={createForm.ownerFullName}
                   onChange={(e) => setCreateForm((f) => ({ ...f, ownerFullName: e.target.value }))}
                   placeholder="Ex. Amadou Coulibaly"
@@ -496,7 +496,7 @@ export function AdminCompaniesScreen() {
                 <input
                   type="email"
                   autoComplete="off"
-                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
                   value={createForm.ownerEmail}
                   onChange={(e) => setCreateForm((f) => ({ ...f, ownerEmail: e.target.value }))}
                   placeholder="proprietaire@entreprise.com"
@@ -508,7 +508,7 @@ export function AdminCompaniesScreen() {
                 <input
                   type="text"
                   autoComplete="new-password"
-                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
                   value={createForm.ownerPassword}
                   onChange={(e) => setCreateForm((f) => ({ ...f, ownerPassword: e.target.value }))}
                   placeholder="À communiquer au client"
@@ -519,7 +519,7 @@ export function AdminCompaniesScreen() {
             <div className="mt-6 flex justify-end gap-2">
               <button
                 type="button"
-                className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold"
+                className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold"
                 disabled={mutCreate.isPending}
                 onClick={() => setCreateOpen(false)}
               >
@@ -527,7 +527,7 @@ export function AdminCompaniesScreen() {
               </button>
               <button
                 type="button"
-                className="rounded-xl bg-orange-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                className="rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
                 disabled={mutCreate.isPending}
                 onClick={submitCreate}
               >
@@ -540,7 +540,7 @@ export function AdminCompaniesScreen() {
 
       {supportFor ? (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
             <h3 className="text-lg font-bold text-slate-900">
               Dépanner « {supportFor.name} »
             </h3>
@@ -553,7 +553,7 @@ export function AdminCompaniesScreen() {
             <label className="mt-4 block text-sm font-medium text-slate-700">
               Motif de l&apos;intervention *
               <input
-                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
                 value={supportReason}
                 onChange={(e) => setSupportReason(e.target.value)}
                 placeholder="Ex. Stock négatif signalé au téléphone"
@@ -571,8 +571,8 @@ export function AdminCompaniesScreen() {
                     onClick={() => setSupportMinutes(m)}
                     className={
                       supportMinutes === m
-                        ? "rounded-xl bg-amber-500 px-3 py-1.5 text-sm font-semibold text-white"
-                        : "rounded-xl border border-slate-200 px-3 py-1.5 text-sm font-semibold text-slate-700"
+                        ? "rounded-lg bg-amber-500 px-3 py-1.5 text-sm font-semibold text-white"
+                        : "rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-semibold text-slate-700"
                     }
                   >
                     {m < 60 ? `${m} min` : `${m / 60} h`}
@@ -587,7 +587,7 @@ export function AdminCompaniesScreen() {
             <div className="mt-6 flex justify-end gap-2">
               <button
                 type="button"
-                className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold"
+                className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold"
                 disabled={mutSupport.isPending}
                 onClick={() => setSupportFor(null)}
               >
@@ -595,7 +595,7 @@ export function AdminCompaniesScreen() {
               </button>
               <button
                 type="button"
-                className="rounded-xl bg-amber-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
                 disabled={mutSupport.isPending}
                 onClick={submitSupport}
               >

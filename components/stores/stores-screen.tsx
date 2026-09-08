@@ -96,7 +96,7 @@ export function StoresScreen() {
       : "Sélectionnez une entreprise";
 
   const btnPrimary =
-    "touch-manipulation inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-[10px] bg-[#F97316] px-4 text-sm font-semibold text-white shadow-sm active:opacity-95 min-[480px]:min-h-11 min-[480px]:w-auto";
+    "touch-manipulation inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-[8px] bg-[#F97316] px-4 text-sm font-semibold text-white shadow-sm active:opacity-95 min-[480px]:min-h-11 min-[480px]:w-auto";
 
   if (ctx.isLoading || permLoading) {
     return (
@@ -108,7 +108,7 @@ export function StoresScreen() {
 
   if (!ctx.data) {
     return (
-      <div className="rounded-xl border border-dashed border-black/[0.12] bg-fs-card px-4 py-8 text-center text-sm text-neutral-600 sm:rounded-2xl">
+      <div className="rounded-lg border border-dashed border-black/[0.12] bg-fs-card px-4 py-8 text-center text-sm text-neutral-600 sm:rounded-xl">
         Aucune entreprise disponible. Contactez l’administrateur.
       </div>
     );
@@ -144,7 +144,7 @@ export function StoresScreen() {
               type="button"
               disabled={storesQ.isFetching}
               onClick={() => void refresh()}
-              className="touch-manipulation inline-flex min-h-12 shrink-0 items-center justify-center gap-2 self-start rounded-[10px] border border-black/10 bg-fs-card px-3 text-neutral-800 active:bg-neutral-50 disabled:opacity-40 min-[400px]:px-4"
+              className="touch-manipulation inline-flex min-h-12 shrink-0 items-center justify-center gap-2 self-start rounded-[8px] border border-black/10 bg-fs-card px-3 text-neutral-800 active:bg-neutral-50 disabled:opacity-40 min-[400px]:px-4"
               aria-label="Actualiser la liste"
             >
               <MdRefresh
@@ -164,7 +164,7 @@ export function StoresScreen() {
 
         {quotaIncreaseBlocked ? (
           <div
-            className="rounded-xl border border-amber-300/80 bg-amber-50/90 p-4 text-sm text-amber-950"
+            className="rounded-lg border border-amber-300/80 bg-amber-50/90 p-4 text-sm text-amber-950"
             role="status"
           >
             <div className="flex gap-3">
@@ -179,7 +179,7 @@ export function StoresScreen() {
 
         {storesQ.isError ? (
           <div
-            className="rounded-xl border border-red-300/80 bg-red-50/90 p-4 text-sm text-red-900"
+            className="rounded-lg border border-red-300/80 bg-red-50/90 p-4 text-sm text-red-900"
             role="alert"
           >
             <div className="flex gap-3">
@@ -317,7 +317,7 @@ function EmptyStoresState({
         <button
           type="button"
           onClick={onCreate}
-          className="touch-manipulation mt-7 inline-flex min-h-12 w-full max-w-sm items-center justify-center gap-2 rounded-xl bg-[#F97316] px-6 py-3 text-sm font-semibold text-white active:opacity-95 sm:w-auto"
+          className="touch-manipulation mt-7 inline-flex min-h-12 w-full max-w-sm items-center justify-center gap-2 rounded-lg bg-[#F97316] px-6 py-3 text-sm font-semibold text-white active:opacity-95 sm:w-auto"
         >
           <MdAdd className="h-5 w-5" aria-hidden />
           Créer une boutique
@@ -385,10 +385,10 @@ function StoreCard({
   }
 
   return (
-    <article className="flex touch-manipulation flex-col overflow-hidden rounded-xl border border-black/[0.06] bg-fs-card shadow-sm">
+    <article className="flex touch-manipulation flex-col overflow-hidden rounded-lg border border-black/[0.06] bg-fs-card shadow-sm">
       <div className="flex flex-1 flex-col p-4">
         <div className="flex gap-4">
-          <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-neutral-100">
+          <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-neutral-100">
             {store.logo_url ? (
               // eslint-disable-next-line @next/next/no-img-element -- URL publique Supabase dynamique
               <img
@@ -452,7 +452,7 @@ function StoreCard({
           type="button"
           onClick={() => void exportProductsPdf()}
           disabled={exportingPdf}
-          className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-bold text-red-700 active:opacity-95 disabled:opacity-60"
+          className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-bold text-red-700 active:opacity-95 disabled:opacity-60"
           title="Exporter la liste des produits du magasin en PDF"
         >
           <MdPictureAsPdf className="h-5 w-5 shrink-0" aria-hidden />

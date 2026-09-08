@@ -141,7 +141,7 @@ export function LabelPrintOptionsPanel({
             {!known ? <option value="custom">Format personnalisé</option> : null}
           </select>
         </label>
-        <div className="flex items-center gap-2 rounded-xl border border-black/10 bg-fs-surface px-3 py-2 text-sm font-semibold text-neutral-800">
+        <div className="flex items-center gap-2 rounded-lg border border-black/10 bg-fs-surface px-3 py-2 text-sm font-semibold text-neutral-800">
           {isSheet ? "📄" : "🖨️"}{" "}
           {`${options.widthMm} × ${options.heightMm} mm`}
           <span className="font-normal text-neutral-500">
@@ -153,7 +153,7 @@ export function LabelPrintOptionsPanel({
         <button
           type="button"
           onClick={() => setShowAdvanced((v) => !v)}
-          className="inline-flex items-center gap-2 rounded-xl border border-black/10 bg-fs-card px-3 py-2 text-sm font-semibold text-neutral-700"
+          className="inline-flex items-center gap-2 rounded-lg border border-black/10 bg-fs-card px-3 py-2 text-sm font-semibold text-neutral-700"
         >
           <MdTune className="h-4 w-4" aria-hidden />
           {showAdvanced ? "Masquer les réglages fins" : "Réglages fins"}
@@ -162,7 +162,7 @@ export function LabelPrintOptionsPanel({
           type="button"
           title="Revenir au format d'origine (40 × 30 mm)"
           onClick={() => onChange(defaultLabelPrintOptions())}
-          className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-black/10 bg-fs-card text-neutral-600"
+          className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-black/10 bg-fs-card text-neutral-600"
         >
           <MdRestartAlt className="h-5 w-5" aria-hidden />
         </button>
@@ -171,12 +171,12 @@ export function LabelPrintOptionsPanel({
       {preset ? <div className="text-xs text-neutral-500">{preset.hint}</div> : null}
 
       {fitMessage ? (
-        <div className="rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">
+        <div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">
           ⚠️ {fitMessage}
         </div>
       ) : null}
 
-      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 rounded-xl border border-black/10 bg-fs-surface px-3 py-2">
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 rounded-lg border border-black/10 bg-fs-surface px-3 py-2">
         <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
           Sur l&apos;étiquette
         </span>
@@ -198,7 +198,7 @@ export function LabelPrintOptionsPanel({
       </div>
 
       {showAdvanced ? (
-        <div className="rounded-xl border border-black/10 bg-fs-surface p-3">
+        <div className="rounded-lg border border-black/10 bg-fs-surface p-3">
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
             <NumField
               label="Largeur"

@@ -27,7 +27,7 @@ export function TutorialPlayerDialog({
       }}
     >
       <FsCard
-        className="flex h-full w-full max-w-2xl flex-col overflow-hidden shadow-xl sm:h-auto sm:max-h-[90vh] sm:rounded-2xl"
+        className="flex h-full w-full max-w-2xl flex-col overflow-hidden shadow-xl sm:h-auto sm:max-h-[90vh] sm:rounded-xl"
         padding="p-0"
       >
         <div className="flex shrink-0 items-start justify-between gap-3 border-b border-black/6 px-4 py-3">
@@ -37,7 +37,7 @@ export function TutorialPlayerDialog({
           <button
             type="button"
             onClick={onClose}
-            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] border border-black/8 bg-fs-card text-neutral-700 active:bg-fs-surface-container"
+            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[8px] border border-black/8 bg-fs-card text-neutral-700 active:bg-fs-surface-container"
             aria-label="Fermer"
           >
             <MdClose className="h-5 w-5" aria-hidden />

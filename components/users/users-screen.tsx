@@ -401,7 +401,7 @@ export function UsersScreen() {
           <button
             type="button"
             onClick={() => usersQ.refetch()}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-[10px] border border-black/8 bg-fs-card text-neutral-800"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-[8px] border border-black/8 bg-fs-card text-neutral-800"
             aria-label="Rafraîchir"
           >
             <MdRefresh className="h-5 w-5" aria-hidden />
@@ -410,7 +410,7 @@ export function UsersScreen() {
             <button
               type="button"
               onClick={() => setOpenCreate(true)}
-              className="hidden items-center gap-2 rounded-[10px] bg-fs-accent px-3 py-2 text-xs font-semibold text-white shadow-sm sm:inline-flex sm:text-sm"
+              className="hidden items-center gap-2 rounded-[8px] bg-fs-accent px-3 py-2 text-xs font-semibold text-white shadow-sm sm:inline-flex sm:text-sm"
             >
               <MdAdd className="h-4 w-4" aria-hidden />
               Nouveau
@@ -437,7 +437,7 @@ export function UsersScreen() {
               <button
                 type="button"
                 onClick={() => setOpenCreate(true)}
-                className="inline-flex items-center gap-2 rounded-[10px] border border-black/8 bg-fs-card px-2.5 py-1.5 text-xs font-semibold text-neutral-800"
+                className="inline-flex items-center gap-2 rounded-[8px] border border-black/8 bg-fs-card px-2.5 py-1.5 text-xs font-semibold text-neutral-800"
               >
                 <MdAdd className="h-4 w-4" aria-hidden />
                 Creer un utilisateur
@@ -522,7 +522,7 @@ export function UsersScreen() {
                 // Garde-fou : on ne peut pas modifier son propre compte (rôle,
                 // activation, suppression) pour éviter de se verrouiller soi-même.
                 <div className="mt-2 flex justify-end sm:mt-3">
-                  <span className="inline-flex items-center gap-1.5 rounded-[10px] border border-black/8 bg-fs-surface-container px-3 py-2 text-[11px] font-semibold text-neutral-600">
+                  <span className="inline-flex items-center gap-1.5 rounded-[8px] border border-black/8 bg-fs-surface-container px-3 py-2 text-[11px] font-semibold text-neutral-600">
                     <MdLockOutline className="h-4 w-4" aria-hidden />
                     Vous ne pouvez pas modifier votre propre compte
                   </span>
@@ -536,7 +536,7 @@ export function UsersScreen() {
                       setRoleMut.mutate({ roleRowId: u.roleRowId, roleId });
                     }}
                     className={cn(
-                      "min-h-[40px] rounded-[10px] border border-black/8 bg-fs-card px-2 py-2 text-xs font-semibold text-neutral-800 sm:text-sm",
+                      "min-h-[40px] rounded-[8px] border border-black/8 bg-fs-card px-2 py-2 text-xs font-semibold text-neutral-800 sm:text-sm",
                       setRoleMut.isPending ? "opacity-70" : "",
                     )}
                     disabled={setRoleMut.isPending}
@@ -653,7 +653,7 @@ export function UsersScreen() {
             liste des permissions.
           */}
           {rightsUserId ? (
-            <div className="mt-3 rounded-[10px] border border-black/[0.08] p-3">
+            <div className="mt-3 rounded-[8px] border border-black/[0.08] p-3">
               <FsSectionLabel>Pages visibles dans son menu</FsSectionLabel>
               <p className="mt-1 text-xs text-neutral-600">
                 Retirez ce qui ne le concerne pas pour lui laisser un écran simple. Il continue de
@@ -667,7 +667,7 @@ export function UsersScreen() {
                     <label
                       key={page}
                       className={cn(
-                        "flex cursor-pointer items-center justify-between gap-3 rounded-[10px] bg-fs-surface-container px-3 py-2",
+                        "flex cursor-pointer items-center justify-between gap-3 rounded-[8px] bg-fs-surface-container px-3 py-2",
                         busy && "pointer-events-none opacity-60",
                       )}
                     >
@@ -741,7 +741,7 @@ export function UsersScreen() {
                       <label
                         key={key}
                         className={cn(
-                          "flex items-start justify-between gap-3 rounded-[10px] border bg-fs-card px-3 py-2",
+                          "flex items-start justify-between gap-3 rounded-[8px] border bg-fs-card px-3 py-2",
                           warning ? "border-amber-500/50" : "border-black/6",
                           busy && "pointer-events-none opacity-60",
                         )}

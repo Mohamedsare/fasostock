@@ -82,7 +82,7 @@ export function PurchaseReceiveBatchesDialog({
   return (
     <div className="fixed inset-0 z-[75] flex items-end justify-center bg-black/45 p-0 sm:items-center sm:p-6">
       <div
-        className="flex max-h-[min(760px,92vh)] w-full max-w-[600px] flex-col rounded-t-2xl border border-black/[0.08] bg-fs-card shadow-2xl sm:rounded-2xl"
+        className="flex max-h-[min(760px,92vh)] w-full max-w-[600px] flex-col rounded-t-xl border border-black/[0.08] bg-fs-card shadow-2xl sm:rounded-xl"
         role="dialog"
         aria-labelledby="receive-batches-title"
       >
@@ -110,7 +110,7 @@ export function PurchaseReceiveBatchesDialog({
             {lines.map((l, idx) => (
               <li
                 key={l.productId}
-                className="rounded-xl border border-black/[0.06] bg-fs-card p-3"
+                className="rounded-lg border border-black/[0.06] bg-fs-card p-3"
               >
                 <p className="mb-2 text-sm font-semibold text-fs-text">{l.productName}</p>
                 <div className="flex flex-col gap-2.5 min-[480px]:flex-row">
@@ -162,7 +162,7 @@ export function PurchaseReceiveBatchesDialog({
           <button
             type="button"
             onClick={onClose}
-            className="min-h-11 rounded-xl border border-black/[0.1] px-4 text-sm font-semibold text-fs-text hover:bg-fs-surface-container"
+            className="min-h-11 rounded-lg border border-black/[0.1] px-4 text-sm font-semibold text-fs-text hover:bg-fs-surface-container"
           >
             Annuler
           </button>
@@ -173,7 +173,7 @@ export function PurchaseReceiveBatchesDialog({
               setErrorMsg(null);
               saveMutation.mutate();
             }}
-            className="min-h-11 rounded-xl bg-fs-accent px-4 text-sm font-semibold text-white disabled:opacity-50"
+            className="min-h-11 rounded-lg bg-fs-accent px-4 text-sm font-semibold text-white disabled:opacity-50"
           >
             {saveMutation.isPending ? "Enregistrement…" : "Enregistrer les lots"}
           </button>

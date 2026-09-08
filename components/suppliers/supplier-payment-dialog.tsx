@@ -255,7 +255,7 @@ export function SupplierPaymentDialog({
       </SupplierField>
 
       {supplier && supplier.stats.creditAvailable > 0 ? (
-        <p className="rounded-xl border border-sky-300 bg-sky-50 px-3 py-2 text-xs text-sky-800 dark:border-sky-900 dark:bg-sky-950/40 dark:text-sky-200">
+        <p className="rounded-lg border border-sky-300 bg-sky-50 px-3 py-2 text-xs text-sky-800 dark:border-sky-900 dark:bg-sky-950/40 dark:text-sky-200">
           Une avance de {formatCurrency(supplier.stats.creditAvailable)} est déjà versée à ce
           fournisseur et non imputée.
         </p>
@@ -325,7 +325,7 @@ export function SupplierPaymentDialog({
             Dettes à solder ({openInvoices.length})
           </p>
           {openInvoices.length === 0 ? (
-            <p className="rounded-xl border border-black/[0.08] bg-fs-surface-container px-3 py-4 text-center text-xs text-neutral-500">
+            <p className="rounded-lg border border-black/[0.08] bg-fs-surface-container px-3 py-4 text-center text-xs text-neutral-500">
               Aucune dette ouverte pour ce fournisseur. Le versement sera enregistré comme
               avance.
             </p>
@@ -338,7 +338,7 @@ export function SupplierPaymentDialog({
                   <div
                     key={inv.id}
                     className={cn(
-                      "rounded-xl border px-3 py-2.5",
+                      "rounded-lg border px-3 py-2.5",
                       checked
                         ? "border-emerald-500/40 bg-emerald-50/60 dark:bg-emerald-950/30"
                         : "border-black/[0.08] bg-fs-card",
@@ -389,7 +389,7 @@ export function SupplierPaymentDialog({
       )}
 
       {surplus > 0 ? (
-        <p className="rounded-xl border border-sky-300 bg-sky-50 px-3 py-2 text-xs text-sky-800 dark:border-sky-900 dark:bg-sky-950/40 dark:text-sky-200">
+        <p className="rounded-lg border border-sky-300 bg-sky-50 px-3 py-2 text-xs text-sky-800 dark:border-sky-900 dark:bg-sky-950/40 dark:text-sky-200">
           {formatCurrency(surplus)} dépassent la dette actuelle : ce surplus sera gardé en
           avance chez ce fournisseur.
         </p>

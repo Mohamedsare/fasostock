@@ -78,7 +78,7 @@ export default function LiveUsersMap({ users }: { users: AppWebPresencePayload[]
   const zoom = withGps.length > 0 ? 7 : withoutGps.length > 0 ? 8 : 6;
 
   return (
-    <div className="relative h-[min(82dvh,820px)] min-h-[320px] w-full overflow-hidden rounded-[1.25rem] bg-slate-200/30 shadow-[0_20px_50px_-15px_rgba(15,23,42,0.18)] ring-1 ring-slate-200/50 ring-inset">
+    <div className="relative h-[min(82dvh,820px)] min-h-[320px] w-full overflow-hidden rounded-[1rem] bg-slate-200/30 shadow-[0_20px_50px_-15px_rgba(15,23,42,0.18)] ring-1 ring-slate-200/50 ring-inset">
       <MapContainer
         center={DEFAULT_CENTER}
         zoom={zoom}
@@ -116,7 +116,7 @@ export default function LiveUsersMap({ users }: { users: AppWebPresencePayload[]
                 fillOpacity: 0.92,
               }}
             >
-              <Popup className="[&_.leaflet-popup-content-wrapper]:rounded-xl [&_.leaflet-popup-content-wrapper]:shadow-lg [&_.leaflet-popup-content]:m-3 [&_.leaflet-popup-content]:min-w-[180px]">
+              <Popup className="[&_.leaflet-popup-content-wrapper]:rounded-lg [&_.leaflet-popup-content-wrapper]:shadow-lg [&_.leaflet-popup-content]:m-3 [&_.leaflet-popup-content]:min-w-[180px]">
                 <div className="text-[13px] leading-snug">
                   <p className="font-bold text-slate-900">
                     {u.email ?? (isLanding ? "Visiteur" : u.user_id)}
@@ -149,7 +149,7 @@ export default function LiveUsersMap({ users }: { users: AppWebPresencePayload[]
                 fillOpacity: 0.55,
               }}
             >
-              <Popup className="[&_.leaflet-popup-content-wrapper]:rounded-xl [&_.leaflet-popup-content-wrapper]:shadow-lg [&_.leaflet-popup-content]:m-3 [&_.leaflet-popup-content]:min-w-[180px]">
+              <Popup className="[&_.leaflet-popup-content-wrapper]:rounded-lg [&_.leaflet-popup-content-wrapper]:shadow-lg [&_.leaflet-popup-content]:m-3 [&_.leaflet-popup-content]:min-w-[180px]">
                 <div className="text-[13px] leading-snug">
                   <p className="font-bold text-slate-900">
                     {u.email ?? (isLanding ? "Visiteur" : u.user_id)}

@@ -195,7 +195,7 @@ export function ExpiryScreen() {
           type="button"
           onClick={() => listQ.refetch()}
           disabled={listQ.isFetching}
-          className="fs-touch-target inline-flex shrink-0 items-center gap-1.5 rounded-[10px] border border-black/[0.08] bg-fs-card px-3 py-2 text-xs font-semibold text-neutral-700 transition-colors hover:bg-fs-surface-container disabled:opacity-60 sm:text-sm"
+          className="fs-touch-target inline-flex shrink-0 items-center gap-1.5 rounded-[8px] border border-black/[0.08] bg-fs-card px-3 py-2 text-xs font-semibold text-neutral-700 transition-colors hover:bg-fs-surface-container disabled:opacity-60 sm:text-sm"
         >
           <MdRefresh
             className={cn("h-4 w-4", listQ.isFetching && "animate-spin")}
@@ -365,7 +365,7 @@ function KpiTile({
           ? "border-yellow-200 bg-yellow-50 text-yellow-700"
           : "border-black/[0.06] bg-fs-surface-container text-neutral-700";
   return (
-    <div className={cn("rounded-xl border p-3", toneClass)}>
+    <div className={cn("rounded-lg border p-3", toneClass)}>
       <div className="flex items-center gap-1.5">
         {icon}
         <p className="text-2xl font-bold leading-none">{value}</p>

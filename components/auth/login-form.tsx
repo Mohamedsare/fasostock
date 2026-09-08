@@ -276,7 +276,7 @@ export function LoginForm() {
       >
         <ArrowLeft className="h-5 w-5 transition-transform duration-200 group-hover:-translate-x-0.5" aria-hidden />
       </Link>
-      <div className="rounded-2xl border border-neutral-200/80 bg-white p-5 shadow-[0_8px_32px_rgba(0,0,0,0.06)] sm:p-6">
+      <div className="rounded-xl border border-neutral-200/80 bg-white p-5 shadow-[0_8px_32px_rgba(0,0,0,0.06)] sm:p-6">
         <div className="flex flex-col items-center text-center">
           <Image
             src="/fs.png"
@@ -418,7 +418,7 @@ export function LoginForm() {
 
             <label
               htmlFor="login-remember"
-              className="group mt-3 flex cursor-pointer select-none items-start gap-3 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2.5 transition-all duration-200 hover:border-fs-accent/40 hover:bg-fs-accent/4 has-checked:border-fs-accent/50 has-checked:bg-fs-accent/6 has-focus-visible:ring-2 has-focus-visible:ring-fs-accent/35"
+              className="group mt-3 flex cursor-pointer select-none items-start gap-3 rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 transition-all duration-200 hover:border-fs-accent/40 hover:bg-fs-accent/4 has-checked:border-fs-accent/50 has-checked:bg-fs-accent/6 has-focus-visible:ring-2 has-focus-visible:ring-fs-accent/35"
             >
               <input
                 id="login-remember"

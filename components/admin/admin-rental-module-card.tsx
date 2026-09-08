@@ -85,7 +85,7 @@ export function AdminRentalModuleCard() {
 
       <div className="mt-4 flex flex-wrap gap-2">
         <select
-          className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
+          className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
           value={companyId}
           onChange={(e) => setCompanyId(e.target.value)}
         >
@@ -97,7 +97,7 @@ export function AdminRentalModuleCard() {
           ))}
         </select>
         <input
-          className="min-w-[200px] flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm"
+          className="min-w-[200px] flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm"
           placeholder="Rechercher une boutique…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -109,7 +109,7 @@ export function AdminRentalModuleCard() {
       ) : stores.length === 0 ? (
         <p className="mt-4 text-sm text-slate-500">Aucune boutique pour ce filtre.</p>
       ) : (
-        <ul className="mt-4 divide-y divide-slate-100 rounded-xl border border-slate-100">
+        <ul className="mt-4 divide-y divide-slate-100 rounded-lg border border-slate-100">
           {stores.map((s) => (
             <li key={s.id} className="flex items-center justify-between gap-3 p-3">
               <div className="min-w-0">

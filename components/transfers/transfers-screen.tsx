@@ -337,7 +337,7 @@ export function TransfersScreen() {
             <button
               type="button"
               onClick={() => setCreateOpen(true)}
-              className="inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-[10px] bg-fs-accent px-4 py-2.5 text-sm font-semibold text-white shadow-sm min-[400px]:w-auto sm:py-2.5"
+              className="inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-[8px] bg-fs-accent px-4 py-2.5 text-sm font-semibold text-white shadow-sm min-[400px]:w-auto sm:py-2.5"
             >
               <MdAdd className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden />
               Nouveau transfert
@@ -348,7 +348,7 @@ export function TransfersScreen() {
         {listQ.isError ? (
           <div
             className={cn(
-              "mt-3 flex items-start gap-3 rounded-[10px] border border-red-200/80 bg-red-50/80 p-3 sm:mt-4 sm:p-4",
+              "mt-3 flex items-start gap-3 rounded-[8px] border border-red-200/80 bg-red-50/80 p-3 sm:mt-4 sm:p-4",
             )}
             role="alert"
           >
@@ -481,7 +481,7 @@ export function TransfersScreen() {
                   <button
                     type="button"
                     onClick={() => setDetailId(row.id)}
-                    className="flex w-full items-stretch gap-2 rounded-xl border border-black/[0.08] bg-fs-card text-left shadow-sm transition-colors active:bg-fs-surface-container sm:gap-3"
+                    className="flex w-full items-stretch gap-2 rounded-lg border border-black/[0.08] bg-fs-card text-left shadow-sm transition-colors active:bg-fs-surface-container sm:gap-3"
                   >
                     <div className="flex shrink-0 items-center self-center pl-2 sm:pl-3">
                       <div
@@ -595,13 +595,13 @@ export function TransfersScreen() {
           role="dialog"
           aria-modal="true"
         >
-          <div className="flex max-h-[min(88dvh,640px)] w-full flex-col rounded-t-2xl bg-fs-surface shadow-2xl sm:max-h-[85vh] sm:max-w-lg sm:rounded-2xl">
+          <div className="flex max-h-[min(88dvh,640px)] w-full flex-col rounded-t-xl bg-fs-surface shadow-2xl sm:max-h-[85vh] sm:max-w-lg sm:rounded-xl">
             <div className="flex items-center justify-between border-b border-black/6 px-4 py-3">
               <h2 className="pr-2 text-base font-bold text-fs-text">Détail transfert</h2>
               <button
                 type="button"
                 onClick={() => setDetailId(null)}
-                className="fs-touch-target rounded-xl p-2 text-neutral-600"
+                className="fs-touch-target rounded-lg p-2 text-neutral-600"
                 aria-label="Fermer"
               >
                 <MdClose className="h-6 w-6" />
@@ -637,7 +637,7 @@ export function TransfersScreen() {
                           {d.items.map((it) => (
                             <div
                               key={it.id}
-                              className="flex flex-col gap-1 rounded-[10px] border border-black/6 bg-fs-card px-3 py-2 text-xs sm:flex-row sm:items-center sm:justify-between"
+                              className="flex flex-col gap-1 rounded-[8px] border border-black/6 bg-fs-card px-3 py-2 text-xs sm:flex-row sm:items-center sm:justify-between"
                             >
                               <span className="min-w-0 font-semibold text-fs-text">
                                 {it.productName ?? it.productId.slice(0, 8)}
@@ -655,14 +655,14 @@ export function TransfersScreen() {
                                 type="button"
                                 disabled={approveMut.isPending}
                                 onClick={() => approveMut.mutate(d.id)}
-                                className="fs-touch-target inline-flex w-full items-center justify-center gap-2 rounded-[10px] bg-violet-600 py-3.5 text-sm font-semibold text-white disabled:opacity-50"
+                                className="fs-touch-target inline-flex w-full items-center justify-center gap-2 rounded-[8px] bg-violet-600 py-3.5 text-sm font-semibold text-white disabled:opacity-50"
                               >
                                 <MdCheckCircle className="h-5 w-5" aria-hidden />
                                 Approuver
                               </button>
                             ) : null}
                             {needsApproval && !canApprove ? (
-                              <p className="rounded-[10px] border border-violet-200 bg-violet-50 px-3 py-2 text-xs text-violet-900">
+                              <p className="rounded-[8px] border border-violet-200 bg-violet-50 px-3 py-2 text-xs text-violet-900">
                                 En attente d&apos;approbation par un utilisateur autorisé.
                               </p>
                             ) : null}
@@ -671,7 +671,7 @@ export function TransfersScreen() {
                                 type="button"
                                 disabled={shipMut.isPending}
                                 onClick={() => shipMut.mutate(d.id)}
-                                className="fs-touch-target w-full rounded-[10px] bg-fs-accent py-3.5 text-sm font-semibold text-white disabled:opacity-50"
+                                className="fs-touch-target w-full rounded-[8px] bg-fs-accent py-3.5 text-sm font-semibold text-white disabled:opacity-50"
                               >
                                 Expédier
                               </button>
@@ -681,7 +681,7 @@ export function TransfersScreen() {
                                 type="button"
                                 disabled={receiveMut.isPending}
                                 onClick={() => receiveMut.mutate(d.id)}
-                                className="fs-touch-target w-full rounded-[10px] bg-emerald-600 py-3.5 text-sm font-semibold text-white disabled:opacity-50"
+                                className="fs-touch-target w-full rounded-[8px] bg-emerald-600 py-3.5 text-sm font-semibold text-white disabled:opacity-50"
                               >
                                 Réceptionner
                               </button>
@@ -691,7 +691,7 @@ export function TransfersScreen() {
                                 type="button"
                                 disabled={cancelMut.isPending}
                                 onClick={() => cancelMut.mutate(d.id)}
-                                className="fs-touch-target w-full rounded-[10px] border border-amber-300 bg-amber-50 py-3 text-sm font-semibold text-amber-900"
+                                className="fs-touch-target w-full rounded-[8px] border border-amber-300 bg-amber-50 py-3 text-sm font-semibold text-amber-900"
                               >
                                 Annuler
                               </button>
@@ -703,7 +703,7 @@ export function TransfersScreen() {
                                 onClick={() => {
                                   if (confirm("Supprimer définitivement ce transfert ?")) deleteMut.mutate(d.id);
                                 }}
-                                className="fs-touch-target inline-flex w-full items-center justify-center gap-2 rounded-[10px] border border-red-200 bg-red-50 py-3 text-sm font-semibold text-red-800"
+                                className="fs-touch-target inline-flex w-full items-center justify-center gap-2 rounded-[8px] border border-red-200 bg-red-50 py-3 text-sm font-semibold text-red-800"
                               >
                                 <MdDeleteOutline className="h-5 w-5" />
                                 Supprimer

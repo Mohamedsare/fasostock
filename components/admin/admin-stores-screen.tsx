@@ -149,7 +149,7 @@ export function AdminStoresScreen() {
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-sm font-medium text-slate-700">Filtrer par entreprise :</span>
         <select
-          className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+          className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
           value={companyFilter}
           onChange={(e) => setCompanyFilter(e.target.value)}
         >

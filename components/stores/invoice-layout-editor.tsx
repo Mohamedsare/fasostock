@@ -96,7 +96,7 @@ export function InvoiceLayoutEditor({
       </div>
 
       {groups.map((g) => (
-        <div key={g.group} className="overflow-hidden rounded-[10px] border border-black/[0.08]">
+        <div key={g.group} className="overflow-hidden rounded-[8px] border border-black/[0.08]">
           <p className="bg-black/[0.03] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-neutral-600">
             {g.group}
           </p>

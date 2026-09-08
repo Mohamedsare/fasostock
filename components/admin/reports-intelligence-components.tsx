@@ -40,7 +40,7 @@ function HeaderActionButton({ label, onClick }: { label: string; onClick: () => 
     <button
       type="button"
       onClick={onClick}
-      className="inline-flex h-11 min-w-[142px] items-center justify-center whitespace-nowrap rounded-2xl border border-slate-200 bg-white px-4 text-sm font-extrabold text-slate-800 shadow-[0_8px_18px_-12px_rgba(15,23,42,0.35)] transition hover:-translate-y-0.5 hover:border-orange-200 hover:bg-orange-50/60 hover:text-orange-700"
+      className="inline-flex h-11 min-w-[142px] items-center justify-center whitespace-nowrap rounded-xl border border-slate-200 bg-white px-4 text-sm font-extrabold text-slate-800 shadow-[0_8px_18px_-12px_rgba(15,23,42,0.35)] transition hover:-translate-y-0.5 hover:border-orange-200 hover:bg-orange-50/60 hover:text-orange-700"
     >
       {label}
     </button>
@@ -53,7 +53,7 @@ export function ReportFilters({
   children: ReactNode;
 }) {
   return (
-    <AdminCard className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+    <AdminCard className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       <p className="text-sm font-bold text-slate-900">Filtres globaux</p>
       <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-5">{children}</div>
     </AdminCard>
@@ -66,11 +66,11 @@ export function ExecutiveSummaryCard({
   lines: string[];
 }) {
   return (
-    <AdminCard className="rounded-2xl border border-orange-200 bg-orange-50/40 p-5 shadow-sm">
+    <AdminCard className="rounded-xl border border-orange-200 bg-orange-50/40 p-5 shadow-sm">
       <p className="text-sm font-extrabold text-slate-900">Résumé intelligent</p>
       <div className="mt-3 space-y-2">
         {lines.map((line, idx) => (
-          <p key={idx} className="rounded-xl border border-orange-100 bg-white px-3 py-2 text-sm text-slate-700">
+          <p key={idx} className="rounded-lg border border-orange-100 bg-white px-3 py-2 text-sm text-slate-700">
             {line}
           </p>
         ))}
@@ -87,7 +87,7 @@ export function PerformanceScoreCard({
   parts: Array<{ label: string; value: number }>;
 }) {
   return (
-    <AdminCard className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <AdminCard className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
       <p className="text-sm font-extrabold text-slate-900">Score global de performance</p>
       <p className="mt-1 text-3xl font-black text-orange-600">{Math.round(score)}/100</p>
       <div className="mt-3 space-y-2">
@@ -127,7 +127,7 @@ export function DecisionKpiCard({
           ? "text-red-600"
           : "text-slate-900";
   return (
-    <AdminCard padding="p-4" className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <AdminCard padding="p-4" className="rounded-xl border border-slate-200 bg-white shadow-sm">
       <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">{title}</p>
       <p className={cn("mt-1 truncate text-2xl font-black", toneClass)}>{value}</p>
       {hint ? <p className="mt-1 text-xs text-slate-500">{hint}</p> : null}
@@ -145,7 +145,7 @@ export function ActivityRevenueMatrix({
   rows: Array<{ company: string; activity: number; revenue: number; risk: number; zone: string }>;
 }) {
   return (
-    <AdminCard className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+    <AdminCard className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       <p className="text-sm font-bold text-slate-900">Matrice activité / revenu</p>
       <FsHorizontalScroll className="mt-3">
         <table className="w-full min-w-[560px] text-left text-xs">
@@ -202,14 +202,14 @@ function SimpleListCard({
   tone: "good" | "danger";
 }) {
   return (
-    <AdminCard className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+    <AdminCard className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       <p className="text-sm font-bold text-slate-900">{title}</p>
       <div className="mt-3 space-y-2">
         {items.map((item, i) => (
           <p
             key={i}
             className={cn(
-              "rounded-xl px-3 py-2 text-xs",
+              "rounded-lg px-3 py-2 text-xs",
               tone === "good" ? "border border-emerald-100 bg-emerald-50 text-emerald-700" : "border border-red-100 bg-red-50 text-red-700",
             )}
           >
@@ -241,7 +241,7 @@ export function CompanyReportTable({
   }>;
 }) {
   return (
-    <AdminCard className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+    <AdminCard className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       <p className="text-sm font-bold text-slate-900">Rapports par entreprise</p>
       <FsHorizontalScroll className="mt-3">
         <table className="w-full min-w-[1100px] text-left text-xs">
@@ -295,11 +295,11 @@ export function ProductAdoptionSection({
   rows: Array<{ module: string; score: number; trend: "up" | "down" | "flat" }>;
 }) {
   return (
-    <AdminCard className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+    <AdminCard className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       <p className="text-sm font-bold text-slate-900">Adoption produit</p>
       <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
         {rows.map((r) => (
-          <div key={r.module} className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2">
+          <div key={r.module} className="rounded-lg border border-slate-100 bg-slate-50 px-3 py-2">
             <p className="text-xs font-semibold text-slate-700">{r.module}</p>
             <p className="text-xl font-black text-slate-900">{r.score}%</p>
             <p className="text-[11px] text-slate-500">Tendance: {r.trend}</p>
@@ -316,11 +316,11 @@ export function MonetizationReport({
   rows: Array<{ label: string; value: string; hint?: string }>;
 }) {
   return (
-    <AdminCard className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+    <AdminCard className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       <p className="text-sm font-bold text-slate-900">Monétisation & abonnements</p>
       <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
         {rows.map((r) => (
-          <div key={r.label} className="rounded-xl border border-slate-100 px-3 py-2">
+          <div key={r.label} className="rounded-lg border border-slate-100 px-3 py-2">
             <p className="text-[11px] font-semibold uppercase text-slate-500">{r.label}</p>
             <p className="mt-1 text-lg font-black text-slate-900">{r.value}</p>
             {r.hint ? <p className="text-xs text-slate-500">{r.hint}</p> : null}
@@ -339,7 +339,7 @@ export function FollowUpClientsTable({
   onCopy: (message: string) => void;
 }) {
   return (
-    <AdminCard className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+    <AdminCard className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       <p className="text-sm font-bold text-slate-900">Clients à relancer</p>
       <FsHorizontalScroll className="mt-3">
         <table className="w-full min-w-[760px] text-left text-xs">
@@ -378,11 +378,11 @@ export function AnomalyDetectionPanel({
   items: string[];
 }) {
   return (
-    <AdminCard className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+    <AdminCard className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       <p className="text-sm font-bold text-slate-900">Anomalies détectées</p>
       <div className="mt-3 space-y-2">
         {items.map((it, i) => (
-          <p key={i} className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">{it}</p>
+          <p key={i} className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">{it}</p>
         ))}
       </div>
     </AdminCard>
@@ -395,11 +395,11 @@ export function ForecastSection({
   rows: Array<{ label: string; value: string }>;
 }) {
   return (
-    <AdminCard className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+    <AdminCard className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       <p className="text-sm font-bold text-slate-900">Prévisions</p>
       <div className="mt-3 grid gap-2 sm:grid-cols-2">
         {rows.map((r) => (
-          <div key={r.label} className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2">
+          <div key={r.label} className="rounded-lg border border-slate-100 bg-slate-50 px-3 py-2">
             <p className="text-[11px] uppercase text-slate-500">{r.label}</p>
             <p className="text-lg font-black text-slate-900">{r.value}</p>
           </div>
@@ -415,11 +415,11 @@ export function RecommendedDecisions({
   rows: Array<{ title: string; priority: "haute" | "moyenne" | "basse"; reason: string; impact: string }>;
 }) {
   return (
-    <AdminCard className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+    <AdminCard className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       <p className="text-sm font-bold text-slate-900">Décisions recommandées</p>
       <div className="mt-3 space-y-2">
         {rows.map((r, i) => (
-          <div key={`${r.title}-${i}`} className="rounded-xl border border-slate-100 px-3 py-2">
+          <div key={`${r.title}-${i}`} className="rounded-lg border border-slate-100 px-3 py-2">
             <div className="flex items-center justify-between gap-2">
               <p className="text-xs font-bold text-slate-800">{r.title}</p>
               <span className={cn("rounded-full px-2 py-0.5 text-[11px] font-semibold", r.priority === "haute" ? "bg-red-50 text-red-700" : r.priority === "moyenne" ? "bg-amber-50 text-amber-700" : "bg-emerald-50 text-emerald-700")}>
@@ -442,11 +442,11 @@ export function AiInsightsCard({
   lines: string[];
 }) {
   return (
-    <AdminCard className="rounded-2xl border border-orange-200 bg-orange-50/40 p-4 shadow-sm">
+    <AdminCard className="rounded-xl border border-orange-200 bg-orange-50/40 p-4 shadow-sm">
       <p className="text-sm font-bold text-slate-900">Analyse intelligente</p>
       <div className="mt-3 space-y-2">
         {lines.map((line, i) => (
-          <p key={i} className="rounded-xl border border-orange-100 bg-white px-3 py-2 text-xs text-slate-700">{line}</p>
+          <p key={i} className="rounded-lg border border-orange-100 bg-white px-3 py-2 text-xs text-slate-700">{line}</p>
         ))}
       </div>
     </AdminCard>

@@ -162,11 +162,11 @@ export function OwnerNotificationsBell({
 
       {open ? (
         <div
-          className="absolute right-0 top-[calc(100%+6px)] z-50 w-[min(100vw-24px,480px)] rounded-2xl border border-black/8 bg-fs-card shadow-xl"
+          className="absolute right-0 top-[calc(100%+6px)] z-50 w-[min(100vw-24px,480px)] rounded-xl border border-black/8 bg-fs-card shadow-xl"
           role="dialog"
           aria-label="Notifications"
         >
-          <div className="rounded-t-2xl bg-[color-mix(in_srgb,var(--fs-accent)_10%,transparent)] px-4 py-3">
+          <div className="rounded-t-xl bg-[color-mix(in_srgb,var(--fs-accent)_10%,transparent)] px-4 py-3">
             <div className="flex items-start gap-3">
               <Sparkles className="h-7 w-7 shrink-0 text-fs-accent" aria-hidden />
               <div className="min-w-0 flex-1">
@@ -200,7 +200,7 @@ export function OwnerNotificationsBell({
                 <button
                   type="button"
                   onClick={() => void q.refetch()}
-                  className="rounded-xl border border-black/8 px-4 py-2 text-sm font-semibold text-fs-accent"
+                  className="rounded-lg border border-black/8 px-4 py-2 text-sm font-semibold text-fs-accent"
                 >
                   Réessayer
                 </button>
@@ -225,7 +225,7 @@ export function OwnerNotificationsBell({
                     <li
                       key={item.id}
                       className={cn(
-                        "rounded-xl border border-y border-r border-black/6 border-l-transparent bg-fs-surface-container/50 p-0.5",
+                        "rounded-lg border border-y border-r border-black/6 border-l-transparent bg-fs-surface-container/50 p-0.5",
                         st.border,
                       )}
                     >

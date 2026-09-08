@@ -426,7 +426,7 @@ export function InventoryCountScreen({ sessionId }: { sessionId: string }) {
           padding="p-4"
         >
           <div className="flex items-start gap-3">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-amber-700 dark:text-amber-300">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-500/15 text-amber-700 dark:text-amber-300">
               <MdInventory2 className="h-5 w-5" aria-hidden />
             </span>
             <div className="min-w-0">

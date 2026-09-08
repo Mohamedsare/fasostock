@@ -36,7 +36,7 @@ function ContactFasoStockCard() {
         {FASOSTOCK_PHONES.map((p) => (
           <div
             key={p.waDigits}
-            className="flex flex-col gap-2 rounded-xl border border-black/[0.08] bg-fs-surface-container p-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
+            className="flex flex-col gap-2 rounded-lg border border-black/[0.08] bg-fs-surface-container p-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
           >
             <a
               href={`https://wa.me/${p.waDigits}`}
@@ -69,7 +69,7 @@ function ContactFasoStockCard() {
         ))}
         <a
           href={`mailto:${FASOSTOCK_EMAIL}`}
-          className="fs-touch-target flex items-center gap-2.5 rounded-xl border border-black/[0.08] bg-fs-surface-container px-3 py-3 text-sm font-semibold text-fs-accent transition-colors hover:bg-black/[0.02]"
+          className="fs-touch-target flex items-center gap-2.5 rounded-lg border border-black/[0.08] bg-fs-surface-container px-3 py-3 text-sm font-semibold text-fs-accent transition-colors hover:bg-black/[0.02]"
         >
           <Mail className="h-5 w-5 shrink-0" strokeWidth={2} aria-hidden />
           <span className="min-w-0 break-all">{FASOSTOCK_EMAIL}</span>
@@ -91,7 +91,7 @@ function TutorialCard({
     <button
       type="button"
       onClick={onPlay}
-      className="group flex flex-col overflow-hidden rounded-2xl border border-black/[0.06] bg-fs-card text-left shadow-sm transition-transform active:scale-[0.99]"
+      className="group flex flex-col overflow-hidden rounded-xl border border-black/[0.06] bg-fs-card text-left shadow-sm transition-transform active:scale-[0.99]"
     >
       <div className="relative aspect-video w-full overflow-hidden bg-neutral-200">
         {id ? (

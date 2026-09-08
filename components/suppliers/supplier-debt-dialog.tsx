@@ -261,7 +261,7 @@ export function SupplierDebtDialog({
       {supplier && supplier.credit_limit > 0 ? (
         <p
           className={cn(
-            "rounded-xl border px-3 py-2 text-xs",
+            "rounded-lg border px-3 py-2 text-xs",
             supplier.stats.balance + value > supplier.credit_limit
               ? "border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200"
               : "border-black/[0.08] bg-fs-surface-container text-neutral-600",

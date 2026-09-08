@@ -51,7 +51,7 @@ export function BusinessTypeCard({
       onClick={onSelect}
       onKeyDown={onKeyDown}
       className={cn(
-        "group relative flex w-full items-start gap-3 overflow-hidden rounded-2xl border bg-fs-card p-3.5 text-left",
+        "group relative flex w-full items-start gap-3 overflow-hidden rounded-xl border bg-fs-card p-3.5 text-left",
         "transition-[transform,box-shadow,border-color,background-color] duration-200 ease-out",
         "outline-none focus-visible:ring-2 focus-visible:ring-fs-accent focus-visible:ring-offset-2",
         "motion-safe:hover:-translate-y-0.5 motion-safe:active:translate-y-0 motion-safe:active:scale-[0.99]",
@@ -71,7 +71,7 @@ export function BusinessTypeCard({
 
       <span
         className={cn(
-          "relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border transition-colors duration-200",
+          "relative flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border transition-colors duration-200",
           active
             ? "border-fs-accent/45 bg-[color-mix(in_srgb,var(--fs-accent)_18%,transparent)] text-fs-accent"
             : "border-black/[0.07] bg-fs-surface-container text-fs-accent/90 group-hover:border-fs-accent/30 group-hover:bg-[color-mix(in_srgb,var(--fs-accent)_10%,transparent)] dark:border-white/10",

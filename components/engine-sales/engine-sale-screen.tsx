@@ -555,7 +555,7 @@ export function EngineSaleScreen({ storeId }: { storeId: string }) {
                   type="button"
                   onClick={() => pickProduct(p.id)}
                   className={cn(
-                    "relative flex aspect-[0.82] w-full flex-col items-center overflow-hidden rounded-xl bg-white px-2 py-1.5 text-center transition active:scale-[0.98]",
+                    "relative flex aspect-[0.82] w-full flex-col items-center overflow-hidden rounded-lg bg-white px-2 py-1.5 text-center transition active:scale-[0.98]",
                     "border border-fs-accent/35 shadow-[0_1px_6px_rgba(249,115,22,0.08)]",
                   )}
                 >
@@ -840,7 +840,7 @@ export function EngineSaleScreen({ storeId }: { storeId: string }) {
               <span className="text-sm font-bold text-fs-text">{formatCurrency(reste)}</span>
             </div>
           </div>
-          <div className="mt-3 flex items-center justify-between rounded-[10px] bg-fs-accent px-4 py-3">
+          <div className="mt-3 flex items-center justify-between rounded-[8px] bg-fs-accent px-4 py-3">
             <span className="text-sm font-bold text-white">TOTAL À PAYER</span>
             <span className="text-base font-bold text-white">{formatCurrency(total)}</span>
           </div>
@@ -955,7 +955,7 @@ export function EngineSaleScreen({ storeId }: { storeId: string }) {
             type="button"
             disabled={busy}
             onClick={submit}
-            className="inline-flex min-h-[44px] min-w-[200px] items-center justify-center rounded-[10px] bg-fs-accent px-6 text-sm font-semibold text-white disabled:opacity-50"
+            className="inline-flex min-h-[44px] min-w-[200px] items-center justify-center rounded-[8px] bg-fs-accent px-6 text-sm font-semibold text-white disabled:opacity-50"
           >
             {busy ? (
               <span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />

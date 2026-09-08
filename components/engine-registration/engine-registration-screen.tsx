@@ -178,7 +178,7 @@ function StatTile({
       onClick={onClick}
       aria-pressed={active}
       className={cn(
-        "flex items-center gap-3 rounded-xl border bg-fs-card p-3 text-left shadow-sm transition-colors",
+        "flex items-center gap-3 rounded-lg border bg-fs-card p-3 text-left shadow-sm transition-colors",
         active
           ? "border-fs-accent ring-1 ring-fs-accent"
           : "border-black/[0.06] hover:border-black/[0.12]",

@@ -723,7 +723,7 @@ export function ProductFormDialog({
             {isEdit ? "Modifier le produit" : "Nouveau produit"}
           </h2>
           {awaitingPricing ? (
-            <p className="mt-2 rounded-[10px] bg-amber-500/15 px-3 py-2 text-xs leading-relaxed text-amber-900 dark:text-amber-200">
+            <p className="mt-2 rounded-[8px] bg-amber-500/15 px-3 py-2 text-xs leading-relaxed text-amber-900 dark:text-amber-200">
               Cet article a été ajouté par votre équipe et <strong>attend son prix</strong>.
               Il n&apos;est pas vendable pour l&apos;instant. Renseignez le prix de vente
               ci-dessous : il devient vendable dès l&apos;enregistrement.

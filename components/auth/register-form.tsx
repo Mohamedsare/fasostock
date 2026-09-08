@@ -130,7 +130,7 @@ export function RegisterForm() {
 
   return (
     <div className="mx-auto w-full max-w-md">
-      <div className="rounded-2xl border border-neutral-200/80 bg-white p-5 shadow-[0_8px_32px_rgba(0,0,0,0.06)] sm:p-6">
+      <div className="rounded-xl border border-neutral-200/80 bg-white p-5 shadow-[0_8px_32px_rgba(0,0,0,0.06)] sm:p-6">
         <div className="mb-3 flex flex-col items-center gap-2 text-center sm:flex-row sm:flex-wrap sm:justify-center sm:gap-x-5">
           <Link
             href={ROUTES.login}
@@ -167,7 +167,7 @@ export function RegisterForm() {
           </p>
           {businessType ? (
             <div
-              className="mt-3 inline-flex max-w-full flex-wrap items-center justify-center gap-2 rounded-xl border border-fs-accent/25 bg-[color-mix(in_srgb,var(--fs-accent)_10%,transparent)] px-3 py-2 text-center text-sm text-neutral-800 dark:text-neutral-100"
+              className="mt-3 inline-flex max-w-full flex-wrap items-center justify-center gap-2 rounded-lg border border-fs-accent/25 bg-[color-mix(in_srgb,var(--fs-accent)_10%,transparent)] px-3 py-2 text-center text-sm text-neutral-800 dark:text-neutral-100"
               role="status"
             >
               <span className="font-medium text-neutral-600 dark:text-neutral-400">Activité :</span>

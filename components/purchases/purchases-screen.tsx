@@ -113,7 +113,7 @@ function ConfirmCancelPurchaseDialog({
             type="button"
             onClick={onCancel}
             disabled={busy}
-            className="rounded-xl px-4 py-2.5 text-sm font-semibold text-fs-accent"
+            className="rounded-lg px-4 py-2.5 text-sm font-semibold text-fs-accent"
           >
             Non
           </button>
@@ -121,7 +121,7 @@ function ConfirmCancelPurchaseDialog({
             type="button"
             onClick={onConfirm}
             disabled={busy}
-            className="rounded-xl bg-fs-accent px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+            className="rounded-lg bg-fs-accent px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
           >
             {busy ? "…" : "Oui"}
           </button>
@@ -161,7 +161,7 @@ function ConfirmRegisterPurchaseDialog({
             type="button"
             onClick={onCancel}
             disabled={busy}
-            className="rounded-xl px-4 py-2.5 text-sm font-semibold text-fs-accent"
+            className="rounded-lg px-4 py-2.5 text-sm font-semibold text-fs-accent"
           >
             Non
           </button>
@@ -169,7 +169,7 @@ function ConfirmRegisterPurchaseDialog({
             type="button"
             onClick={onConfirm}
             disabled={busy}
-            className="rounded-xl bg-fs-accent px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+            className="rounded-lg bg-fs-accent px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
           >
             {busy ? "…" : "Enregistrer"}
           </button>
@@ -209,7 +209,7 @@ function ConfirmDeletePurchaseDialog({
             type="button"
             onClick={onCancel}
             disabled={busy}
-            className="rounded-xl px-4 py-2.5 text-sm font-semibold text-fs-accent"
+            className="rounded-lg px-4 py-2.5 text-sm font-semibold text-fs-accent"
           >
             Non
           </button>
@@ -217,7 +217,7 @@ function ConfirmDeletePurchaseDialog({
             type="button"
             onClick={onConfirm}
             disabled={busy}
-            className="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+            className="rounded-lg bg-red-600 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
           >
             {busy ? "…" : "Supprimer"}
           </button>
@@ -509,7 +509,7 @@ export function PurchasesScreen() {
             <button
               type="button"
               onClick={openCreate}
-              className="inline-flex min-h-[44px] w-full shrink-0 items-center justify-center gap-2 rounded-[10px] bg-fs-accent px-4 py-2.5 text-sm font-semibold text-white shadow-sm active:scale-[0.99] min-[420px]:w-auto"
+              className="inline-flex min-h-[44px] w-full shrink-0 items-center justify-center gap-2 rounded-[8px] bg-fs-accent px-4 py-2.5 text-sm font-semibold text-white shadow-sm active:scale-[0.99] min-[420px]:w-auto"
             >
               <MdAdd className="h-[18px] w-[18px]" aria-hidden />
               {terms.purchasesCreateActionLabel}
@@ -523,7 +523,7 @@ export function PurchasesScreen() {
           <button
             type="button"
             onClick={exportExcel}
-            className="inline-flex min-h-[40px] items-center gap-2 rounded-[10px] border border-black/[0.12] bg-fs-card px-3 py-2 text-sm font-semibold text-neutral-800 shadow-sm active:scale-[0.99]"
+            className="inline-flex min-h-[40px] items-center gap-2 rounded-[8px] border border-black/[0.12] bg-fs-card px-3 py-2 text-sm font-semibold text-neutral-800 shadow-sm active:scale-[0.99]"
           >
             <MdDownload className="h-[18px] w-[18px] shrink-0" aria-hidden />
             Exporter Excel
@@ -535,7 +535,7 @@ export function PurchasesScreen() {
         <div className="w-full min-[480px]:min-w-[11rem] min-[480px]:max-w-[min(100%,14rem)] min-[480px]:flex-1">
           <label className="mb-1 block text-xs font-medium text-neutral-600">{terms.storeSingular}</label>
           <select
-            className={fsInputClass("min-h-[44px] rounded-[10px]")}
+            className={fsInputClass("min-h-[44px] rounded-[8px]")}
             aria-label={terms.storeSingular}
             value={filterStoreId ?? ""}
             onChange={(e) => setFilterStoreId(e.target.value === "" ? null : e.target.value)}
@@ -551,7 +551,7 @@ export function PurchasesScreen() {
         <div className="w-full min-[480px]:min-w-[11rem] min-[480px]:max-w-[min(100%,14rem)] min-[480px]:flex-1">
           <label className="mb-1 block text-xs font-medium text-neutral-600">Fournisseur</label>
           <select
-            className={fsInputClass("min-h-[44px] rounded-[10px]")}
+            className={fsInputClass("min-h-[44px] rounded-[8px]")}
             aria-label="Fournisseur"
             value={filterSupplierId ?? ""}
             onChange={(e) => setFilterSupplierId(e.target.value === "" ? null : e.target.value)}
@@ -567,7 +567,7 @@ export function PurchasesScreen() {
         <div className="w-full min-[480px]:min-w-[11rem] min-[480px]:max-w-[min(100%,14rem)] min-[480px]:flex-1">
           <label className="mb-1 block text-xs font-medium text-neutral-600">Statut</label>
           <select
-            className={fsInputClass("min-h-[44px] rounded-[10px]")}
+            className={fsInputClass("min-h-[44px] rounded-[8px]")}
             aria-label="Statut"
             value={status}
             onChange={(e) => setStatus(e.target.value as PurchaseStatus | "all")}
@@ -584,7 +584,7 @@ export function PurchasesScreen() {
 
       <FsPullToRefresh onRefresh={refreshAll}>
         {errMsg ? (
-          <FsCard className="mb-6 rounded-xl border border-red-300/60 bg-red-50/80 dark:bg-red-950/30" padding="p-4">
+          <FsCard className="mb-6 rounded-lg border border-red-300/60 bg-red-50/80 dark:bg-red-950/30" padding="p-4">
             <div className="flex gap-3">
               <MdErrorOutline className="mt-0.5 h-5 w-5 shrink-0 text-red-600" aria-hidden />
               <p className="text-sm text-red-900 dark:text-red-100">{errMsg}</p>

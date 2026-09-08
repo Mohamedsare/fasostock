@@ -111,7 +111,7 @@ export function PushActivationCard({ className }: { className?: string }) {
                 if (r.ok) toastSuccess("Notifications désactivées sur cet appareil.");
                 else if (r.error) toastError(r.error);
               }}
-              className="inline-flex min-h-[40px] min-w-[200px] items-center justify-center gap-2 rounded-[10px] border border-black/10 bg-fs-card px-4 text-sm font-semibold text-neutral-800 shadow-sm disabled:opacity-60"
+              className="inline-flex min-h-[40px] min-w-[200px] items-center justify-center gap-2 rounded-[8px] border border-black/10 bg-fs-card px-4 text-sm font-semibold text-neutral-800 shadow-sm disabled:opacity-60"
             >
               {push.busy ? <Spinner tone="neutral" label="Patientez…" /> : "Désactiver sur cet appareil"}
             </button>
@@ -124,7 +124,7 @@ export function PushActivationCard({ className }: { className?: string }) {
                 if (r.ok) toastSuccess("Notifications activées sur cet appareil.");
                 else if (r.error) toastError(r.error);
               }}
-              className="inline-flex min-h-[40px] min-w-[160px] items-center justify-center gap-2 rounded-[10px] bg-fs-accent px-4 text-sm font-semibold text-white disabled:opacity-60"
+              className="inline-flex min-h-[40px] min-w-[160px] items-center justify-center gap-2 rounded-[8px] bg-fs-accent px-4 text-sm font-semibold text-white disabled:opacity-60"
             >
               {push.busy ? <Spinner tone="accent" label="Activation…" /> : "Activer les notifications"}
             </button>
@@ -135,7 +135,7 @@ export function PushActivationCard({ className }: { className?: string }) {
               type="button"
               disabled={countdown !== null}
               onClick={() => void runTest()}
-              className="inline-flex min-h-[40px] items-center justify-center gap-2 rounded-[10px] border border-fs-accent/30 px-4 text-sm font-semibold text-fs-accent disabled:opacity-60"
+              className="inline-flex min-h-[40px] items-center justify-center gap-2 rounded-[8px] border border-fs-accent/30 px-4 text-sm font-semibold text-fs-accent disabled:opacity-60"
             >
               <MdScience className="h-[18px] w-[18px]" aria-hidden />
               {countdown !== null ? `Envoi dans ${countdown} s…` : "Tester, app fermée"}

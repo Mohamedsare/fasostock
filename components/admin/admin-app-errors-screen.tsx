@@ -142,7 +142,7 @@ export function AdminAppErrorsScreen() {
       <AdminCard>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <select
-            className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
+            className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
             value={companyId}
             onChange={(e) => setCompanyId(e.target.value)}
           >
@@ -154,7 +154,7 @@ export function AdminAppErrorsScreen() {
             ))}
           </select>
           <select
-            className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
+            className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
             value={userId}
             onChange={(e) => setUserId(e.target.value)}
           >
@@ -166,19 +166,19 @@ export function AdminAppErrorsScreen() {
             ))}
           </select>
           <input
-            className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
+            className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
             placeholder="Niveau (error, warn…)"
             value={level}
             onChange={(e) => setLevel(e.target.value)}
           />
           <input
-            className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
+            className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
             placeholder="Source"
             value={source}
             onChange={(e) => setSource(e.target.value)}
           />
           <select
-            className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
+            className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
             value={clientKind}
             onChange={(e) => setClientKind((e.target.value || "") as "" | AdminAppClientKind)}
           >
@@ -188,20 +188,20 @@ export function AdminAppErrorsScreen() {
           </select>
           <input
             type="date"
-            className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
+            className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
             value={fromDate}
             onChange={(e) => setFromDate(e.target.value)}
           />
           <input
             type="date"
-            className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
+            className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
             value={toDate}
             onChange={(e) => setToDate(e.target.value)}
           />
         </div>
         <button
           type="button"
-          className="mt-4 rounded-xl bg-orange-600 px-4 py-2 text-sm font-semibold text-white"
+          className="mt-4 rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white"
           onClick={() => q.refetch()}
         >
           Actualiser

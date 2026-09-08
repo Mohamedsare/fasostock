@@ -172,7 +172,7 @@ export function SubscriptionScreen() {
             <div className="bg-[color-mix(in_srgb,var(--fs-accent)_8%,transparent)] p-4 sm:p-5">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-fs-accent/15">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-fs-accent/15">
                     <MdWorkspacePremium className="h-7 w-7 text-fs-accent" aria-hidden />
                   </div>
                   <div className="min-w-0">
@@ -269,7 +269,7 @@ export function SubscriptionScreen() {
             type="button"
             onClick={() => setFlowOpen(true)}
             disabled={hasPending || plans.length === 0}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-fs-accent px-5 py-4 text-base font-bold text-white shadow-sm transition-transform active:scale-[0.99] disabled:opacity-60 sm:w-auto"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-fs-accent px-5 py-4 text-base font-bold text-white shadow-sm transition-transform active:scale-[0.99] disabled:opacity-60 sm:w-auto"
           >
             <MdAutorenew className="h-5 w-5" aria-hidden />
             {hasPending
@@ -328,7 +328,7 @@ export function SubscriptionScreen() {
                       key={inv.id}
                       className="flex items-center gap-3 px-3 py-2.5 sm:px-4 sm:py-3"
                     >
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] bg-red-50">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[8px] bg-red-50">
                         <MdPictureAsPdf className="h-5 w-5 text-red-500" aria-hidden />
                       </div>
                       <div className="min-w-0 flex-1">
@@ -344,7 +344,7 @@ export function SubscriptionScreen() {
                       <button
                         type="button"
                         onClick={() => setPreviewId(inv.id)}
-                        className="inline-flex shrink-0 items-center gap-1.5 rounded-[10px] border border-black/[0.12] bg-fs-card px-3 py-2 text-xs font-semibold text-neutral-800 active:scale-[0.99] sm:text-sm"
+                        className="inline-flex shrink-0 items-center gap-1.5 rounded-[8px] border border-black/[0.12] bg-fs-card px-3 py-2 text-xs font-semibold text-neutral-800 active:scale-[0.99] sm:text-sm"
                       >
                         <MdPictureAsPdf className="h-4 w-4" aria-hidden />
                         Voir / Télécharger

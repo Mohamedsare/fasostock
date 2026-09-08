@@ -367,7 +367,7 @@ export function RepairsScreen() {
           type="button"
           onClick={() => setCreating(true)}
           disabled={!storeId}
-          className="fs-touch-target ml-auto hidden shrink-0 items-center gap-1.5 rounded-xl bg-fs-accent px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60 min-[720px]:inline-flex"
+          className="fs-touch-target ml-auto hidden shrink-0 items-center gap-1.5 rounded-lg bg-fs-accent px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60 min-[720px]:inline-flex"
         >
           <MdAdd className="h-4 w-4" aria-hidden />
           Nouvel ordre
@@ -483,7 +483,7 @@ function Tile({
   return (
     <div
       className={cn(
-        "rounded-xl border bg-fs-card p-3 shadow-sm",
+        "rounded-lg border bg-fs-card p-3 shadow-sm",
         tone === "accent"
           ? "border-fs-accent/25"
           : tone === "ready"

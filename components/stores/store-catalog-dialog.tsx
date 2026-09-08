@@ -149,7 +149,7 @@ export function StoreCatalogDialog({
         onClick={onClose}
       />
       <div
-        className="relative z-10 flex max-h-[min(92dvh,760px)] w-full max-w-lg flex-col rounded-t-2xl border border-black/8 bg-fs-card shadow-xl min-[500px]:rounded-2xl"
+        className="relative z-10 flex max-h-[min(92dvh,760px)] w-full max-w-lg flex-col rounded-t-xl border border-black/8 bg-fs-card shadow-xl min-[500px]:rounded-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-black/6 px-4 py-3">
@@ -171,7 +171,7 @@ export function StoreCatalogDialog({
             <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p>
           ) : null}
 
-          <label className="flex items-start gap-3 rounded-xl border border-black/8 p-3">
+          <label className="flex items-start gap-3 rounded-lg border border-black/8 p-3">
             <input
               type="checkbox"
               checked={shares}
@@ -230,7 +230,7 @@ export function StoreCatalogDialog({
                 />
               </div>
 
-              <div className="max-h-[42dvh] overflow-y-auto rounded-xl border border-black/8">
+              <div className="max-h-[42dvh] overflow-y-auto rounded-lg border border-black/8">
                 {loading ? (
                   <p className="px-3 py-8 text-center text-sm text-neutral-500">Chargement…</p>
                 ) : filtered.length === 0 ? (
@@ -276,7 +276,7 @@ export function StoreCatalogDialog({
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 rounded-xl border border-black/10 py-3 text-sm font-semibold"
+            className="flex-1 rounded-lg border border-black/10 py-3 text-sm font-semibold"
           >
             Annuler
           </button>
@@ -284,7 +284,7 @@ export function StoreCatalogDialog({
             type="button"
             disabled={saving || loading}
             onClick={() => void submit()}
-            className="flex-1 rounded-xl bg-[#F97316] py-3 text-sm font-semibold text-white disabled:opacity-60"
+            className="flex-1 rounded-lg bg-[#F97316] py-3 text-sm font-semibold text-white disabled:opacity-60"
           >
             {saving ? "Enregistrement…" : "Enregistrer"}
           </button>

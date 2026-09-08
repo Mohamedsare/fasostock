@@ -343,7 +343,7 @@ export function SupplierFormDialog({
             />
           </SupplierField>
 
-          <label className="flex items-center gap-3 rounded-xl border border-black/[0.08] bg-fs-surface-container px-3 py-2.5">
+          <label className="flex items-center gap-3 rounded-lg border border-black/[0.08] bg-fs-surface-container px-3 py-2.5">
             <input
               type="checkbox"
               className="h-5 w-5 accent-[var(--fs-accent)]"

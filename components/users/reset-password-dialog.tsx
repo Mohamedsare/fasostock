@@ -71,7 +71,7 @@ export function ResetPasswordDialog({
       }}
     >
       <FsCard
-        className="w-full max-w-md rounded-b-none rounded-t-2xl border-x-0 border-b-0 sm:rounded-2xl sm:border-x sm:border-b"
+        className="w-full max-w-md rounded-b-none rounded-t-xl border-x-0 border-b-0 sm:rounded-xl sm:border-x sm:border-b"
         padding="p-0"
       >
         <div className="flex max-h-[min(94dvh,760px)] flex-col">
@@ -84,7 +84,7 @@ export function ResetPasswordDialog({
             <button
               type="button"
               onClick={onClose}
-              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-black/8 bg-fs-card text-neutral-700 active:bg-fs-surface-container sm:h-9 sm:w-9 sm:rounded-lg"
+              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-black/8 bg-fs-card text-neutral-700 active:bg-fs-surface-container sm:h-9 sm:w-9 sm:rounded-lg"
               aria-label="Fermer"
             >
               <MdClose className="h-5 w-5" aria-hidden />
@@ -148,7 +148,7 @@ export function ResetPasswordDialog({
               <button
                 type="button"
                 onClick={onClose}
-                className="min-h-11 flex-1 rounded-[10px] border border-black/8 bg-fs-card px-3 py-2.5 text-xs font-semibold text-neutral-700 sm:min-h-0 sm:text-sm"
+                className="min-h-11 flex-1 rounded-[8px] border border-black/8 bg-fs-card px-3 py-2.5 text-xs font-semibold text-neutral-700 sm:min-h-0 sm:text-sm"
                 disabled={busy}
               >
                 Annuler
@@ -156,7 +156,7 @@ export function ResetPasswordDialog({
               <button
                 type="button"
                 onClick={() => void submit()}
-                className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-[10px] bg-fs-accent px-3 py-2.5 text-xs font-semibold text-white shadow-sm disabled:opacity-60 sm:min-h-0 sm:text-sm"
+                className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-[8px] bg-fs-accent px-3 py-2.5 text-xs font-semibold text-white shadow-sm disabled:opacity-60 sm:min-h-0 sm:text-sm"
                 disabled={busy}
               >
                 <MdLockReset className="h-4 w-4" aria-hidden />

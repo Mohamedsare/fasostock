@@ -352,7 +352,7 @@ export function DraftProductScreen() {
   const labelClass =
     "text-[11px] font-semibold uppercase tracking-wide text-neutral-500 sm:text-xs";
   const fieldClass =
-    "w-full rounded-[10px] border border-black/10 bg-fs-surface-container px-3 text-base text-fs-text outline-none placeholder:text-neutral-400 focus:border-fs-accent focus:ring-2 focus:ring-fs-accent/20 sm:text-sm";
+    "w-full rounded-[8px] border border-black/10 bg-fs-surface-container px-3 text-base text-fs-text outline-none placeholder:text-neutral-400 focus:border-fs-accent focus:ring-2 focus:ring-fs-accent/20 sm:text-sm";
 
   return (
     <FsPage>
@@ -367,7 +367,7 @@ export function DraftProductScreen() {
           Dit une fois, clairement, ce que l'employé va produire. Sans cette phrase il
           croit avoir mal fait son travail en ne trouvant pas les champs de prix.
         */}
-        <p className="flex items-start gap-2 rounded-[10px] bg-sky-500/10 px-3 py-2.5 text-xs leading-relaxed text-sky-900 dark:text-sky-200">
+        <p className="flex items-start gap-2 rounded-[8px] bg-sky-500/10 px-3 py-2.5 text-xs leading-relaxed text-sky-900 dark:text-sky-200">
           <MdInfoOutline className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
           <span>
             L&apos;article est enregistré <strong>sans prix</strong> : il n&apos;est pas
@@ -457,7 +457,7 @@ export function DraftProductScreen() {
 
             {/* Doublons : dits AVANT la validation, jamais bloquants. */}
             {barcodeTwin || nameTwin ? (
-              <p className="flex items-start gap-2 rounded-[10px] bg-amber-500/10 px-3 py-2 text-xs leading-relaxed text-amber-900 dark:text-amber-200">
+              <p className="flex items-start gap-2 rounded-[8px] bg-amber-500/10 px-3 py-2 text-xs leading-relaxed text-amber-900 dark:text-amber-200">
                 <MdWarningAmber className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
                 <span>
                   {barcodeTwin ? (
@@ -502,7 +502,7 @@ export function DraftProductScreen() {
                 onChange={(e) => pickPhoto(e.target.files?.[0] ?? null)}
               />
               {photoUrl ? (
-                <div className="mt-1.5 flex items-center gap-3 rounded-[10px] border border-black/10 bg-fs-surface-container p-2">
+                <div className="mt-1.5 flex items-center gap-3 rounded-[8px] border border-black/10 bg-fs-surface-container p-2">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={photoUrl}
@@ -529,7 +529,7 @@ export function DraftProductScreen() {
                   <button
                     type="button"
                     onClick={() => openPicker("camera")}
-                    className="flex min-h-[68px] flex-col items-center justify-center gap-1 rounded-[10px] border border-dashed border-black/15 bg-fs-surface-container px-2 text-center text-xs font-semibold leading-tight text-neutral-700 active:scale-[0.99]"
+                    className="flex min-h-[68px] flex-col items-center justify-center gap-1 rounded-[8px] border border-dashed border-black/15 bg-fs-surface-container px-2 text-center text-xs font-semibold leading-tight text-neutral-700 active:scale-[0.99]"
                   >
                     <MdAddAPhoto className="h-6 w-6 text-fs-accent" aria-hidden />
                     Prendre la photo
@@ -537,7 +537,7 @@ export function DraftProductScreen() {
                   <button
                     type="button"
                     onClick={() => openPicker("gallery")}
-                    className="flex min-h-[68px] flex-col items-center justify-center gap-1 rounded-[10px] border border-dashed border-black/15 bg-fs-surface-container px-2 text-center text-xs font-semibold leading-tight text-neutral-700 active:scale-[0.99]"
+                    className="flex min-h-[68px] flex-col items-center justify-center gap-1 rounded-[8px] border border-dashed border-black/15 bg-fs-surface-container px-2 text-center text-xs font-semibold leading-tight text-neutral-700 active:scale-[0.99]"
                   >
                     <MdPhotoLibrary className="h-6 w-6 text-fs-accent" aria-hidden />
                     Choisir une image
@@ -565,7 +565,7 @@ export function DraftProductScreen() {
                 <button
                   type="button"
                   onClick={() => setScanOpen(true)}
-                  className="inline-flex min-h-[52px] w-[52px] shrink-0 items-center justify-center rounded-[10px] border border-fs-accent/30 bg-fs-accent/10 text-fs-accent sm:min-h-11 sm:w-11"
+                  className="inline-flex min-h-[52px] w-[52px] shrink-0 items-center justify-center rounded-[8px] border border-fs-accent/30 bg-fs-accent/10 text-fs-accent sm:min-h-11 sm:w-11"
                   aria-label="Scanner le code-barres"
                 >
                   <MdQrCodeScanner className="h-6 w-6" aria-hidden />
@@ -703,7 +703,7 @@ export function DraftProductScreen() {
           type="button"
           disabled={!canSubmit || mut.isPending}
           onClick={submit}
-          className="inline-flex min-h-[54px] w-full items-center justify-center gap-2 rounded-xl bg-fs-accent text-base font-bold text-white shadow-lg shadow-black/10 transition-transform active:scale-[0.99] disabled:opacity-40 disabled:shadow-none"
+          className="inline-flex min-h-[54px] w-full items-center justify-center gap-2 rounded-lg bg-fs-accent text-base font-bold text-white shadow-lg shadow-black/10 transition-transform active:scale-[0.99] disabled:opacity-40 disabled:shadow-none"
         >
           {mut.isPending ? (
             <span className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />

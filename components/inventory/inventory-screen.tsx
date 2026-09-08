@@ -125,7 +125,7 @@ function StatCard({
   return (
     <div
       className={cn(
-        "flex min-h-[72px] items-center gap-2.5 rounded-[10px] border border-black/[0.08] bg-fs-card px-3.5 py-3 shadow-sm",
+        "flex min-h-[72px] items-center gap-2.5 rounded-[8px] border border-black/[0.08] bg-fs-card px-3.5 py-3 shadow-sm",
         accentLeft && "border-l-4",
         accentLeft && accentBorderClass,
       )}
@@ -163,7 +163,7 @@ function InventoryPagination({
   if (pageCount <= 1) return null;
 
   return (
-    <FsCard padding="p-3 sm:p-4" className="mt-4 rounded-[10px] sm:rounded-[10px]">
+    <FsCard padding="p-3 sm:p-4" className="mt-4 rounded-[8px] sm:rounded-[8px]">
       <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
         {!narrow ? (
           <span className="mr-2 text-xs text-neutral-600 sm:mr-4">
@@ -236,7 +236,7 @@ function MovementsPager({
   const range = `Mouvements ${start} – ${end}`;
 
   return (
-    <FsCard padding="p-3 sm:p-4" className="mt-4 rounded-[10px] sm:rounded-[10px]">
+    <FsCard padding="p-3 sm:p-4" className="mt-4 rounded-[8px] sm:rounded-[8px]">
       <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
         {!narrow ? (
           <span className="mr-2 text-xs text-neutral-600 sm:mr-4">{range}</span>
@@ -617,7 +617,7 @@ export function InventoryScreen() {
     return (
       <FsPage className={cn(isWide && "px-8 pt-7")}>
         <h1 className="text-[22px] font-bold text-fs-text min-[900px]:text-2xl">{uiTerms.inventoryTitle}</h1>
-        <FsCard className="mt-4 rounded-[10px] sm:rounded-[10px]" padding="p-4">
+        <FsCard className="mt-4 rounded-[8px] sm:rounded-[8px]" padding="p-4">
           <FsQueryErrorPanel
             error={ctxError ?? new Error("Impossible de charger le profil ou l’entreprise.")}
             onRetry={() => void refetchCtx()}
@@ -634,7 +634,7 @@ export function InventoryScreen() {
         <p className="mt-2 text-sm text-neutral-600">
           Session indisponible. Reconnectez-vous ou réessayez.
         </p>
-        <FsCard className="mt-6 rounded-[10px] sm:rounded-[10px]" padding="p-6">
+        <FsCard className="mt-6 rounded-[8px] sm:rounded-[8px]" padding="p-6">
           <button
             type="button"
             onClick={() => void refetchCtx()}
@@ -665,7 +665,7 @@ export function InventoryScreen() {
         <p className="mt-2 text-sm text-neutral-600">
           Sélectionnez une boutique dans le menu pour voir le stock et les mouvements.
         </p>
-        <FsCard className="mt-6 rounded-[10px] sm:rounded-[10px]" padding="p-8">
+        <FsCard className="mt-6 rounded-[8px] sm:rounded-[8px]" padding="p-8">
           <div className="flex flex-col items-center text-center">
             <MdStorefront className="h-16 w-16 text-fs-accent/80" aria-hidden />
             <p className="mt-4 text-base font-semibold text-neutral-700">Choisissez une boutique</p>
@@ -756,7 +756,7 @@ export function InventoryScreen() {
         </div>
 
         {showSettings ? (
-          <FsCard padding="p-5" className="mt-4 rounded-[10px] sm:rounded-[10px]">
+          <FsCard padding="p-5" className="mt-4 rounded-[8px] sm:rounded-[8px]">
             <h2 className="text-sm font-semibold text-fs-text">Seuil d&apos;alerte par défaut</h2>
             <p className="mt-2 text-sm text-neutral-600">
               Utilisé pour les produits sans seuil défini. En dessous, le stock est en alerte.
@@ -833,7 +833,7 @@ export function InventoryScreen() {
         </div>
 
         {/* Valorisation du stock — coût d'achat, valeur de vente et marge potentielle (sur le stock affiché). */}
-        <FsCard padding="p-0" className="mt-3 overflow-hidden rounded-[10px] sm:rounded-[10px]">
+        <FsCard padding="p-0" className="mt-3 overflow-hidden rounded-[8px] sm:rounded-[8px]">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-black/[0.06] px-4 py-2.5">
             <MdAccountBalanceWallet className="h-4 w-4 shrink-0 text-fs-accent" aria-hidden />
             <p className="text-xs font-bold uppercase tracking-wide text-neutral-700">
@@ -894,7 +894,7 @@ export function InventoryScreen() {
           </div>
         </FsCard>
 
-        <FsCard padding="p-0" className="mt-4 overflow-hidden rounded-[10px] sm:rounded-[10px]">
+        <FsCard padding="p-0" className="mt-4 overflow-hidden rounded-[8px] sm:rounded-[8px]">
           <div className="border-b border-black/[0.06] p-4 sm:p-5">
             {narrowFilters ? (
               <>
@@ -1005,7 +1005,7 @@ export function InventoryScreen() {
               « Remplir le stock en un clic » ET si l'utilisateur a le droit d'ajuster.
             */}
             {bulkEnabled && tab === "stock" ? (
-              <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-[10px] border border-fs-accent/25 bg-fs-accent/[0.06] px-3 py-2.5">
+              <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-[8px] border border-fs-accent/25 bg-fs-accent/[0.06] px-3 py-2.5">
                 <label className="inline-flex cursor-pointer items-center gap-2">
                   <input
                     type="checkbox"

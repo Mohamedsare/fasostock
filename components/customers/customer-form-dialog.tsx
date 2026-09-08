@@ -71,7 +71,7 @@ export function CustomerFormDialog({
 
   if (!open) return null;
   const inputBase =
-    "min-h-12 rounded-[10px] border border-black/8 px-3 text-base touch-manipulation sm:min-h-0 sm:text-sm";
+    "min-h-12 rounded-[8px] border border-black/8 px-3 text-base touch-manipulation sm:min-h-0 sm:text-sm";
 
   return (
     <div
@@ -87,7 +87,7 @@ export function CustomerFormDialog({
       }}
     >
       <FsCard
-        className="w-full max-w-[420px] rounded-t-2xl rounded-b-none border-x-0 border-b-0 sm:rounded-2xl sm:border-x sm:border-b"
+        className="w-full max-w-[420px] rounded-t-xl rounded-b-none border-x-0 border-b-0 sm:rounded-xl sm:border-x sm:border-b"
         padding="p-0"
       >
         <div className="flex max-h-[min(94dvh,760px)] flex-col">
@@ -99,7 +99,7 @@ export function CustomerFormDialog({
             <button
               type="button"
               onClick={onClose}
-              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-black/8 bg-fs-card text-neutral-700 active:bg-fs-surface-container sm:h-10 sm:w-10"
+              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-black/8 bg-fs-card text-neutral-700 active:bg-fs-surface-container sm:h-10 sm:w-10"
               aria-label="Fermer"
             >
               <MdClose className="h-5 w-5" aria-hidden />
@@ -133,7 +133,7 @@ export function CustomerFormDialog({
 
             <div>
                 <p className="mb-1.5 text-[13px] font-medium text-neutral-700">Type</p>
-              <div className="inline-flex w-full rounded-[10px] border border-black/8 bg-fs-surface-container p-0.5">
+              <div className="inline-flex w-full rounded-[8px] border border-black/8 bg-fs-surface-container p-0.5">
                 <button
                   type="button"
                   onClick={() => setV((p) => ({ ...p, type: "individual" }))}
@@ -215,7 +215,7 @@ export function CustomerFormDialog({
               <button
                 type="button"
                 onClick={onClose}
-                className="min-h-11 w-full rounded-[10px] px-4 py-2.5 text-sm font-semibold text-fs-accent active:bg-fs-surface-container sm:min-h-0 sm:w-auto sm:min-w-[100px]"
+                className="min-h-11 w-full rounded-[8px] px-4 py-2.5 text-sm font-semibold text-fs-accent active:bg-fs-surface-container sm:min-h-0 sm:w-auto sm:min-w-[100px]"
                 disabled={busy}
               >
                 Annuler
@@ -249,7 +249,7 @@ export function CustomerFormDialog({
                     setBusy(false);
                   }
                 }}
-                className="mb-2 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-[10px] bg-fs-accent px-4 py-3 text-base font-bold text-white shadow-sm active:scale-[0.99] disabled:opacity-60 sm:mb-0 sm:min-w-[120px] sm:max-w-none sm:text-sm sm:font-semibold"
+                className="mb-2 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-[8px] bg-fs-accent px-4 py-3 text-base font-bold text-white shadow-sm active:scale-[0.99] disabled:opacity-60 sm:mb-0 sm:min-w-[120px] sm:max-w-none sm:text-sm sm:font-semibold"
                 disabled={busy}
               >
                 {busy ? (

@@ -121,7 +121,7 @@ export function FsSearchSelect({
                 bottom: pos.bottom,
                 zIndex: 2147483647,
               }}
-              className="overflow-hidden rounded-xl border border-black/10 bg-fs-card shadow-xl"
+              className="overflow-hidden rounded-lg border border-black/10 bg-fs-card shadow-xl"
               role="listbox"
             >
               <div className="relative border-b border-black/[0.06] p-2">

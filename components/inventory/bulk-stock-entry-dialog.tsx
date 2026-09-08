@@ -123,7 +123,7 @@ export function BulkStockEntryDialog({
               onClick={() => setMode("add")}
               style={{ minHeight: MIN_TOUCH }}
               className={cn(
-                "inline-flex items-center justify-center gap-1.5 rounded-xl border px-2 text-xs font-semibold sm:text-sm",
+                "inline-flex items-center justify-center gap-1.5 rounded-lg border px-2 text-xs font-semibold sm:text-sm",
                 mode === "add"
                   ? "border-fs-accent/40 bg-fs-accent/15 text-fs-accent"
                   : "border-black/8 bg-fs-surface-container text-neutral-700",
@@ -137,7 +137,7 @@ export function BulkStockEntryDialog({
               onClick={() => setMode("set")}
               style={{ minHeight: MIN_TOUCH }}
               className={cn(
-                "inline-flex items-center justify-center gap-1.5 rounded-xl border px-2 text-xs font-semibold sm:text-sm",
+                "inline-flex items-center justify-center gap-1.5 rounded-lg border px-2 text-xs font-semibold sm:text-sm",
                 mode === "set"
                   ? "border-fs-accent/40 bg-fs-accent/15 text-fs-accent"
                   : "border-black/8 bg-fs-surface-container text-neutral-700",
@@ -190,7 +190,7 @@ export function BulkStockEntryDialog({
           </div>
 
           {decreases.length > 0 ? (
-            <p className="mt-3 flex items-start gap-2 rounded-[10px] bg-amber-500/10 px-3 py-2 text-xs leading-relaxed text-amber-900 dark:text-amber-200">
+            <p className="mt-3 flex items-start gap-2 rounded-[8px] bg-amber-500/10 px-3 py-2 text-xs leading-relaxed text-amber-900 dark:text-amber-200">
               <MdWarningAmber className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
               <span>
                 {decreases.length} produit{decreases.length > 1 ? "s" : ""} vont{" "}
@@ -200,7 +200,7 @@ export function BulkStockEntryDialog({
             </p>
           ) : null}
 
-          <div className="mt-4 overflow-hidden rounded-[10px] border border-black/[0.08]">
+          <div className="mt-4 overflow-hidden rounded-[8px] border border-black/[0.08]">
             <div className="flex items-center justify-between border-b border-black/[0.06] bg-fs-surface-container/60 px-3 py-2">
               <p className="text-xs font-bold uppercase tracking-wide text-neutral-700">
                 Détail par produit

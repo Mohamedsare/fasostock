@@ -203,7 +203,7 @@ export function EngineSaleDetailDialog({
       }}
     >
       <FsCard
-        className="max-h-[min(94dvh,900px)] w-full max-w-3xl overflow-hidden rounded-t-2xl sm:rounded-2xl"
+        className="max-h-[min(94dvh,900px)] w-full max-w-3xl overflow-hidden rounded-t-xl sm:rounded-xl"
         padding="p-0"
       >
         <div className="flex max-h-[min(94dvh,900px)] flex-col">
@@ -506,7 +506,7 @@ export function EngineSaleDetailDialog({
                 type="button"
                 onClick={() => setEditing(false)}
                 disabled={saveMut.isPending}
-                className="rounded-[10px] px-4 py-2.5 text-sm font-semibold text-fs-accent"
+                className="rounded-[8px] px-4 py-2.5 text-sm font-semibold text-fs-accent"
               >
                 Annuler
               </button>
@@ -514,7 +514,7 @@ export function EngineSaleDetailDialog({
                 type="button"
                 onClick={() => saveMut.mutate()}
                 disabled={saveMut.isPending || !(client?.name.trim())}
-                className="inline-flex min-h-[44px] min-w-[140px] items-center justify-center rounded-[10px] bg-fs-accent px-4 text-sm font-semibold text-white disabled:opacity-50"
+                className="inline-flex min-h-[44px] min-w-[140px] items-center justify-center rounded-[8px] bg-fs-accent px-4 text-sm font-semibold text-white disabled:opacity-50"
               >
                 {saveMut.isPending ? (
                   <span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />

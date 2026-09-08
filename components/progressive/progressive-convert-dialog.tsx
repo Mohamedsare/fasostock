@@ -89,7 +89,7 @@ export function ProgressiveConvertDialog({
       onClick={() => (mut.isPending ? null : onClose())}
     >
       <div
-        className="flex max-h-[92vh] w-full max-w-lg flex-col rounded-t-2xl bg-fs-card shadow-2xl min-[560px]:rounded-2xl"
+        className="flex max-h-[92vh] w-full max-w-lg flex-col rounded-t-xl bg-fs-card shadow-2xl min-[560px]:rounded-xl"
         role="dialog"
         aria-modal="true"
         aria-label={`${terms.handOverAction} au client`}
@@ -116,7 +116,7 @@ export function ProgressiveConvertDialog({
         </div>
 
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
-          <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/[0.08] p-3">
+          <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/[0.08] p-3">
             <p className="text-sm font-bold text-fs-text">{item.name}</p>
             <div className="mt-2 space-y-1 text-sm">
               <Line label={`Prix ${terms.ofSingular}`} value={formatCurrency(item.price)} strong />
@@ -173,7 +173,7 @@ export function ProgressiveConvertDialog({
             type="button"
             disabled={mut.isPending}
             onClick={() => mut.mutate()}
-            className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 text-sm font-bold text-white shadow-sm disabled:opacity-50"
+            className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 text-sm font-bold text-white shadow-sm disabled:opacity-50"
           >
             {mut.isPending ? (
               <span className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />

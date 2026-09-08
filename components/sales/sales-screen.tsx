@@ -985,9 +985,9 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
   );
 
   const btnOutline =
-    "touch-manipulation inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-[10px] border border-black/10 bg-fs-card px-4 text-sm font-semibold text-neutral-800 active:bg-neutral-50 disabled:opacity-40 min-[480px]:min-h-11 min-[480px]:w-auto";
+    "touch-manipulation inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-[8px] border border-black/10 bg-fs-card px-4 text-sm font-semibold text-neutral-800 active:bg-neutral-50 disabled:opacity-40 min-[480px]:min-h-11 min-[480px]:w-auto";
   const btnPrimary =
-    "touch-manipulation inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-[10px] bg-fs-accent px-4 text-sm font-semibold text-white shadow-sm active:opacity-95 min-[480px]:min-h-11 min-[480px]:w-auto";
+    "touch-manipulation inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-[8px] bg-fs-accent px-4 text-sm font-semibold text-white shadow-sm active:opacity-95 min-[480px]:min-h-11 min-[480px]:w-auto";
 
   return (
     <FsPage className="flex min-h-0 flex-1 flex-col px-5 pt-4 sm:px-5 min-[900px]:px-7 min-[900px]:pt-7">
@@ -1018,7 +1018,7 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
                 // cela, il resterait figé après un pointage fait sur un autre poste.
                 if (!awaitingOnly) void awaitingQ.refetch();
               }}
-              className="touch-manipulation inline-flex min-h-12 shrink-0 items-center justify-center gap-2 self-start rounded-[10px] border border-black/10 bg-fs-card px-3 text-neutral-800 active:bg-neutral-50 disabled:opacity-40 min-[400px]:px-4"
+              className="touch-manipulation inline-flex min-h-12 shrink-0 items-center justify-center gap-2 self-start rounded-[8px] border border-black/10 bg-fs-card px-3 text-neutral-800 active:bg-neutral-50 disabled:opacity-40 min-[400px]:px-4"
               aria-label="Actualiser la liste"
             >
               <MdRefresh
@@ -1123,13 +1123,13 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
           }}
           aria-pressed={awaitingOnly}
           className={cn(
-            "touch-manipulation flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left shadow-sm transition-colors",
+            "touch-manipulation flex w-full items-center gap-3 rounded-lg border px-4 py-3 text-left shadow-sm transition-colors",
             awaitingOnly
               ? "border-amber-500/50 bg-amber-500/14"
               : "border-amber-500/25 bg-fs-card hover:bg-amber-500/6",
           )}
         >
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-amber-700 dark:text-amber-300">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-500/15 text-amber-700 dark:text-amber-300">
             <MdInventory2 className="h-6 w-6" aria-hidden />
           </span>
           <span className="min-w-0 flex-1">
@@ -1389,7 +1389,7 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
       ) : null}
 
       {listQ.isError ? (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
           <p>
             {(listQ.error as Error)?.message ??
               "Impossible de charger les ventes."}
@@ -1427,7 +1427,7 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
       ) : (
         <>
           {isWide ? (
-            <FsHorizontalScroll className="rounded-xl border border-black/[0.06] bg-fs-card shadow-sm">
+            <FsHorizontalScroll className="rounded-lg border border-black/[0.06] bg-fs-card shadow-sm">
               <table className="min-w-full text-sm [&_th]:whitespace-nowrap [&_td]:whitespace-nowrap">
                 <thead className="bg-neutral-100/80 text-left text-xs font-medium text-neutral-600">
                   <tr>
@@ -1643,7 +1643,7 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
           ) : null}
 
           {pageCount > 1 ? (
-            <div className="mt-2 rounded-xl border border-black/[0.06] bg-fs-card px-3 py-3 shadow-sm sm:px-4">
+            <div className="mt-2 rounded-lg border border-black/[0.06] bg-fs-card px-3 py-3 shadow-sm sm:px-4">
               <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
                 <span className="order-2 hidden text-sm text-neutral-500 min-[500px]:order-none min-[500px]:inline">
                   {rangeStart} – {rangeEnd} sur {visibleSales.length}
@@ -1733,7 +1733,7 @@ function StatusMiniCard({
             ? "bg-neutral-500/10 text-neutral-600"
             : "bg-fs-surface-container text-fs-text";
   return (
-    <div className="rounded-xl border border-black/6 bg-fs-card p-3">
+    <div className="rounded-lg border border-black/6 bg-fs-card p-3">
       <p className="text-[11px] font-semibold uppercase tracking-wide text-neutral-500">
         {label}
       </p>
@@ -1901,7 +1901,7 @@ function ActionCard({
   icon: ComponentType<{ className?: string }>;
 }) {
   const base =
-    "touch-manipulation block min-h-[88px] rounded-xl border bg-fs-card shadow-sm transition-transform active:scale-[0.99] max-[599px]:p-4 min-[600px]:p-6";
+    "touch-manipulation block min-h-[88px] rounded-lg border bg-fs-card shadow-sm transition-transform active:scale-[0.99] max-[599px]:p-4 min-[600px]:p-6";
   const border =
     accent && enabled
       ? "border-2 border-[color-mix(in_srgb,var(--fs-accent)_40%,transparent)]"
@@ -1910,7 +1910,7 @@ function ActionCard({
     <div className="flex min-h-[88px] flex-col items-center justify-center text-center">
       <div
         className={cn(
-          "mb-2.5 flex items-center justify-center rounded-xl max-[599px]:p-2.5 min-[600px]:mb-3.5 min-[600px]:p-3.5",
+          "mb-2.5 flex items-center justify-center rounded-lg max-[599px]:p-2.5 min-[600px]:mb-3.5 min-[600px]:p-3.5",
           accent && enabled
             ? "bg-[color-mix(in_srgb,var(--fs-accent)_12%,transparent)] text-[var(--fs-accent)]"
             : "bg-neutral-500/10 text-neutral-500",
@@ -2003,7 +2003,7 @@ function SaleCard({
 
   return (
     <article
-      className="touch-manipulation cursor-pointer rounded-xl border border-black/[0.06] bg-fs-card p-4 shadow-sm transition-colors active:bg-neutral-100/80 dark:active:bg-white/[0.06]"
+      className="touch-manipulation cursor-pointer rounded-lg border border-black/[0.06] bg-fs-card p-4 shadow-sm transition-colors active:bg-neutral-100/80 dark:active:bg-white/[0.06]"
       onClick={onDetail}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
@@ -2176,7 +2176,7 @@ function EmptyStateCard({
       {currentStoreId ? (
         <Link
           href={`${ROUTES.stores}/${currentStoreId}/pos-quick`}
-          className="touch-manipulation mt-6 inline-flex min-h-12 w-full max-w-sm items-center justify-center gap-2 rounded-xl bg-fs-accent px-5 py-3 text-sm font-semibold text-white active:opacity-95 sm:w-auto"
+          className="touch-manipulation mt-6 inline-flex min-h-12 w-full max-w-sm items-center justify-center gap-2 rounded-lg bg-fs-accent px-5 py-3 text-sm font-semibold text-white active:opacity-95 sm:w-auto"
         >
           <MdAdd className="h-5 w-5" aria-hidden />
           Ouvrir la caisse
@@ -2200,7 +2200,7 @@ function NothingAwaitingCard({ onBack }: { onBack: () => void }) {
       <button
         type="button"
         onClick={onBack}
-        className="touch-manipulation mt-5 inline-flex min-h-12 w-full max-w-sm items-center justify-center gap-2 rounded-xl border border-black/10 bg-fs-card px-5 py-3 text-sm font-semibold text-neutral-800 active:bg-neutral-50 sm:w-auto"
+        className="touch-manipulation mt-5 inline-flex min-h-12 w-full max-w-sm items-center justify-center gap-2 rounded-lg border border-black/10 bg-fs-card px-5 py-3 text-sm font-semibold text-neutral-800 active:bg-neutral-50 sm:w-auto"
       >
         <MdArrowBack className="h-5 w-5" aria-hidden />
         Revenir à l&apos;historique
@@ -2236,7 +2236,7 @@ function NoResultCard({
       <button
         type="button"
         onClick={onReset}
-        className="touch-manipulation mt-5 inline-flex min-h-12 w-full max-w-sm items-center justify-center gap-2 rounded-xl border border-black/10 bg-fs-card px-5 py-3 text-sm font-semibold text-neutral-800 active:bg-neutral-50 sm:w-auto"
+        className="touch-manipulation mt-5 inline-flex min-h-12 w-full max-w-sm items-center justify-center gap-2 rounded-lg border border-black/10 bg-fs-card px-5 py-3 text-sm font-semibold text-neutral-800 active:bg-neutral-50 sm:w-auto"
       >
         <MdFilterAltOff className="h-5 w-5" aria-hidden />
         Réinitialiser les filtres
@@ -2247,7 +2247,7 @@ function NoResultCard({
 
 function EmptyBlock({ text }: { text: string }) {
   return (
-    <div className="rounded-xl border border-dashed border-black/[0.12] bg-fs-card px-4 py-8 text-center text-sm text-neutral-600 sm:rounded-2xl">
+    <div className="rounded-lg border border-dashed border-black/[0.12] bg-fs-card px-4 py-8 text-center text-sm text-neutral-600 sm:rounded-xl">
       {text}
     </div>
   );

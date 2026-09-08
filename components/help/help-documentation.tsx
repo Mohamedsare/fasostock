@@ -89,7 +89,7 @@ function Block({ block }: { block: DocBlock }) {
         {block.title ? (
           <p className="mb-2 text-[13px] font-bold text-fs-text">{block.title}</p>
         ) : null}
-        <div className="overflow-x-auto rounded-xl border border-black/[0.08]">
+        <div className="overflow-x-auto rounded-lg border border-black/[0.08]">
           <table className="w-full min-w-[420px] border-collapse text-left text-sm">
             <thead>
               <tr className="bg-fs-surface-container">
@@ -119,7 +119,7 @@ function Block({ block }: { block: DocBlock }) {
 
   const s = NOTE_STYLES[block.tone];
   return (
-    <div className={cn("flex gap-2.5 rounded-xl border p-3", s.wrap)}>
+    <div className={cn("flex gap-2.5 rounded-lg border p-3", s.wrap)}>
       <s.Icon className={cn("mt-0.5 h-5 w-5 shrink-0", s.icon)} aria-hidden />
       <div className="min-w-0">
         <p className={cn("text-[13px] font-bold", s.title)}>{block.title}</p>
@@ -163,7 +163,7 @@ function ArticleItem({
 
       {open ? (
         <div id={panelId} className="px-1 pb-5">
-          <div className="mb-4 flex flex-col gap-2 rounded-xl bg-fs-surface-container p-3 text-sm sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-5">
+          <div className="mb-4 flex flex-col gap-2 rounded-lg bg-fs-surface-container p-3 text-sm sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-5">
             <span className="text-neutral-700">
               <span className="font-semibold text-fs-text">Qui y a accès :</span> {article.access}
             </span>

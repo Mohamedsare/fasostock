@@ -67,7 +67,7 @@ export function InvoicePreviewDialog({
       }}
     >
       <FsCard
-        className="flex h-full w-full max-w-3xl flex-col overflow-hidden shadow-xl sm:h-[88vh] sm:rounded-2xl"
+        className="flex h-full w-full max-w-3xl flex-col overflow-hidden shadow-xl sm:h-[88vh] sm:rounded-xl"
         padding="p-0"
       >
         {/* En-tête */}
@@ -82,7 +82,7 @@ export function InvoicePreviewDialog({
                 if (!url) e.preventDefault();
               }}
               className={cn(
-                "inline-flex items-center gap-1.5 rounded-[10px] px-3 py-2 text-xs font-semibold sm:text-sm",
+                "inline-flex items-center gap-1.5 rounded-[8px] px-3 py-2 text-xs font-semibold sm:text-sm",
                 url
                   ? "bg-fs-accent text-white active:scale-[0.99]"
                   : "cursor-not-allowed bg-fs-surface-container text-neutral-400",
@@ -94,7 +94,7 @@ export function InvoicePreviewDialog({
             <button
               type="button"
               onClick={onClose}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-[10px] border border-black/8 bg-fs-card text-neutral-700 active:bg-fs-surface-container"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-[8px] border border-black/8 bg-fs-card text-neutral-700 active:bg-fs-surface-container"
               aria-label="Fermer"
             >
               <MdClose className="h-5 w-5" aria-hidden />
@@ -116,7 +116,7 @@ export function InvoicePreviewDialog({
               <button
                 type="button"
                 onClick={() => setAttempt((a) => a + 1)}
-                className="inline-flex items-center gap-1.5 rounded-[10px] bg-fs-accent px-4 py-2.5 text-sm font-semibold text-white"
+                className="inline-flex items-center gap-1.5 rounded-[8px] bg-fs-accent px-4 py-2.5 text-sm font-semibold text-white"
               >
                 <MdRefresh className="h-4 w-4" aria-hidden />
                 Réessayer

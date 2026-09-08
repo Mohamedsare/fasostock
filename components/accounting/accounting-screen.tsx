@@ -294,7 +294,7 @@ export function AccountingScreen() {
           <button
             type="button"
             onClick={exportWorkbook}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-black/10 px-3 py-2 text-sm font-semibold text-fs-text hover:bg-fs-surface-container"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-black/10 px-3 py-2 text-sm font-semibold text-fs-text hover:bg-fs-surface-container"
           >
             <MdDownload className="h-5 w-5" aria-hidden />
             Exporter (Excel)
@@ -303,7 +303,7 @@ export function AccountingScreen() {
             type="button"
             onClick={exportStatementsPdf}
             disabled={pdfBusy}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-black/10 px-3 py-2 text-sm font-semibold text-fs-text hover:bg-fs-surface-container disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-black/10 px-3 py-2 text-sm font-semibold text-fs-text hover:bg-fs-surface-container disabled:opacity-50"
           >
             <MdPictureAsPdf className="h-5 w-5" aria-hidden />
             {pdfBusy ? "Génération…" : "États (PDF)"}
@@ -313,7 +313,7 @@ export function AccountingScreen() {
               type="button"
               onClick={() => setDialogOpen(true)}
               disabled={journals.length === 0 || accounts.length === 0}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-fs-accent px-3.5 py-2 text-sm font-semibold text-white disabled:opacity-40"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-fs-accent px-3.5 py-2 text-sm font-semibold text-white disabled:opacity-40"
             >
               <MdAdd className="h-5 w-5" aria-hidden />
               Nouvelle écriture
@@ -386,7 +386,7 @@ export function AccountingScreen() {
                   type="button"
                   onClick={() => seedMut.mutate()}
                   disabled={seedMut.isPending}
-                  className="mt-1 rounded-xl bg-fs-accent px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                  className="mt-1 rounded-lg bg-fs-accent px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
                 >
                   {seedMut.isPending ? "Initialisation…" : "Initialiser la comptabilité"}
                 </button>

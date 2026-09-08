@@ -85,7 +85,7 @@ export function RentalReceiptDialog({
       onClick={onClose}
     >
       <div
-        className="flex max-h-[92vh] w-full max-w-md flex-col rounded-t-2xl bg-fs-card shadow-2xl min-[500px]:rounded-2xl"
+        className="flex max-h-[92vh] w-full max-w-md flex-col rounded-t-xl bg-fs-card shadow-2xl min-[500px]:rounded-xl"
         role="dialog"
         aria-modal="true"
         aria-label="Quittance de loyer"
@@ -146,7 +146,7 @@ export function RentalReceiptDialog({
               type="button"
               disabled={busy !== null || !q.data}
               onClick={handlePrint}
-              className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-fs-accent px-4 text-sm font-bold text-white shadow-sm disabled:opacity-50"
+              className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg bg-fs-accent px-4 text-sm font-bold text-white shadow-sm disabled:opacity-50"
             >
               {busy === "print" ? (
                 <span className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
@@ -159,7 +159,7 @@ export function RentalReceiptDialog({
               type="button"
               disabled={busy !== null || !q.data}
               onClick={handleDownload}
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-black/10 bg-fs-surface-container px-4 text-sm font-semibold text-fs-text disabled:opacity-50 dark:border-white/10"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-black/10 bg-fs-surface-container px-4 text-sm font-semibold text-fs-text disabled:opacity-50 dark:border-white/10"
             >
               {busy === "download" ? (
                 <span className="h-5 w-5 animate-spin rounded-full border-2 border-fs-accent border-t-transparent" />

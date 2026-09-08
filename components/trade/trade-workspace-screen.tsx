@@ -135,7 +135,7 @@ export function TradeWorkspaceScreen() {
         />
         <div className="relative flex items-center gap-3.5">
           {Icon ? (
-            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-fs-accent/25 bg-fs-card text-fs-accent shadow-sm sm:h-14 sm:w-14">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-fs-accent/25 bg-fs-card text-fs-accent shadow-sm sm:h-14 sm:w-14">
               <Icon className="h-6 w-6 sm:h-7 sm:w-7" strokeWidth={1.75} aria-hidden />
             </span>
           ) : null}
@@ -151,7 +151,7 @@ export function TradeWorkspaceScreen() {
           {canDash ? (
             <Link
               href={ROUTES.dashboard}
-              className="hidden shrink-0 items-center gap-1.5 rounded-xl border border-black/[0.08] bg-fs-card px-3 py-2 text-xs font-semibold text-fs-text transition-colors hover:border-fs-accent/40 hover:text-fs-accent min-[720px]:inline-flex dark:border-white/10"
+              className="hidden shrink-0 items-center gap-1.5 rounded-lg border border-black/[0.08] bg-fs-card px-3 py-2 text-xs font-semibold text-fs-text transition-colors hover:border-fs-accent/40 hover:text-fs-accent min-[720px]:inline-flex dark:border-white/10"
             >
               Tableau de bord complet
               <MdArrowForward className="h-3.5 w-3.5" aria-hidden />
@@ -212,13 +212,13 @@ export function TradeWorkspaceScreen() {
                   key={`${action.href}-${action.label}`}
                   href={hrefOf(action)}
                   className={cn(
-                    "group flex items-center gap-3 rounded-xl border border-black/[0.06] bg-fs-card p-3 shadow-sm transition-all",
+                    "group flex items-center gap-3 rounded-lg border border-black/[0.06] bg-fs-card p-3 shadow-sm transition-all",
                     "hover:border-fs-accent/35 hover:shadow-[0_10px_24px_-12px_rgba(0,0,0,0.25)]",
                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fs-accent/60",
                     "motion-safe:hover:-translate-y-0.5",
                   )}
                 >
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-fs-surface-container text-fs-accent transition-colors group-hover:bg-[color-mix(in_srgb,var(--fs-accent)_12%,transparent)]">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-fs-surface-container text-fs-accent transition-colors group-hover:bg-[color-mix(in_srgb,var(--fs-accent)_12%,transparent)]">
                     {ActionIcon ? (
                       <ActionIcon className="h-5 w-5" strokeWidth={1.75} aria-hidden />
                     ) : (
@@ -343,7 +343,7 @@ function MetricTile({
   );
 
   const className = cn(
-    "block rounded-xl border bg-fs-card p-3 shadow-sm transition-colors",
+    "block rounded-lg border bg-fs-card p-3 shadow-sm transition-colors",
     tone === "accent"
       ? "border-fs-accent/25"
       : tone === "warning"

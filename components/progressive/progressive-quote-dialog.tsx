@@ -84,7 +84,7 @@ export function ProgressiveQuoteDialog({
       onClick={onClose}
     >
       <div
-        className="flex max-h-[92vh] w-full max-w-xl flex-col rounded-t-2xl bg-fs-card shadow-2xl min-[560px]:rounded-2xl"
+        className="flex max-h-[92vh] w-full max-w-xl flex-col rounded-t-xl bg-fs-card shadow-2xl min-[560px]:rounded-xl"
         role="dialog"
         aria-modal="true"
         aria-label="Facture proforma"
@@ -117,7 +117,7 @@ export function ProgressiveQuoteDialog({
               {messageFromUnknownError(q.error, "Dossier introuvable.")}
             </p>
           ) : (
-            <div className="rounded-xl bg-white p-4 text-neutral-800 shadow-sm dark:bg-neutral-100">
+            <div className="rounded-lg bg-white p-4 text-neutral-800 shadow-sm dark:bg-neutral-100">
               <p className="text-sm font-extrabold uppercase tracking-wide">
                 {data.storeName || data.companyName}
               </p>
@@ -185,7 +185,7 @@ export function ProgressiveQuoteDialog({
               type="button"
               disabled={busy !== null || !data}
               onClick={handlePrint}
-              className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-fs-accent px-4 text-sm font-bold text-white shadow-sm disabled:opacity-50"
+              className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg bg-fs-accent px-4 text-sm font-bold text-white shadow-sm disabled:opacity-50"
             >
               {busy === "print" ? (
                 <span className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
@@ -198,7 +198,7 @@ export function ProgressiveQuoteDialog({
               type="button"
               disabled={busy !== null || !data}
               onClick={handleDownload}
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-black/10 bg-fs-surface-container px-4 text-sm font-semibold text-fs-text disabled:opacity-50 dark:border-white/10"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-black/10 bg-fs-surface-container px-4 text-sm font-semibold text-fs-text disabled:opacity-50 dark:border-white/10"
             >
               {busy === "download" ? (
                 <span className="h-5 w-5 animate-spin rounded-full border-2 border-fs-accent border-t-transparent" />

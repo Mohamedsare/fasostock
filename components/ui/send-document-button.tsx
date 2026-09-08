@@ -99,7 +99,7 @@ export function SendDocumentButton({
           : "Enregistrer le PDF et ouvrir WhatsApp pour l'envoyer au client"
       }
       className={cn(
-        "touch-manipulation inline-flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-xl border border-black/10 bg-fs-surface-container px-3 text-sm font-semibold text-fs-text disabled:opacity-50 dark:border-white/10",
+        "touch-manipulation inline-flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-lg border border-black/10 bg-fs-surface-container px-3 text-sm font-semibold text-fs-text disabled:opacity-50 dark:border-white/10",
         className,
       )}
     >

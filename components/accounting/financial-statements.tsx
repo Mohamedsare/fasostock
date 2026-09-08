@@ -63,7 +63,7 @@ export function FinancialStatements({ rows }: { rows: AccountBalance[] }) {
         </div>
         <div
           className={
-            "mt-2 flex items-center justify-between rounded-xl px-4 py-3 text-sm font-bold " +
+            "mt-2 flex items-center justify-between rounded-lg px-4 py-3 text-sm font-bold " +
             (profit ? "bg-green-50 text-green-800" : "bg-red-50 text-red-700")
           }
         >

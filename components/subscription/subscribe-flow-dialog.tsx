@@ -23,7 +23,7 @@ const STEPS = ["Période", "Informations", "Confirmation"] as const;
 
 const labelClass = "mb-1.5 block text-[13px] font-medium leading-tight text-neutral-700";
 const inputOutline =
-  "min-h-12 rounded-[10px] border border-black/8 px-3 text-base touch-manipulation sm:min-h-0 sm:text-sm";
+  "min-h-12 rounded-[8px] border border-black/8 px-3 text-base touch-manipulation sm:min-h-0 sm:text-sm";
 
 export function SubscribeFlowDialog({
   open,
@@ -142,7 +142,7 @@ export function SubscribeFlowDialog({
       <FsCard
         className={cn(
           "max-h-[min(94dvh,820px)] w-full max-w-[520px] shadow-xl",
-          "rounded-t-2xl rounded-b-none border-x-0 border-b-0 sm:rounded-2xl sm:border-x sm:border-b",
+          "rounded-t-xl rounded-b-none border-x-0 border-b-0 sm:rounded-xl sm:border-x sm:border-b",
         )}
         padding="p-0"
       >
@@ -159,7 +159,7 @@ export function SubscribeFlowDialog({
               type="button"
               onClick={onClose}
               disabled={busy}
-              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-black/8 bg-fs-card text-neutral-700 active:bg-fs-surface-container disabled:opacity-50 sm:h-10 sm:w-10"
+              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-black/8 bg-fs-card text-neutral-700 active:bg-fs-surface-container disabled:opacity-50 sm:h-10 sm:w-10"
               aria-label="Fermer"
             >
               <MdClose className="h-5 w-5" aria-hidden />
@@ -317,7 +317,7 @@ export function SubscribeFlowDialog({
                           type="button"
                           onClick={() => setPaymentMethod(m.key)}
                           className={cn(
-                            "flex items-center gap-2 rounded-[10px] border px-3 py-2.5 text-left text-sm font-medium transition-colors",
+                            "flex items-center gap-2 rounded-[8px] border px-3 py-2.5 text-left text-sm font-medium transition-colors",
                             sel
                               ? "border-fs-accent bg-fs-accent/[0.06] text-fs-accent"
                               : "border-black/[0.08] bg-fs-card text-neutral-800",
@@ -360,7 +360,7 @@ export function SubscribeFlowDialog({
                 <p className="text-sm text-neutral-600">
                   Vérifiez les informations avant d&apos;envoyer.
                 </p>
-                <div className="divide-y divide-black/[0.05] rounded-xl border border-black/[0.06]">
+                <div className="divide-y divide-black/[0.05] rounded-lg border border-black/[0.06]">
                   <RecapRow label="Formule" value={selectedPlan?.name ?? "—"} />
                   <RecapRow
                     label="Montant"
@@ -396,7 +396,7 @@ export function SubscribeFlowDialog({
               <button
                 type="button"
                 onClick={onClose}
-                className="inline-flex min-h-12 w-full items-center justify-center rounded-[10px] bg-fs-accent px-4 py-3 text-base font-bold text-white sm:text-sm sm:font-semibold"
+                className="inline-flex min-h-12 w-full items-center justify-center rounded-[8px] bg-fs-accent px-4 py-3 text-base font-bold text-white sm:text-sm sm:font-semibold"
               >
                 Fermer
               </button>
@@ -410,7 +410,7 @@ export function SubscribeFlowDialog({
                       setStep((s) => Math.max(0, s - 1));
                     }}
                     disabled={busy}
-                    className="inline-flex min-h-12 flex-1 items-center justify-center rounded-[10px] border border-black/[0.08] bg-fs-card px-4 py-3 text-sm font-semibold text-neutral-800 disabled:opacity-60 sm:flex-none sm:px-5"
+                    className="inline-flex min-h-12 flex-1 items-center justify-center rounded-[8px] border border-black/[0.08] bg-fs-card px-4 py-3 text-sm font-semibold text-neutral-800 disabled:opacity-60 sm:flex-none sm:px-5"
                   >
                     Précédent
                   </button>
@@ -427,7 +427,7 @@ export function SubscribeFlowDialog({
                       setError(null);
                       setStep((s) => Math.min(2, s + 1));
                     }}
-                    className="inline-flex min-h-12 flex-1 items-center justify-center rounded-[10px] bg-fs-accent px-4 py-3 text-base font-bold text-white sm:text-sm sm:font-semibold"
+                    className="inline-flex min-h-12 flex-1 items-center justify-center rounded-[8px] bg-fs-accent px-4 py-3 text-base font-bold text-white sm:text-sm sm:font-semibold"
                   >
                     Continuer
                   </button>
@@ -436,7 +436,7 @@ export function SubscribeFlowDialog({
                     type="button"
                     onClick={handleConfirm}
                     disabled={busy}
-                    className="inline-flex min-h-12 flex-1 items-center justify-center rounded-[10px] bg-fs-accent px-4 py-3 text-base font-bold text-white disabled:opacity-60 sm:text-sm sm:font-semibold"
+                    className="inline-flex min-h-12 flex-1 items-center justify-center rounded-[8px] bg-fs-accent px-4 py-3 text-base font-bold text-white disabled:opacity-60 sm:text-sm sm:font-semibold"
                   >
                     {busy ? (
                       <span
@@ -475,7 +475,7 @@ function PlanCard({
       type="button"
       onClick={onSelect}
       className={cn(
-        "flex w-full items-center gap-3 rounded-2xl border p-4 text-left transition-colors",
+        "flex w-full items-center gap-3 rounded-xl border p-4 text-left transition-colors",
         selected
           ? "border-fs-accent bg-fs-accent/[0.05] ring-1 ring-fs-accent/30"
           : "border-black/[0.08] bg-fs-card hover:bg-fs-surface-container",

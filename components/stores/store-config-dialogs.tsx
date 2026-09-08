@@ -466,7 +466,7 @@ export function StoreInvoiceA4Dialog({
         </p>
       </div>
 
-      <div className="space-y-3 rounded-xl border border-black/[0.08] bg-fs-surface p-3">
+      <div className="space-y-3 rounded-lg border border-black/[0.08] bg-fs-surface p-3">
         <SectionTitle>Identité commerciale</SectionTitle>
         <label className={labelCls}>
           Nom commercial
@@ -516,7 +516,7 @@ export function StoreInvoiceA4Dialog({
         </label>
       </div>
 
-      <div className="space-y-3 rounded-xl border border-black/[0.08] bg-fs-surface p-3">
+      <div className="space-y-3 rounded-lg border border-black/[0.08] bg-fs-surface p-3">
         <SectionTitle>Numérotation &amp; couleurs</SectionTitle>
         <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2">
           <label className={labelCls}>
@@ -574,7 +574,7 @@ export function StoreInvoiceA4Dialog({
         </div>
       </div>
 
-      <div className="space-y-3 rounded-xl border border-black/[0.08] bg-fs-surface p-3">
+      <div className="space-y-3 rounded-lg border border-black/[0.08] bg-fs-surface p-3">
         <SectionTitle>Localisation &amp; mentions légales</SectionTitle>
         <div className="grid grid-cols-2 gap-2">
           <label className={labelCls}>
@@ -638,7 +638,7 @@ export function StoreInvoiceA4Dialog({
         </div>
       </div>
 
-      <div className="space-y-3 rounded-xl border border-black/[0.08] bg-fs-surface p-3">
+      <div className="space-y-3 rounded-lg border border-black/[0.08] bg-fs-surface p-3">
         <SectionTitle>Pied de page &amp; signature</SectionTitle>
         <label className={labelCls}>
           Pied de page
@@ -764,7 +764,7 @@ export function StoreInvoiceA4Dialog({
         onClick={onClose}
       />
       <div
-        className="relative z-10 flex h-[94dvh] w-full max-w-3xl flex-col overflow-hidden rounded-t-2xl border border-black/[0.08] bg-fs-card shadow-2xl min-[600px]:h-[min(92dvh,780px)] min-[600px]:rounded-2xl"
+        className="relative z-10 flex h-[94dvh] w-full max-w-3xl flex-col overflow-hidden rounded-t-xl border border-black/[0.08] bg-fs-card shadow-2xl min-[600px]:h-[min(92dvh,780px)] min-[600px]:rounded-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex shrink-0 items-center justify-between gap-3 border-b border-black/[0.06] px-4 py-3">
@@ -837,7 +837,7 @@ export function StoreInvoiceA4Dialog({
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 rounded-xl border border-black/[0.12] py-3 text-sm font-semibold text-neutral-700"
+            className="flex-1 rounded-lg border border-black/[0.12] py-3 text-sm font-semibold text-neutral-700"
           >
             Annuler
           </button>
@@ -845,7 +845,7 @@ export function StoreInvoiceA4Dialog({
             type="button"
             disabled={loading}
             onClick={() => void submit()}
-            className="flex-[1.4] rounded-xl bg-[#F97316] py-3 text-sm font-bold text-white shadow-sm disabled:opacity-60"
+            className="flex-[1.4] rounded-lg bg-[#F97316] py-3 text-sm font-bold text-white shadow-sm disabled:opacity-60"
           >
             {loading ? "Enregistrement…" : "Enregistrer"}
           </button>
@@ -968,7 +968,7 @@ export function StoreReceiptFormatDialog({
         onClick={onClose}
       />
       <div
-        className="relative z-10 flex h-[94dvh] w-full max-w-4xl flex-col overflow-hidden rounded-t-2xl border border-black/[0.08] bg-fs-card shadow-2xl min-[600px]:h-[min(90dvh,760px)] min-[600px]:rounded-2xl"
+        className="relative z-10 flex h-[94dvh] w-full max-w-4xl flex-col overflow-hidden rounded-t-xl border border-black/[0.08] bg-fs-card shadow-2xl min-[600px]:h-[min(90dvh,760px)] min-[600px]:rounded-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex shrink-0 items-center justify-between gap-3 border-b border-black/[0.06] px-4 py-3">
@@ -1017,7 +1017,7 @@ export function StoreReceiptFormatDialog({
                     onClick={() => setTemplate(choice.value)}
                     aria-pressed={active}
                     className={cn(
-                      "flex w-full items-center gap-3 rounded-xl border-2 p-3 text-left transition",
+                      "flex w-full items-center gap-3 rounded-lg border-2 p-3 text-left transition",
                       active
                         ? "border-[#F97316] bg-orange-50"
                         : "border-black/[0.1] bg-white hover:border-[#F97316]/40",
@@ -1053,7 +1053,7 @@ export function StoreReceiptFormatDialog({
                     onClick={() => setWidth(w)}
                     aria-pressed={active}
                     className={cn(
-                      "flex w-full items-center gap-3 rounded-xl border-2 p-3 text-left transition",
+                      "flex w-full items-center gap-3 rounded-lg border-2 p-3 text-left transition",
                       active
                         ? "border-[#F97316] bg-orange-50"
                         : "border-black/[0.1] bg-white hover:border-[#F97316]/40",
@@ -1124,7 +1124,7 @@ export function StoreReceiptFormatDialog({
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 rounded-xl border border-black/[0.12] py-3 text-sm font-semibold text-neutral-700"
+            className="flex-1 rounded-lg border border-black/[0.12] py-3 text-sm font-semibold text-neutral-700"
           >
             Annuler
           </button>
@@ -1132,7 +1132,7 @@ export function StoreReceiptFormatDialog({
             type="button"
             disabled={loading}
             onClick={() => void submit()}
-            className="flex-[1.4] rounded-xl bg-[#F97316] py-3 text-sm font-bold text-white shadow-sm disabled:opacity-60"
+            className="flex-[1.4] rounded-lg bg-[#F97316] py-3 text-sm font-bold text-white shadow-sm disabled:opacity-60"
           >
             {loading ? "Enregistrement…" : `Enregistrer (${template === "moderne" ? "Moderne" : "Classique"} · ${width} mm)`}
           </button>

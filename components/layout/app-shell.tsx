@@ -321,7 +321,7 @@ export function AppShell({ children, userEmail }: AppShellProps) {
         <button
           type="button"
           onClick={() => void ctx.refetch()}
-          className="rounded-xl bg-fs-accent px-5 py-2.5 text-sm font-semibold text-white"
+          className="rounded-lg bg-fs-accent px-5 py-2.5 text-sm font-semibold text-white"
         >
           Réessayer
         </button>
@@ -435,7 +435,7 @@ export function AppShell({ children, userEmail }: AppShellProps) {
                     {storeSwitcherOpen && (
                       <>
                         <div className="fixed inset-0 z-40" onClick={() => setStoreSwitcherOpen(false)} />
-                        <div className="absolute right-0 top-full z-50 mt-1.5 min-w-[180px] overflow-hidden rounded-xl border border-black/[0.07] bg-fs-card shadow-lg dark:border-white/10">
+                        <div className="absolute right-0 top-full z-50 mt-1.5 min-w-[180px] overflow-hidden rounded-lg border border-black/[0.07] bg-fs-card shadow-lg dark:border-white/10">
                           {stores.map((s) => (
                             <button
                               key={s.id}
@@ -487,14 +487,14 @@ export function AppShell({ children, userEmail }: AppShellProps) {
               <div className="flex min-w-0 flex-1 items-center gap-2">
                 <Link
                   href="/dashboard"
-                  className="flex min-w-0 shrink items-center gap-2 rounded-2xl py-1 pr-2 outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-[var(--fs-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-fs-card"
+                  className="flex min-w-0 shrink items-center gap-2 rounded-xl py-1 pr-2 outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-[var(--fs-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-fs-card"
                 >
                   <span
                     className={cn(
                       "flex h-9 w-9 shrink-0 items-center justify-center",
                       data?.companyLogoUrl && !mobileBrandLogoErr
                         ? "rounded-none bg-transparent p-0 ring-0"
-                        : "rounded-xl bg-[color-mix(in_srgb,var(--fs-accent)_14%,transparent)] ring-1 ring-[color-mix(in_srgb,var(--fs-accent)_22%,transparent)]",
+                        : "rounded-lg bg-[color-mix(in_srgb,var(--fs-accent)_14%,transparent)] ring-1 ring-[color-mix(in_srgb,var(--fs-accent)_22%,transparent)]",
                     )}
                     aria-hidden
                   >
@@ -614,7 +614,7 @@ export function AppShell({ children, userEmail }: AppShellProps) {
                         href={item.href}
                         aria-current={active ? "page" : undefined}
                         className={cn(
-                          "flex min-h-[56px] min-w-0 touch-manipulation select-none flex-col items-center justify-center gap-1 rounded-2xl px-1.5 transition-[color,background-color,transform] duration-200 ease-out",
+                          "flex min-h-[56px] min-w-0 touch-manipulation select-none flex-col items-center justify-center gap-1 rounded-xl px-1.5 transition-[color,background-color,transform] duration-200 ease-out",
                           active
                             ? shellMobileTabActiveClass
                             : [
@@ -625,7 +625,7 @@ export function AppShell({ children, userEmail }: AppShellProps) {
                       >
                         <span
                           className={cn(
-                            "flex items-center justify-center rounded-xl transition-colors duration-200",
+                            "flex items-center justify-center rounded-lg transition-colors duration-200",
                             active
                               ? "bg-[color-mix(in_srgb,var(--fs-accent)_18%,transparent)] p-1.5"
                               : "p-0.5",
@@ -649,13 +649,13 @@ export function AppShell({ children, userEmail }: AppShellProps) {
                     type="button"
                     onClick={() => setMoreOpen(true)}
                     className={cn(
-                      "flex min-h-[56px] min-w-0 touch-manipulation select-none flex-col items-center justify-center gap-1 rounded-2xl px-1.5 transition-[color,background-color,transform] duration-200 ease-out",
+                      "flex min-h-[56px] min-w-0 touch-manipulation select-none flex-col items-center justify-center gap-1 rounded-xl px-1.5 transition-[color,background-color,transform] duration-200 ease-out",
                       shellMobileTabInactiveClass,
                       "active:scale-[0.98] active:bg-black/[0.05] dark:active:bg-white/[0.07]",
                     )}
                     aria-label="Autres sections"
                   >
-                    <span className="flex items-center justify-center rounded-xl p-0.5" aria-hidden>
+                    <span className="flex items-center justify-center rounded-lg p-0.5" aria-hidden>
                       <MoreHorizontal className="size-6 shrink-0 stroke-2" />
                     </span>
                     <span className="w-full truncate text-center text-[11px] font-semibold leading-none tracking-tight">

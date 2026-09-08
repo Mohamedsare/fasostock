@@ -49,7 +49,7 @@ export function AdminNewsletterScreen() {
         ) : (q.data ?? []).length === 0 ? (
           <p className="mt-3 text-sm text-slate-500">Aucun abonné pour le moment.</p>
         ) : (
-          <div className="mt-4 overflow-hidden rounded-xl border border-slate-200">
+          <div className="mt-4 overflow-hidden rounded-lg border border-slate-200">
             <table className="min-w-full text-sm">
               <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
                 <tr>

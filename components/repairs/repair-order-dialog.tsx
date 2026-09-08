@@ -185,7 +185,7 @@ export function RepairOrderDialog({
               type="button"
               onClick={submit}
               disabled={busy}
-              className="fs-touch-target shrink-0 rounded-xl bg-fs-accent px-5 py-3 text-sm font-semibold text-white disabled:opacity-60"
+              className="fs-touch-target shrink-0 rounded-lg bg-fs-accent px-5 py-3 text-sm font-semibold text-white disabled:opacity-60"
             >
               {busy ? "Enregistrement…" : isEdit ? "Enregistrer" : "Créer l'ordre"}
             </button>
@@ -375,7 +375,7 @@ export function RepairOrderDialog({
         </div>
 
         {lines.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-black/10 px-3 py-4 text-center text-xs text-neutral-500 dark:border-white/15">
+          <p className="rounded-lg border border-dashed border-black/10 px-3 py-4 text-center text-xs text-neutral-500 dark:border-white/15">
             Aucune ligne. Ajoutez les pièces montées et le temps facturé — le total
             deviendra la facture du client.
           </p>
@@ -384,7 +384,7 @@ export function RepairOrderDialog({
             {lines.map((line, index) => (
               <div
                 key={index}
-                className="rounded-xl border border-black/[0.07] bg-fs-surface-container/50 p-2.5 dark:border-white/10"
+                className="rounded-lg border border-black/[0.07] bg-fs-surface-container/50 p-2.5 dark:border-white/10"
               >
                 <div className="mb-2 flex items-center justify-between gap-2">
                   <span
@@ -467,7 +467,7 @@ export function RepairOrderDialog({
             <button
               type="button"
               onClick={() => addLine("part")}
-              className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-black/10 py-2 text-xs font-semibold text-neutral-600 hover:border-fs-accent/40 hover:text-fs-accent dark:border-white/15 dark:text-neutral-300"
+              className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-black/10 py-2 text-xs font-semibold text-neutral-600 hover:border-fs-accent/40 hover:text-fs-accent dark:border-white/15 dark:text-neutral-300"
             >
               <MdAdd className="h-4 w-4" aria-hidden />
               Ajouter une ligne

@@ -76,7 +76,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       <div className="border-b border-white/10 px-4 py-5">
         <div className="flex items-center gap-3">
           <div
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-orange-500/40"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-orange-500/40"
             style={{ backgroundColor: `${ACCENT}33` }}
           >
             <MdShield className="h-6 w-6" style={{ color: ACCENT }} aria-hidden />
@@ -97,7 +97,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               href={item.href}
               onClick={() => setDrawerOpen(false)}
               className={cn(
-                "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors",
+                "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors",
                 active ? "text-white" : "text-slate-400 hover:bg-white/5 hover:text-slate-200",
               )}
               style={active ? { backgroundColor: `${ACCENT}22`, borderLeft: `3px solid ${ACCENT}` } : undefined}
@@ -112,7 +112,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         <button
           type="button"
           onClick={() => void signOut()}
-          className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-red-300 hover:bg-red-500/10"
+          className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold text-red-300 hover:bg-red-500/10"
         >
           <MdLogout className="h-4 w-4 shrink-0" aria-hidden />
           Déconnexion

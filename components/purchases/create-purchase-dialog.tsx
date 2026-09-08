@@ -259,7 +259,7 @@ export function CreatePurchaseDialog({
           if (e.target === e.currentTarget) onClose();
         }}
       >
-        <FsCard className="max-h-[min(94dvh,880px)] w-full max-w-190 overflow-hidden rounded-t-2xl sm:rounded-2xl" padding="p-4 sm:p-6">
+        <FsCard className="max-h-[min(94dvh,880px)] w-full max-w-190 overflow-hidden rounded-t-xl sm:rounded-xl" padding="p-4 sm:p-6">
           <div className="flex max-h-[min(90dvh,820px)] flex-col">
             <div className="flex items-start justify-between gap-3 border-b border-black/6 pb-3">
               <h2
@@ -293,7 +293,7 @@ export function CreatePurchaseDialog({
                 <div className="min-w-0 flex-1">
                   <label className="mb-1 block text-xs font-medium text-neutral-600">Boutique *</label>
                   <select
-                    className={fsInputClass("rounded-[10px] border border-black/8")}
+                    className={fsInputClass("rounded-[8px] border border-black/8")}
                     value={effectiveStoreId ?? ""}
                     onChange={(e) => setStoreId(e.target.value || null)}
                   >
@@ -308,7 +308,7 @@ export function CreatePurchaseDialog({
                 <div className="min-w-0 flex-1">
                   <label className="mb-1 block text-xs font-medium text-neutral-600">Fournisseur *</label>
                   <select
-                    className={fsInputClass("rounded-[10px] border border-black/8")}
+                    className={fsInputClass("rounded-[8px] border border-black/8")}
                     value={effectiveSupplierId ?? ""}
                     onChange={(e) => setSupplierId(e.target.value || null)}
                   >
@@ -339,7 +339,7 @@ export function CreatePurchaseDialog({
               </div>
 
               <div
-                className="mt-2 max-h-[220px] overflow-y-auto rounded-[10px] border border-black/8 sm:max-h-90"
+                className="mt-2 max-h-[220px] overflow-y-auto rounded-[8px] border border-black/8 sm:max-h-90"
                 style={{ WebkitOverflowScrolling: "touch" }}
               >
                 {lines.map((line, i) => {
@@ -460,7 +460,7 @@ export function CreatePurchaseDialog({
                 type="button"
                 onClick={onClose}
                 disabled={busy}
-                className="min-h-[44px] rounded-[10px] px-4 py-2.5 text-sm font-semibold text-fs-accent"
+                className="min-h-[44px] rounded-[8px] px-4 py-2.5 text-sm font-semibold text-fs-accent"
               >
                 Annuler
               </button>
@@ -468,7 +468,7 @@ export function CreatePurchaseDialog({
                 type="button"
                 disabled={busy || !canSubmit}
                 onClick={() => submit(false)}
-                className="inline-flex min-h-[44px] items-center justify-center rounded-[10px] border border-fs-accent/30 px-4 py-2.5 text-sm font-semibold text-fs-accent disabled:opacity-50"
+                className="inline-flex min-h-[44px] items-center justify-center rounded-[8px] border border-fs-accent/30 px-4 py-2.5 text-sm font-semibold text-fs-accent disabled:opacity-50"
               >
                 {busyMode === "draft" ? (
                   <span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-fs-accent border-t-transparent" />
@@ -480,7 +480,7 @@ export function CreatePurchaseDialog({
                 type="button"
                 disabled={busy || !canSubmit}
                 onClick={() => submit(true)}
-                className="inline-flex min-h-[44px] min-w-[160px] items-center justify-center rounded-[10px] bg-fs-accent px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+                className="inline-flex min-h-[44px] min-w-[160px] items-center justify-center rounded-[8px] bg-fs-accent px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
               >
                 {busyMode === "confirm" ? (
                   <span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
@@ -502,7 +502,7 @@ export function CreatePurchaseDialog({
           }}
         >
           <div
-            className="flex max-h-[85dvh] w-full flex-col overflow-hidden rounded-t-2xl bg-fs-card pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-xl sm:max-h-[70dvh] sm:max-w-lg sm:rounded-2xl sm:pb-0"
+            className="flex max-h-[85dvh] w-full flex-col overflow-hidden rounded-t-xl bg-fs-card pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-xl sm:max-h-[70dvh] sm:max-w-lg sm:rounded-xl sm:pb-0"
             role="dialog"
             aria-label="Sélectionner un produit"
           >
@@ -558,7 +558,7 @@ export function CreatePurchaseDialog({
                         setProductSheetLine(null);
                       }}
                       className={cn(
-                        "flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left active:bg-fs-surface-container",
+                        "flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left active:bg-fs-surface-container",
                         sel ? "bg-fs-accent/10" : "hover:bg-fs-surface-container",
                       )}
                     >
@@ -597,7 +597,7 @@ export function CreatePurchaseDialog({
           }}
         >
           <div
-            className="max-h-[70dvh] w-full overflow-y-auto rounded-t-2xl bg-fs-card p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-xl sm:max-w-md sm:rounded-2xl sm:pb-4"
+            className="max-h-[70dvh] w-full overflow-y-auto rounded-t-xl bg-fs-card p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-xl sm:max-w-md sm:rounded-xl sm:pb-4"
             role="listbox"
             aria-label="Mode de paiement"
           >
@@ -614,7 +614,7 @@ export function CreatePurchaseDialog({
                       setPaymentSheetOpen(false);
                     }}
                     className={cn(
-                      "flex min-h-[52px] w-full items-center gap-3 rounded-xl px-3 py-3 text-left active:bg-fs-surface-container",
+                      "flex min-h-[52px] w-full items-center gap-3 rounded-lg px-3 py-3 text-left active:bg-fs-surface-container",
                       sel ? "text-fs-accent" : "text-fs-text",
                     )}
                   >

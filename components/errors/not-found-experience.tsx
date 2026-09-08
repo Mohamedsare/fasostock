@@ -154,14 +154,14 @@ export function NotFoundExperience() {
       <header className="fs-404-enter relative z-10 flex items-center justify-between gap-4 px-5 py-5 sm:px-8">
         <Link
           href="/"
-          className="group flex items-center gap-2.5 rounded-2xl outline-offset-4 focus-visible:outline-2 focus-visible:outline-fs-accent"
+          className="group flex items-center gap-2.5 rounded-xl outline-offset-4 focus-visible:outline-2 focus-visible:outline-fs-accent"
         >
           <Image
             src="/fs.png"
             alt="FasoStock"
             width={40}
             height={40}
-            className="rounded-xl shadow-sm transition-transform duration-300 group-hover:scale-105"
+            className="rounded-lg shadow-sm transition-transform duration-300 group-hover:scale-105"
             priority
           />
           <span className="text-sm font-semibold tracking-tight text-fs-text sm:text-base">
@@ -171,7 +171,7 @@ export function NotFoundExperience() {
         <button
           type="button"
           onClick={() => router.back()}
-          className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-black/8 bg-fs-card/80 px-4 text-sm font-medium text-fs-text shadow-sm backdrop-blur-md transition hover:border-fs-accent/30 hover:bg-fs-card active:scale-[0.98] dark:border-white/10"
+          className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-black/8 bg-fs-card/80 px-4 text-sm font-medium text-fs-text shadow-sm backdrop-blur-md transition hover:border-fs-accent/30 hover:bg-fs-card active:scale-[0.98] dark:border-white/10"
         >
           <MdArrowBack className="h-4 w-4 shrink-0 text-fs-accent" aria-hidden />
           Retour
@@ -184,7 +184,7 @@ export function NotFoundExperience() {
           <div className="relative mb-6 w-full max-w-xs sm:max-w-sm">
             <div
               className={cn(
-                "relative overflow-hidden rounded-3xl border border-black/8 bg-fs-card/90 p-6 shadow-xl shadow-black/5 backdrop-blur-xl dark:border-white/10 dark:shadow-black/30",
+                "relative overflow-hidden rounded-2xl border border-black/8 bg-fs-card/90 p-6 shadow-xl shadow-black/5 backdrop-blur-xl dark:border-white/10 dark:shadow-black/30",
                 scanFlash && "ring-2 ring-fs-accent/40",
               )}
             >
@@ -222,7 +222,7 @@ export function NotFoundExperience() {
 
             {/* Badge 404 */}
             <div
-              className="fs-404-glitch absolute -right-3 -top-3 flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-fs-accent to-[#f97316] text-2xl font-black text-white shadow-lg shadow-fs-accent/30 sm:-right-5 sm:-top-5 sm:h-24 sm:w-24 sm:text-3xl"
+              className="fs-404-glitch absolute -right-3 -top-3 flex h-20 w-20 items-center justify-center rounded-xl bg-gradient-to-br from-fs-accent to-[#f97316] text-2xl font-black text-white shadow-lg shadow-fs-accent/30 sm:-right-5 sm:-top-5 sm:h-24 sm:w-24 sm:text-3xl"
               aria-hidden
             >
               404
@@ -243,7 +243,7 @@ export function NotFoundExperience() {
 
         {/* Recherche de chemin */}
         <div
-          className="fs-404-enter w-full max-w-lg rounded-2xl border border-black/8 bg-fs-card/85 p-4 shadow-lg backdrop-blur-xl dark:border-white/10 sm:p-5"
+          className="fs-404-enter w-full max-w-lg rounded-xl border border-black/8 bg-fs-card/85 p-4 shadow-lg backdrop-blur-xl dark:border-white/10 sm:p-5"
           style={{ animationDelay: "120ms" }}
         >
           <label htmlFor="fs-404-path" className="mb-2 block text-xs font-semibold uppercase tracking-wide text-fs-on-surface-variant">
@@ -264,7 +264,7 @@ export function NotFoundExperience() {
                   if (e.key === "Enter") goToPath();
                 }}
                 placeholder="/dashboard, /sales, /products…"
-                className="w-full rounded-xl border border-black/10 bg-fs-surface py-3 pl-10 pr-3 text-sm text-fs-text outline-none ring-fs-accent/0 transition placeholder:text-fs-on-surface-variant/70 focus:border-fs-accent/40 focus:ring-2 focus:ring-fs-accent/25 dark:border-white/12"
+                className="w-full rounded-lg border border-black/10 bg-fs-surface py-3 pl-10 pr-3 text-sm text-fs-text outline-none ring-fs-accent/0 transition placeholder:text-fs-on-surface-variant/70 focus:border-fs-accent/40 focus:ring-2 focus:ring-fs-accent/25 dark:border-white/12"
                 autoComplete="off"
                 spellCheck={false}
               />
@@ -272,7 +272,7 @@ export function NotFoundExperience() {
             <button
               type="button"
               onClick={goToPath}
-              className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-xl bg-fs-accent px-5 text-sm font-semibold text-white shadow-md shadow-fs-accent/25 transition hover:brightness-105 active:scale-[0.98] disabled:opacity-50"
+              className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-lg bg-fs-accent px-5 text-sm font-semibold text-white shadow-md shadow-fs-accent/25 transition hover:brightness-105 active:scale-[0.98] disabled:opacity-50"
               disabled={!normalizePathInput(pathInput)}
             >
               Y aller
@@ -305,9 +305,9 @@ export function NotFoundExperience() {
             <Link
               key={href}
               href={href}
-              className="group flex flex-col items-center gap-2 rounded-2xl border border-black/6 bg-fs-card/70 px-3 py-4 text-center text-xs font-semibold text-fs-text shadow-sm backdrop-blur-sm transition hover:-translate-y-0.5 hover:border-fs-accent/25 hover:bg-fs-card hover:shadow-md active:scale-[0.98] dark:border-white/8"
+              className="group flex flex-col items-center gap-2 rounded-xl border border-black/6 bg-fs-card/70 px-3 py-4 text-center text-xs font-semibold text-fs-text shadow-sm backdrop-blur-sm transition hover:-translate-y-0.5 hover:border-fs-accent/25 hover:bg-fs-card hover:shadow-md active:scale-[0.98] dark:border-white/8"
             >
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-fs-accent/10 text-fs-accent transition group-hover:bg-fs-accent group-hover:text-white">
+              <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-fs-accent/10 text-fs-accent transition group-hover:bg-fs-accent group-hover:text-white">
                 <Icon className="h-5 w-5" aria-hidden />
               </span>
               {label}
@@ -321,21 +321,21 @@ export function NotFoundExperience() {
         >
           <Link
             href={ROUTES.dashboard}
-            className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-fs-accent px-6 text-sm font-semibold text-white shadow-lg shadow-fs-accent/30 transition hover:brightness-105 active:scale-[0.98]"
+            className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-fs-accent px-6 text-sm font-semibold text-white shadow-lg shadow-fs-accent/30 transition hover:brightness-105 active:scale-[0.98]"
           >
             <MdDashboard className="h-5 w-5" aria-hidden />
             Tableau de bord
           </Link>
           <Link
             href="/"
-            className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-black/10 bg-fs-card px-6 text-sm font-semibold text-fs-text transition hover:border-fs-accent/30 active:scale-[0.98] dark:border-white/12"
+            className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-black/10 bg-fs-card px-6 text-sm font-semibold text-fs-text transition hover:border-fs-accent/30 active:scale-[0.98] dark:border-white/12"
           >
             <MdHome className="h-5 w-5 text-fs-accent" aria-hidden />
             Accueil
           </Link>
           <Link
             href={ROUTES.login}
-            className="inline-flex min-h-11 items-center gap-2 rounded-xl px-4 text-sm font-medium text-fs-on-surface-variant transition hover:text-fs-accent"
+            className="inline-flex min-h-11 items-center gap-2 rounded-lg px-4 text-sm font-medium text-fs-on-surface-variant transition hover:text-fs-accent"
           >
             <MdLogin className="h-4 w-4" aria-hidden />
             Connexion

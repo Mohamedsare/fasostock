@@ -21,7 +21,7 @@ export function KpiCard({
   return (
     <AdminCard
       padding="p-4"
-      className="group relative overflow-hidden rounded-2xl border border-slate-200/70 bg-linear-to-br from-white via-white to-slate-50/80 shadow-[0_8px_28px_-12px_rgba(15,23,42,0.12)] ring-1 ring-slate-100/80 transition hover:border-orange-200/70 hover:shadow-[0_14px_40px_-14px_rgba(234,88,12,0.14)] hover:ring-orange-100/60"
+      className="group relative overflow-hidden rounded-xl border border-slate-200/70 bg-linear-to-br from-white via-white to-slate-50/80 shadow-[0_8px_28px_-12px_rgba(15,23,42,0.12)] ring-1 ring-slate-100/80 transition hover:border-orange-200/70 hover:shadow-[0_14px_40px_-14px_rgba(234,88,12,0.14)] hover:ring-orange-100/60"
     >
       <div
         className="absolute left-0 top-0 h-full w-1 bg-linear-to-b from-orange-500 to-amber-400 opacity-95"
@@ -39,7 +39,7 @@ export function KpiCard({
           {hint ? <p className="mt-1 text-[11px] font-medium text-slate-500">{hint}</p> : null}
         </div>
         {icon ? (
-          <div className="rounded-xl bg-linear-to-br from-orange-500/12 to-amber-500/8 p-2.5 text-orange-600 shadow-sm ring-1 ring-orange-500/20 transition group-hover:from-orange-500/18 group-hover:ring-orange-400/35">
+          <div className="rounded-lg bg-linear-to-br from-orange-500/12 to-amber-500/8 p-2.5 text-orange-600 shadow-sm ring-1 ring-orange-500/20 transition group-hover:from-orange-500/18 group-hover:ring-orange-400/35">
             {icon}
           </div>
         ) : null}
@@ -63,7 +63,7 @@ export function HealthScoreCard({
         ? "border-amber-400/45 bg-amber-500/18 text-amber-50"
         : "border-red-400/45 bg-red-500/18 text-red-50";
   return (
-    <AdminCard className="relative overflow-hidden rounded-3xl border border-white/10 bg-linear-to-br from-[#0c1222] via-[#141b2e] to-[#0f172a] p-6 text-white shadow-[0_24px_64px_-20px_rgba(15,23,42,0.55)] ring-1 ring-white/5">
+    <AdminCard className="relative overflow-hidden rounded-2xl border border-white/10 bg-linear-to-br from-[#0c1222] via-[#141b2e] to-[#0f172a] p-6 text-white shadow-[0_24px_64px_-20px_rgba(15,23,42,0.55)] ring-1 ring-white/5">
       <div className="pointer-events-none absolute -right-12 -top-12 h-40 w-40 rounded-full bg-orange-500/25 blur-3xl" aria-hidden />
       <div className="pointer-events-none absolute -bottom-8 left-1/3 h-28 w-28 rounded-full bg-cyan-500/10 blur-2xl" aria-hidden />
       <p className="relative text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400">Indicateur global</p>
@@ -71,7 +71,7 @@ export function HealthScoreCard({
       <p className="relative mt-1 text-xs leading-relaxed text-slate-400">
         Synthèse activité, conversion et incidents — utile pour prioriser vos actions.
       </p>
-      <div className={cn("relative mt-4 inline-flex items-center rounded-xl border px-3.5 py-2 text-sm font-bold shadow-lg backdrop-blur-sm", tone)}>
+      <div className={cn("relative mt-4 inline-flex items-center rounded-lg border px-3.5 py-2 text-sm font-bold shadow-lg backdrop-blur-sm", tone)}>
         Score {safe}/100
       </div>
       <div className="relative mt-5 h-3 w-full overflow-hidden rounded-full bg-white/10 shadow-inner">
@@ -111,7 +111,7 @@ export function TopCompaniesCard({
   valueLabel: string;
 }) {
   return (
-    <AdminCard className="rounded-3xl border border-slate-200/70 bg-linear-to-b from-white to-slate-50/40 p-5 shadow-[0_12px_40px_-20px_rgba(15,23,42,0.1)] ring-1 ring-slate-100/80">
+    <AdminCard className="rounded-2xl border border-slate-200/70 bg-linear-to-b from-white to-slate-50/40 p-5 shadow-[0_12px_40px_-20px_rgba(15,23,42,0.1)] ring-1 ring-slate-100/80">
       <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-orange-600/90">Classement</p>
       <p className="mt-1 text-sm font-bold text-slate-900">{title}</p>
       {subtitle ? <p className="mt-1 text-xs leading-snug text-slate-600">{subtitle}</p> : null}
@@ -120,7 +120,7 @@ export function TopCompaniesCard({
         {rows.map((r, i) => (
           <div
             key={`${r.companyName}-${i}`}
-            className="flex items-center justify-between gap-3 rounded-xl border border-slate-100/90 bg-white/80 px-3 py-2.5 shadow-sm transition hover:border-orange-200/60 hover:bg-white hover:shadow-md"
+            className="flex items-center justify-between gap-3 rounded-lg border border-slate-100/90 bg-white/80 px-3 py-2.5 shadow-sm transition hover:border-orange-200/60 hover:bg-white hover:shadow-md"
           >
             <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-orange-500/10 text-[11px] font-extrabold text-orange-700">
               {i + 1}
@@ -143,20 +143,20 @@ export function AlertCard({
   alerts: string[];
 }) {
   return (
-    <AdminCard className="rounded-3xl border border-slate-200/70 bg-white p-5 shadow-[0_12px_40px_-20px_rgba(15,23,42,0.1)] ring-1 ring-slate-100/80">
+    <AdminCard className="rounded-2xl border border-slate-200/70 bg-white p-5 shadow-[0_12px_40px_-20px_rgba(15,23,42,0.1)] ring-1 ring-slate-100/80">
       <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-amber-700/90">À traiter</p>
       <p className="mt-1 text-sm font-bold text-slate-900">{title}</p>
       <p className="mt-1 text-xs text-slate-600">Points qui méritent un coup d’œil aujourd’hui.</p>
       <div className="mt-3 space-y-2">
         {alerts.length === 0 ? (
-          <p className="rounded-xl border border-emerald-200/80 bg-emerald-50/80 px-3 py-2 text-xs font-medium text-emerald-800">
+          <p className="rounded-lg border border-emerald-200/80 bg-emerald-50/80 px-3 py-2 text-xs font-medium text-emerald-800">
             Aucune alerte critique.
           </p>
         ) : null}
         {alerts.map((a, i) => (
           <p
             key={i}
-            className="rounded-xl border border-amber-200/80 bg-linear-to-r from-amber-50 to-orange-50/50 px-3 py-2 text-xs font-medium text-amber-950"
+            className="rounded-lg border border-amber-200/80 bg-linear-to-r from-amber-50 to-orange-50/50 px-3 py-2 text-xs font-medium text-amber-950"
           >
             {a}
           </p>
@@ -172,7 +172,7 @@ export function ActivityFeed({
   rows: Array<{ time: string; title: string; detail: string }>;
 }) {
   return (
-    <AdminCard className="rounded-3xl border border-slate-200/70 bg-white p-5 shadow-[0_12px_40px_-20px_rgba(15,23,42,0.1)] ring-1 ring-slate-100/80">
+    <AdminCard className="rounded-2xl border border-slate-200/70 bg-white p-5 shadow-[0_12px_40px_-20px_rgba(15,23,42,0.1)] ring-1 ring-slate-100/80">
       <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Temps réel</p>
       <p className="mt-1 text-sm font-bold text-slate-900">Dernières actions</p>
       <p className="mt-1 text-xs text-slate-600">Ventes et événements récents sur l’échantillon chargé.</p>
@@ -181,7 +181,7 @@ export function ActivityFeed({
         {rows.map((r, i) => (
           <div
             key={`${r.time}-${i}`}
-            className="relative rounded-xl border border-slate-100/80 bg-slate-50/40 px-3 py-2.5 pl-4 before:absolute before:left-0 before:top-2 before:h-[calc(100%-16px)] before:w-0.5 before:rounded-full before:bg-orange-500/70"
+            className="relative rounded-lg border border-slate-100/80 bg-slate-50/40 px-3 py-2.5 pl-4 before:absolute before:left-0 before:top-2 before:h-[calc(100%-16px)] before:w-0.5 before:rounded-full before:bg-orange-500/70"
           >
             <div className="flex items-center justify-between gap-2">
               <p className="text-xs font-bold text-slate-800">{r.title}</p>
@@ -201,7 +201,7 @@ export function ChurnRiskTable({
   rows: Array<{ companyName: string; riskScore: number; reason: string }>;
 }) {
   return (
-    <AdminCard className="rounded-3xl border border-slate-200/70 bg-white p-5 shadow-[0_12px_40px_-20px_rgba(15,23,42,0.1)] ring-1 ring-slate-100/80">
+    <AdminCard className="rounded-2xl border border-slate-200/70 bg-white p-5 shadow-[0_12px_40px_-20px_rgba(15,23,42,0.1)] ring-1 ring-slate-100/80">
       <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-red-700/80">Rétention</p>
       <p className="mt-1 text-sm font-bold text-slate-900">Risque de désabonnement</p>
       <p className="mt-1 text-xs text-slate-600">Score indicatif (inactivité, abonnement, baisse d’activité).</p>
@@ -235,7 +235,7 @@ export function AdoptionTable({
   rows: Array<{ companyName: string; score: number; activeUsers: number; sales: number }>;
 }) {
   return (
-    <AdminCard className="rounded-3xl border border-slate-200/70 bg-white p-5 shadow-[0_12px_40px_-20px_rgba(15,23,42,0.1)] ring-1 ring-slate-100/80">
+    <AdminCard className="rounded-2xl border border-slate-200/70 bg-white p-5 shadow-[0_12px_40px_-20px_rgba(15,23,42,0.1)] ring-1 ring-slate-100/80">
       <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-emerald-700/85">Engagement</p>
       <p className="mt-1 text-sm font-bold text-slate-900">Adoption par entreprise</p>
       <p className="mt-1 text-xs text-slate-600">Score interne (ventes, utilisateurs actifs récents).</p>
@@ -271,14 +271,14 @@ export function AiInsightsCard({
   insights: string[];
 }) {
   return (
-    <AdminCard className="rounded-3xl border border-orange-200/70 bg-linear-to-br from-orange-50/95 via-amber-50/40 to-white p-5 shadow-[0_14px_44px_-18px_rgba(234,88,12,0.2)] ring-1 ring-orange-100/60">
+    <AdminCard className="rounded-2xl border border-orange-200/70 bg-linear-to-br from-orange-50/95 via-amber-50/40 to-white p-5 shadow-[0_14px_44px_-18px_rgba(234,88,12,0.2)] ring-1 ring-orange-100/60">
       <p className="text-[11px] font-extrabold uppercase tracking-[0.12em] text-orange-900/85">Lecture rapide</p>
       <p className="mt-1 text-sm font-bold text-slate-900">Phrases clés</p>
       <p className="mt-1 text-xs text-slate-700">Résumé généré à partir des métriques affichées.</p>
       <div className="mt-3 space-y-2">
         {insights.length === 0 ? <p className="text-xs text-slate-600">Aucune observation disponible.</p> : null}
         {insights.map((line, idx) => (
-          <p key={idx} className="rounded-xl border border-orange-100 bg-white px-3 py-2 text-xs text-slate-700">
+          <p key={idx} className="rounded-lg border border-orange-100 bg-white px-3 py-2 text-xs text-slate-700">
             {line}
           </p>
         ))}

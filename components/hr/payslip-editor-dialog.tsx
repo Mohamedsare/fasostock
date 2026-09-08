@@ -127,7 +127,7 @@ export function PayslipEditorDialog({
       </div>
       <div className="space-y-2">
         {list.filter((r) => r.kind === kind).map((r) => (
-          <div key={r.key} className="rounded-xl border border-black/[0.06] bg-fs-surface/40 p-2">
+          <div key={r.key} className="rounded-lg border border-black/[0.06] bg-fs-surface/40 p-2">
             <div className="flex gap-2">
               <input className={fsInputClass("text-sm")} placeholder={kind === "earning" ? "Ex. Prime de transport" : "Ex. Avance sur salaire"} value={r.label} onChange={(e) => patch(r.key, { label: e.target.value })} />
               <input type="number" min={0} className={fsInputClass("w-32 text-sm")} placeholder="Montant" value={r.amount || ""} onChange={(e) => patch(r.key, { amount: Number(e.target.value) })} />
@@ -166,13 +166,13 @@ export function PayslipEditorDialog({
         if (e.target === e.currentTarget && !saving) onClose();
       }}
     >
-      <div className="flex h-full w-full max-w-3xl flex-col overflow-hidden bg-fs-card shadow-xl sm:h-auto sm:max-h-[92vh] sm:rounded-2xl">
+      <div className="flex h-full w-full max-w-3xl flex-col overflow-hidden bg-fs-card shadow-xl sm:h-auto sm:max-h-[92vh] sm:rounded-xl">
         <div className="flex shrink-0 items-center justify-between gap-3 border-b border-black/6 px-4 py-3">
           <div>
             <h2 className="text-base font-bold text-fs-text">Rubriques — {employeeName}</h2>
             <p className="text-xs text-neutral-500">{periodLabel} · base {fmt(baseSalary)} FCFA</p>
           </div>
-          <button type="button" onClick={onClose} disabled={saving} className="inline-flex h-9 w-9 items-center justify-center rounded-[10px] border border-black/8 text-neutral-700 disabled:opacity-50" aria-label="Fermer">
+          <button type="button" onClick={onClose} disabled={saving} className="inline-flex h-9 w-9 items-center justify-center rounded-[8px] border border-black/8 text-neutral-700 disabled:opacity-50" aria-label="Fermer">
             <MdClose className="h-5 w-5" aria-hidden />
           </button>
         </div>
@@ -200,8 +200,8 @@ export function PayslipEditorDialog({
             </div>
           ) : null}
           <div className="flex justify-end gap-2">
-            <button type="button" onClick={onClose} disabled={saving} className="rounded-xl border border-black/10 px-4 py-2 text-sm font-semibold text-fs-text disabled:opacity-50">Annuler</button>
-            <button type="button" onClick={save} disabled={saving || loading} className="rounded-xl bg-fs-accent px-4 py-2 text-sm font-semibold text-white disabled:opacity-40">
+            <button type="button" onClick={onClose} disabled={saving} className="rounded-lg border border-black/10 px-4 py-2 text-sm font-semibold text-fs-text disabled:opacity-50">Annuler</button>
+            <button type="button" onClick={save} disabled={saving || loading} className="rounded-lg bg-fs-accent px-4 py-2 text-sm font-semibold text-white disabled:opacity-40">
               {saving ? "Enregistrement…" : "Recalculer & enregistrer"}
             </button>
           </div>

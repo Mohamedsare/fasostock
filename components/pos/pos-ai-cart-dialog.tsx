@@ -454,7 +454,7 @@ export function PosAiCartDialog({
       aria-modal="true"
       aria-label="Panier IA"
     >
-      <div className="flex h-[92dvh] w-full max-w-4xl flex-col overflow-hidden rounded-t-xl bg-white shadow-xl sm:h-[88dvh] sm:rounded-xl">
+      <div className="flex h-[92dvh] w-full max-w-4xl flex-col overflow-hidden rounded-t-lg bg-white shadow-xl sm:h-[88dvh] sm:rounded-lg">
         <div className="flex shrink-0 items-center justify-between border-b border-black/[0.08] px-4 py-3">
           <div className="flex min-w-0 items-center gap-2">
             <MdAutoAwesome className="h-5 w-5 shrink-0 text-[#F97316]" aria-hidden />

@@ -3,7 +3,7 @@ import Link from "next/link";
 export default function SetupPage() {
   return (
     <div className="flex min-h-dvh flex-col justify-center bg-fs-surface px-4 py-10">
-      <div className="mx-auto max-w-md rounded-2xl border border-black/[0.08] bg-fs-card p-6 shadow-sm">
+      <div className="mx-auto max-w-md rounded-xl border border-black/[0.08] bg-fs-card p-6 shadow-sm">
         <h1 className="text-lg font-bold text-fs-text">Configuration Supabase</h1>
         <p className="mt-2 text-sm leading-relaxed text-neutral-600">
           Créez un fichier{" "}
@@ -16,7 +16,7 @@ export default function SetupPage() {
           </code>{" "}
           avec&nbsp;:
         </p>
-        <pre className="fs-scroll-x mt-4 rounded-xl bg-neutral-900 p-4 text-xs text-neutral-100">
+        <pre className="fs-scroll-x mt-4 rounded-lg bg-neutral-900 p-4 text-xs text-neutral-100">
           {`NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...`}
         </pre>
@@ -25,7 +25,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...`}
         </p>
         <Link
           href="/login"
-          className="mt-6 inline-flex fs-touch-target items-center justify-center rounded-xl bg-fs-accent px-5 text-sm font-semibold text-white"
+          className="mt-6 inline-flex fs-touch-target items-center justify-center rounded-lg bg-fs-accent px-5 text-sm font-semibold text-white"
         >
           Réessayer la connexion
         </Link>

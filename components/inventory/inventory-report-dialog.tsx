@@ -53,7 +53,7 @@ export function InventoryReportDialog({
     >
       <FsCard className="w-full max-w-md shadow-xl" padding="p-5">
         <div className="flex items-start gap-3">
-          <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-500/12 text-emerald-600">
+          <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-emerald-500/12 text-emerald-600">
             <MdCheckCircle className="h-6 w-6" aria-hidden />
           </span>
           <div className="min-w-0">
@@ -82,7 +82,7 @@ export function InventoryReportDialog({
             type="button"
             onClick={onPrint}
             disabled={busy != null}
-            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-fs-accent px-4 text-sm font-bold text-white disabled:opacity-60"
+            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-fs-accent px-4 text-sm font-bold text-white disabled:opacity-60"
           >
             <MdPrint className="h-5 w-5" aria-hidden />
             {busy === "print" ? "Préparation…" : "Imprimer"}
@@ -91,7 +91,7 @@ export function InventoryReportDialog({
             type="button"
             onClick={onDownload}
             disabled={busy != null}
-            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-fs-accent/40 bg-fs-card px-4 text-sm font-bold text-fs-accent disabled:opacity-60"
+            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg border border-fs-accent/40 bg-fs-card px-4 text-sm font-bold text-fs-accent disabled:opacity-60"
           >
             <MdDownload className="h-5 w-5" aria-hidden />
             {busy === "download" ? "Préparation…" : "Télécharger"}
@@ -102,7 +102,7 @@ export function InventoryReportDialog({
           type="button"
           onClick={onClose}
           disabled={busy != null}
-          className="mt-2 min-h-11 w-full rounded-xl border border-black/[0.08] bg-fs-card text-sm font-semibold text-neutral-700 disabled:opacity-60"
+          className="mt-2 min-h-11 w-full rounded-lg border border-black/[0.08] bg-fs-card text-sm font-semibold text-neutral-700 disabled:opacity-60"
         >
           Terminer
         </button>

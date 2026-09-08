@@ -124,7 +124,7 @@ export function RentalPaymentDialog({
       {/* Situation du bail, pour décider en un coup d'œil. */}
       <div
         className={cn(
-          "rounded-xl p-3",
+          "rounded-lg p-3",
           lease.balance > 0.5
             ? "bg-red-500/10"
             : lease.balance < -0.5
@@ -263,7 +263,7 @@ export function RentalPaymentDialog({
       </RentalField>
 
       {value > 0 && isRent ? (
-        <div className="rounded-xl border border-black/[0.07] bg-fs-surface-container/60 p-3 dark:border-white/10">
+        <div className="rounded-lg border border-black/[0.07] bg-fs-surface-container/60 p-3 dark:border-white/10">
           <div className="flex items-baseline justify-between gap-2">
             <span className="text-xs text-neutral-600">Après ce règlement</span>
             <span

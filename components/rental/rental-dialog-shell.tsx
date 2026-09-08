@@ -41,7 +41,7 @@ export function RentalDialogShell({
     >
       <div
         className={cn(
-          "flex max-h-[92vh] w-full flex-col rounded-t-2xl bg-fs-card shadow-2xl min-[560px]:rounded-2xl",
+          "flex max-h-[92vh] w-full flex-col rounded-t-xl bg-fs-card shadow-2xl min-[560px]:rounded-xl",
           maxWidth,
         )}
         role="dialog"
@@ -122,7 +122,7 @@ export function RentalSubmitButton({
       disabled={disabled || busy}
       onClick={onClick}
       className={cn(
-        "inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl text-sm font-bold text-white shadow-sm disabled:opacity-50",
+        "inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-lg text-sm font-bold text-white shadow-sm disabled:opacity-50",
         tone === "danger" ? "bg-red-600" : tone === "emerald" ? "bg-emerald-600" : "bg-fs-accent",
       )}
     >

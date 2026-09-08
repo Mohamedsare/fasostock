@@ -58,7 +58,7 @@ export function StoreSwitcherSheet({
       />
 
       {/* Fenêtre centrée */}
-      <div className="relative z-10 flex max-h-[85dvh] w-full max-w-sm flex-col overflow-hidden rounded-3xl border border-black/[0.06] bg-fs-card shadow-[0_20px_60px_rgba(0,0,0,0.28)] animate-[fs-pop-in_180ms_cubic-bezier(0.22,1,0.36,1)] dark:border-white/10">
+      <div className="relative z-10 flex max-h-[85dvh] w-full max-w-sm flex-col overflow-hidden rounded-2xl border border-black/[0.06] bg-fs-card shadow-[0_20px_60px_rgba(0,0,0,0.28)] animate-[fs-pop-in_180ms_cubic-bezier(0.22,1,0.36,1)] dark:border-white/10">
         <div className="flex items-center justify-between px-5 pb-2 pt-4">
           <div className="min-w-0">
             <h2 className="text-base font-bold text-fs-text">Changer de boutique</h2>
@@ -85,7 +85,7 @@ export function StoreSwitcherSheet({
                 type="button"
                 onClick={() => onSelect(s.id)}
                 className={cn(
-                  "flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left transition-colors",
+                  "flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors",
                   active
                     ? "bg-[color-mix(in_srgb,var(--fs-accent)_12%,transparent)]"
                     : "active:bg-black/[0.04] dark:active:bg-white/5",
@@ -94,7 +94,7 @@ export function StoreSwitcherSheet({
               >
                 <span
                   className={cn(
-                    "flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-sm font-bold",
+                    "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-sm font-bold",
                     active
                       ? "bg-[var(--fs-accent)] text-white"
                       : "bg-[color-mix(in_srgb,var(--fs-accent)_14%,transparent)] text-[var(--fs-accent)]",

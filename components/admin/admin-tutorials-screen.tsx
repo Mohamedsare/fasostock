@@ -83,7 +83,7 @@ export function AdminTutorialsScreen() {
             setEditing(null);
             setFormOpen(true);
           }}
-          className="rounded-xl bg-orange-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-orange-700"
+          className="rounded-lg bg-orange-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-orange-700"
         >
           + Ajouter un tutoriel
         </button>
@@ -116,7 +116,7 @@ export function AdminTutorialsScreen() {
                     return (
                       <div
                         key={t.id}
-                        className="flex gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm"
+                        className="flex gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm"
                       >
                         <div className="h-16 w-28 shrink-0 overflow-hidden rounded-lg bg-slate-100">
                           {id ? (
@@ -241,7 +241,7 @@ function TutorialFormDialog({
         if (e.target === e.currentTarget && !busy) onCancel();
       }}
     >
-      <div className="flex max-h-[94dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-2xl bg-white shadow-xl sm:rounded-2xl">
+      <div className="flex max-h-[94dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-xl bg-white shadow-xl sm:rounded-xl">
         <div className="flex items-center justify-between border-b border-slate-200 px-5 py-3.5">
           <h2 className="text-base font-bold text-slate-900">
             {initial ? "Modifier le tutoriel" : "Nouveau tutoriel"}
@@ -353,7 +353,7 @@ function TutorialFormDialog({
             type="button"
             onClick={onCancel}
             disabled={busy}
-            className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 disabled:opacity-60"
+            className="rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 disabled:opacity-60"
           >
             Annuler
           </button>
@@ -361,7 +361,7 @@ function TutorialFormDialog({
             type="button"
             onClick={submit}
             disabled={busy}
-            className="rounded-xl bg-orange-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-orange-700 disabled:opacity-60"
+            className="rounded-lg bg-orange-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-orange-700 disabled:opacity-60"
           >
             {busy ? "…" : initial ? "Enregistrer" : "Ajouter"}
           </button>

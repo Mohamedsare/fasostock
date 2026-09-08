@@ -113,7 +113,7 @@ export function LocationFormDialog({
             type="button"
             onClick={onClose}
             disabled={busy}
-            className="rounded-xl border border-black/[0.08] bg-fs-card px-4 py-2.5 text-sm font-semibold text-neutral-800 disabled:opacity-60"
+            className="rounded-lg border border-black/[0.08] bg-fs-card px-4 py-2.5 text-sm font-semibold text-neutral-800 disabled:opacity-60"
           >
             Annuler
           </button>
@@ -127,7 +127,7 @@ export function LocationFormDialog({
               }
               onSubmit({ name: name.trim(), code: code.trim() || null });
             }}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-fs-accent px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-fs-accent px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
           >
             {busy ? (
               <span

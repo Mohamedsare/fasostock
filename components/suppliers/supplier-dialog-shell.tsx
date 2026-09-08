@@ -41,7 +41,7 @@ export function SupplierDialogShell({
     >
       <div
         className={cn(
-          "flex max-h-[93vh] w-full flex-col rounded-t-2xl bg-fs-card shadow-2xl min-[560px]:rounded-2xl",
+          "flex max-h-[93vh] w-full flex-col rounded-t-xl bg-fs-card shadow-2xl min-[560px]:rounded-xl",
           maxWidth,
         )}
         role="dialog"
@@ -132,7 +132,7 @@ export function SupplierSubmitButton({
       disabled={disabled || busy}
       onClick={onClick}
       className={cn(
-        "inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl text-sm font-bold text-white shadow-sm transition-transform active:scale-[0.99] disabled:opacity-50",
+        "inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-lg text-sm font-bold text-white shadow-sm transition-transform active:scale-[0.99] disabled:opacity-50",
         tone === "danger" ? "bg-red-600" : tone === "emerald" ? "bg-emerald-600" : "bg-fs-accent",
       )}
     >
@@ -148,7 +148,7 @@ export function SupplierSubmitButton({
 export function SupplierDialogError({ message }: { message: string | null }) {
   if (!message) return null;
   return (
-    <div className="rounded-xl border border-red-200/80 bg-red-50/90 p-3 dark:border-red-900 dark:bg-red-950/40">
+    <div className="rounded-lg border border-red-200/80 bg-red-50/90 p-3 dark:border-red-900 dark:bg-red-950/40">
       <p className="text-xs font-medium leading-snug text-red-800 dark:text-red-200">{message}</p>
     </div>
   );

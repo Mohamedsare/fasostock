@@ -3,7 +3,7 @@
 import { cn } from "@/lib/utils/cn";
 import { shellTopBarClass } from "@/components/layout/shell-chrome";
 
-const pulse = "animate-pulse rounded-xl bg-fs-surface-container dark:bg-white/[0.08]";
+const pulse = "animate-pulse rounded-lg bg-fs-surface-container dark:bg-white/[0.08]";
 
 /**
  * Squelette du shell (sidebar + barre + zone contenu) pour transitions de route
@@ -30,13 +30,13 @@ export function AppShellSkeleton() {
             )}
           >
             <div className="flex items-center gap-3">
-              <div className={cn("h-8 w-8 shrink-0 rounded-xl", pulse)} />
+              <div className={cn("h-8 w-8 shrink-0 rounded-lg", pulse)} />
               <div className={cn("h-5 w-24 rounded-lg", pulse)} />
             </div>
           </div>
           <div className="flex flex-1 flex-col gap-2 overflow-hidden p-2.5">
             {Array.from({ length: 9 }).map((_, i) => (
-              <div key={i} className="flex items-center gap-3 rounded-2xl px-3 py-2">
+              <div key={i} className="flex items-center gap-3 rounded-xl px-3 py-2">
                 <div className={cn("h-8 w-8 shrink-0", pulse)} />
                 <div className={cn("h-3.5 flex-1 rounded-md", pulse)} />
               </div>
@@ -51,17 +51,17 @@ export function AppShellSkeleton() {
               shellTopBarClass,
             )}
           >
-            <div className={cn("h-10 w-10 shrink-0 rounded-2xl", pulse)} />
+            <div className={cn("h-10 w-10 shrink-0 rounded-xl", pulse)} />
             <div className="mx-auto flex h-10 min-w-0 items-center justify-center min-[1024px]:flex-1">
-              <div className={cn("h-10 w-[140px] max-w-full rounded-2xl", pulse)} />
+              <div className={cn("h-10 w-[140px] max-w-full rounded-xl", pulse)} />
             </div>
             <div className="flex shrink-0 items-center gap-2">
-              <div className={cn("h-10 w-10 rounded-2xl", pulse)} />
+              <div className={cn("h-10 w-10 rounded-xl", pulse)} />
             </div>
           </header>
           <main className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overflow-x-hidden p-4">
             <div className={cn("h-8 w-48 rounded-lg", pulse)} />
-            <div className={cn("h-36 w-full rounded-2xl", pulse)} />
+            <div className={cn("h-36 w-full rounded-xl", pulse)} />
             <div className="space-y-2.5">
               <div className={cn("h-3.5 w-full rounded-md", pulse)} />
               <div className={cn("h-3.5 w-[92%] rounded-md", pulse)} />

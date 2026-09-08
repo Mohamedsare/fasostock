@@ -34,7 +34,7 @@ export function RepairDialogShell({
     >
       <div
         className={cn(
-          "flex max-h-[92vh] w-full flex-col rounded-t-2xl bg-fs-card shadow-2xl min-[560px]:rounded-2xl",
+          "flex max-h-[92vh] w-full flex-col rounded-t-xl bg-fs-card shadow-2xl min-[560px]:rounded-xl",
           maxWidth,
         )}
         role="dialog"

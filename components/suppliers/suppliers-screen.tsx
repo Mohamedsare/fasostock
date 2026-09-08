@@ -133,7 +133,7 @@ function Kpi({
     <Wrapper
       {...(onClick ? { type: "button" as const, onClick } : {})}
       className={cn(
-        "rounded-xl border border-black/[0.06] bg-fs-card p-3 text-left shadow-sm",
+        "rounded-lg border border-black/[0.06] bg-fs-card p-3 text-left shadow-sm",
         onClick && "transition-transform active:scale-[0.99]",
       )}
     >
@@ -527,7 +527,7 @@ export function SuppliersScreen() {
                 setPresetSupplierId(null);
                 setDebtOpen(true);
               }}
-              className="inline-flex items-center gap-1.5 rounded-[10px] border border-black/[0.12] bg-fs-card px-3 py-2.5 text-xs font-semibold text-neutral-800 shadow-sm active:scale-[0.99] sm:text-sm"
+              className="inline-flex items-center gap-1.5 rounded-[8px] border border-black/[0.12] bg-fs-card px-3 py-2.5 text-xs font-semibold text-neutral-800 shadow-sm active:scale-[0.99] sm:text-sm"
             >
               <MdAddCard className="h-5 w-5" aria-hidden />
               Nouvelle dette
@@ -538,7 +538,7 @@ export function SuppliersScreen() {
                 setPayPreset({ supplierId: null, invoiceId: null });
                 setPayOpen(true);
               }}
-              className="inline-flex items-center gap-1.5 rounded-[10px] bg-emerald-600 px-3 py-2.5 text-xs font-semibold text-white shadow-sm active:scale-[0.99] sm:text-sm"
+              className="inline-flex items-center gap-1.5 rounded-[8px] bg-emerald-600 px-3 py-2.5 text-xs font-semibold text-white shadow-sm active:scale-[0.99] sm:text-sm"
             >
               <MdPayments className="h-5 w-5" aria-hidden />
               Payer
@@ -549,7 +549,7 @@ export function SuppliersScreen() {
                 setEditingSupplier(null);
                 setFormOpen(true);
               }}
-              className="inline-flex items-center gap-1.5 rounded-[10px] bg-fs-accent px-3 py-2.5 text-xs font-semibold text-white shadow-sm active:scale-[0.99] sm:text-sm"
+              className="inline-flex items-center gap-1.5 rounded-[8px] bg-fs-accent px-3 py-2.5 text-xs font-semibold text-white shadow-sm active:scale-[0.99] sm:text-sm"
             >
               <MdAdd className="h-5 w-5" aria-hidden />
               <span className="hidden min-[420px]:inline">{sCreateLabel}</span>
@@ -1448,7 +1448,7 @@ function FilterBar({
           <button
             type="button"
             onClick={onExport}
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-[10px] border border-black/[0.12] bg-fs-card px-3 text-xs font-semibold text-neutral-800"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-[8px] border border-black/[0.12] bg-fs-card px-3 text-xs font-semibold text-neutral-800"
           >
             <MdDownload className="h-5 w-5" aria-hidden />
             <span className="hidden min-[420px]:inline">Excel</span>

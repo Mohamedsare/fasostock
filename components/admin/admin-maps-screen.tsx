@@ -15,7 +15,7 @@ const ACCENT = "#EA580C";
 const LiveUsersMap = dynamic(() => import("@/components/admin/maps/live-users-map"), {
   ssr: false,
   loading: () => (
-    <div className="flex min-h-[min(82dvh,800px)] items-center justify-center rounded-[1.25rem] bg-slate-200/40">
+    <div className="flex min-h-[min(82dvh,800px)] items-center justify-center rounded-[1rem] bg-slate-200/40">
       <div
         className="h-9 w-9 animate-spin rounded-full border-2 border-t-transparent"
         style={{ borderColor: `${ACCENT}`, borderTopColor: "transparent" }}
@@ -115,7 +115,7 @@ export function AdminMapsScreen() {
         <header className="flex flex-wrap items-end justify-between gap-4">
           <div className="flex items-center gap-3">
             <div
-              className="flex h-11 w-11 items-center justify-center rounded-2xl shadow-md shadow-orange-500/15 ring-1 ring-white/80"
+              className="flex h-11 w-11 items-center justify-center rounded-xl shadow-md shadow-orange-500/15 ring-1 ring-white/80"
               style={{ background: `linear-gradient(145deg, ${ACCENT}22, ${ACCENT}08)` }}
             >
               <MdMap className="h-6 w-6" style={{ color: ACCENT }} aria-hidden />
@@ -141,7 +141,7 @@ export function AdminMapsScreen() {
         </header>
 
         <div className="grid flex-1 gap-4 lg:grid-cols-[minmax(260px,300px)_1fr] lg:items-start lg:gap-5">
-          <aside className="order-2 flex max-h-[min(42vh,420px)] flex-col overflow-hidden rounded-[1.25rem] border border-slate-200/60 bg-white/70 shadow-[0_8px_30px_rgb(15,23,42,0.06)] backdrop-blur-md lg:order-1 lg:max-h-none lg:h-[min(82dvh,820px)]">
+          <aside className="order-2 flex max-h-[min(42vh,420px)] flex-col overflow-hidden rounded-[1rem] border border-slate-200/60 bg-white/70 shadow-[0_8px_30px_rgb(15,23,42,0.06)] backdrop-blur-md lg:order-1 lg:max-h-none lg:h-[min(82dvh,820px)]">
             <div className="flex shrink-0 items-center justify-between border-b border-slate-100 px-4 py-3.5">
               <span className="text-[13px] font-bold text-slate-800">Sessions</span>
               <span
@@ -167,11 +167,11 @@ export function AdminMapsScreen() {
                 sorted.map((u) => (
                   <li
                     key={`${u.surface}-${u.user_id}`}
-                    className="group rounded-xl border border-transparent bg-slate-50/80 px-2.5 py-2 transition-colors hover:border-slate-200/80 hover:bg-white"
+                    className="group rounded-lg border border-transparent bg-slate-50/80 px-2.5 py-2 transition-colors hover:border-slate-200/80 hover:bg-white"
                   >
                     <div className="flex items-center gap-2.5">
                       <div
-                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-[11px] font-bold text-white shadow-sm"
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[11px] font-bold text-white shadow-sm"
                         style={{
                           background:
                             u.surface === "landing"

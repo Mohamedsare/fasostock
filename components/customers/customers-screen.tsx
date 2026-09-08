@@ -97,7 +97,7 @@ function DeleteCustomerDialog({
             type="button"
             onClick={onCancel}
             disabled={busy}
-            className="rounded-xl border border-black/[0.08] bg-fs-card px-4 py-2.5 text-sm font-semibold text-neutral-800"
+            className="rounded-lg border border-black/[0.08] bg-fs-card px-4 py-2.5 text-sm font-semibold text-neutral-800"
           >
             Annuler
           </button>
@@ -105,7 +105,7 @@ function DeleteCustomerDialog({
             type="button"
             onClick={onConfirm}
             disabled={busy}
-            className="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+            className="rounded-lg bg-red-600 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
           >
             {busy ? "…" : "Supprimer"}
           </button>
@@ -164,7 +164,7 @@ function CustomerCard({
         <div className="flex gap-3">
           <div
             className={cn(
-              "flex h-11 w-11 shrink-0 items-center justify-center rounded-[10px]",
+              "flex h-11 w-11 shrink-0 items-center justify-center rounded-[8px]",
               "bg-[color-mix(in_srgb,var(--fs-accent)_18%,transparent)]",
             )}
           >
@@ -498,7 +498,7 @@ export function CustomersScreen() {
                 <button
                   type="button"
                   onClick={exportExcel}
-                  className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-fs-surface-container text-fs-text shadow-sm ring-1 ring-black/[0.06] active:scale-[0.98]"
+                  className="inline-flex h-11 w-11 items-center justify-center rounded-lg bg-fs-surface-container text-fs-text shadow-sm ring-1 ring-black/[0.06] active:scale-[0.98]"
                   aria-label="Exporter Excel"
                 >
                   <MdDownload className="h-6 w-6" aria-hidden />
@@ -509,7 +509,7 @@ export function CustomersScreen() {
                 <button
                   type="button"
                   onClick={openCreate}
-                  className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-[#F97316] text-white shadow-sm ring-1 ring-[#EA580C]/30 active:scale-[0.98]"
+                  className="inline-flex h-11 w-11 items-center justify-center rounded-lg bg-[#F97316] text-white shadow-sm ring-1 ring-[#EA580C]/30 active:scale-[0.98]"
                   aria-label="Nouveau client"
                 >
                   <MdAdd className="h-6 w-6" aria-hidden />
@@ -531,7 +531,7 @@ export function CustomersScreen() {
               <button
                 type="button"
                 onClick={exportExcel}
-                className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-fs-surface-container text-fs-text shadow-sm ring-1 ring-black/[0.06] active:scale-[0.98]"
+                className="inline-flex h-11 w-11 items-center justify-center rounded-lg bg-fs-surface-container text-fs-text shadow-sm ring-1 ring-black/[0.06] active:scale-[0.98]"
                 aria-label="Exporter Excel"
               >
                 <MdDownload className="h-6 w-6" aria-hidden />
@@ -542,7 +542,7 @@ export function CustomersScreen() {
               <button
                 type="button"
                 onClick={openCreate}
-                className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-[#F97316] text-white shadow-sm ring-1 ring-[#EA580C]/30 active:scale-[0.98]"
+                className="inline-flex h-11 w-11 items-center justify-center rounded-lg bg-[#F97316] text-white shadow-sm ring-1 ring-[#EA580C]/30 active:scale-[0.98]"
                 aria-label="Nouveau client"
               >
                 <MdAdd className="h-6 w-6" aria-hidden />
@@ -564,7 +564,7 @@ export function CustomersScreen() {
           aria-hidden
         />
         <input
-          className={fsInputClass("rounded-xl pl-11")}
+          className={fsInputClass("rounded-lg pl-11")}
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Rechercher par nom, téléphone, email..."
@@ -601,7 +601,7 @@ export function CustomersScreen() {
               <button
                 type="button"
                 onClick={openCreate}
-                className="mt-7 inline-flex items-center gap-2 rounded-xl bg-fs-accent px-5 py-3 text-sm font-semibold text-white shadow-sm active:scale-[0.99]"
+                className="mt-7 inline-flex items-center gap-2 rounded-lg bg-fs-accent px-5 py-3 text-sm font-semibold text-white shadow-sm active:scale-[0.99]"
               >
                 <MdAdd className="h-5 w-5" aria-hidden />
                 Créer un client

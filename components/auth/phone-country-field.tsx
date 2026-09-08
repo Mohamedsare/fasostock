@@ -128,7 +128,7 @@ export function PhoneCountryField({
     <div ref={rootRef} className="relative">
       <div
         className={cn(
-          "group/phone relative rounded-2xl border border-neutral-300 bg-neutral-100 px-3 pb-2.5 pt-4 transition-colors",
+          "group/phone relative rounded-xl border border-neutral-300 bg-neutral-100 px-3 pb-2.5 pt-4 transition-colors",
           open && "border-fs-accent bg-white ring-2 ring-fs-accent/15",
           !open && "focus-within:border-fs-accent focus-within:bg-white focus-within:ring-2 focus-within:ring-fs-accent/15",
           disabled && "pointer-events-none opacity-60",
@@ -184,7 +184,7 @@ export function PhoneCountryField({
 
       {open ? (
         <div
-          className="absolute left-0 right-0 top-[calc(100%+6px)] z-50 overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-[0_16px_40px_-8px_rgba(0,0,0,0.18)]"
+          className="absolute left-0 right-0 top-[calc(100%+6px)] z-50 overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-[0_16px_40px_-8px_rgba(0,0,0,0.18)]"
           role="presentation"
         >
           <div className="border-b border-neutral-100 p-2">

@@ -66,7 +66,7 @@ export function FsConfirmDialog({
             type="button"
             onClick={onCancel}
             disabled={busy}
-            className="rounded-xl border border-black/[0.08] bg-fs-card px-4 py-2.5 text-sm font-semibold text-neutral-800 disabled:opacity-60"
+            className="rounded-lg border border-black/[0.08] bg-fs-card px-4 py-2.5 text-sm font-semibold text-neutral-800 disabled:opacity-60"
           >
             {cancelLabel}
           </button>
@@ -75,7 +75,7 @@ export function FsConfirmDialog({
             onClick={onConfirm}
             disabled={busy}
             className={cn(
-              "rounded-xl px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60",
+              "rounded-lg px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60",
               tone === "danger" ? "bg-red-600" : "bg-fs-accent",
             )}
           >

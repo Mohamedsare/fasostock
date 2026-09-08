@@ -285,7 +285,7 @@ export function ResetPasswordForm() {
         <form onSubmit={onSubmit} className="space-y-4">
           {error ? (
             <div
-              className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900"
+              className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900"
               role="alert"
             >
               {error}
@@ -325,7 +325,7 @@ export function ResetPasswordForm() {
           <button
             type="submit"
             disabled={loading}
-            className="fs-touch-target w-full rounded-xl bg-gradient-to-b from-fs-accent to-[#d94f1a] py-3.5 text-base font-semibold text-white shadow-[0_4px_14px_-2px_rgba(232,93,44,0.45)] disabled:opacity-60"
+            className="fs-touch-target w-full rounded-lg bg-gradient-to-b from-fs-accent to-[#d94f1a] py-3.5 text-base font-semibold text-white shadow-[0_4px_14px_-2px_rgba(232,93,44,0.45)] disabled:opacity-60"
           >
             {loading ? "Enregistrement…" : "Enregistrer"}
           </button>

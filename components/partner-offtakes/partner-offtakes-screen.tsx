@@ -943,7 +943,7 @@ function NewOfftakeTab(props: {
           <button
             type="button"
             onClick={props.onScan}
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-[10px] border border-black/[0.08] bg-fs-card px-3 py-2 text-xs font-semibold text-neutral-800"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-[8px] border border-black/[0.08] bg-fs-card px-3 py-2 text-xs font-semibold text-neutral-800"
             aria-label="Scanner un code-barres"
           >
             <MdQrCodeScanner className="h-[18px] w-[18px]" aria-hidden />
@@ -970,7 +970,7 @@ function NewOfftakeTab(props: {
                     props.onAdd(p);
                     searchInputRef.current?.focus();
                   }}
-                  className="flex w-full items-center gap-2.5 rounded-[10px] border border-black/[0.06] bg-fs-card px-2.5 py-2 text-left"
+                  className="flex w-full items-center gap-2.5 rounded-[8px] border border-black/[0.06] bg-fs-card px-2.5 py-2 text-left"
                 >
                   <ProductListThumbnail imageUrl={p.imageUrl} className="h-10 w-10" />
                   <span className="min-w-0 flex-1">
@@ -993,7 +993,7 @@ function NewOfftakeTab(props: {
         ) : null}
 
         {props.lines.length === 0 ? (
-          <p className="mt-3 rounded-[10px] bg-black/[0.03] px-3 py-3 text-center text-xs text-neutral-600">
+          <p className="mt-3 rounded-[8px] bg-black/[0.03] px-3 py-3 text-center text-xs text-neutral-600">
             Cherchez un article ou scannez son code-barres pour commencer le chargement.
           </p>
         ) : (
@@ -1007,7 +1007,7 @@ function NewOfftakeTab(props: {
                 <li
                   key={l.key}
                   className={cn(
-                    "rounded-[10px] border bg-fs-card p-2.5",
+                    "rounded-[8px] border bg-fs-card p-2.5",
                     underCost || overStock ? "border-red-500/40" : "border-black/[0.06]",
                   )}
                 >
@@ -1140,7 +1140,7 @@ function NewOfftakeTab(props: {
             </label>
           </div>
 
-          <div className="mt-2 flex items-center justify-between rounded-[10px] bg-fs-accent/10 px-3 py-2.5">
+          <div className="mt-2 flex items-center justify-between rounded-[8px] bg-fs-accent/10 px-3 py-2.5">
             <span className="text-sm font-semibold text-fs-text">Reste à payer</span>
             <span className="text-xl font-black tabular-nums text-fs-accent">
               {formatCurrency(props.remainingNow)}
@@ -1176,7 +1176,7 @@ function NewOfftakeTab(props: {
           />
 
           {props.belowCost.length > 0 ? (
-            <p className="mt-2 flex items-start gap-1.5 rounded-[10px] bg-red-500/10 px-3 py-2 text-xs font-semibold leading-relaxed text-red-700 dark:text-red-300">
+            <p className="mt-2 flex items-start gap-1.5 rounded-[8px] bg-red-500/10 px-3 py-2 text-xs font-semibold leading-relaxed text-red-700 dark:text-red-300">
               <MdWarningAmber className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
               <span>
                 {props.belowCost.length} ligne{props.belowCost.length > 1 ? "s" : ""} sous
@@ -1190,7 +1190,7 @@ function NewOfftakeTab(props: {
             type="button"
             disabled={!canSubmit}
             onClick={props.onSubmit}
-            className="mt-3 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-[10px] bg-fs-accent text-sm font-bold text-white disabled:opacity-50"
+            className="mt-3 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-[8px] bg-fs-accent text-sm font-bold text-white disabled:opacity-50"
           >
             {props.submitting ? (
               <span className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />

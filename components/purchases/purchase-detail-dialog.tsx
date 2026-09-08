@@ -75,7 +75,7 @@ export function PurchaseDetailDialog({
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <FsCard className="max-h-[min(90dvh,640px)] w-full max-w-[480px] overflow-hidden rounded-t-2xl sm:rounded-2xl" padding="p-0">
+      <FsCard className="max-h-[min(90dvh,640px)] w-full max-w-[480px] overflow-hidden rounded-t-xl sm:rounded-xl" padding="p-0">
         <div className="max-h-[min(88dvh,620px)] overflow-y-auto p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:p-5 sm:pb-5">
           <div className="flex items-start justify-between gap-3">
             <h2 id={titleId} className="pr-2 text-xl font-semibold leading-snug text-fs-text">
@@ -154,7 +154,7 @@ export function PurchaseDetailDialog({
                 <div className="mt-5 border-t border-black/6 pt-4">
                   <label className="mb-1 block text-xs font-medium text-neutral-600">Référence</label>
                   <input
-                    className={fsInputClass("rounded-[10px] border border-black/8")}
+                    className={fsInputClass("rounded-[8px] border border-black/8")}
                     value={refInput}
                     onChange={(e) => setRefInput(e.target.value)}
                   />
@@ -172,7 +172,7 @@ export function PurchaseDetailDialog({
                         setSavingRef(false);
                       }
                     }}
-                    className="mt-3 min-h-[44px] w-full rounded-[10px] bg-fs-accent py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+                    className="mt-3 min-h-[44px] w-full rounded-[8px] bg-fs-accent py-2.5 text-sm font-semibold text-white disabled:opacity-60"
                   >
                     {savingRef ? (
                       <span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
@@ -197,7 +197,7 @@ export function PurchaseDetailDialog({
                   <button
                     type="button"
                     onClick={() => onCaptureBatches?.()}
-                    className="min-h-[44px] w-full rounded-[10px] bg-fs-accent py-2.5 text-sm font-semibold text-white"
+                    className="min-h-[44px] w-full rounded-[8px] bg-fs-accent py-2.5 text-sm font-semibold text-white"
                   >
                     Saisir les lots reçus & péremption
                   </button>
@@ -205,7 +205,7 @@ export function PurchaseDetailDialog({
                 <button
                   type="button"
                   onClick={onClose}
-                  className="min-h-[44px] w-full rounded-[10px] border border-black/8 bg-fs-card py-2.5 text-sm font-semibold text-neutral-800"
+                  className="min-h-[44px] w-full rounded-[8px] border border-black/8 bg-fs-card py-2.5 text-sm font-semibold text-neutral-800"
                 >
                   Fermer
                 </button>
@@ -226,7 +226,7 @@ export function PurchaseDetailDialog({
                         }
                       }}
                       className={cn(
-                        "min-h-[44px] rounded-[10px] border border-black/8 bg-fs-card py-2.5 text-sm font-semibold text-fs-accent",
+                        "min-h-[44px] rounded-[8px] border border-black/8 bg-fs-card py-2.5 text-sm font-semibold text-fs-accent",
                         busy && "opacity-60",
                       )}
                     >
@@ -247,7 +247,7 @@ export function PurchaseDetailDialog({
                         }
                       }}
                       className={cn(
-                        "min-h-[44px] rounded-[10px] bg-red-600 py-2.5 text-sm font-semibold text-white",
+                        "min-h-[44px] rounded-[8px] bg-red-600 py-2.5 text-sm font-semibold text-white",
                         busy && "opacity-60",
                       )}
                     >

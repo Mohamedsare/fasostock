@@ -93,7 +93,7 @@ export function ProductListThumbnail({
           role="presentation"
         >
           <div
-            className="h-[140px] w-[140px] overflow-hidden rounded-xl border border-black/10 bg-white shadow-xl sm:h-[170px] sm:w-[170px]"
+            className="h-[140px] w-[140px] overflow-hidden rounded-lg border border-black/10 bg-white shadow-xl sm:h-[170px] sm:w-[170px]"
             onClick={(e) => e.stopPropagation()}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}

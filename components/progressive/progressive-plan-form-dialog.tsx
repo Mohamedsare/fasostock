@@ -304,7 +304,7 @@ export function ProgressivePlanFormDialog({
           </div>
 
           {/* Sélection du client */}
-          <div className="rounded-xl border border-black/[0.07] bg-fs-surface-container/60 p-3 dark:border-white/10">
+          <div className="rounded-lg border border-black/[0.07] bg-fs-surface-container/60 p-3 dark:border-white/10">
             <div className="mb-2 flex items-center gap-1.5">
               <MdShoppingCart className="h-4 w-4 text-fs-accent" aria-hidden />
               <h4 className="text-xs font-bold uppercase tracking-wide text-neutral-600">
@@ -321,7 +321,7 @@ export function ProgressivePlanFormDialog({
             <button
               type="button"
               onClick={() => setPickerOpen(true)}
-              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-fs-accent/40 bg-[color-mix(in_srgb,var(--fs-accent)_8%,transparent)] px-3 text-sm font-bold text-fs-accent"
+              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-fs-accent/40 bg-[color-mix(in_srgb,var(--fs-accent)_8%,transparent)] px-3 text-sm font-bold text-fs-accent"
             >
               <MdChecklist className="h-5 w-5" aria-hidden />
               {items.length > 0
@@ -334,7 +334,7 @@ export function ProgressivePlanFormDialog({
                 {items.map((it) => (
                   <li
                     key={it.key}
-                    className="rounded-xl border border-black/[0.07] bg-fs-card p-2.5 dark:border-white/10"
+                    className="rounded-lg border border-black/[0.07] bg-fs-card p-2.5 dark:border-white/10"
                   >
                     <div className="flex items-start gap-2">
                       <p className="min-w-0 flex-1 text-sm font-semibold text-fs-text">
@@ -465,7 +465,7 @@ export function ProgressivePlanFormDialog({
             type="button"
             disabled={!canSubmit}
             onClick={() => mut.mutate()}
-            className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-fs-accent text-sm font-bold text-white shadow-sm disabled:opacity-50"
+            className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-fs-accent text-sm font-bold text-white shadow-sm disabled:opacity-50"
           >
             {mut.isPending ? (
               <span className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />

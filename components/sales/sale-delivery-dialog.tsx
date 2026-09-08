@@ -54,13 +54,13 @@ export function SaleDeliveryDialog({
       }}
     >
       <FsCard
-        className="w-full max-w-md rounded-t-[22px] shadow-xl sm:rounded-[22px]"
+        className="w-full max-w-md rounded-t-[18px] shadow-xl sm:rounded-[18px]"
         padding="p-4 sm:p-5"
       >
         <div className="flex items-start gap-3">
           <span
             className={cn(
-              "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
+              "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg",
               pending
                 ? "bg-amber-500/15 text-amber-700 dark:text-amber-300"
                 : "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
@@ -84,7 +84,7 @@ export function SaleDeliveryDialog({
           </div>
         </div>
 
-        <div className="mt-3 rounded-xl bg-fs-surface-container px-3 py-2 text-sm">
+        <div className="mt-3 rounded-lg bg-fs-surface-container px-3 py-2 text-sm">
           <p className="font-semibold text-fs-text">
             {sale.sale_number}{" "}
             <span className="font-normal text-neutral-600">
@@ -162,7 +162,7 @@ export function SaleDeliveryDialog({
             type="button"
             onClick={onCancel}
             disabled={busy}
-            className="rounded-xl border border-black/[0.08] bg-fs-card px-4 py-2.5 text-sm font-semibold text-neutral-800 disabled:opacity-60"
+            className="rounded-lg border border-black/[0.08] bg-fs-card px-4 py-2.5 text-sm font-semibold text-neutral-800 disabled:opacity-60"
           >
             Annuler
           </button>
@@ -171,7 +171,7 @@ export function SaleDeliveryDialog({
             onClick={submit}
             disabled={busy}
             className={cn(
-              "rounded-xl px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60",
+              "rounded-lg px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60",
               pending ? "bg-amber-600" : "bg-emerald-600",
             )}
           >

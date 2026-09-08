@@ -348,7 +348,7 @@ function EmployeesTab({
     <div className="space-y-3">
       {canManage ? (
         <div className="flex justify-end">
-          <button type="button" onClick={onAdd} className="inline-flex items-center gap-1.5 rounded-xl bg-fs-accent px-3.5 py-2 text-sm font-semibold text-white">
+          <button type="button" onClick={onAdd} className="inline-flex items-center gap-1.5 rounded-lg bg-fs-accent px-3.5 py-2 text-sm font-semibold text-white">
             <MdAdd className="h-5 w-5" aria-hidden />
             Nouvel employé
           </button>
@@ -469,7 +469,7 @@ function LeavesTab({
             <input className={fsInputClass()} placeholder="Motif (optionnel)" value={reason} onChange={(e) => setReason(e.target.value)} />
           </div>
           <div className="mt-3 flex justify-end">
-            <button type="button" onClick={submit} disabled={saving} className="rounded-xl bg-fs-accent px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
+            <button type="button" onClick={submit} disabled={saving} className="rounded-lg bg-fs-accent px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
               {saving ? "Enregistrement…" : "Enregistrer la demande"}
             </button>
           </div>
@@ -569,12 +569,12 @@ function PayrollTab({
             </label>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={() => onExport(payslips)} className="inline-flex items-center gap-1.5 rounded-xl border border-black/10 px-3 py-2 text-sm font-semibold text-fs-text hover:bg-fs-surface-container">
+            <button type="button" onClick={() => onExport(payslips)} className="inline-flex items-center gap-1.5 rounded-lg border border-black/10 px-3 py-2 text-sm font-semibold text-fs-text hover:bg-fs-surface-container">
               <MdDownload className="h-5 w-5" aria-hidden />
               Exporter (Excel)
             </button>
             {canPayroll ? (
-              <button type="button" onClick={onGenerate} disabled={generating} className="inline-flex items-center gap-1.5 rounded-xl bg-fs-accent px-3.5 py-2 text-sm font-semibold text-white disabled:opacity-50">
+              <button type="button" onClick={onGenerate} disabled={generating} className="inline-flex items-center gap-1.5 rounded-lg bg-fs-accent px-3.5 py-2 text-sm font-semibold text-white disabled:opacity-50">
                 <MdAdd className="h-5 w-5" aria-hidden />
                 {generating ? "Génération…" : "Générer les bulletins"}
               </button>

@@ -109,7 +109,7 @@ export function SimpleExpenseFormDialog({
       <FsCard
         className={cn(
           "max-h-[min(94dvh,800px)] w-full max-w-[440px] shadow-xl",
-          "rounded-t-xl rounded-b-none border-x-0 border-b-0 sm:rounded-xl sm:border-x sm:border-b",
+          "rounded-t-lg rounded-b-none border-x-0 border-b-0 sm:rounded-lg sm:border-x sm:border-b",
         )}
         padding="p-0"
       >

@@ -416,7 +416,7 @@ export function ProgressiveScreen() {
                   setEditing(null);
                   setFormOpen(true);
                 }}
-                className="mt-1 inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-fs-accent px-5 text-sm font-bold text-white"
+                className="mt-1 inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-fs-accent px-5 text-sm font-bold text-white"
               >
                 <MdPersonAdd className="h-5 w-5" aria-hidden />
                 Ouvrir le premier dossier
@@ -632,7 +632,7 @@ function Kpi({
       <div className="flex items-start gap-2.5">
         <span
           className={cn(
-            "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl",
+            "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
             tone === "accent"
               ? "bg-[color-mix(in_srgb,var(--fs-accent)_14%,transparent)] text-fs-accent"
               : tone === "success"
@@ -694,7 +694,7 @@ function PlanCard({
           <button
             type="button"
             onClick={onOpen}
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[color-mix(in_srgb,var(--fs-accent)_12%,transparent)] text-sm font-black text-fs-accent"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-[color-mix(in_srgb,var(--fs-accent)_12%,transparent)] text-sm font-black text-fs-accent"
             aria-label={`Ouvrir le dossier de ${plan.clientName}`}
           >
             {initials(plan.clientName)}

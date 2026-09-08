@@ -41,10 +41,10 @@ import {
 type GPubTab = "general" | "media" | "partners";
 
 const FIELD =
-  "min-h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-base text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-orange-400 focus:ring-2 focus:ring-orange-400/25";
+  "min-h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-base text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-orange-400 focus:ring-2 focus:ring-orange-400/25";
 const LABEL = "text-[11px] font-bold uppercase tracking-wide text-slate-500";
 const BTN_PRIMARY =
-  "inline-flex min-h-12 w-full shrink-0 items-center justify-center gap-2 rounded-2xl bg-orange-600 px-5 text-base font-bold text-white shadow-lg shadow-orange-600/20 transition active:scale-[0.98] disabled:opacity-50 sm:w-auto";
+  "inline-flex min-h-12 w-full shrink-0 items-center justify-center gap-2 rounded-xl bg-orange-600 px-5 text-base font-bold text-white shadow-lg shadow-orange-600/20 transition active:scale-[0.98] disabled:opacity-50 sm:w-auto";
 
 export function AdminGPubliqueScreen() {
   const qc = useQueryClient();
@@ -311,7 +311,7 @@ export function AdminGPubliqueScreen() {
 
   return (
     <div className="min-h-0 space-y-4 px-4 pb-28 pt-4 sm:px-5 sm:pb-10 sm:pt-5 md:space-y-6 md:px-6 md:pt-6 lg:px-8">
-      <header className="overflow-hidden rounded-2xl border border-white/20 bg-linear-to-br from-[#c2410c] via-orange-500 to-amber-400 p-4 text-white shadow-lg shadow-orange-900/15 sm:p-5">
+      <header className="overflow-hidden rounded-xl border border-white/20 bg-linear-to-br from-[#c2410c] via-orange-500 to-amber-400 p-4 text-white shadow-lg shadow-orange-900/15 sm:p-5">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
             <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/70">Landing publique</p>
@@ -336,7 +336,7 @@ export function AdminGPubliqueScreen() {
               href="/"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-white px-4 text-sm font-bold text-orange-600 shadow-md transition active:scale-[0.98]"
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-white px-4 text-sm font-bold text-orange-600 shadow-md transition active:scale-[0.98]"
             >
               Voir la landing
               <MdOpenInNew className="h-4 w-4 shrink-0" aria-hidden />
@@ -370,7 +370,7 @@ export function AdminGPubliqueScreen() {
             id={`gpub-tab-${id}`}
             aria-controls={`gpub-panel-${id}`}
             onClick={() => setActiveTab(id)}
-            className={`flex min-h-13 min-w-[min(100%,8.5rem)] shrink-0 flex-col items-start justify-center rounded-2xl border-2 px-3.5 py-2 text-left transition sm:min-w-0 sm:flex-row sm:items-center sm:gap-2 sm:px-4 ${
+            className={`flex min-h-13 min-w-[min(100%,8.5rem)] shrink-0 flex-col items-start justify-center rounded-xl border-2 px-3.5 py-2 text-left transition sm:min-w-0 sm:flex-row sm:items-center sm:gap-2 sm:px-4 ${
               activeTab === id
                 ? "border-orange-500 bg-white text-orange-700 shadow-md shadow-orange-500/10"
                 : "border-transparent bg-white/60 text-slate-600 active:bg-white sm:bg-slate-100/80"
@@ -394,11 +394,11 @@ export function AdminGPubliqueScreen() {
         <p className="mt-1 text-sm text-slate-600">
           Bannière hero, réseaux sociaux, liens CTA, prix affichés sur la landing et textes des statistiques témoignages.
         </p>
-        <div className="mt-4 rounded-2xl border border-amber-200/80 bg-amber-50 p-4 text-sm leading-relaxed text-amber-950">
+        <div className="mt-4 rounded-xl border border-amber-200/80 bg-amber-50 p-4 text-sm leading-relaxed text-amber-950">
           <strong className="font-bold">Performance :</strong> ne collez pas de images en base64 — uploadez vers Storage. Les grosses Data URL sont ignorées sur la landing.
         </div>
         {hasLegacyData ? (
-          <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-red-300 bg-red-50 p-4 text-sm text-red-900 sm:flex-row sm:items-start sm:justify-between">
+          <div className="mt-4 flex flex-col gap-3 rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-900 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0 leading-relaxed">
               <strong className="font-bold">Anciennes images base64 détectées</strong> (
               {heroSettingIsLegacyDataUrl ? "bannière hero" : null}
@@ -426,7 +426,7 @@ export function AdminGPubliqueScreen() {
                   toast.error(messageFromUnknownError(e));
                 }
               }}
-              className="inline-flex min-h-12 w-full shrink-0 items-center justify-center rounded-2xl bg-red-600 px-4 text-sm font-bold text-white sm:w-auto"
+              className="inline-flex min-h-12 w-full shrink-0 items-center justify-center rounded-xl bg-red-600 px-4 text-sm font-bold text-white sm:w-auto"
             >
               Nettoyer
             </button>
@@ -445,7 +445,7 @@ export function AdminGPubliqueScreen() {
           </label>
           <div className="flex flex-col gap-2">
             <span className={LABEL}>Uploader bannière (image ou vidéo)</span>
-            <label className="inline-flex min-h-14 w-full cursor-pointer items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-orange-200 bg-orange-50/40 px-4 text-base font-bold text-orange-900 transition active:scale-[0.99]">
+            <label className="inline-flex min-h-14 w-full cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-dashed border-orange-200 bg-orange-50/40 px-4 text-base font-bold text-orange-900 transition active:scale-[0.99]">
               <MdUpload className="h-5 w-5 shrink-0" aria-hidden />
               {uploadingHero ? "Envoi…" : "Choisir une image ou une vidéo (publie la bannière)"}
               <input
@@ -459,7 +459,7 @@ export function AdminGPubliqueScreen() {
           </div>
           <div className="flex flex-col gap-2">
             <span className={LABEL}>Type de bannière</span>
-            <div className="inline-flex rounded-2xl border border-slate-200 bg-slate-100 p-1">
+            <div className="inline-flex rounded-xl border border-slate-200 bg-slate-100 p-1">
               {(
                 [
                   { id: "image", label: "Image", Icon: MdImage },
@@ -472,7 +472,7 @@ export function AdminGPubliqueScreen() {
                     key={id}
                     type="button"
                     onClick={() => setSetting("hero_banner_media_type", id)}
-                    className={`inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl px-4 text-sm font-bold transition ${
+                    className={`inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg px-4 text-sm font-bold transition ${
                       active ? "bg-white text-orange-700 shadow-sm" : "text-slate-500"
                     }`}
                   >
@@ -551,13 +551,13 @@ export function AdminGPubliqueScreen() {
           </label>
         </div>
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
-          <article className="rounded-2xl border border-slate-200 bg-slate-50 p-3 sm:p-4">
+          <article className="rounded-xl border border-slate-200 bg-slate-50 p-3 sm:p-4">
             <p className={`mb-3 ${LABEL}`}>Bannière actuelle</p>
             {landingSettings.hero_banner_image_url ? (
               heroBannerIsVideo ? (
                 <video
                   src={landingSettings.hero_banner_image_url}
-                  className="max-h-56 w-full rounded-xl object-cover sm:max-h-64"
+                  className="max-h-56 w-full rounded-lg object-cover sm:max-h-64"
                   autoPlay
                   muted
                   loop
@@ -569,22 +569,22 @@ export function AdminGPubliqueScreen() {
                 <img
                   src={landingSettings.hero_banner_image_url}
                   alt="Bannière actuelle"
-                  className="max-h-56 w-full rounded-xl object-cover sm:max-h-64"
+                  className="max-h-56 w-full rounded-lg object-cover sm:max-h-64"
                 />
               )
             ) : (
-              <div className="flex min-h-48 items-center justify-center rounded-xl border border-dashed border-slate-300 bg-white px-4 text-center text-sm text-slate-500">
+              <div className="flex min-h-48 items-center justify-center rounded-lg border border-dashed border-slate-300 bg-white px-4 text-center text-sm text-slate-500">
                 Aucune bannière
               </div>
             )}
           </article>
-          <article className="rounded-2xl border border-slate-200 bg-slate-50 p-3 sm:p-4">
+          <article className="rounded-xl border border-slate-200 bg-slate-50 p-3 sm:p-4">
             <p className={`mb-3 ${LABEL}`}>Dernier fichier choisi (aperçu local)</p>
             {heroBannerImageDataUrl ? (
               heroBannerIsVideo ? (
                 <video
                   src={heroBannerImageDataUrl}
-                  className="max-h-56 w-full rounded-xl object-cover sm:max-h-64"
+                  className="max-h-56 w-full rounded-lg object-cover sm:max-h-64"
                   autoPlay
                   muted
                   loop
@@ -596,17 +596,17 @@ export function AdminGPubliqueScreen() {
                 <img
                   src={heroBannerImageDataUrl}
                   alt="Aperçu bannière"
-                  className="max-h-56 w-full rounded-xl object-cover sm:max-h-64"
+                  className="max-h-56 w-full rounded-lg object-cover sm:max-h-64"
                 />
               )
             ) : (
-              <div className="flex min-h-48 items-center justify-center rounded-xl border border-dashed border-slate-300 bg-white text-center text-sm text-slate-500">
+              <div className="flex min-h-48 items-center justify-center rounded-lg border border-dashed border-slate-300 bg-white text-center text-sm text-slate-500">
                 L&apos;upload remplace tout de suite la bannière en ligne
               </div>
             )}
           </article>
         </div>
-        <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:p-5">
+        <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:p-5">
           <p className="text-sm font-bold text-slate-800">Image « Offre complète »</p>
           <p className="mt-1 text-xs leading-relaxed text-slate-500">
             Remplace le visuel (mockup animé) de la section héro sur la page{" "}
@@ -626,7 +626,7 @@ export function AdminGPubliqueScreen() {
             </label>
             <div className="flex flex-col gap-2">
               <span className={LABEL}>Uploader l&apos;image</span>
-              <label className="inline-flex min-h-14 w-full cursor-pointer items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-orange-200 bg-orange-50/40 px-4 text-base font-bold text-orange-900 transition active:scale-[0.99]">
+              <label className="inline-flex min-h-14 w-full cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-dashed border-orange-200 bg-orange-50/40 px-4 text-base font-bold text-orange-900 transition active:scale-[0.99]">
                 <MdUpload className="h-5 w-5 shrink-0" aria-hidden />
                 {uploadingOffer ? "Envoi…" : "Choisir une image (publiée tout de suite)"}
                 <input
@@ -646,10 +646,10 @@ export function AdminGPubliqueScreen() {
               <img
                 src={landingSettings.offer_showcase_image_url}
                 alt="Aperçu image offre complète"
-                className="max-h-56 w-full rounded-2xl object-cover sm:max-h-64"
+                className="max-h-56 w-full rounded-xl object-cover sm:max-h-64"
               />
             ) : (
-              <div className="flex min-h-40 items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white px-4 text-center text-sm text-slate-500">
+              <div className="flex min-h-40 items-center justify-center rounded-xl border border-dashed border-slate-300 bg-white px-4 text-center text-sm text-slate-500">
                 Aucune image — le mockup animé est affiché sur /offre-complete
               </div>
             )}
@@ -690,7 +690,7 @@ export function AdminGPubliqueScreen() {
             />
           </label>
         </div>
-        <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:p-5">
+        <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:p-5">
           <p className="text-sm font-bold text-slate-800">Statistiques — section Témoignages</p>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             <label className="flex flex-col gap-2">
@@ -801,7 +801,7 @@ export function AdminGPubliqueScreen() {
           Photo de la section <strong className="font-bold text-slate-800">« Un expert vous accompagne »</strong>.
           L&apos;upload est <strong className="text-orange-600">publié immédiatement</strong> sur la landing.
         </p>
-        <label className="mt-5 inline-flex min-h-14 w-full cursor-pointer items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-orange-300 bg-orange-50/50 px-4 text-base font-bold text-orange-800 transition active:scale-[0.99]">
+        <label className="mt-5 inline-flex min-h-14 w-full cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-dashed border-orange-300 bg-orange-50/50 px-4 text-base font-bold text-orange-800 transition active:scale-[0.99]">
           <MdUpload className="h-6 w-6 shrink-0" aria-hidden />
           {uploadingSupport ? "Envoi en cours…" : "Choisir une image (publiée tout de suite)"}
           <input
@@ -816,13 +816,13 @@ export function AdminGPubliqueScreen() {
           PNG, JPG ou WebP — idéalement paysage, bonne lumière.
         </p>
         <div className="mt-5">
-          <article className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+          <article className="rounded-xl border border-slate-200 bg-slate-50 p-3">
             <p className={`mb-3 ${LABEL}`}>Image actuelle sur la landing</p>
             {supportMedia?.imageUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={supportMedia.imageUrl} alt="Accompagnement actuel" className="max-h-80 w-full rounded-xl object-cover" />
+              <img src={supportMedia.imageUrl} alt="Accompagnement actuel" className="max-h-80 w-full rounded-lg object-cover" />
             ) : (
-              <div className="flex min-h-52 items-center justify-center rounded-xl border border-dashed border-slate-300 bg-white px-4 text-center text-sm text-slate-500">
+              <div className="flex min-h-52 items-center justify-center rounded-lg border border-dashed border-slate-300 bg-white px-4 text-center text-sm text-slate-500">
                 Aucune image — uploadez ci-dessus
               </div>
             )}
@@ -840,7 +840,7 @@ export function AdminGPubliqueScreen() {
           ). PNG transparent recommandé.
         </p>
         <div className="mt-5 flex flex-col gap-4">
-          <article className="flex min-h-36 items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 p-4 sm:min-h-40">
+          <article className="flex min-h-36 items-center justify-center rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 p-4 sm:min-h-40">
             {logoDataUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -876,7 +876,7 @@ export function AdminGPubliqueScreen() {
                 className={FIELD}
               />
             </label>
-            <label className="inline-flex min-h-14 w-full cursor-pointer items-center justify-center gap-2 rounded-2xl border-2 border-slate-200 bg-white px-4 text-base font-bold text-slate-800 transition active:scale-[0.99]">
+            <label className="inline-flex min-h-14 w-full cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-slate-200 bg-white px-4 text-base font-bold text-slate-800 transition active:scale-[0.99]">
               <MdUpload className="h-6 w-6 shrink-0 text-orange-600" aria-hidden />
               {uploadingLogo ? "Envoi…" : logoDataUrl ? "Changer le logo" : "Choisir le logo"}
               <input
@@ -939,7 +939,7 @@ export function AdminGPubliqueScreen() {
             {(q.error as Error)?.message ?? "Erreur de chargement"}
           </p>
         ) : (q.data ?? []).length === 0 ? (
-          <div className="mt-4 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center">
+          <div className="mt-4 rounded-lg border border-dashed border-slate-300 bg-slate-50 p-6 text-center">
             <p className="text-sm font-semibold text-slate-700">Aucun partenaire pour le moment.</p>
             <p className="mt-1 text-xs text-slate-500">
               Ajoutez votre premier partenaire dans le formulaire ci-dessus —
@@ -986,7 +986,7 @@ export function AdminGPubliqueScreen() {
          * landing publique. Permet à l'admin de voir le rendu réel sans
          * quitter la page de gestion. */}
         {q.data && q.data.filter((x) => x.isActive).length > 0 ? (
-          <div className="mt-6 rounded-2xl border border-slate-200 bg-[#eef1d7] p-4">
+          <div className="mt-6 rounded-xl border border-slate-200 bg-[#eef1d7] p-4">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-700">
               Aperçu landing — section &quot;Nos partenaires&quot;
             </p>
@@ -1095,13 +1095,13 @@ function PartnerCard({
 
   return (
     <article
-      className={`rounded-2xl border p-4 transition ${
+      className={`rounded-xl border p-4 transition ${
         partner.isActive
           ? "border-slate-200 bg-white shadow-sm"
           : "border-slate-200 bg-slate-50 opacity-80"
       }`}
     >
-      <div className="relative flex min-h-22 items-center justify-center rounded-xl bg-slate-50 px-2">
+      <div className="relative flex min-h-22 items-center justify-center rounded-lg bg-slate-50 px-2">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={partner.logoUrl}
@@ -1154,7 +1154,7 @@ function PartnerCard({
             <button
               type="button"
               onClick={cancelEdit}
-              className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border-2 border-slate-200 bg-white text-slate-600 active:scale-95"
+              className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border-2 border-slate-200 bg-white text-slate-600 active:scale-95"
               title="Annuler"
               aria-label="Annuler"
             >
@@ -1174,7 +1174,7 @@ function PartnerCard({
               type="button"
               onClick={() => onReorder("up")}
               disabled={disabled || isFirst}
-              className="inline-flex h-11 min-w-11 items-center justify-center rounded-xl border-2 border-slate-200 bg-white text-slate-800 disabled:opacity-35 active:scale-95"
+              className="inline-flex h-11 min-w-11 items-center justify-center rounded-lg border-2 border-slate-200 bg-white text-slate-800 disabled:opacity-35 active:scale-95"
               title="Monter"
               aria-label="Monter dans l'ordre"
             >
@@ -1184,7 +1184,7 @@ function PartnerCard({
               type="button"
               onClick={() => onReorder("down")}
               disabled={disabled || isLast}
-              className="inline-flex h-11 min-w-11 items-center justify-center rounded-xl border-2 border-slate-200 bg-white text-slate-800 disabled:opacity-35 active:scale-95"
+              className="inline-flex h-11 min-w-11 items-center justify-center rounded-lg border-2 border-slate-200 bg-white text-slate-800 disabled:opacity-35 active:scale-95"
               title="Descendre"
               aria-label="Descendre dans l'ordre"
             >
@@ -1195,7 +1195,7 @@ function PartnerCard({
               type="button"
               onClick={() => onUpdate({ isActive: !partner.isActive })}
               disabled={disabled}
-              className={`inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border-2 px-3 text-sm font-bold disabled:opacity-50 active:scale-[0.98] ${
+              className={`inline-flex min-h-11 items-center justify-center gap-1.5 rounded-lg border-2 px-3 text-sm font-bold disabled:opacity-50 active:scale-[0.98] ${
                 partner.isActive
                   ? "border-emerald-200 bg-emerald-50 text-emerald-800"
                   : "border-slate-200 bg-white text-slate-600"
@@ -1219,7 +1219,7 @@ function PartnerCard({
               type="button"
               onClick={startEdit}
               disabled={disabled}
-              className="inline-flex h-11 min-w-11 items-center justify-center rounded-xl border-2 border-slate-200 bg-white text-slate-800 active:scale-95 disabled:opacity-50"
+              className="inline-flex h-11 min-w-11 items-center justify-center rounded-lg border-2 border-slate-200 bg-white text-slate-800 active:scale-95 disabled:opacity-50"
               title="Éditer"
               aria-label={`Éditer ${partner.name}`}
             >
@@ -1227,7 +1227,7 @@ function PartnerCard({
             </button>
 
             <label
-              className={`inline-flex min-h-11 cursor-pointer items-center justify-center gap-1.5 rounded-xl border-2 px-3 text-sm font-bold active:scale-[0.98] ${
+              className={`inline-flex min-h-11 cursor-pointer items-center justify-center gap-1.5 rounded-lg border-2 px-3 text-sm font-bold active:scale-[0.98] ${
                 replacing
                   ? "border-slate-200 bg-slate-100 text-slate-500"
                   : "border-slate-200 bg-white text-slate-800"
@@ -1259,7 +1259,7 @@ function PartnerCard({
               type="button"
               onClick={onDelete}
               disabled={disabled}
-              className="ml-auto inline-flex h-11 min-w-11 items-center justify-center rounded-xl border-2 border-red-200 bg-white text-red-600 active:scale-95 disabled:opacity-50"
+              className="ml-auto inline-flex h-11 min-w-11 items-center justify-center rounded-lg border-2 border-red-200 bg-white text-red-600 active:scale-95 disabled:opacity-50"
               title="Supprimer"
               aria-label={`Supprimer ${partner.name}`}
             >

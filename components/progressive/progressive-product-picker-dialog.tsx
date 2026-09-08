@@ -100,7 +100,7 @@ export function ProgressiveProductPickerDialog({
       onClick={onClose}
     >
       <div
-        className="flex max-h-[92dvh] w-full max-w-xl flex-col rounded-t-2xl bg-fs-card shadow-2xl min-[560px]:rounded-2xl"
+        className="flex max-h-[92dvh] w-full max-w-xl flex-col rounded-t-xl bg-fs-card shadow-2xl min-[560px]:rounded-xl"
         role="dialog"
         aria-modal="true"
         aria-label={`Choisir les ${terms.plural}`}
@@ -185,7 +185,7 @@ export function ProgressiveProductPickerDialog({
                       onClick={() => toggle(p.id)}
                       aria-pressed={isChecked}
                       className={cn(
-                        "flex min-h-12 w-full items-center gap-3 rounded-xl border px-2.5 py-2 text-left transition-colors",
+                        "flex min-h-12 w-full items-center gap-3 rounded-lg border px-2.5 py-2 text-left transition-colors",
                         isChecked
                           ? "border-fs-accent bg-[color-mix(in_srgb,var(--fs-accent)_10%,transparent)]"
                           : "border-transparent hover:bg-black/[0.04] dark:hover:bg-white/[0.06]",
@@ -225,7 +225,7 @@ export function ProgressiveProductPickerDialog({
           <button
             type="button"
             onClick={onClose}
-            className="inline-flex min-h-12 items-center justify-center rounded-xl border border-black/10 px-4 text-sm font-semibold text-fs-text dark:border-white/10"
+            className="inline-flex min-h-12 items-center justify-center rounded-lg border border-black/10 px-4 text-sm font-semibold text-fs-text dark:border-white/10"
           >
             Annuler
           </button>
@@ -235,7 +235,7 @@ export function ProgressiveProductPickerDialog({
               onConfirm([...checked]);
               onClose();
             }}
-            className="inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-fs-accent text-sm font-bold text-white shadow-sm"
+            className="inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-lg bg-fs-accent text-sm font-bold text-white shadow-sm"
           >
             <MdChecklist className="h-5 w-5" aria-hidden />
             {checked.size === 0

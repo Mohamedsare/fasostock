@@ -65,14 +65,14 @@ export function EmployeeDialog({
         if (e.target === e.currentTarget && !saving) onClose();
       }}
     >
-      <div className="flex h-full w-full max-w-2xl flex-col overflow-hidden bg-fs-card shadow-xl sm:h-auto sm:max-h-[92vh] sm:rounded-2xl">
+      <div className="flex h-full w-full max-w-2xl flex-col overflow-hidden bg-fs-card shadow-xl sm:h-auto sm:max-h-[92vh] sm:rounded-xl">
         <div className="flex shrink-0 items-center justify-between gap-3 border-b border-black/6 px-4 py-3">
           <h2 className="text-base font-bold text-fs-text">{employee ? "Modifier l'employé" : "Nouvel employé"}</h2>
           <button
             type="button"
             onClick={onClose}
             disabled={saving}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-[10px] border border-black/8 text-neutral-700 disabled:opacity-50"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-[8px] border border-black/8 text-neutral-700 disabled:opacity-50"
             aria-label="Fermer"
           >
             <MdClose className="h-5 w-5" aria-hidden />
@@ -121,10 +121,10 @@ export function EmployeeDialog({
         </div>
 
         <div className="flex shrink-0 justify-end gap-2 border-t border-black/6 px-4 py-3">
-          <button type="button" onClick={onClose} disabled={saving} className="rounded-xl border border-black/10 px-4 py-2 text-sm font-semibold text-fs-text disabled:opacity-50">
+          <button type="button" onClick={onClose} disabled={saving} className="rounded-lg border border-black/10 px-4 py-2 text-sm font-semibold text-fs-text disabled:opacity-50">
             Annuler
           </button>
-          <button type="button" onClick={save} disabled={!canSave} className="rounded-xl bg-fs-accent px-4 py-2 text-sm font-semibold text-white disabled:opacity-40">
+          <button type="button" onClick={save} disabled={!canSave} className="rounded-lg bg-fs-accent px-4 py-2 text-sm font-semibold text-white disabled:opacity-40">
             {saving ? "Enregistrement…" : "Enregistrer"}
           </button>
         </div>

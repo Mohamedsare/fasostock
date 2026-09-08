@@ -140,7 +140,7 @@ function DebtExemptionForm({
       }}
     >
       <FsCard
-        className="w-full max-w-[460px] rounded-b-none rounded-t-2xl border-x-0 border-b-0 shadow-xl sm:rounded-2xl sm:border-x sm:border-b"
+        className="w-full max-w-[460px] rounded-b-none rounded-t-xl border-x-0 border-b-0 shadow-xl sm:rounded-xl sm:border-x sm:border-b"
         padding="p-0"
       >
         <div className="flex max-h-[min(94dvh,780px)] flex-col">
@@ -153,7 +153,7 @@ function DebtExemptionForm({
             <div className="flex min-w-0 items-start gap-3">
               <div
                 className={cn(
-                  "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl",
+                  "flex h-11 w-11 shrink-0 items-center justify-center rounded-lg",
                   "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
                 )}
                 aria-hidden
@@ -179,7 +179,7 @@ function DebtExemptionForm({
               type="button"
               onClick={onClose}
               disabled={busy}
-              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-black/8 bg-fs-card text-neutral-700 active:bg-fs-surface-container disabled:opacity-60 sm:h-10 sm:w-10"
+              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-black/8 bg-fs-card text-neutral-700 active:bg-fs-surface-container disabled:opacity-60 sm:h-10 sm:w-10"
               aria-label="Fermer"
             >
               <MdClose className="h-5 w-5" aria-hidden />
@@ -199,7 +199,7 @@ function DebtExemptionForm({
             ) : null}
 
             {exemption ? (
-              <div className="mb-4 flex gap-2.5 rounded-[10px] bg-emerald-500/10 px-3 py-2.5">
+              <div className="mb-4 flex gap-2.5 rounded-[8px] bg-emerald-500/10 px-3 py-2.5">
                 <MdCheckCircle
                   className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400"
                   aria-hidden
@@ -216,7 +216,7 @@ function DebtExemptionForm({
             ) : null}
 
             {!blockOnDebt ? (
-              <div className="mb-4 flex gap-2.5 rounded-[10px] bg-amber-500/10 px-3 py-2.5">
+              <div className="mb-4 flex gap-2.5 rounded-[8px] bg-amber-500/10 px-3 py-2.5">
                 <MdInfoOutline
                   className="mt-0.5 h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400"
                   aria-hidden
@@ -269,7 +269,7 @@ function DebtExemptionForm({
             {duration === "custom" ? (
               <input
                 type="date"
-                className={fsInputClass("mt-3 min-h-12 rounded-[10px] px-3 text-base sm:min-h-0 sm:text-sm")}
+                className={fsInputClass("mt-3 min-h-12 rounded-[8px] px-3 text-base sm:min-h-0 sm:text-sm")}
                 value={customDate}
                 min={today}
                 onChange={(e) => setCustomDate(e.target.value)}
@@ -287,7 +287,7 @@ function DebtExemptionForm({
                 Motif (facultatif, mais recommandé)
               </label>
               <textarea
-                className={fsInputClass("min-h-[84px] resize-none rounded-[10px] px-3 py-2.5 text-base sm:text-sm")}
+                className={fsInputClass("min-h-[84px] resize-none rounded-[8px] px-3 py-2.5 text-base sm:text-sm")}
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 rows={2}
@@ -317,7 +317,7 @@ function DebtExemptionForm({
                     }
                   }}
                   disabled={busy}
-                  className="min-h-11 w-full rounded-[10px] px-4 py-2.5 text-sm font-semibold text-red-600 active:bg-fs-surface-container disabled:opacity-60 sm:mr-auto sm:w-auto"
+                  className="min-h-11 w-full rounded-[8px] px-4 py-2.5 text-sm font-semibold text-red-600 active:bg-fs-surface-container disabled:opacity-60 sm:mr-auto sm:w-auto"
                 >
                   Retirer l&apos;autorisation
                 </button>
@@ -326,7 +326,7 @@ function DebtExemptionForm({
                 type="button"
                 onClick={onClose}
                 disabled={busy}
-                className="min-h-11 w-full rounded-[10px] px-4 py-2.5 text-sm font-semibold text-fs-accent active:bg-fs-surface-container disabled:opacity-60 sm:w-auto sm:min-w-[100px]"
+                className="min-h-11 w-full rounded-[8px] px-4 py-2.5 text-sm font-semibold text-fs-accent active:bg-fs-surface-container disabled:opacity-60 sm:w-auto sm:min-w-[100px]"
               >
                 Annuler
               </button>
@@ -353,7 +353,7 @@ function DebtExemptionForm({
                   }
                 }}
                 disabled={busy}
-                className="mb-2 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-[10px] bg-emerald-600 px-4 py-3 text-base font-bold text-white shadow-sm active:scale-[0.99] disabled:opacity-60 sm:mb-0 sm:min-h-0 sm:w-auto sm:min-w-[150px] sm:py-2.5 sm:text-sm sm:font-semibold"
+                className="mb-2 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-[8px] bg-emerald-600 px-4 py-3 text-base font-bold text-white shadow-sm active:scale-[0.99] disabled:opacity-60 sm:mb-0 sm:min-h-0 sm:w-auto sm:min-w-[150px] sm:py-2.5 sm:text-sm sm:font-semibold"
               >
                 {busy ? (
                   <span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />

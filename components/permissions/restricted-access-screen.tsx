@@ -57,7 +57,7 @@ export function RestrictedAccessScreen({
 
   return (
     <div className="flex min-h-[60vh] flex-1 flex-col items-center justify-center px-4 py-10">
-      <div className="relative w-full max-w-lg overflow-hidden rounded-2xl border border-black/[0.08] bg-fs-card p-6 shadow-sm dark:border-white/[0.08]">
+      <div className="relative w-full max-w-lg overflow-hidden rounded-xl border border-black/[0.08] bg-fs-card p-6 shadow-sm dark:border-white/[0.08]">
         {/* Cadenas en filigrane : le seul « message » de la carte. */}
         <MdLockPerson
           className={cn(
@@ -77,7 +77,7 @@ export function RestrictedAccessScreen({
                     key={`${item.href}-${item.label}`}
                     href={item.href}
                     className={cn(
-                      "group flex min-h-12 items-center gap-3 rounded-xl border border-black/[0.07] bg-fs-card/85 px-3 py-2.5 backdrop-blur-[2px]",
+                      "group flex min-h-12 items-center gap-3 rounded-lg border border-black/[0.07] bg-fs-card/85 px-3 py-2.5 backdrop-blur-[2px]",
                       "text-left text-[13px] font-semibold leading-tight text-fs-text",
                       "transition-[background-color,transform,box-shadow] duration-200 ease-out",
                       "hover:bg-fs-surface-container hover:shadow-[0_2px_10px_rgba(0,0,0,0.07)] active:scale-[0.99]",
@@ -122,7 +122,7 @@ export function RestrictedAccessScreen({
               }}
               aria-label="Retour"
               className={cn(
-                "inline-flex min-h-10 items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold",
+                "inline-flex min-h-10 items-center justify-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold",
                 hasShortcuts
                   ? "border border-black/[0.1] bg-fs-card text-neutral-800 shadow-sm hover:bg-fs-surface-container dark:border-white/10 dark:text-neutral-200"
                   : "bg-fs-accent text-white",

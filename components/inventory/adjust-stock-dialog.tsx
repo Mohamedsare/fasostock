@@ -98,10 +98,10 @@ export function AdjustStockDialog({
 
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-5">
           {/* En-tête produit — surfaceContainer + bordure, icône 48×48 (Flutter). */}
-          <div className="rounded-xl border border-black/8 bg-neutral-100/80 p-3 dark:bg-fs-surface-container/80">
+          <div className="rounded-lg border border-black/8 bg-neutral-100/80 p-3 dark:bg-fs-surface-container/80">
             <div className="flex gap-3">
               <div
-                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[10px] bg-fs-surface-container ring-1 ring-black/6"
+                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[8px] bg-fs-surface-container ring-1 ring-black/6"
                 aria-hidden
               >
                 {imageUrl ? (
@@ -109,7 +109,7 @@ export function AdjustStockDialog({
                   <img
                     src={productThumbUrl(imageUrl)!}
                     alt={productName}
-                    className="h-12 w-12 rounded-[10px] object-cover"
+                    className="h-12 w-12 rounded-[8px] object-cover"
                   />
                 ) : (
                   <MdInventory2 className="h-6 w-6 text-neutral-600" />
@@ -133,7 +133,7 @@ export function AdjustStockDialog({
               onClick={() => setMode("delta")}
               style={{ minHeight: MIN_TOUCH }}
               className={cn(
-                "inline-flex items-center justify-center gap-1.5 rounded-xl border px-2 text-xs font-semibold sm:text-sm",
+                "inline-flex items-center justify-center gap-1.5 rounded-lg border px-2 text-xs font-semibold sm:text-sm",
                 mode === "delta"
                   ? "border-fs-accent/40 bg-fs-accent/15 text-fs-accent"
                   : "border-black/8 bg-fs-surface-container text-neutral-700",
@@ -151,7 +151,7 @@ export function AdjustStockDialog({
               }}
               style={{ minHeight: MIN_TOUCH }}
               className={cn(
-                "inline-flex items-center justify-center gap-1.5 rounded-xl border px-2 text-xs font-semibold sm:text-sm",
+                "inline-flex items-center justify-center gap-1.5 rounded-lg border px-2 text-xs font-semibold sm:text-sm",
                 mode === "inventory"
                   ? "border-fs-accent/40 bg-fs-accent/15 text-fs-accent"
                   : "border-black/8 bg-fs-surface-container text-neutral-700",
@@ -170,7 +170,7 @@ export function AdjustStockDialog({
                     type="button"
                     onClick={() => setDeltaDirection("add")}
                   className={cn(
-                    "inline-flex min-h-[38px] items-center justify-center rounded-xl border px-3 text-sm font-semibold",
+                    "inline-flex min-h-[38px] items-center justify-center rounded-lg border px-3 text-sm font-semibold",
                       deltaDirection === "add"
                         ? "border-emerald-400 bg-emerald-50 text-emerald-700"
                   : "border-black/8 bg-fs-surface-container text-neutral-700",
@@ -182,7 +182,7 @@ export function AdjustStockDialog({
                     type="button"
                     onClick={() => setDeltaDirection("remove")}
                   className={cn(
-                    "inline-flex min-h-[38px] items-center justify-center rounded-xl border px-3 text-sm font-semibold",
+                    "inline-flex min-h-[38px] items-center justify-center rounded-lg border px-3 text-sm font-semibold",
                       deltaDirection === "remove"
                         ? "border-red-400 bg-red-50 text-red-700"
                         : "border-black/8 bg-fs-surface-container text-neutral-700",

@@ -60,7 +60,7 @@ export function ProgressiveConvertSelectionDialog({
       onClick={() => (mut.isPending ? null : onClose())}
     >
       <div
-        className="flex max-h-[92vh] w-full max-w-lg flex-col rounded-t-2xl bg-fs-card shadow-2xl min-[560px]:rounded-2xl"
+        className="flex max-h-[92vh] w-full max-w-lg flex-col rounded-t-xl bg-fs-card shadow-2xl min-[560px]:rounded-xl"
         role="dialog"
         aria-modal="true"
         aria-label="Remettre toute la sélection"
@@ -93,7 +93,7 @@ export function ProgressiveConvertSelectionDialog({
             </div>
           ) : (
             <>
-              <ul className="divide-y divide-black/[0.06] overflow-hidden rounded-xl border border-emerald-500/30 bg-emerald-500/[0.06] dark:divide-white/10">
+              <ul className="divide-y divide-black/[0.06] overflow-hidden rounded-lg border border-emerald-500/30 bg-emerald-500/[0.06] dark:divide-white/10">
                 {items.map((it) => (
                   <li key={it.id} className="flex items-center gap-3 px-3 py-2">
                     <span className="shrink-0 text-xs font-bold text-neutral-600 dark:text-neutral-300">
@@ -134,7 +134,7 @@ export function ProgressiveConvertSelectionDialog({
             type="button"
             disabled={mut.isPending || !covered}
             onClick={() => mut.mutate()}
-            className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 text-sm font-bold text-white shadow-sm disabled:opacity-50"
+            className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 text-sm font-bold text-white shadow-sm disabled:opacity-50"
           >
             {mut.isPending ? (
               <span className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />

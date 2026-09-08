@@ -195,7 +195,7 @@ export function AdminSubscriptionsScreen() {
               return (
                 <div
                   key={r.id}
-                  className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
+                  className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
                 >
                   <div className="flex items-start justify-between gap-3 border-l-4 border-orange-500 bg-orange-50/40 px-4 py-3">
                     <div className="min-w-0">
@@ -208,7 +208,7 @@ export function AdminSubscriptionsScreen() {
                         {new Date(r.createdAt).toLocaleDateString("fr-FR", { timeZone: getActiveTimeZone() })}
                       </p>
                     </div>
-                    <div className="shrink-0 rounded-xl bg-slate-900 px-3 py-1.5 text-right">
+                    <div className="shrink-0 rounded-lg bg-slate-900 px-3 py-1.5 text-right">
                       <p className="text-sm font-extrabold leading-none text-white">
                         {formatCurrency(r.amountCents)}
                       </p>
@@ -235,7 +235,7 @@ export function AdminSubscriptionsScreen() {
                       type="button"
                       disabled={busy}
                       onClick={() => reviewMut.mutate({ requestId: r.id, approve: true })}
-                      className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
+                      className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
                     >
                       {busy ? (
                         <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" aria-hidden />
@@ -250,7 +250,7 @@ export function AdminSubscriptionsScreen() {
                           reviewMut.mutate({ requestId: r.id, approve: false });
                         }
                       }}
-                      className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                      className="rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
                     >
                       Refuser
                     </button>

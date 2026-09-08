@@ -228,7 +228,7 @@ function SettingsCardTitle({
 /** Liste déroulante type `DropdownButtonFormField` + fond gris (écran Paramètres Flutter — carte Entreprise). */
 function settingsCompanySelectClassName(extra?: string) {
   return cn(
-    "w-full cursor-pointer appearance-none rounded-xl border-0 bg-neutral-100 py-3 pl-4 pr-11 text-sm font-medium text-fs-text shadow-none outline-none transition",
+    "w-full cursor-pointer appearance-none rounded-lg border-0 bg-neutral-100 py-3 pl-4 pr-11 text-sm font-medium text-fs-text shadow-none outline-none transition",
     "focus-visible:ring-2 focus-visible:ring-fs-accent/25 dark:bg-neutral-800/90",
     extra,
   );
@@ -1426,7 +1426,7 @@ export function SettingsScreen() {
       <FsCard padding="p-5">
         <SettingsCardTitle icon={MdPalette} title="Apparence" />
         <p className="mt-4 text-xs text-neutral-600 sm:text-sm">Choisir le thème de l&apos;application</p>
-        <div className="mt-3 inline-flex w-full max-w-xl overflow-hidden rounded-[10px] border border-black/[0.08] sm:w-auto">
+        <div className="mt-3 inline-flex w-full max-w-xl overflow-hidden rounded-[8px] border border-black/[0.08] sm:w-auto">
           {(
             [
               { v: "system" as const, Icon: MdBrightnessAuto, label: "Système" },
@@ -1460,7 +1460,7 @@ export function SettingsScreen() {
         <p className="mt-1 text-xs leading-relaxed text-neutral-600 sm:text-sm">
           Toujours un mode actif : si vous désactivez le mode courant, l&apos;autre est activé automatiquement.
         </p>
-        <div className="mt-4 space-y-0 divide-y divide-black/[0.06] rounded-[10px] border border-black/[0.08]">
+        <div className="mt-4 space-y-0 divide-y divide-black/[0.06] rounded-[8px] border border-black/[0.08]">
           <label className="flex cursor-pointer items-start justify-between gap-3 px-3 py-3 sm:px-4">
             <span className="min-w-0">
               <span className="block text-sm font-medium text-fs-text">Champ de saisie pour la quantité</span>
@@ -1513,7 +1513,7 @@ export function SettingsScreen() {
               <div className="h-8 w-8 animate-spin rounded-full border-2 border-fs-accent border-t-transparent" />
             </div>
           ) : (
-            <div className="mt-4 space-y-0 rounded-[10px] border border-black/[0.08]">
+            <div className="mt-4 space-y-0 rounded-[8px] border border-black/[0.08]">
               <label
                 className={cn(
                   "flex cursor-pointer items-start justify-between gap-3 px-3 py-3 sm:px-4",
@@ -1566,7 +1566,7 @@ export function SettingsScreen() {
               <div className="h-8 w-8 animate-spin rounded-full border-2 border-fs-accent border-t-transparent" />
             </div>
           ) : (
-            <div className="mt-4 space-y-0 rounded-[10px] border border-black/[0.08]">
+            <div className="mt-4 space-y-0 rounded-[8px] border border-black/[0.08]">
               <label
                 className={cn(
                   "flex cursor-pointer items-start justify-between gap-3 px-3 py-3 sm:px-4",
@@ -1617,7 +1617,7 @@ export function SettingsScreen() {
             l'encaissement. Si le commerçant ne met pas la marchandise à part, il la
             revendra — ou il la recomptera comme un surplus au prochain inventaire.
           */}
-          <p className="mt-2 rounded-[10px] bg-amber-500/10 px-3 py-2 text-xs leading-relaxed text-amber-900 dark:text-amber-200">
+          <p className="mt-2 rounded-[8px] bg-amber-500/10 px-3 py-2 text-xs leading-relaxed text-amber-900 dark:text-amber-200">
             À savoir : ces articles sont déjà sortis du stock (ils sont vendus) tout en étant
             encore chez vous. Rangez-les dans un coin « retraits » et ne les comptez pas à
             l&apos;inventaire — l&apos;application vous le rappellera au moment du comptage.
@@ -1627,7 +1627,7 @@ export function SettingsScreen() {
               <div className="h-8 w-8 animate-spin rounded-full border-2 border-fs-accent border-t-transparent" />
             </div>
           ) : (
-            <div className="mt-4 space-y-0 rounded-[10px] border border-black/[0.08]">
+            <div className="mt-4 space-y-0 rounded-[8px] border border-black/[0.08]">
               <label
                 className={cn(
                   "flex cursor-pointer items-start justify-between gap-3 px-3 py-3 sm:px-4",
@@ -1674,7 +1674,7 @@ export function SettingsScreen() {
               <div className="h-8 w-8 animate-spin rounded-full border-2 border-fs-accent border-t-transparent" />
             </div>
           ) : (
-            <div className="mt-4 divide-y divide-black/[0.06] rounded-[10px] border border-black/[0.08]">
+            <div className="mt-4 divide-y divide-black/[0.06] rounded-[8px] border border-black/[0.08]">
               <label
                 className={cn(
                   "flex cursor-pointer items-start justify-between gap-3 px-3 py-3 sm:px-4",
@@ -1746,7 +1746,7 @@ export function SettingsScreen() {
             découvrir un samedi midi avec la file qui s'allonge.
           */}
           {customerPolicy.blockOnDebt ? (
-            <p className="mt-3 rounded-[10px] bg-amber-500/10 px-3 py-2 text-xs leading-relaxed text-amber-900 dark:text-amber-200">
+            <p className="mt-3 rounded-[8px] bg-amber-500/10 px-3 py-2 text-xs leading-relaxed text-amber-900 dark:text-amber-200">
               À savoir : le refus vaut aussi pour un achat payé comptant — c&apos;est le but,
               mais votre caissier doit le savoir. La dette compte toutes les fiches portant le
               même numéro, pour qu&apos;un client ne puisse pas repartir à zéro en se faisant
@@ -1755,7 +1755,7 @@ export function SettingsScreen() {
             </p>
           ) : null}
           {customerPolicy.blockOnDebt ? (
-            <p className="mt-2 rounded-[10px] bg-emerald-500/10 px-3 py-2 text-xs leading-relaxed text-emerald-900 dark:text-emerald-200">
+            <p className="mt-2 rounded-[8px] bg-emerald-500/10 px-3 py-2 text-xs leading-relaxed text-emerald-900 dark:text-emerald-200">
               Exception pour un client précis : page <b>Clients</b>, bouton{" "}
               <b>« Autoriser »</b>. Vous levez la règle pour lui seul — avec un motif et,
               si vous le voulez, une date de fin. Le caissier voit alors à l&apos;écran que
@@ -1787,7 +1787,7 @@ export function SettingsScreen() {
             Le vrai risque n'est pas technique, il est humain : le geste est aussi rapide
             dans le mauvais sens. Le dire ici, pas après coup au support.
           */}
-          <p className="mt-2 rounded-[10px] bg-amber-500/10 px-3 py-2 text-xs leading-relaxed text-amber-900 dark:text-amber-200">
+          <p className="mt-2 rounded-[8px] bg-amber-500/10 px-3 py-2 text-xs leading-relaxed text-amber-900 dark:text-amber-200">
             À savoir : chaque produit reçoit un mouvement de stock signé de son auteur,
             comme un ajustement normal — rien n&apos;est invisible. Mais une quantité tapée
             de travers part sur toute la sélection d&apos;un coup. Seuls les employés
@@ -1800,7 +1800,7 @@ export function SettingsScreen() {
               <div className="h-8 w-8 animate-spin rounded-full border-2 border-fs-accent border-t-transparent" />
             </div>
           ) : (
-            <div className="mt-4 space-y-0 rounded-[10px] border border-black/[0.08]">
+            <div className="mt-4 space-y-0 rounded-[8px] border border-black/[0.08]">
               <label
                 className={cn(
                   "flex cursor-pointer items-start justify-between gap-3 px-3 py-3 sm:px-4",
@@ -1850,7 +1850,7 @@ export function SettingsScreen() {
             vente de plus. Sans cette phrase, la première question au support sera
             « est-ce que ça compte deux fois dans mon chiffre d'affaires ? ».
           */}
-          <p className="mt-2 rounded-[10px] bg-amber-500/10 px-3 py-2 text-xs leading-relaxed text-amber-900 dark:text-amber-200">
+          <p className="mt-2 rounded-[8px] bg-amber-500/10 px-3 py-2 text-xs leading-relaxed text-amber-900 dark:text-amber-200">
             À savoir : les deux impressions portent le même numéro et les mêmes montants —
             c&apos;est la même vente, imprimée deux fois. Rien n&apos;est enregistré en
             double, ni dans le stock, ni dans vos rapports.
@@ -1860,7 +1860,7 @@ export function SettingsScreen() {
               <div className="h-8 w-8 animate-spin rounded-full border-2 border-fs-accent border-t-transparent" />
             </div>
           ) : (
-            <div className="mt-4 space-y-0 rounded-[10px] border border-black/[0.08]">
+            <div className="mt-4 space-y-0 rounded-[8px] border border-black/[0.08]">
               <label
                 className={cn(
                   "flex cursor-pointer items-start justify-between gap-3 px-3 py-3 sm:px-4",
@@ -1917,13 +1917,13 @@ export function SettingsScreen() {
             volontaire (un panier abandonné bloquerait du stock invisible), mais le
             propriétaire doit le savoir avant, pas le découvrir un samedi.
           */}
-          <p className="mt-2 rounded-[10px] bg-amber-500/10 px-3 py-2 text-xs leading-relaxed text-amber-900 dark:text-amber-200">
+          <p className="mt-2 rounded-[8px] bg-amber-500/10 px-3 py-2 text-xs leading-relaxed text-amber-900 dark:text-amber-200">
             À savoir : tant que le caissier n&apos;a pas encaissé, le stock n&apos;est pas
             décompté et rien n&apos;est réservé. Si le dernier article part entre-temps,
             l&apos;encaissement est refusé avec le motif — au comptoir, pendant que la
             marchandise est encore devant vous.
           </p>
-          <div className="mt-4 space-y-0 rounded-[10px] border border-black/[0.08]">
+          <div className="mt-4 space-y-0 rounded-[8px] border border-black/[0.08]">
             <label
               className={cn(
                 "flex cursor-pointer items-start justify-between gap-3 px-3 py-3 sm:px-4",
@@ -1958,7 +1958,7 @@ export function SettingsScreen() {
             question sans objet.
           */}
           {dualCashierEnabled ? (
-            <div className="mt-2 space-y-0 rounded-[10px] border border-black/[0.08]">
+            <div className="mt-2 space-y-0 rounded-[8px] border border-black/[0.08]">
               <label
                 className={cn(
                   "flex cursor-pointer items-start justify-between gap-3 px-3 py-3 sm:px-4",
@@ -1992,7 +1992,7 @@ export function SettingsScreen() {
             La règle du module, dite une fois et clairement : c'est elle qui rend le
             tiroir-caisse imputable à quelqu'un le soir.
           */}
-          <p className="mt-2.5 rounded-[10px] bg-fs-surface-container px-3 py-2 text-xs leading-relaxed text-neutral-600">
+          <p className="mt-2.5 rounded-[8px] bg-fs-surface-container px-3 py-2 text-xs leading-relaxed text-neutral-600">
             Un seul caissier à la fois : dès qu&apos;une personne encaisse, elle tient la
             caisse de la boutique et les autres restent en vente. Elle la rend quand elle a
             fini — et la caisse se libère seule au bout de trois minutes sans activité, pour
@@ -2040,12 +2040,12 @@ export function SettingsScreen() {
             Distinction à poser une fois pour toutes, sinon le propriétaire croit qu'on
             lui propose deux fois la même chose.
           */}
-          <p className="mt-2 rounded-[10px] bg-sky-500/10 px-3 py-2 text-xs leading-relaxed text-sky-900 dark:text-sky-200">
+          <p className="mt-2 rounded-[8px] bg-sky-500/10 px-3 py-2 text-xs leading-relaxed text-sky-900 dark:text-sky-200">
             Ce n&apos;est pas le module Achats : pas de fournisseur à enregistrer, pas de
             bon de commande, pas de dette. Pour l&apos;achat organisé avec un vrai
             fournisseur, gardez la page Achats — les deux coexistent.
           </p>
-          <div className="mt-4 space-y-0 rounded-[10px] border border-black/[0.08]">
+          <div className="mt-4 space-y-0 rounded-[8px] border border-black/[0.08]">
             <label
               className={cn(
                 "flex cursor-pointer items-start justify-between gap-3 px-3 py-3 sm:px-4",
@@ -2109,7 +2109,7 @@ export function SettingsScreen() {
             journée.
           </p>
 
-          <div className="mt-4 space-y-0 divide-y divide-black/[0.06] rounded-[10px] border border-black/[0.08]">
+          <div className="mt-4 space-y-0 divide-y divide-black/[0.06] rounded-[8px] border border-black/[0.08]">
             <label
               className={cn(
                 "flex cursor-pointer items-start justify-between gap-3 px-3 py-3 sm:px-4",
@@ -2206,12 +2206,12 @@ export function SettingsScreen() {
             relance courtois est déjà écrit.
           </p>
           {/* Le garde-fou qui justifie l'écran à lui seul. */}
-          <p className="mt-2 rounded-[10px] bg-sky-500/10 px-3 py-2 text-xs leading-relaxed text-sky-900 dark:text-sky-200">
+          <p className="mt-2 rounded-[8px] bg-sky-500/10 px-3 py-2 text-xs leading-relaxed text-sky-900 dark:text-sky-200">
             La page vous prévient si un prix consenti passe sous votre prix d&apos;achat.
             C&apos;est l&apos;erreur que le cahier ne rattrape jamais : elle ne se
             découvre qu&apos;à l&apos;inventaire, des mois plus tard.
           </p>
-          <div className="mt-4 space-y-0 rounded-[10px] border border-black/[0.08]">
+          <div className="mt-4 space-y-0 rounded-[8px] border border-black/[0.08]">
             <label
               className={cn(
                 "flex cursor-pointer items-start justify-between gap-3 px-3 py-3 sm:px-4",
@@ -2283,7 +2283,7 @@ export function SettingsScreen() {
             une fiche qui s&apos;échappe au moment où vous tendez le doigt serait pire que
             pas de rappel du tout.
           </p>
-          <div className="mt-4 space-y-0 rounded-[10px] border border-black/[0.08]">
+          <div className="mt-4 space-y-0 rounded-[8px] border border-black/[0.08]">
             <label
               className={cn(
                 "flex cursor-pointer items-start justify-between gap-3 px-3 py-3 sm:px-4",
@@ -2314,7 +2314,7 @@ export function SettingsScreen() {
           </div>
 
           {creditRemindersEnabled ? (
-            <div className="mt-3 space-y-3 rounded-[10px] border border-black/[0.08] px-3 py-3 sm:px-4">
+            <div className="mt-3 space-y-3 rounded-[8px] border border-black/[0.08] px-3 py-3 sm:px-4">
               <div>
                 <label
                   className="block text-xs font-medium text-neutral-600"
@@ -2489,14 +2489,14 @@ export function SettingsScreen() {
             bordereau, arrivée, retrait — et surtout ce que le transport vous doit.
           </p>
           {/* Le vrai sujet, dit sans détour. */}
-          <p className="mt-2 rounded-[10px] bg-sky-500/10 px-3 py-2 text-xs leading-relaxed text-sky-900 dark:text-sky-200">
+          <p className="mt-2 rounded-[8px] bg-sky-500/10 px-3 py-2 text-xs leading-relaxed text-sky-900 dark:text-sky-200">
             Les <strong>frais d&apos;expédition que vous avancez</strong> ne sont dans
             aucune facture, ne sont pas une dépense de la maison, et sont trop petits pour
             qu&apos;on y pense. Vingt colis par semaine, et c&apos;est le bénéfice
             d&apos;une journée qui est resté à la gare routière. Ils sont ici suivis à
             part, avec un message de réclamation courtois prêt à partir sur WhatsApp.
           </p>
-          <div className="mt-4 space-y-0 rounded-[10px] border border-black/[0.08]">
+          <div className="mt-4 space-y-0 rounded-[8px] border border-black/[0.08]">
             <label
               className={cn(
                 "flex cursor-pointer items-start justify-between gap-3 px-3 py-3 sm:px-4",
@@ -2555,13 +2555,13 @@ export function SettingsScreen() {
               <div className="h-8 w-8 animate-spin rounded-full border-2 border-fs-accent border-t-transparent" />
             </div>
           ) : (
-            <div className="mt-4 rounded-[10px] border border-black/[0.08] px-3 py-3 sm:px-4">
+            <div className="mt-4 rounded-[8px] border border-black/[0.08] px-3 py-3 sm:px-4">
               <label className="block text-sm font-medium text-fs-text" htmlFor="company-timezone">
                 Pays / fuseau de votre commerce
               </label>
               <select
                 id="company-timezone"
-                className="mt-2 w-full rounded-[10px] border border-black/[0.12] bg-white px-3 py-2 text-sm text-fs-text disabled:opacity-60"
+                className="mt-2 w-full rounded-[8px] border border-black/[0.12] bg-white px-3 py-2 text-sm text-fs-text disabled:opacity-60"
                 value={timeZoneQ.data ?? "Africa/Ouagadougou"}
                 disabled={timeZoneMut.isPending}
                 onChange={(e) => {
@@ -2601,7 +2601,7 @@ export function SettingsScreen() {
               <div className="h-8 w-8 animate-spin rounded-full border-2 border-fs-accent border-t-transparent" />
             </div>
           ) : currencyLockedQ.data ? (
-            <div className="mt-4 rounded-[10px] border border-black/[0.08] px-3 py-3 sm:px-4">
+            <div className="mt-4 rounded-[8px] border border-black/[0.08] px-3 py-3 sm:px-4">
               <p className="text-sm font-medium text-fs-text">
                 Devise actuelle : {currencyOf(currencyQ.data).label} (
                 {currencyOf(currencyQ.data).symbol})
@@ -2620,7 +2620,7 @@ export function SettingsScreen() {
               </p>
             </div>
           ) : (
-            <div className="mt-4 rounded-[10px] border border-black/[0.08] px-3 py-3 sm:px-4">
+            <div className="mt-4 rounded-[8px] border border-black/[0.08] px-3 py-3 sm:px-4">
               <label
                 className="block text-sm font-medium text-fs-text"
                 htmlFor="company-currency"
@@ -2629,7 +2629,7 @@ export function SettingsScreen() {
               </label>
               <select
                 id="company-currency"
-                className="mt-2 w-full rounded-[10px] border border-black/[0.12] bg-white px-3 py-2 text-sm text-fs-text disabled:opacity-60"
+                className="mt-2 w-full rounded-[8px] border border-black/[0.12] bg-white px-3 py-2 text-sm text-fs-text disabled:opacity-60"
                 value={currencyQ.data ?? "XOF"}
                 disabled={currencyMut.isPending}
                 onChange={(e) => {
@@ -2669,7 +2669,7 @@ export function SettingsScreen() {
               <div className="h-8 w-8 animate-spin rounded-full border-2 border-fs-accent border-t-transparent" />
             </div>
           ) : (
-            <div className="mt-4 space-y-0 rounded-[10px] border border-black/[0.08]">
+            <div className="mt-4 space-y-0 rounded-[8px] border border-black/[0.08]">
               <label
                 className={cn(
                   "flex cursor-pointer items-start justify-between gap-3 px-3 py-3 sm:px-4",
@@ -2721,7 +2721,7 @@ export function SettingsScreen() {
               <div className="h-8 w-8 animate-spin rounded-full border-2 border-fs-accent border-t-transparent" />
             </div>
           ) : (
-            <div className="mt-4 space-y-0 rounded-[10px] border border-black/[0.08]">
+            <div className="mt-4 space-y-0 rounded-[8px] border border-black/[0.08]">
               <label
                 className={cn(
                   "flex cursor-pointer items-start justify-between gap-3 px-3 py-3 sm:px-4",
@@ -2772,7 +2772,7 @@ export function SettingsScreen() {
               <div className="h-8 w-8 animate-spin rounded-full border-2 border-fs-accent border-t-transparent" />
             </div>
           ) : (
-            <div className="mt-4 divide-y divide-black/[0.06] rounded-[10px] border border-black/[0.08]">
+            <div className="mt-4 divide-y divide-black/[0.06] rounded-[8px] border border-black/[0.08]">
               <label
                 className={cn(
                   "flex cursor-pointer items-start justify-between gap-3 px-3 py-3 sm:px-4",
@@ -2952,7 +2952,7 @@ export function SettingsScreen() {
         <p className="mt-1 text-xs leading-relaxed text-neutral-600 sm:text-sm">
           Toujours un mode actif : si vous désactivez le mode courant, l&apos;autre est activé automatiquement.
         </p>
-        <div className="mt-4 space-y-0 divide-y divide-black/[0.06] rounded-[10px] border border-black/[0.08]">
+        <div className="mt-4 space-y-0 divide-y divide-black/[0.06] rounded-[8px] border border-black/[0.08]">
           <label className="flex cursor-pointer items-start justify-between gap-3 px-3 py-3 sm:px-4">
             <span className="min-w-0">
               <span className="block text-sm font-medium text-fs-text">Champ de saisie pour la quantité</span>
@@ -3004,7 +3004,7 @@ export function SettingsScreen() {
               <div className="h-8 w-8 animate-spin rounded-full border-2 border-fs-accent border-t-transparent" />
             </div>
           ) : (
-            <div className="mt-4 space-y-0 rounded-[10px] border border-black/[0.08]">
+            <div className="mt-4 space-y-0 rounded-[8px] border border-black/[0.08]">
               <label
                 className={cn(
                   "flex cursor-pointer items-start justify-between gap-3 px-3 py-3 sm:px-4",
@@ -3065,7 +3065,7 @@ export function SettingsScreen() {
             boutique, d'où viennent les prix, et ce que la machine n'a pas le droit de
             décider seule.
           */}
-          <p className="mt-2 rounded-[10px] bg-amber-500/10 px-3 py-2 text-xs leading-relaxed text-amber-900 dark:text-amber-200">
+          <p className="mt-2 rounded-[8px] bg-amber-500/10 px-3 py-2 text-xs leading-relaxed text-amber-900 dark:text-amber-200">
             À savoir : le document est <b>envoyé à un service d&apos;analyse externe</b> pour
             être lu — ne l&apos;utilisez pas sur une pièce que vous ne voulez pas voir sortir de
             la boutique. Les <b>prix repris sont ceux écrits sur le document</b> (un devis se
@@ -3080,7 +3080,7 @@ export function SettingsScreen() {
               <div className="h-8 w-8 animate-spin rounded-full border-2 border-fs-accent border-t-transparent" />
             </div>
           ) : (
-            <div className="mt-4 space-y-0 rounded-[10px] border border-black/[0.08]">
+            <div className="mt-4 space-y-0 rounded-[8px] border border-black/[0.08]">
               <label
                 className={cn(
                   "flex cursor-pointer items-start justify-between gap-3 px-3 py-3 sm:px-4",
@@ -3136,7 +3136,7 @@ export function SettingsScreen() {
             fausse rien, et la facture ne crée pas de comptabilité parallèle. Un patron
             doit les lire AVANT d'activer, pas les découvrir en fin de mois.
           */}
-          <p className="mt-2 rounded-[10px] bg-amber-500/10 px-3 py-2 text-xs leading-relaxed text-amber-900 dark:text-amber-200">
+          <p className="mt-2 rounded-[8px] bg-amber-500/10 px-3 py-2 text-xs leading-relaxed text-amber-900 dark:text-amber-200">
             À savoir : un <b>devis ne compte nulle part</b> — ni chiffre d&apos;affaires,
             ni stock réservé, ni créance ; s&apos;il n&apos;aboutit pas, il n&apos;y a rien
             à défaire. Une facture, elle, ne compte qu&apos;au moment où vous{" "}
@@ -3144,7 +3144,7 @@ export function SettingsScreen() {
             marchandise sort du stock et le solde impayé part en crédit client. Tant
             qu&apos;elle est en brouillon, elle s&apos;imprime en « proforma ».
           </p>
-          <div className="mt-4 space-y-0 rounded-[10px] border border-black/[0.08]">
+          <div className="mt-4 space-y-0 rounded-[8px] border border-black/[0.08]">
             <label
               className={cn(
                 "flex cursor-pointer items-start justify-between gap-3 px-3 py-3 sm:px-4",
@@ -3196,7 +3196,7 @@ export function SettingsScreen() {
             la marge voulue. Les frais changeant d&apos;un arrivage à l&apos;autre, il tient
             compte de l&apos;ancien stock pour ne pas fausser vos marges.
           </p>
-          <div className="mt-4 space-y-0 rounded-[10px] border border-black/[0.08]">
+          <div className="mt-4 space-y-0 rounded-[8px] border border-black/[0.08]">
             <label
               className={cn(
                 "flex cursor-pointer items-start justify-between gap-3 px-3 py-3 sm:px-4",
@@ -3247,7 +3247,7 @@ export function SettingsScreen() {
             à partir d&apos;un gabarit ou de zéro — puis range ses produits. Un nouveau vendeur
             trouve alors un article sans déranger personne.
           </p>
-          <div className="mt-4 space-y-0 rounded-[10px] border border-black/[0.08]">
+          <div className="mt-4 space-y-0 rounded-[8px] border border-black/[0.08]">
             <label
               className={cn(
                 "flex cursor-pointer items-start justify-between gap-3 px-3 py-3 sm:px-4",
@@ -3278,7 +3278,7 @@ export function SettingsScreen() {
           </div>
           {/* Option liée : rappel de l'emplacement à la caisse (comme les conditionnements) */}
           {productLocationsEnabled ? (
-            <div className="mt-2.5 space-y-0 rounded-[10px] border border-black/[0.08]">
+            <div className="mt-2.5 space-y-0 rounded-[8px] border border-black/[0.08]">
               <label
                 className={cn(
                   "flex cursor-pointer items-start justify-between gap-3 px-3 py-3 sm:px-4",
@@ -3336,12 +3336,12 @@ export function SettingsScreen() {
             Utile si vous achetez en gros et revendez au détail. Si vous ne vendez
             qu&apos;à la pièce, laissez-la fermée : rien ne change pour vous.
           </p>
-          <p className="mt-2 rounded-[10px] bg-fs-accent/10 px-3 py-2 text-xs leading-relaxed text-fs-text">
+          <p className="mt-2 rounded-[8px] bg-fs-accent/10 px-3 py-2 text-xs leading-relaxed text-fs-text">
             La page ne crée aucune donnée nouvelle : elle remplit les mêmes
             conditionnements que la fiche produit. La refermer ne supprime donc rien —
             vos cartons restent enregistrés et la caisse continue de les proposer.
           </p>
-          <div className="mt-4 space-y-0 rounded-[10px] border border-black/[0.08]">
+          <div className="mt-4 space-y-0 rounded-[8px] border border-black/[0.08]">
             <label
               className={cn(
                 "flex cursor-pointer items-start justify-between gap-3 px-3 py-3 sm:px-4",
@@ -3399,7 +3399,7 @@ export function SettingsScreen() {
             l&apos;application multiplie elle-même par le nombre de pièces. Vous tapez 3 500,
             elle enregistre 35 000 et l&apos;affiche sous le champ avant que vous validiez.
           </p>
-          <p className="mt-2 rounded-[10px] bg-fs-accent/10 px-3 py-2 text-xs leading-relaxed text-fs-text">
+          <p className="mt-2 rounded-[8px] bg-fs-accent/10 px-3 py-2 text-xs leading-relaxed text-fs-text">
             Ce réglage ne change que la <b>saisie</b>. Le prix encaissé à la caisse, les
             tickets, les factures et vos conditionnements déjà enregistrés restent
             identiques — vous pouvez donc l&apos;activer et le désactiver sans rien casser.
@@ -3409,7 +3409,7 @@ export function SettingsScreen() {
               <div className="h-8 w-8 animate-spin rounded-full border-2 border-fs-accent border-t-transparent" />
             </div>
           ) : (
-            <div className="mt-4 space-y-0 rounded-[10px] border border-black/[0.08]">
+            <div className="mt-4 space-y-0 rounded-[8px] border border-black/[0.08]">
               <label
                 className={cn(
                   "flex cursor-pointer items-start justify-between gap-3 px-3 py-3 sm:px-4",
@@ -3453,7 +3453,7 @@ export function SettingsScreen() {
             n&apos;importe lequel, au catalogue comme à la caisse. Le nom principal
             reste le seul affiché sur les tickets, les factures et les rapports.
           </p>
-          <div className="mt-4 space-y-0 rounded-[10px] border border-black/[0.08]">
+          <div className="mt-4 space-y-0 rounded-[8px] border border-black/[0.08]">
             <label
               className={cn(
                 "flex cursor-pointer items-start justify-between gap-3 px-3 py-3 sm:px-4",
@@ -3496,7 +3496,7 @@ export function SettingsScreen() {
             que vous aurez créés — et la saisie se réduit à cinq champs : montant,
             catégorie, date, règlement (espèces ou mobile money) et une note facultative.
           </p>
-          <div className="mt-4 space-y-0 rounded-[10px] border border-black/[0.08]">
+          <div className="mt-4 space-y-0 rounded-[8px] border border-black/[0.08]">
             <label
               className={cn(
                 "flex cursor-pointer items-start justify-between gap-3 px-3 py-3 sm:px-4",
@@ -3575,7 +3575,7 @@ export function SettingsScreen() {
               setProfileErr(messageFromUnknownError(e));
             }
           }}
-          className="mt-4 inline-flex min-h-[40px] items-center justify-center gap-2 rounded-[10px] bg-fs-accent px-4 text-sm font-semibold text-white disabled:opacity-60"
+          className="mt-4 inline-flex min-h-[40px] items-center justify-center gap-2 rounded-[8px] bg-fs-accent px-4 text-sm font-semibold text-white disabled:opacity-60"
           disabled={profileMut.isPending}
         >
           {profileMut.isPending ? (
@@ -3591,7 +3591,7 @@ export function SettingsScreen() {
       <FsCard className="mt-5" padding="p-5">
         <SettingsCardTitle icon={MdMail} title="Compte" />
         <p className="mt-5 text-xs font-medium text-neutral-600">Email</p>
-        <div className="mt-1 rounded-[10px] border border-black/[0.08] bg-neutral-100/50 px-3.5 py-3 text-sm text-fs-text dark:bg-neutral-800/40">
+        <div className="mt-1 rounded-[8px] border border-black/[0.08] bg-neutral-100/50 px-3.5 py-3 text-sm text-fs-text dark:bg-neutral-800/40">
           {meQ.data?.email || "—"}
         </div>
         <p className="mt-6 text-sm font-semibold text-neutral-700">Changer le mot de passe</p>
@@ -3651,7 +3651,7 @@ export function SettingsScreen() {
               setPwdErr(messageFromUnknownError(e));
             }
           }}
-          className="mt-4 inline-flex min-h-[40px] items-center justify-center gap-2 rounded-[10px] border border-black/[0.1] bg-fs-card px-4 text-sm font-semibold text-neutral-800 shadow-sm disabled:opacity-60"
+          className="mt-4 inline-flex min-h-[40px] items-center justify-center gap-2 rounded-[8px] border border-black/[0.1] bg-fs-card px-4 text-sm font-semibold text-neutral-800 shadow-sm disabled:opacity-60"
           disabled={pwdMut.isPending}
         >
           {pwdMut.isPending ? (
@@ -3668,7 +3668,7 @@ export function SettingsScreen() {
       {/* Entreprise — même carte que Flutter (`_buildCompanyCard`) : fond gris listes, labels gris, lien orange */}
       {companyId ? (
         <FsCard
-          className="mt-5 rounded-[12px] border border-neutral-200/90 bg-fs-card shadow-none dark:border-white/10"
+          className="mt-5 rounded-[10px] border border-neutral-200/90 bg-fs-card shadow-none dark:border-white/10"
           padding="p-5"
         >
           <SettingsCardTitle icon={MdBusiness} title="Entreprise" />
@@ -3687,7 +3687,7 @@ export function SettingsScreen() {
                 disabled={uploadingCompanyLogo}
                 onClick={() => logoFileInputRef.current?.click()}
                 className={cn(
-                  "relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-neutral-300/60 bg-neutral-100 transition hover:bg-neutral-200/80 disabled:opacity-60 dark:border-white/20 dark:bg-neutral-800",
+                  "relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-neutral-300/60 bg-neutral-100 transition hover:bg-neutral-200/80 disabled:opacity-60 dark:border-white/20 dark:bg-neutral-800",
                 )}
                 aria-label="Choisir le logo entreprise"
               >
@@ -3847,7 +3847,7 @@ export function SettingsScreen() {
           <button
             type="button"
             onClick={() => setTwoFaOpen(true)}
-            className="mt-4 inline-flex items-center gap-2 rounded-[10px] bg-fs-accent px-4 py-2.5 text-sm font-semibold text-white"
+            className="mt-4 inline-flex items-center gap-2 rounded-[8px] bg-fs-accent px-4 py-2.5 text-sm font-semibold text-white"
           >
             <MdSecurity className="h-5 w-5" aria-hidden />
             Activer la 2FA
@@ -3888,7 +3888,7 @@ export function SettingsScreen() {
           ) : null}
 
           {/* Magasin (dépôt) */}
-          <div className="mt-4 rounded-[10px] border border-red-300/40 bg-red-50/30 p-3 dark:bg-red-950/20">
+          <div className="mt-4 rounded-[8px] border border-red-300/40 bg-red-50/30 p-3 dark:bg-red-950/20">
             <div className="flex items-center gap-2 text-red-800">
               <MdStore className="h-4 w-4" aria-hidden />
               <span className="text-sm font-bold">Magasin (dépôt)</span>
@@ -3925,7 +3925,7 @@ export function SettingsScreen() {
                     },
                   })
                 }
-                className="inline-flex items-center gap-2 rounded-[10px] border border-red-300 bg-white px-3 py-2 text-xs font-semibold text-red-700 disabled:opacity-50 dark:bg-neutral-900"
+                className="inline-flex items-center gap-2 rounded-[8px] border border-red-300 bg-white px-3 py-2 text-xs font-semibold text-red-700 disabled:opacity-50 dark:bg-neutral-900"
               >
                 {clearingWarehouseStock ? (
                   <span className="h-4 w-4 animate-spin rounded-full border-2 border-red-600 border-t-transparent" />
@@ -3957,7 +3957,7 @@ export function SettingsScreen() {
                     },
                   })
                 }
-                className="inline-flex items-center gap-2 rounded-[10px] border border-red-300 bg-white px-3 py-2 text-xs font-semibold text-red-700 disabled:opacity-50 dark:bg-neutral-900"
+                className="inline-flex items-center gap-2 rounded-[8px] border border-red-300 bg-white px-3 py-2 text-xs font-semibold text-red-700 disabled:opacity-50 dark:bg-neutral-900"
               >
                 {clearingWarehouseMovements ? (
                   <span className="h-4 w-4 animate-spin rounded-full border-2 border-red-600 border-t-transparent" />
@@ -3995,7 +3995,7 @@ export function SettingsScreen() {
                   },
                 })
               }
-              className="inline-flex items-center gap-2 rounded-[10px] border border-red-300 bg-red-50/50 px-3 py-2 text-xs font-semibold text-red-700 disabled:opacity-50 dark:bg-red-950/30"
+              className="inline-flex items-center gap-2 rounded-[8px] border border-red-300 bg-red-50/50 px-3 py-2 text-xs font-semibold text-red-700 disabled:opacity-50 dark:bg-red-950/30"
             >
               {clearingProducts ? (
                 <span className="h-4 w-4 animate-spin rounded-full border-2 border-red-600 border-t-transparent" />
@@ -4027,7 +4027,7 @@ export function SettingsScreen() {
                   },
                 })
               }
-              className="inline-flex items-center gap-2 rounded-[10px] border border-red-300 bg-red-50/50 px-3 py-2 text-xs font-semibold text-red-700 disabled:opacity-50 dark:bg-red-950/30"
+              className="inline-flex items-center gap-2 rounded-[8px] border border-red-300 bg-red-50/50 px-3 py-2 text-xs font-semibold text-red-700 disabled:opacity-50 dark:bg-red-950/30"
             >
               {clearingSales ? (
                 <span className="h-4 w-4 animate-spin rounded-full border-2 border-red-600 border-t-transparent" />
@@ -4059,7 +4059,7 @@ export function SettingsScreen() {
                   },
                 })
               }
-              className="inline-flex items-center gap-2 rounded-[10px] border border-red-300 bg-red-50/50 px-3 py-2 text-xs font-semibold text-red-700 disabled:opacity-50 dark:bg-red-950/30"
+              className="inline-flex items-center gap-2 rounded-[8px] border border-red-300 bg-red-50/50 px-3 py-2 text-xs font-semibold text-red-700 disabled:opacity-50 dark:bg-red-950/30"
             >
               {clearingPurchases ? (
                 <span className="h-4 w-4 animate-spin rounded-full border-2 border-red-600 border-t-transparent" />
@@ -4091,7 +4091,7 @@ export function SettingsScreen() {
                   },
                 })
               }
-              className="inline-flex items-center gap-2 rounded-[10px] border border-red-300 bg-red-50/50 px-3 py-2 text-xs font-semibold text-red-700 disabled:opacity-50 dark:bg-red-950/30"
+              className="inline-flex items-center gap-2 rounded-[8px] border border-red-300 bg-red-50/50 px-3 py-2 text-xs font-semibold text-red-700 disabled:opacity-50 dark:bg-red-950/30"
             >
               {clearingTransfers ? (
                 <span className="h-4 w-4 animate-spin rounded-full border-2 border-red-600 border-t-transparent" />
@@ -4123,7 +4123,7 @@ export function SettingsScreen() {
                   },
                 })
               }
-              className="inline-flex items-center gap-2 rounded-[10px] border border-red-300 bg-red-50/50 px-3 py-2 text-xs font-semibold text-red-700 disabled:opacity-50 dark:bg-red-950/30"
+              className="inline-flex items-center gap-2 rounded-[8px] border border-red-300 bg-red-50/50 px-3 py-2 text-xs font-semibold text-red-700 disabled:opacity-50 dark:bg-red-950/30"
             >
               {clearingStock ? (
                 <span className="h-4 w-4 animate-spin rounded-full border-2 border-red-600 border-t-transparent" />
@@ -4155,7 +4155,7 @@ export function SettingsScreen() {
                   },
                 })
               }
-              className="inline-flex items-center gap-2 rounded-[10px] border border-red-300 bg-red-50/50 px-3 py-2 text-xs font-semibold text-red-700 disabled:opacity-50 dark:bg-red-950/30"
+              className="inline-flex items-center gap-2 rounded-[8px] border border-red-300 bg-red-50/50 px-3 py-2 text-xs font-semibold text-red-700 disabled:opacity-50 dark:bg-red-950/30"
             >
               {clearingMovements ? (
                 <span className="h-4 w-4 animate-spin rounded-full border-2 border-red-600 border-t-transparent" />
@@ -4189,7 +4189,7 @@ export function SettingsScreen() {
           aria-modal="true"
           aria-labelledby="danger-title"
         >
-          <div className="w-full max-w-md rounded-2xl bg-fs-card p-5 shadow-xl">
+          <div className="w-full max-w-md rounded-xl bg-fs-card p-5 shadow-xl">
             <div className="flex justify-center text-red-600">
               <MdWarningAmber className="h-10 w-10" aria-hidden />
             </div>
@@ -4205,14 +4205,14 @@ export function SettingsScreen() {
             <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
               <button
                 type="button"
-                className="rounded-xl px-4 py-2.5 text-sm font-semibold text-neutral-700 hover:bg-black/[0.04]"
+                className="rounded-lg px-4 py-2.5 text-sm font-semibold text-neutral-700 hover:bg-black/[0.04]"
                 onClick={() => setConfirmDanger(null)}
               >
                 Annuler
               </button>
               <button
                 type="button"
-                className="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-700"
+                className="rounded-lg bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-700"
                 onClick={() => void runConfirmed()}
               >
                 Oui, supprimer
@@ -4230,7 +4230,7 @@ export function SettingsScreen() {
           aria-modal="true"
           aria-labelledby="twofa-title"
         >
-          <div className="w-full max-w-md rounded-2xl bg-fs-card p-5 shadow-xl">
+          <div className="w-full max-w-md rounded-xl bg-fs-card p-5 shadow-xl">
             <h2 id="twofa-title" className="text-lg font-bold text-fs-text">
               2FA
             </h2>
@@ -4241,7 +4241,7 @@ export function SettingsScreen() {
             <div className="mt-6 flex justify-end">
               <button
                 type="button"
-                className="rounded-xl px-4 py-2 text-sm font-semibold text-fs-accent hover:bg-fs-accent/10"
+                className="rounded-lg px-4 py-2 text-sm font-semibold text-fs-accent hover:bg-fs-accent/10"
                 onClick={() => setTwoFaOpen(false)}
               >
                 OK

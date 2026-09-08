@@ -348,7 +348,7 @@ export function ProductPhotosScreen() {
         <button
           type="button"
           onClick={() => setScanOpen(true)}
-          className="inline-flex shrink-0 items-center gap-1.5 rounded-[10px] border border-black/[0.08] bg-fs-card px-3 py-2 text-xs font-semibold text-neutral-800"
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-[8px] border border-black/[0.08] bg-fs-card px-3 py-2 text-xs font-semibold text-neutral-800"
           aria-label="Scanner un code-barres"
         >
           <MdQrCodeScanner className="h-[18px] w-[18px]" aria-hidden />
@@ -508,7 +508,7 @@ export function ProductPhotosScreen() {
             <img
               src={preview.url}
               alt={preview.name}
-              className="max-h-[75vh] w-full rounded-xl object-contain"
+              className="max-h-[75vh] w-full rounded-lg object-contain"
             />
           </div>
         </div>

@@ -47,7 +47,7 @@ export function InvoicePdfPreviewDialog({
       onClick={onClose}
     >
       <div
-        className="flex max-h-[90vh] w-full max-w-[800px] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
+        className="flex max-h-[90vh] w-full max-w-[800px] flex-col overflow-hidden rounded-xl bg-white shadow-2xl"
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}

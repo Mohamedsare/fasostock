@@ -85,7 +85,7 @@ export function RentalLeaseDetail({
       onClick={onClose}
     >
       <div
-        className="flex max-h-[94vh] w-full max-w-3xl flex-col rounded-t-2xl bg-fs-card shadow-2xl min-[700px]:rounded-2xl"
+        className="flex max-h-[94vh] w-full max-w-3xl flex-col rounded-t-xl bg-fs-card shadow-2xl min-[700px]:rounded-xl"
         role="dialog"
         aria-modal="true"
         aria-label={`Bail ${lease.leaseNumber}`}
@@ -193,7 +193,7 @@ export function RentalLeaseDetail({
                     <li
                       key={inv.id}
                       className={cn(
-                        "flex flex-wrap items-center justify-between gap-2 rounded-xl border px-3 py-2.5",
+                        "flex flex-wrap items-center justify-between gap-2 rounded-lg border px-3 py-2.5",
                         inv.status === "paid"
                           ? "border-emerald-500/30 bg-emerald-500/[0.06]"
                           : inv.status === "cancelled"
@@ -254,7 +254,7 @@ export function RentalLeaseDetail({
                 {(paymentsQ.data ?? []).map((p) => (
                   <li
                     key={p.id}
-                    className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-black/[0.07] px-3 py-2.5 dark:border-white/10"
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-black/[0.07] px-3 py-2.5 dark:border-white/10"
                   >
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold text-fs-text">
@@ -315,7 +315,7 @@ export function RentalLeaseDetail({
               <button
                 type="button"
                 onClick={onPay}
-                className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 text-sm font-bold text-white shadow-sm"
+                className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 text-sm font-bold text-white shadow-sm"
               >
                 <MdPayments className="h-5 w-5" aria-hidden />
                 Encaisser un règlement
@@ -324,7 +324,7 @@ export function RentalLeaseDetail({
               <button
                 type="button"
                 onClick={onReopen}
-                className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-black/10 px-4 text-sm font-bold text-fs-text dark:border-white/10"
+                className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg border border-black/10 px-4 text-sm font-bold text-fs-text dark:border-white/10"
               >
                 <MdRestartAlt className="h-5 w-5" aria-hidden />
                 Réactiver le bail
@@ -333,7 +333,7 @@ export function RentalLeaseDetail({
             <button
               type="button"
               onClick={onEdit}
-              className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-black/10 px-3 text-xs font-bold text-neutral-700 dark:border-white/10 dark:text-neutral-200"
+              className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-lg border border-black/10 px-3 text-xs font-bold text-neutral-700 dark:border-white/10 dark:text-neutral-200"
             >
               <MdEdit className="h-4 w-4" aria-hidden />
               Modifier
@@ -342,7 +342,7 @@ export function RentalLeaseDetail({
               <button
                 type="button"
                 onClick={onEndLease}
-                className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-amber-600/40 px-3 text-xs font-bold text-amber-700 dark:text-amber-300"
+                className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-lg border border-amber-600/40 px-3 text-xs font-bold text-amber-700 dark:text-amber-300"
               >
                 <MdEventBusy className="h-4 w-4" aria-hidden />
                 Fin de bail
@@ -352,7 +352,7 @@ export function RentalLeaseDetail({
               <button
                 type="button"
                 onClick={onDelete}
-                className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-red-600/40 px-3 text-xs font-bold text-red-600"
+                className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-lg border border-red-600/40 px-3 text-xs font-bold text-red-600"
               >
                 <MdDelete className="h-4 w-4" aria-hidden />
                 Supprimer
@@ -375,7 +375,7 @@ function MiniStat({
   tone?: "default" | "danger" | "success" | "info";
 }) {
   return (
-    <div className="rounded-xl bg-black/[0.03] px-2.5 py-2 dark:bg-white/[0.05]">
+    <div className="rounded-lg bg-black/[0.03] px-2.5 py-2 dark:bg-white/[0.05]">
       <p className="truncate text-[10px] font-medium text-neutral-500">{label}</p>
       <p
         className={cn(

@@ -132,7 +132,7 @@ export function CreateStoreModal({
         onClick={onClose}
       />
       <div
-        className="relative z-10 flex max-h-[min(92dvh,720px)] w-full max-w-lg flex-col rounded-t-2xl border border-black/[0.08] bg-fs-card shadow-xl min-[500px]:rounded-2xl"
+        className="relative z-10 flex max-h-[min(92dvh,720px)] w-full max-w-lg flex-col rounded-t-xl border border-black/[0.08] bg-fs-card shadow-xl min-[500px]:rounded-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-black/[0.06] px-4 py-3">
@@ -208,7 +208,7 @@ export function CreateStoreModal({
           </label>
 
           {/* Choix du catalogue produits */}
-          <fieldset className="rounded-xl border border-black/[0.08] p-3">
+          <fieldset className="rounded-lg border border-black/[0.08] p-3">
             <legend className="px-1 text-xs font-semibold text-neutral-700">
               Produits vendus
             </legend>
@@ -298,7 +298,7 @@ export function CreateStoreModal({
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 rounded-xl border border-black/[0.1] py-3 text-sm font-semibold"
+            className="flex-1 rounded-lg border border-black/[0.1] py-3 text-sm font-semibold"
           >
             Annuler
           </button>
@@ -306,7 +306,7 @@ export function CreateStoreModal({
             type="button"
             disabled={loading}
             onClick={() => void submit()}
-            className="flex-1 rounded-xl bg-[#F97316] py-3 text-sm font-semibold text-white disabled:opacity-60"
+            className="flex-1 rounded-lg bg-[#F97316] py-3 text-sm font-semibold text-white disabled:opacity-60"
           >
             {loading ? "Création…" : "Créer"}
           </button>
@@ -422,7 +422,7 @@ export function EditStoreModal({
         onClick={onClose}
       />
       <div
-        className="relative z-10 flex max-h-[min(92dvh,760px)] w-full max-w-lg flex-col rounded-t-2xl border border-black/[0.08] bg-fs-card shadow-xl min-[500px]:rounded-2xl"
+        className="relative z-10 flex max-h-[min(92dvh,760px)] w-full max-w-lg flex-col rounded-t-xl border border-black/[0.08] bg-fs-card shadow-xl min-[500px]:rounded-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-black/[0.06] px-4 py-3">
@@ -444,7 +444,7 @@ export function EditStoreModal({
 
           {/* Logo */}
           <div className="flex gap-3">
-            <div className="h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-black/10 bg-neutral-100">
+            <div className="h-20 w-20 shrink-0 overflow-hidden rounded-lg border border-black/10 bg-neutral-100">
               {logoPreviewUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={logoPreviewUrl} alt="" className="h-full w-full object-cover" />
@@ -544,7 +544,7 @@ export function EditStoreModal({
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 rounded-xl border border-black/[0.1] py-3 text-sm font-semibold"
+            className="flex-1 rounded-lg border border-black/[0.1] py-3 text-sm font-semibold"
           >
             Annuler
           </button>
@@ -552,7 +552,7 @@ export function EditStoreModal({
             type="button"
             disabled={loading}
             onClick={() => void submit()}
-            className="flex-1 rounded-xl bg-[#F97316] py-3 text-sm font-semibold text-white disabled:opacity-60"
+            className="flex-1 rounded-lg bg-[#F97316] py-3 text-sm font-semibold text-white disabled:opacity-60"
           >
             {loading ? "Enregistrement…" : "Enregistrer"}
           </button>

@@ -56,7 +56,7 @@ export function FsPager({
   const range = rowsOnPage > 0 ? `${itemLabel} ${start} – ${end}` : "Aucune ligne";
 
   return (
-    <FsCard padding="p-3" className={cn("mt-3 rounded-[10px] sm:rounded-[10px]", className)}>
+    <FsCard padding="p-3" className={cn("mt-3 rounded-[8px] sm:rounded-[8px]", className)}>
       <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
         <span className="hidden text-xs text-neutral-600 sm:mr-2 sm:inline">{range}</span>
         <button

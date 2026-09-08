@@ -130,7 +130,7 @@ export function SelectBusinessTypeScreen() {
 
   return (
     <div className="mx-auto w-full max-w-5xl">
-      <div className="rounded-[26px] border border-neutral-200/80 bg-white p-4 shadow-[0_10px_40px_rgba(0,0,0,0.07)] sm:p-6 dark:border-white/10 dark:bg-fs-surface-low/80">
+      <div className="rounded-[22px] border border-neutral-200/80 bg-white p-4 shadow-[0_10px_40px_rgba(0,0,0,0.07)] sm:p-6 dark:border-white/10 dark:bg-fs-surface-low/80">
         {/* En-tête : retour + progression */}
         <div className="flex items-center justify-between gap-3">
           <Link
@@ -204,7 +204,7 @@ export function SelectBusinessTypeScreen() {
               enterKeyHint="search"
               aria-label="Rechercher une activité"
               placeholder="Rechercher : pharmacie, maquis, pièces moto…"
-              className="fs-touch-target h-12 w-full rounded-xl border border-black/[0.09] bg-fs-surface-container/60 pl-11 pr-11 text-[15px] text-fs-text outline-none transition-colors placeholder:text-neutral-400 focus:border-fs-accent/60 focus:bg-fs-card focus:ring-2 focus:ring-fs-accent/20 dark:border-white/10"
+              className="fs-touch-target h-12 w-full rounded-lg border border-black/[0.09] bg-fs-surface-container/60 pl-11 pr-11 text-[15px] text-fs-text outline-none transition-colors placeholder:text-neutral-400 focus:border-fs-accent/60 focus:bg-fs-card focus:ring-2 focus:ring-fs-accent/20 dark:border-white/10"
             />
             {query ? (
               <button
@@ -285,7 +285,7 @@ export function SelectBusinessTypeScreen() {
           ))}
 
           {showEmptyState ? (
-            <div className="flex flex-col items-center rounded-2xl border border-dashed border-black/10 bg-fs-surface-container/40 px-4 py-8 text-center dark:border-white/15">
+            <div className="flex flex-col items-center rounded-xl border border-dashed border-black/10 bg-fs-surface-container/40 px-4 py-8 text-center dark:border-white/15">
               <SearchX className="h-8 w-8 text-neutral-400" strokeWidth={1.5} aria-hidden />
               <p className="mt-3 text-[15px] font-semibold text-fs-text">
                 Aucune activité ne correspond à « {trimmedQuery} »
@@ -297,7 +297,7 @@ export function SelectBusinessTypeScreen() {
               <button
                 type="button"
                 onClick={resetFilters}
-                className="fs-touch-target mt-4 rounded-xl border border-black/10 bg-fs-card px-4 py-2 text-sm font-semibold text-fs-text transition-colors hover:border-fs-accent/40 hover:text-fs-accent dark:border-white/15"
+                className="fs-touch-target mt-4 rounded-lg border border-black/10 bg-fs-card px-4 py-2 text-sm font-semibold text-fs-text transition-colors hover:border-fs-accent/40 hover:text-fs-accent dark:border-white/15"
               >
                 Effacer la recherche
               </button>

@@ -69,7 +69,7 @@ export function ForgotPasswordForm() {
   if (sent) {
     return (
       <div className="w-full">
-        <div className="rounded-2xl border border-neutral-200/80 bg-white p-5 shadow-[0_8px_32px_rgba(0,0,0,0.06)] sm:p-6">
+        <div className="rounded-xl border border-neutral-200/80 bg-white p-5 shadow-[0_8px_32px_rgba(0,0,0,0.06)] sm:p-6">
           <div className="flex flex-col items-center text-center">
             <Image
               src="/fs.png"
@@ -93,7 +93,7 @@ export function ForgotPasswordForm() {
           </div>
 
           <div className="mt-6 flex flex-col items-center">
-            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-fs-accent/10">
+            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-fs-accent/10">
               <Mail
                 className="h-7 w-7 text-fs-accent"
                 strokeWidth={1.75}
@@ -127,7 +127,7 @@ export function ForgotPasswordForm() {
 
   return (
     <div className="w-full">
-      <div className="rounded-2xl border border-neutral-200/80 bg-white p-5 shadow-[0_8px_32px_rgba(0,0,0,0.06)] sm:p-6">
+      <div className="rounded-xl border border-neutral-200/80 bg-white p-5 shadow-[0_8px_32px_rgba(0,0,0,0.06)] sm:p-6">
         <div className="mb-3 text-center">
           <Link
             href={ROUTES.login}

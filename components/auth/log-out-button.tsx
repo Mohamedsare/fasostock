@@ -26,7 +26,7 @@ export function LogOutButton({ className }: { className?: string }) {
       onClick={() => void logout()}
       disabled={loading}
       className={cn(
-        "fs-touch-target rounded-xl border border-black/[0.1] bg-fs-card px-5 py-3 text-sm font-semibold text-neutral-800 shadow-sm",
+        "fs-touch-target rounded-lg border border-black/[0.1] bg-fs-card px-5 py-3 text-sm font-semibold text-neutral-800 shadow-sm",
         className,
       )}
     >

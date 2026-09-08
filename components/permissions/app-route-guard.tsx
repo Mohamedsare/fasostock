@@ -178,7 +178,7 @@ export function AppRouteGuard({ children }: { children: ReactNode }) {
           type="button"
           disabled={busy}
           onClick={() => void onRetry()}
-          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-fs-accent px-5 py-2.5 text-sm font-semibold text-white shadow-sm disabled:opacity-60"
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-fs-accent px-5 py-2.5 text-sm font-semibold text-white shadow-sm disabled:opacity-60"
         >
           <MdRefresh
             className={`h-5 w-5 shrink-0 ${busy ? "animate-spin" : ""}`}
@@ -214,7 +214,7 @@ export function AppRouteGuard({ children }: { children: ReactNode }) {
           type="button"
           disabled={signOutBusy}
           onClick={() => void onSignOut()}
-          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-fs-accent px-5 py-2.5 text-sm font-semibold text-white shadow-sm disabled:opacity-60"
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-fs-accent px-5 py-2.5 text-sm font-semibold text-white shadow-sm disabled:opacity-60"
         >
           Se reconnecter
         </button>

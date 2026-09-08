@@ -106,7 +106,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       >
         <div
           className={cn(
-            "pointer-events-auto flex w-full max-w-lg items-start gap-3 rounded-xl px-4 py-3.5 text-white shadow-2xl transition-[opacity,transform] duration-200 ease-out",
+            "pointer-events-auto flex w-full max-w-lg items-start gap-3 rounded-lg px-4 py-3.5 text-white shadow-2xl transition-[opacity,transform] duration-200 ease-out",
             visible ? "translate-y-0 opacity-100" : "-translate-y-2 opacity-0",
           )}
           style={{ backgroundColor: bg }}

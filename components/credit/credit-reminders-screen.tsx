@@ -384,7 +384,7 @@ export function CreditRemindersScreen() {
           que l'effet se voit dans la liste juste en dessous, dans la seconde.
         */}
         {isOwner && settingsOpen ? (
-          <div className="mt-3 space-y-3 rounded-[10px] border border-black/[0.08] bg-fs-surface px-3 py-3">
+          <div className="mt-3 space-y-3 rounded-[8px] border border-black/[0.08] bg-fs-surface px-3 py-3">
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
                 <label

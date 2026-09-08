@@ -182,7 +182,7 @@ export function EngineCollectPaymentDialog({
           if (!busy) onClose();
         }}
       />
-      <div className="relative z-10 w-full max-w-md rounded-t-2xl border border-black/10 bg-fs-card p-4 shadow-2xl sm:rounded-2xl dark:border-white/10">
+      <div className="relative z-10 w-full max-w-md rounded-t-xl border border-black/10 bg-fs-card p-4 shadow-2xl sm:rounded-xl dark:border-white/10">
         <h3 className="text-lg font-bold text-fs-text">Encaisser un paiement</h3>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <span className="text-sm text-neutral-600">{target.saleNumber}</span>
@@ -262,7 +262,7 @@ export function EngineCollectPaymentDialog({
               if (!busy) onClose();
             }}
             disabled={busy}
-            className="flex-1 rounded-xl border border-black/10 py-2.5 text-sm font-semibold disabled:opacity-50 dark:border-white/15"
+            className="flex-1 rounded-lg border border-black/10 py-2.5 text-sm font-semibold disabled:opacity-50 dark:border-white/15"
           >
             Annuler
           </button>
@@ -271,7 +271,7 @@ export function EngineCollectPaymentDialog({
             disabled={busy || !canSubmit}
             onClick={submit}
             className={cn(
-              "flex-1 rounded-xl bg-fs-accent py-2.5 text-sm font-bold text-white",
+              "flex-1 rounded-lg bg-fs-accent py-2.5 text-sm font-bold text-white",
               "disabled:opacity-50",
             )}
           >

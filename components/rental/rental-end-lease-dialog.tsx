@@ -68,7 +68,7 @@ export function RentalEndLeaseDialog({
       }
     >
       {lease.balance > 0.5 ? (
-        <div className="rounded-xl bg-red-500/10 p-3">
+        <div className="rounded-lg bg-red-500/10 p-3">
           <p className="text-sm font-bold text-red-700 dark:text-red-300">
             {formatCurrency(lease.balance)} restent impayés
           </p>
@@ -80,7 +80,7 @@ export function RentalEndLeaseDialog({
       ) : null}
 
       {lease.depositPaid > 0.5 ? (
-        <div className="rounded-xl bg-sky-500/10 p-3">
+        <div className="rounded-lg bg-sky-500/10 p-3">
           <p className="text-sm font-bold text-sky-700 dark:text-sky-300">
             Caution détenue : {formatCurrency(lease.depositPaid)}
           </p>
