@@ -314,15 +314,15 @@ export function DashboardScreen() {
         {dashQ.isPending && !dashQ.data ? (
           <div className="flex flex-1 flex-col gap-3 py-8" aria-busy="true" aria-label="Chargement du tableau de bord">
             <div className="h-9 w-9 animate-spin rounded-full border-2 border-[#FF6B35] border-t-transparent" />
-            <div className="h-40 w-full animate-pulse rounded-[14px] bg-neutral-200/80" />
+            <div className="h-40 w-full animate-pulse rounded-[10px] bg-neutral-200/80" />
             <div className="grid grid-cols-2 gap-2 min-[700px]:grid-cols-4">
               {Array.from({ length: 8 }).map((_, i) => (
-                <div key={i} className="h-28 animate-pulse rounded-[14px] bg-neutral-200/70" />
+                <div key={i} className="h-28 animate-pulse rounded-[10px] bg-neutral-200/70" />
               ))}
             </div>
           </div>
         ) : dashQ.isError ? (
-          <div className="mt-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+          <div className="mt-3 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
             {(dashQ.error as Error)?.message ?? "Impossible de charger le tableau de bord."}
           </div>
         ) : dashQ.data ? (
@@ -384,7 +384,7 @@ export function DashboardScreen() {
 
       <section
         id="dashboard-vue-periode"
-        className="rounded-xl border border-black/[0.06] bg-fs-card p-3 shadow-sm sm:rounded-2xl sm:p-4"
+        className="rounded-lg border border-black/[0.06] bg-fs-card p-3 shadow-sm sm:rounded-xl sm:p-4"
       >
         <FsSectionLabel>Vue & période</FsSectionLabel>
         <p className="mt-1 text-[11px] leading-snug text-neutral-500 sm:text-xs">
@@ -399,7 +399,7 @@ export function DashboardScreen() {
                 setScope("company");
               }}
               className={cn(
-                "inline-flex min-h-10 items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-semibold transition-colors",
+                "inline-flex min-h-10 items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-semibold transition-colors",
                 scope === "company"
                   ? "border-fs-accent/40 bg-[color-mix(in_srgb,var(--fs-accent)_18%,transparent)] text-[var(--fs-accent)]"
                   : "border-black/[0.08] bg-fs-surface text-neutral-800",
@@ -425,7 +425,7 @@ export function DashboardScreen() {
                   if (id) syncGlobalStoreFromDashboard(id);
                 }}
                 className={cn(
-                  "inline-flex min-h-10 items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-semibold transition-colors",
+                  "inline-flex min-h-10 items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-semibold transition-colors",
                   scope === "store"
                     ? "border-fs-accent/40 bg-[color-mix(in_srgb,var(--fs-accent)_18%,transparent)] text-[var(--fs-accent)]"
                     : "border-black/[0.08] bg-fs-surface text-neutral-800",
@@ -445,7 +445,7 @@ export function DashboardScreen() {
                 type="button"
                 disabled
                 title={`Aucune ${terms.storeSingular.toLowerCase()} enregistrée. Créez une ${terms.storeSingular.toLowerCase()} dans le menu ${terms.storesPlural}.`}
-                className="inline-flex min-h-10 cursor-not-allowed items-center gap-1.5 rounded-lg border border-black/[0.06] bg-neutral-100 px-3 py-1.5 text-sm font-semibold text-neutral-400"
+                className="inline-flex min-h-10 cursor-not-allowed items-center gap-1.5 rounded-md border border-black/[0.06] bg-neutral-100 px-3 py-1.5 text-sm font-semibold text-neutral-400"
               >
                 <MdStore className="h-[18px] w-[18px] text-neutral-400" aria-hidden />
                 {terms.storeSingular}
@@ -461,7 +461,7 @@ export function DashboardScreen() {
                     setDashboardStoreId(id);
                     if (id) syncGlobalStoreFromDashboard(id);
                   }}
-                  className="w-full min-w-0 rounded-lg border border-black/[0.12] bg-fs-card px-2 py-2 text-sm"
+                  className="w-full min-w-0 rounded-md border border-black/[0.12] bg-fs-card px-2 py-2 text-sm"
                 >
                   {stores.map((s) => (
                     <option key={s.id} value={s.id}>
@@ -485,7 +485,7 @@ export function DashboardScreen() {
                 type="button"
                 onClick={() => setPeriod(p)}
                 className={cn(
-                  "min-h-10 rounded-lg px-3 py-1.5 text-sm font-semibold",
+                  "min-h-10 rounded-md px-3 py-1.5 text-sm font-semibold",
                   period === p
                     ? "bg-[color-mix(in_srgb,var(--fs-accent)_18%,transparent)] text-[var(--fs-accent)]"
                     : "bg-fs-surface text-neutral-700",
@@ -503,13 +503,13 @@ export function DashboardScreen() {
           <div className="h-9 w-9 animate-spin rounded-full border-2 border-fs-accent border-t-transparent" />
         </div>
       ) : dashQ.isError ? (
-        <div className="mt-3 min-[900px]:mt-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+        <div className="mt-3 min-[900px]:mt-5 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
           {(dashQ.error as Error)?.message ?? "Impossible de charger le tableau de bord."}
         </div>
       ) : d ? (
         <>
           {/* Stats du jour */}
-          <section className="mt-3 min-[900px]:mt-5 rounded-xl border-2 border-[color-mix(in_srgb,var(--fs-accent)_35%,transparent)] bg-fs-card shadow-sm">
+          <section className="mt-3 min-[900px]:mt-5 rounded-lg border-2 border-[color-mix(in_srgb,var(--fs-accent)_35%,transparent)] bg-fs-card shadow-sm">
             <div className="border-b border-black/[0.06] p-3 min-[600px]:px-5 min-[600px]:py-3">
               <div className="flex flex-col gap-3 min-[380px]:flex-row min-[380px]:items-center min-[380px]:justify-between">
                 <div className="flex items-center gap-2">
@@ -524,14 +524,14 @@ export function DashboardScreen() {
                     value={selectedDay}
                     max={operationTodayYmd()}
                     onChange={(e) => setSelectedDay(e.target.value)}
-                    className="min-w-0 flex-1 rounded-lg border border-black/[0.12] px-2 py-2 text-sm"
+                    className="min-w-0 flex-1 rounded-md border border-black/[0.12] px-2 py-2 text-sm"
                   />
                   <button
                     type="button"
                     onClick={() =>
                       setSelectedDay(operationTodayYmd())
                     }
-                    className="shrink-0 rounded-lg border border-black/[0.1] px-3 py-2 text-sm font-medium text-[var(--fs-accent)]"
+                    className="shrink-0 rounded-md border border-black/[0.1] px-3 py-2 text-sm font-medium text-[var(--fs-accent)]"
                   >
                     Aujourd&apos;hui
                   </button>
@@ -724,7 +724,7 @@ function DayStat({
   return (
     <div
       className={cn(
-        "rounded-lg bg-neutral-100/80 px-3 py-2.5 min-[600px]:px-3 min-[600px]:py-3",
+        "rounded-md bg-neutral-100/80 px-3 py-2.5 min-[600px]:px-3 min-[600px]:py-3",
         className,
       )}
     >
@@ -765,7 +765,7 @@ function KpiCard({
           {label}
         </span>
         <span
-          className="rounded-lg p-1.5 min-[600px]:p-2"
+          className="rounded-md p-1.5 min-[600px]:p-2"
           style={{ backgroundColor: `${color}1f`, color }}
         >
           <Icon className="h-5 w-5" aria-hidden />
@@ -793,7 +793,7 @@ function KpiCard({
       <Link
         href={inventoryLink}
         className={cn(
-          "block rounded-xl border bg-fs-card p-3 shadow-sm min-[600px]:p-4",
+          "block rounded-lg border bg-fs-card p-3 shadow-sm min-[600px]:p-4",
           accent
             ? "border-[color-mix(in_srgb,var(--fs-accent)_40%,transparent)]"
             : "border-black/[0.06]",
@@ -807,7 +807,7 @@ function KpiCard({
   return (
     <div
       className={cn(
-        "rounded-xl border bg-fs-card p-3 shadow-sm min-[600px]:p-4",
+        "rounded-lg border bg-fs-card p-3 shadow-sm min-[600px]:p-4",
         accent
           ? "border-[color-mix(in_srgb,var(--fs-accent)_40%,transparent)]"
           : "border-black/[0.06]",
@@ -834,7 +834,7 @@ function ChartCard({
   return (
     <section
       className={cn(
-        "rounded-xl border border-black/[0.06] bg-fs-card shadow-sm",
+        "rounded-lg border border-black/[0.06] bg-fs-card shadow-sm",
         className,
       )}
     >
@@ -881,7 +881,7 @@ function TopProductsList({
         >
           <span
             className={cn(
-              "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold",
+              "flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-xs font-bold",
               i < 3
                 ? "bg-[color-mix(in_srgb,var(--fs-accent)_20%,transparent)] text-[var(--fs-accent)]"
                 : "bg-neutral-100 text-neutral-600",
@@ -968,7 +968,7 @@ function Shortcuts({
   return (
     <section
       className={cn(
-        "shrink-0 rounded-xl border border-black/[0.06] bg-fs-card p-3 shadow-sm min-[900px]:p-4",
+        "shrink-0 rounded-lg border border-black/[0.06] bg-fs-card p-3 shadow-sm min-[900px]:p-4",
         className,
       )}
     >
@@ -978,10 +978,10 @@ function Shortcuts({
           <Link
             key={t.label}
             href={t.href}
-            className="flex min-h-[52px] items-center gap-3 rounded-xl border border-black/[0.08] px-3 py-2.5 transition-colors active:bg-neutral-50"
+            className="flex min-h-[52px] items-center gap-3 rounded-lg border border-black/[0.08] px-3 py-2.5 transition-colors active:bg-neutral-50"
           >
             <span
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md"
               style={{ backgroundColor: `${t.color}1f`, color: t.color }}
             >
               <t.icon className="h-5 w-5" aria-hidden />

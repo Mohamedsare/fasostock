@@ -49,7 +49,7 @@ export function PharmacyExpiryCard({
     !!summary && (summary.expiredCount > 0 || summary.expiringSoonCount > 0);
 
   return (
-    <section className="mb-3 rounded-xl border border-black/[0.06] bg-fs-card p-3 shadow-sm sm:rounded-2xl sm:p-4 min-[900px]:mb-5">
+    <section className="mb-3 rounded-lg border border-black/[0.06] bg-fs-card p-3 shadow-sm sm:rounded-xl sm:p-4 min-[900px]:mb-5">
       <div className="flex items-center justify-between gap-2">
         <h2 className="flex items-center gap-1.5 text-sm font-bold text-fs-text">
           <MdEventBusy className="h-5 w-5 text-fs-accent" aria-hidden />
@@ -96,7 +96,7 @@ export function PharmacyExpiryCard({
                 return (
                   <li
                     key={`${it.productId}-${i}`}
-                    className="flex items-center gap-2 rounded-lg bg-fs-surface-container px-2.5 py-1.5"
+                    className="flex items-center gap-2 rounded-md bg-fs-surface-container px-2.5 py-1.5"
                   >
                     <MdWarningAmber
                       className={cn(
@@ -113,7 +113,7 @@ export function PharmacyExpiryCard({
                     </span>
                     <span
                       className={cn(
-                        "shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold",
+                        "shrink-0 rounded-sm px-1.5 py-0.5 text-[10px] font-semibold",
                         tone,
                       )}
                     >
@@ -144,7 +144,7 @@ function StatTile({
   return (
     <div
       className={cn(
-        "rounded-lg border p-2.5",
+        "rounded-md border p-2.5",
         tone === "red"
           ? "border-red-200 bg-red-50"
           : "border-amber-200 bg-amber-50",

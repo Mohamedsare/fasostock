@@ -162,7 +162,7 @@ export function DashboardBarChart({ data }: { data: SalesByDay[] }) {
               title={`${d.date}: ${formatCurrency(v)}`}
             >
               <div
-                className="w-full rounded-t-md transition-[height]"
+                className="w-full rounded-t-sm transition-[height]"
                 style={{
                   height: `${hPx}px`,
                   backgroundColor: BAR_COLOR,
@@ -472,7 +472,7 @@ export function DashboardLineChart({ data }: { data: SalesByDay[] }) {
       {hoverIdx !== null && pts[hoverIdx] ? (
         <div
           role="tooltip"
-          className="pointer-events-none fixed z-50 w-[220px] rounded-lg border border-black/8 bg-white/95 px-3 py-2 text-xs shadow-lg backdrop-blur-sm dark:border-white/10 dark:bg-neutral-900/95"
+          className="pointer-events-none fixed z-50 w-[220px] rounded-md border border-black/8 bg-white/95 px-3 py-2 text-xs shadow-lg backdrop-blur-sm dark:border-white/10 dark:bg-neutral-900/95"
           style={tooltipStyle}
         >
           <p className="font-semibold text-neutral-800 dark:text-neutral-100">
@@ -654,7 +654,7 @@ export function DashboardPieChart({
 
       <ul
         className={cn(
-          "space-y-1 rounded-xl border border-black/6 bg-fs-surface-low/60 p-2 min-[900px]:space-y-1.5 dark:border-white/8 dark:bg-white/[0.04]",
+          "space-y-1 rounded-lg border border-black/6 bg-fs-surface-low/60 p-2 min-[900px]:space-y-1.5 dark:border-white/8 dark:bg-white/[0.04]",
           // Zone AU FIL de la page : pas de `overscroll-contain`, sinon le geste
           // vertical resterait piégé dans la légende une fois arrivé en bout.
           segments.length > legendMax &&
@@ -668,7 +668,7 @@ export function DashboardPieChart({
               <div
                 role="presentation"
                 className={cn(
-                  "flex w-full cursor-default items-center gap-2.5 rounded-lg px-2 py-2 text-left text-xs transition-colors min-[900px]:text-sm",
+                  "flex w-full cursor-default items-center gap-2.5 rounded-md px-2 py-2 text-left text-xs transition-colors min-[900px]:text-sm",
                   active
                     ? "bg-fs-accent/12 ring-1 ring-fs-accent/25"
                     : "hover:bg-black/[0.04] dark:hover:bg-white/[0.06]",
@@ -676,7 +676,7 @@ export function DashboardPieChart({
                 onMouseEnter={() => setHoverIdx(i)}
               >
                 <span
-                  className="h-3 w-3 shrink-0 rounded-sm shadow-sm ring-1 ring-black/10 dark:ring-white/15"
+                  className="h-3 w-3 shrink-0 rounded-xs shadow-sm ring-1 ring-black/10 dark:ring-white/15"
                   style={{ backgroundColor: seg.color }}
                   aria-hidden
                 />
