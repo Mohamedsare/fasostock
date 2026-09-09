@@ -285,6 +285,12 @@ export function SettingsScreen() {
   const stores = ctxQ.data?.stores ?? [];
   const ctxStoreId = ctxQ.data?.storeId ?? null;
   const isOwner = ctxQ.data?.roleSlug === "owner";
+  /*
+   * Restaurant : on ne demande pas son nom à quelqu'un qui commande un plat. Le
+   * sélecteur de client est donc masqué d'office en caisse rapide, et ce réglage-ci
+   * sert à le rouvrir — l'inverse exact des autres métiers.
+   */
+  const isRestaurantCompany = ctxQ.data?.businessTypeSlug === "restaurant-fast-food";
   const canSettings = hasPermission(P.settingsManage);
 
   const [themePref, setThemePref] = useState<FsThemePref>(() =>
@@ -2804,6 +2810,39 @@ export function SettingsScreen() {
                 />
               </label>
 
+              {isRestaurantCompany ? (
+                <label
+                  className={cn(
+                    "flex cursor-pointer items-start justify-between gap-3 px-3 py-3 sm:px-4",
+                    quickPaymentsMut.isPending && "pointer-events-none opacity-60",
+                  )}
+                >
+                  <span className="min-w-0">
+                    <span className="block text-sm font-medium text-fs-text">
+                      Afficher le client en caisse rapide
+                    </span>
+                    <span className="mt-0.5 block text-xs text-neutral-600">
+                      {quickPayments.showCustomer
+                        ? "Le sélecteur de client revient dans le panier des commandes."
+                        : "Masqué : on ne demande pas son nom à un client qui commande un plat. La vente à crédit continue de l'exiger."}
+                    </span>
+                  </span>
+                  <input
+                    type="checkbox"
+                    role="switch"
+                    className="mt-1 h-5 w-9 shrink-0 cursor-pointer accent-fs-accent"
+                    checked={quickPayments.showCustomer}
+                    disabled={quickPaymentsMut.isPending}
+                    onChange={(e) => {
+                      void quickPaymentsMut.mutateAsync({
+                        ...quickPayments,
+                        showCustomer: e.target.checked,
+                      });
+                    }}
+                  />
+                </label>
+              ) : null}
+
               {quickPayments.enabled ? (
                 <>
                   <div
@@ -2906,10 +2945,13 @@ export function SettingsScreen() {
                     />
                   </label>
 
+                  {/* Sans objet en restaurant : là-bas le client est déjà masqué
+                      d'office, c'est « Afficher le client » ci-dessus qui décide. */}
                   <label
                     className={cn(
                       "flex cursor-pointer items-start justify-between gap-3 px-3 py-3 sm:px-4",
                       quickPaymentsMut.isPending && "pointer-events-none opacity-60",
+                      isRestaurantCompany && "hidden",
                     )}
                   >
                     <span className="min-w-0">

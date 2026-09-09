@@ -12,23 +12,39 @@ production sans son schéma, et l'erreur ne se voit qu'à l'exécution.
 Avant de créer une migration : `ls supabase/migrations | tail -1`, puis prendre le numéro
 suivant.
 
-## Doublons historiques
+## Doublons historiques — RÉSOLUS le 08/09/2026
 
-Quatre collisions subsistent, antérieures à cette règle :
+Quatre collisions subsistaient, antérieures à cette règle :
 
-| Numéro  | Fichiers |
-| ------- | -------- |
-| `00031` | `fix_register_profile_is_active`, `register_profile_is_active` |
-| `00088` | `company_saas_feature_flags`, `legacy_customer_credits` |
-| `00089` | `barcodes_manage_permission`, `public_partners` |
-| `00167` | `product_locations`, `storage_upload_scoping_fix` |
+| Numéro  | Fichiers | Fichier renuméroté |
+| ------- | -------- | ------------------ |
+| `00031` | `fix_register_profile_is_active`, `register_profile_is_active` | → `00222` |
+| `00088` | `company_saas_feature_flags`, `legacy_customer_credits` | → `00223` |
+| `00089` | `barcodes_manage_permission`, `public_partners` | → `00224` |
+| `00167` | `product_locations`, `storage_upload_scoping_fix` | → `00225` |
 
-**Elles sont laissées telles quelles, volontairement.** Les huit fichiers sont appliqués
-en production (leurs fonctionnalités tournent), et plusieurs contiennent des instructions
-non idempotentes — `CREATE TABLE`, `CREATE POLICY`, `ALTER TABLE … ADD COLUMN` sans
-`IF NOT EXISTS`. Les renuméroter les ferait passer pour de nouvelles migrations au
-prochain `db push` et déclencherait une réexécution destructrice. Le risque du correctif
-dépasse celui du défaut.
+Elles bloquaient `supabase db push`, qui refusait de démarrer tant que deux fichiers se
+disputaient une version. Le second fichier de chaque paire a donc été renuméroté en
+`00222`–`00225`, **puis immédiatement marqué appliqué** :
+
+```
+supabase migration repair --status applied 00222 00223 00224 00225
+```
+
+**Ce geste n'est devenu sûr qu'après l'amorçage du registre** (section suivante). Avant
+lui, renuméroter aurait fait passer ces fichiers pour de nouvelles migrations et
+déclenché une réexécution destructrice — plusieurs contiennent des instructions non
+idempotentes (`CREATE TABLE`, `CREATE POLICY`, `ALTER TABLE … ADD COLUMN` sans
+`IF NOT EXISTS`). Le registre l'empêche désormais : les quatre versions sont connues
+comme appliquées, elles ne seront jamais rejouées.
+
+Les nouveaux numéros sont **plus élevés que le code qu'ils contiennent n'est ancien**.
+C'est sans conséquence : ces quatre versions ne se rejouent plus jamais. Une base
+reconstruite depuis zéro part de `supabase/database.sql`, pas du dossier de migrations.
+
+`00194` reste un trou libre, hérité de la renumérotation `00194 → 00197` décrite plus
+bas. Ne pas le combler : un numéro libre au milieu de la série ne gêne personne, un
+numéro réutilisé fait exactement le dégât que ce document cherche à éviter.
 
 `00182_engine_verify_payment_details.sql` était la cinquième collision. Elle a été
 renumérotée en `00186` car elle est entièrement idempotente : qu'elle ait déjà été

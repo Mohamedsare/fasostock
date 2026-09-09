@@ -1,36 +1,13 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import { FsCard, FsPage, FsScreenHeader } from "@/components/ui/fs-screen-primitives";
-
-type Params = { slug?: string[] };
-
-function toTitleCase(v: string): string {
-  return v
-    .split("-")
-    .filter(Boolean)
-    .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
-    .join(" ");
-}
-
-export default function RestaurantPlaceholderPage({
-  params,
-}: {
-  params: Params;
-}) {
-  const slug = params.slug ?? [];
-  const label = slug.length > 0 ? slug.map(toTitleCase).join(" / ") : "Restaurant";
-
-  return (
-    <FsPage>
-      <FsScreenHeader
-        title={label}
-        subtitle="Ecran restaurant en cours de conception (UI/UX et logique metier)."
-      />
-      <FsCard padding="p-5">
-        <p className="text-sm text-neutral-700">
-          Cette page sera livree dans les prochaines etapes de l&apos;adaptation restaurant.
-        </p>
-      </FsCard>
-    </FsPage>
-  );
+/**
+ * Filet de sécurité pour les anciens liens.
+ *
+ * Toutes les entrées du menu restaurant ont désormais leur page. Ce qui atterrit
+ * ici vient donc d'un favori pris pendant la phase de conception, ou d'un lien
+ * partagé entre deux téléphones du comptoir. Plutôt qu'un écran « en construction »
+ * qui laisse le serveur bloqué en plein service, on le ramène sur le plan de salle.
+ */
+export default function RestaurantUnknownRoutePage() {
+  redirect("/restaurant/salle/plan");
 }

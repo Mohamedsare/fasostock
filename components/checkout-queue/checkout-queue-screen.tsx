@@ -66,6 +66,7 @@ import type { ReceiptTicketData } from "@/lib/features/receipt/receipt-ticket-ty
 import {
   effectiveQuickPosProviders,
   fetchQuickPosPayments,
+  quickPosCustomerHidden,
   QUICK_POS_PAYMENTS_DEFAULT,
 } from "@/lib/features/settings/quick-pos-payments";
 import { fetchQuickPosCreditEnabled } from "@/lib/features/settings/quick-pos-credit";
@@ -905,7 +906,11 @@ export function CheckoutQueueScreen() {
           allowCard={!(paySettings.enabled && paySettings.hideCard)}
           allowSplit={paySettings.enabled && paySettings.splitEnabled}
           allowCredit={creditEnabledQ.data === true}
-          hideCustomer={paySettings.enabled && paySettings.hideCustomer}
+          hideCustomer={quickPosCustomerHidden({
+            settings: paySettings,
+            isRestaurant: ctx.data?.businessTypeSlug === "restaurant-fast-food",
+            requireCustomer: customerPolicy.requireCustomer,
+          })}
           requireCustomer={customerPolicy.requireCustomer}
           busy={checkoutMut.isPending}
           onClose={() => {

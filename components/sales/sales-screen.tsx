@@ -152,11 +152,23 @@ function isA4Invoice(s: SaleItem): boolean {
   return false;
 }
 
-/** Aligné sur Flutter `sale_pos_edit.dart` / `AppRoutes.pos` vs `pos-quick`. */
-function saleEditHref(storeId: string, sale: SaleItem): string {
-  const base = isA4Invoice(sale)
-    ? `${ROUTES.stores}/${storeId}/pos`
-    : `${ROUTES.stores}/${storeId}/pos-quick`;
+/**
+ * Aligné sur Flutter `sale_pos_edit.dart` / `AppRoutes.pos` vs `pos-quick`.
+ *
+ * `forceQuick` : en restaurant, la caisse rapide est la SEULE caisse. Une vieille
+ * commande enregistrée en A4 (avant le passage en restaurant) se rouvre donc en
+ * caisse rapide plutôt que d'ouvrir un écran que le personnel ne doit ni voir ni
+ * utiliser.
+ */
+function saleEditHref(
+  storeId: string,
+  sale: SaleItem,
+  forceQuick = false,
+): string {
+  const base =
+    isA4Invoice(sale) && !forceQuick
+      ? `${ROUTES.stores}/${storeId}/pos`
+      : `${ROUTES.stores}/${storeId}/pos-quick`;
   return `${base}?editSale=${encodeURIComponent(sale.id)}`;
 }
 
@@ -520,6 +532,15 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
     hasPermission(P.salesInvoiceA4Table) &&
     canPosInvoiceA4 &&
     invoiceTablePosEnabled;
+
+  /*
+   * Restaurant : une seule caisse, la caisse rapide. Le service enchaîne les
+   * commandes au ticket ; la facture A4 (et sa variante tableau) n'a pas sa place
+   * sur un écran de salle, alors on ne l'affiche pas et on n'y mène plus. Les
+   * permissions restent intactes — c'est le métier qui masque, pas un droit retiré.
+   */
+  const showInvoiceA4Card = canInvoiceA4 && !isRestaurant;
+  const showFactureTabCard = canFactureTab && !isRestaurant;
 
   /*
    * Suivi « payé, pas encore emporté » — ouvert par le propriétaire dans Paramètres,
@@ -945,7 +966,7 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
             : null
         }
       />
-      {canInvoiceA4 ? (
+      {showInvoiceA4Card ? (
         <ActionCard
           title="Facture A4"
           subtitle={
@@ -961,7 +982,7 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
           href={posStoreId ? `${ROUTES.stores}/${posStoreId}/pos` : null}
         />
       ) : null}
-      {canFactureTab ? (
+      {showFactureTabCard ? (
         <ActionCard
           title="Facture A4 (tableau)"
           subtitle={
@@ -1090,9 +1111,9 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
       <section
         className={cn(
           "grid grid-cols-2 gap-3 min-[600px]:gap-5",
-          canInvoiceA4 && canFactureTab
+          showInvoiceA4Card && showFactureTabCard
             ? "min-[600px]:grid-cols-2 min-[1100px]:grid-cols-4"
-            : canInvoiceA4 || canFactureTab
+            : showInvoiceA4Card || showFactureTabCard
               ? "min-[600px]:grid-cols-3"
               : "min-[600px]:grid-cols-2",
         )}
@@ -1540,7 +1561,7 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
                         ) : null}
                         {s.status === "completed" && canUpdateSale ? (
                           <Link
-                            href={saleEditHref(s.store_id, s)}
+                            href={saleEditHref(s.store_id, s, isRestaurant)}
                             className="mr-1 inline-flex min-h-10 min-w-10 items-center justify-center rounded-lg p-2 text-fs-accent"
                             aria-label="Modifier la vente"
                           >
@@ -1608,6 +1629,7 @@ export function SalesScreen({ preset = "default" }: { preset?: SalesPreset }) {
                   profitLoading={profitLoading}
                   canCancel={canCancelSale}
                   canEdit={canUpdateSale}
+                  forceQuickEdit={isRestaurant}
                   pickupEnabled={pickupTrackingEnabled}
                   canMarkDelivery={canMarkDelivery}
                   isOwner={isOwner}
@@ -1950,6 +1972,7 @@ function SaleCard({
   profitLoading,
   canCancel,
   canEdit,
+  forceQuickEdit,
   pickupEnabled,
   canMarkDelivery,
   isOwner,
@@ -1968,6 +1991,8 @@ function SaleCard({
   profitLoading: boolean;
   canCancel: boolean;
   canEdit: boolean;
+  /** Restaurant : rouvrir la commande en caisse rapide, jamais en facture A4. */
+  forceQuickEdit: boolean;
   /** Réglage entreprise « marchandise payée non emportée » ouvert. */
   pickupEnabled: boolean;
   canMarkDelivery: boolean;
@@ -1988,7 +2013,9 @@ function SaleCard({
     .join(" · ");
 
   const editHref =
-    sale.status === "completed" && canEdit ? saleEditHref(sale.store_id, sale) : null;
+    sale.status === "completed" && canEdit
+      ? saleEditHref(sale.store_id, sale, forceQuickEdit)
+      : null;
   const delivery = saleDelivery(sale);
 
   /*

@@ -85,6 +85,7 @@ import {
   effectiveQuickPosProviders,
   fetchQuickPosPayments,
   peekQuickPosPayments,
+  quickPosCustomerHidden,
   QUICK_POS_PAYMENTS_DEFAULT,
 } from "@/lib/features/settings/quick-pos-payments";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
@@ -106,7 +107,7 @@ import {
 import { readPosCartQtyUiForMode } from "@/lib/utils/pos-cart-settings";
 import { playPosAddBeep } from "@/lib/utils/pos-sound";
 import { ensureStringNumberMap } from "@/lib/utils/string-number-map";
-import { messageFromUnknownError, toast } from "@/lib/toast";
+import { messageFromUnknownError, toast, toastMutationError } from "@/lib/toast";
 import { formatCurrency, toNumber } from "@/lib/utils/currency";
 import { cn } from "@/lib/utils/cn";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -157,6 +158,7 @@ import {
   MdSearch,
   MdSend,
   MdStorefront,
+  MdLocalDining,
   MdSettings,
   MdStore,
   MdTableChart,
@@ -239,11 +241,22 @@ export function PosScreen({
   storeId,
   mode,
   editSaleId: editSaleIdProp,
+  restaurantOrderId,
 }: {
   storeId: string;
   mode: PosMode;
   /** `?editSale=` — modification vente complétée (Flutter). */
   editSaleId?: string;
+  /**
+   * `?commande=` — RESTAURANT : l'addition d'une commande de salle.
+   *
+   * La commande a vécu tout le service sans jamais toucher au stock ni au chiffre
+   * d'affaires (voir 00219). Elle arrive ici pour devenir une vente ordinaire : le
+   * panier est pré-rempli avec ses lignes, l'encaissement se fait comme n'importe
+   * quelle vente, et la commande est rattachée à la vente produite. Aucun chemin
+   * parallèle — c'est la même caisse, le même stock, les mêmes rapports.
+   */
+  restaurantOrderId?: string;
 }) {
   const qc = useQueryClient();
   const { data: ctx, helpers: accessH, hasPermission, isLoading: permLoading } = usePermissions();
@@ -261,6 +274,7 @@ export function PosScreen({
   /** Paiement mixte : part réglée en espèces, le reste passe en mobile money. */
   const [splitCashAmount, setSplitCashAmount] = useState("");
   const isPharmacy = ctx?.businessTypeSlug === "pharmacie";
+  const isRestaurant = ctx?.businessTypeSlug === "restaurant-fast-food";
   const [prescriptionNumber, setPrescriptionNumber] = useState("");
   const [discount, setDiscount] = useState("0");
   const [amountReceived, setAmountReceived] = useState("");
@@ -628,15 +642,19 @@ export function PosScreen({
   const hideQuickCard =
     mode === "quick" && quickPaymentsSettings.enabled && quickPaymentsSettings.hideCard;
   /*
-   * « Client obligatoire » l'emporte sur « masquer le client » : les deux réglages
-   * appartiennent au même propriétaire, mais les cumuler donnerait une caisse qui
-   * exige un client sans offrir le moyen d'en choisir un — plus personne ne vend.
+   * Sélecteur de client : la règle vit dans `quickPosCustomerHidden` (métier + réglages),
+   * partagée avec la caisse à deux et l'écran Paramètres. En restaurant il est masqué
+   * d'office ; ailleurs il faut le réglage « masquer le client ». Dans les deux cas,
+   * « client obligatoire » le ramène — une caisse qui exige un client sans offrir le
+   * moyen d'en choisir un ne vend plus rien.
    */
   const hideQuickCustomer =
     mode === "quick" &&
-    quickPaymentsSettings.enabled &&
-    quickPaymentsSettings.hideCustomer &&
-    !requireCustomer;
+    quickPosCustomerHidden({
+      settings: quickPaymentsSettings,
+      isRestaurant,
+      requireCustomer,
+    });
 
   const posQ = useQuery({
     queryKey: ["pos", mode, companyId, storeId] as const,
@@ -1089,6 +1107,86 @@ export function PosScreen({
 
   const canUpdateSales = hasPermission(P.salesUpdate);
 
+  /*
+   * RESTAURANT — l'addition d'une commande de salle.
+   *
+   * Le panier est rempli une seule fois, à l'arrivée sur la caisse : `bootstrapKey`
+   * garde l'identifiant déjà traité, sinon chaque rafraîchissement du catalogue
+   * (toutes les 15 s) réécraserait ce que le caissier vient de corriger — une remise
+   * saisie, une ligne retirée parce que le client conteste.
+   *
+   * Les lignes annulées en cuisine (`void`) sont exclues côté données : elles ne se
+   * facturent pas, mais restent lisibles sur la commande avec leur motif.
+   */
+  const [restaurantOrderLabel, setRestaurantOrderLabel] = useState<string | null>(null);
+  const restaurantOrderBootstrapKey = useRef<string | null>(null);
+  const restaurantOrderIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    restaurantOrderIdRef.current = restaurantOrderId?.trim() || null;
+  }, [restaurantOrderId]);
+
+  useEffect(() => {
+    const raw = restaurantOrderId?.trim() ?? "";
+    if (!raw) {
+      restaurantOrderBootstrapKey.current = null;
+      setRestaurantOrderLabel(null);
+      return;
+    }
+    if (restaurantOrderBootstrapKey.current === raw) return;
+    if (!posQ.data) return;
+
+    let cancelled = false;
+    void (async () => {
+      try {
+        const { getOrder } = await import("@/lib/features/restaurant/api-orders");
+        const order = await getOrder(raw);
+        if (cancelled || !order) return;
+        if (order.status !== "open") {
+          toast.error("Cette commande est déjà close.");
+          return;
+        }
+        const productById = new Map(posQ.data!.products.map((p) => [p.id, p]));
+        const rows: CartRow[] = [];
+        for (const it of order.items) {
+          if (it.status === "void") continue;
+          const p = productById.get(it.productId);
+          /*
+           * Le prix unitaire porte les options choisies (« + fromage »). Elles ne
+           * sont pas des produits du catalogue : les facturer en lignes séparées
+           * créerait des articles fantômes dans les rapports et dans le stock.
+           */
+          const unit = it.unitPrice + it.optionsAmount;
+          rows.push({
+            productId: it.productId,
+            name: it.optionsLabel ? `${it.productName} (${it.optionsLabel})` : it.productName,
+            quantity: it.quantity,
+            unitPrice: unit,
+            unit: p?.unit ?? "pce",
+            imageUrl: p?.product_images?.[0]?.url ?? null,
+            lineTotal: unit * it.quantity,
+            linePriceUserSet: true,
+          });
+        }
+        if (rows.length === 0) {
+          toast.error("Cette commande n'a aucun article à encaisser.");
+          return;
+        }
+        restaurantOrderBootstrapKey.current = raw;
+        setCart(rows);
+        setCartOpen(true);
+        setRestaurantOrderLabel(
+          order.tableLabel ? `Table ${order.tableLabel}` : order.orderNumber,
+        );
+        if (order.customerId) setCustomerId(order.customerId);
+      } catch (e) {
+        toastMutationError("pos-restaurant-order", e, "Commande introuvable.");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [restaurantOrderId, posQ.data]);
+
   useEffect(() => {
     const raw = editSaleIdProp?.trim() ?? "";
     if (!raw) {
@@ -1460,6 +1558,33 @@ export function PosScreen({
         ]);
         router.push(`${ROUTES.sales}?store=${encodeURIComponent(storeId)}`);
         return;
+      }
+
+      /*
+       * RESTAURANT — la commande devient « encaissée » et garde le numéro de la vente.
+       *
+       * Après la vente et non avant : c'est l'argent qui ferme une table, pas
+       * l'intention de l'encaisser. Si ce rattachement échoue (réseau), la vente est
+       * déjà valide et le stock déjà sorti — on le dit sans annuler quoi que ce soit,
+       * et la commande se rattachera au prochain passage. L'inverse (fermer la table
+       * puis rater la vente) laisserait un service impayé et invisible.
+       */
+      const settledOrderId = restaurantOrderIdRef.current;
+      if (settledOrderId && !res.saleId.startsWith(OFFLINE_SALE_ID_PREFIX)) {
+        try {
+          const { settleOrder } = await import("@/lib/features/restaurant/api-orders");
+          await settleOrder(settledOrderId, res.saleId);
+          restaurantOrderIdRef.current = null;
+          restaurantOrderBootstrapKey.current = null;
+          setRestaurantOrderLabel(null);
+          void qc.invalidateQueries({ queryKey: ["restaurant", companyId] });
+        } catch (e) {
+          toastMutationError(
+            "pos-settle-order",
+            e,
+            "Vente enregistrée, mais la commande est restée ouverte. Rouvrez-la pour la clore.",
+          );
+        }
       }
 
       const recordedTotal = total;
@@ -2517,6 +2642,7 @@ export function PosScreen({
       cartLayout={mode === "a4-table" ? "table" : "cards"}
       cart={cart}
       cartCount={cartCount}
+      restaurantOrderLabel={restaurantOrderLabel}
       stockByProductId={stockByProductId}
       locationByProduct={locationByProduct}
       showQuantityInput={posCartUi.showQuantityInput}
@@ -4112,6 +4238,7 @@ function PosCartUnitPriceInput({
 
 function PosCartPanel({
   mode,
+  restaurantOrderLabel,
   cartLayout = "cards",
   cart,
   cartCount,
@@ -4177,6 +4304,8 @@ function PosCartPanel({
   setPrescriptionNumber,
 }: {
   mode: PosMode;
+  /** Restaurant : « Table 7 » — rappelle ce qu'on encaisse quand le panier vient d'une commande. */
+  restaurantOrderLabel?: string | null;
   cartLayout?: "cards" | "table";
   cart: CartRow[];
   cartCount: number;
@@ -4851,6 +4980,21 @@ function PosCartPanel({
           </p>
         </div>
       )}
+
+      {/*
+        Restaurant : on encaisse une TABLE, pas un panier anonyme. Sans ce rappel, un
+        caissier qui enchaîne les additions un samedi soir n'a aucun moyen de vérifier
+        qu'il présente la bonne — et une addition portée à la mauvaise table est une
+        dispute au comptoir, pas une erreur de saisie.
+      */}
+      {restaurantOrderLabel ? (
+        <div className="mx-3 mb-2 flex items-center gap-2 rounded-[10px] border border-fs-accent/25 bg-[color-mix(in_srgb,var(--fs-accent)_10%,transparent)] px-3 py-2">
+          <MdLocalDining className="h-4 w-4 shrink-0 text-fs-accent" aria-hidden />
+          <p className="min-w-0 flex-1 truncate text-xs font-semibold text-fs-accent sm:text-sm">
+            Addition · {restaurantOrderLabel}
+          </p>
+        </div>
+      ) : null}
 
       <div
         className={cn(

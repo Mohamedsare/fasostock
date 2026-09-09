@@ -19,6 +19,7 @@ import {
   type DocArticle,
   type DocBlock,
 } from "@/lib/features/help/documentation";
+import { useAppContext } from "@/lib/features/common/app-context";
 import { cn } from "@/lib/utils/cn";
 
 /** Recherche insensible aux accents et à la casse — « peremption » doit trouver « Péremptions ». */
@@ -197,6 +198,8 @@ function ArticleItem({
 export function HelpDocumentation() {
   const [query, setQuery] = useState("");
   const [openIds, setOpenIds] = useState<Set<string>>(new Set());
+  const ctx = useAppContext();
+  const activity = ctx.data?.businessTypeSlug ?? null;
 
   /** Index calculé une fois : le contenu est statique. */
   const index = useMemo(
@@ -216,13 +219,22 @@ export function HelpDocumentation() {
     );
   }, [needle, index]);
 
+  /*
+   * Les familles propres à un métier ne s'affichent que pour ce métier. Vingt
+   * articles sur le service en salle au milieu de l'aide d'une quincaillerie, c'est
+   * une aide qu'on n'ouvre plus.
+   */
   const groups = useMemo(
     () =>
-      DOC_GROUPS.map((g) => ({
-        ...g,
-        articles: matches ? g.articles.filter((a) => matches.has(a.id)) : g.articles,
-      })).filter((g) => g.articles.length > 0),
-    [matches],
+      DOC_GROUPS.filter(
+        (g) => !g.activities || (activity !== null && g.activities.includes(activity)),
+      )
+        .map((g) => ({
+          ...g,
+          articles: matches ? g.articles.filter((a) => matches.has(a.id)) : g.articles,
+        }))
+        .filter((g) => g.articles.length > 0),
+    [matches, activity],
   );
 
   function toggle(id: string) {

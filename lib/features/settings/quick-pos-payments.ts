@@ -27,6 +27,11 @@ const KEY = "quick_pos_payments";
  *   être touché par erreur.
  * - `hideCustomer` : au comptoir à fort débit, personne n'enregistre le client ; le
  *   sélecteur ne fait que ralentir et encombrer le panier.
+ *
+ * **Restaurant** : la règle s'inverse. On ne demande pas son nom à quelqu'un qui
+ * commande un plat, donc le sélecteur de client est masqué **d'office** — sans que le
+ * propriétaire ait à toucher l'interrupteur maître. C'est `showCustomer` qui le rouvre,
+ * et lui seul : `hideCustomer` ne concerne pas les restaurants.
  */
 export type QuickPosPaymentsSettings = {
   /** Interrupteur maître : `false` ⇒ comportement d'origine, les autres champs sont ignorés. */
@@ -39,6 +44,12 @@ export type QuickPosPaymentsSettings = {
   hideCard: boolean;
   /** Masque le sélecteur de client sur les ventes comptant (le crédit l'exige toujours). */
   hideCustomer: boolean;
+  /**
+   * **Restaurant uniquement** : rouvre le sélecteur de client, masqué par défaut dans
+   * ce métier. Indépendant de l'interrupteur maître — un restaurant n'a rien à
+   * personnaliser pour obtenir le comportement attendu, seulement pour en sortir.
+   */
+  showCustomer: boolean;
 };
 
 const ALL_PROVIDERS: MobileMoneyProvider[] = MOBILE_MONEY_PROVIDERS.map((p) => p.id);
@@ -49,6 +60,7 @@ export const QUICK_POS_PAYMENTS_DEFAULT: QuickPosPaymentsSettings = {
   splitEnabled: false,
   hideCard: false,
   hideCustomer: false,
+  showCustomer: false,
 };
 
 /** Cache session (évite un flash « trois opérateurs » à l'ouverture de la caisse). */
@@ -88,6 +100,7 @@ function parseSettings(raw: unknown): QuickPosPaymentsSettings {
     splitEnabled: parseBool(o.splitEnabled),
     hideCard: parseBool(o.hideCard),
     hideCustomer: parseBool(o.hideCustomer),
+    showCustomer: parseBool(o.showCustomer),
   };
 }
 
@@ -119,6 +132,7 @@ export async function setQuickPosPayments(
     splitEnabled: settings.splitEnabled,
     hideCard: settings.hideCard,
     hideCustomer: settings.hideCustomer,
+    showCustomer: settings.showCustomer,
   };
   const supabase = createClient();
   const { data: existing, error: selErr } = await supabase
@@ -153,4 +167,26 @@ export function effectiveQuickPosProviders(
 ): MobileMoneyProvider[] {
   if (!settings?.enabled) return ALL_PROVIDERS;
   return parseProviders(settings.providers);
+}
+
+/**
+ * Faut-il masquer le sélecteur de client à l'encaissement ?
+ *
+ * Une seule fonction pour la caisse rapide, la caisse à deux et l'écran Paramètres :
+ * la règle diverge selon le métier, et trois copies auraient divergé entre elles.
+ *
+ * - `requireCustomer` (réglage « vente au nom d'un client ») l'emporte sur tout : une
+ *   caisse qui exige un client sans offrir le moyen d'en choisir un ne vend plus rien.
+ * - Restaurant : masqué par défaut, `showCustomer` le rouvre.
+ * - Ailleurs : affiché par défaut, `hideCustomer` le retire (sous l'interrupteur maître).
+ */
+export function quickPosCustomerHidden(opts: {
+  settings: QuickPosPaymentsSettings | null | undefined;
+  isRestaurant: boolean;
+  requireCustomer: boolean;
+}): boolean {
+  if (opts.requireCustomer) return false;
+  const s = opts.settings ?? QUICK_POS_PAYMENTS_DEFAULT;
+  if (opts.isRestaurant) return !s.showCustomer;
+  return s.enabled && s.hideCustomer;
 }

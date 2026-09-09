@@ -1,19 +1,10 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import { FsCard, FsPage, FsScreenHeader } from "@/components/ui/fs-screen-primitives";
-
-export default function RestaurantPlaceholderIndexPage() {
-  return (
-    <FsPage>
-      <FsScreenHeader
-        title="Restaurant"
-        subtitle="Module en cours d'activation. Utilisez le menu pour ouvrir les ecrans deja disponibles."
-      />
-      <FsCard padding="p-5">
-        <p className="text-sm text-neutral-700">
-          Cette section sert de point d&apos;entree pour les sous-modules Restaurant.
-        </p>
-      </FsCard>
-    </FsPage>
-  );
+/**
+ * L'entrée du module n'a pas de contenu propre : ce qu'un restaurateur veut voir en
+ * ouvrant « Restaurant », c'est sa salle. Une page d'accueil intermédiaire aurait
+ * ajouté un geste à chaque service, cent fois par soir.
+ */
+export default function RestaurantIndexPage() {
+  redirect("/restaurant/salle/plan");
 }

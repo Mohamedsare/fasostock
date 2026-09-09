@@ -62,6 +62,23 @@ export function AppSidebar({
     return out;
   }, [items]);
 
+  /**
+   * La section qui contient la page ouverte.
+   *
+   * Sans elle, un restaurateur qui arrive sur le plan de salle voit huit en-têtes
+   * fermés et aucun repère de l'endroit où il se trouve — il doit rouvrir sa
+   * section à chaque navigation. Le menu hiérarchique devenait plus lent que le
+   * menu à plat des autres métiers, ce qui est exactement l'inverse du but.
+   */
+  const activeSectionHref = useMemo(() => {
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.kind === "section") continue;
+      if (isActive(item.href)) return parentSectionHrefs[i];
+    }
+    return null;
+  }, [items, parentSectionHrefs, isActive]);
+
   useEffect(() => {
     setOpenSections((prev) => {
       const next: Record<string, boolean> = {};
@@ -69,6 +86,18 @@ export function AppSidebar({
       return next;
     });
   }, [sectionHrefs]);
+
+  /*
+   * L'utilisateur garde la main : une section qu'il a ouverte reste ouverte, et il
+   * peut refermer celle de la page courante s'il veut faire de la place. On force
+   * seulement l'état INITIAL, à chaque changement de page.
+   */
+  useEffect(() => {
+    if (!activeSectionHref) return;
+    setOpenSections((prev) =>
+      prev[activeSectionHref] ? prev : { ...prev, [activeSectionHref]: true },
+    );
+  }, [activeSectionHref]);
 
   const sectionExpanded = (href: string) => openSections[href] ?? false;
   const toggleSection = (href: string) => {
@@ -172,10 +201,15 @@ export function AppSidebar({
                   type="button"
                   key={`${item.href}-${item.label}`}
                   onClick={() => toggleSection(item.href)}
+                  aria-expanded={isOpen}
                   className={cn(
                     "mt-3 flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-left",
-                    "text-[11px] font-extrabold uppercase tracking-wide text-black/70 transition-colors",
-                    "hover:bg-black/[0.04] dark:text-neutral-200/85 dark:hover:bg-white/[0.06]",
+                    "text-[11px] font-extrabold uppercase tracking-wide transition-colors",
+                    "hover:bg-black/[0.04] dark:hover:bg-white/[0.06]",
+                    /* La section de la page ouverte se repère sans avoir à lire. */
+                    item.href === activeSectionHref
+                      ? "text-[var(--fs-accent)] dark:text-[var(--fs-accent)]"
+                      : "text-black/70 dark:text-neutral-200/85",
                     effectiveCollapsed && "sr-only",
                   )}
                 >
@@ -192,8 +226,18 @@ export function AppSidebar({
               );
             }
 
+            /*
+             * Barre repliée : on n'applique PAS le repli des sections. Leurs en-têtes
+             * sont `sr-only` à cette largeur, donc rien ne permettrait de les rouvrir —
+             * la barre se retrouvait quasiment vide, avec le seul « Tableau de bord ».
+             */
             const currentSectionHref = parentSectionHrefs[index];
-            if (item.child && currentSectionHref && !sectionExpanded(currentSectionHref)) {
+            if (
+              !effectiveCollapsed &&
+              item.child &&
+              currentSectionHref &&
+              !sectionExpanded(currentSectionHref)
+            ) {
               return null;
             }
 
@@ -226,6 +270,17 @@ export function AppSidebar({
                 {active ? (
                   <span
                     className="absolute left-0 top-1/2 h-[60%] w-[3px] -translate-y-1/2 rounded-r-full bg-[var(--fs-accent)] shadow-[2px_0_8px_color-mix(in_srgb,var(--fs-accent)_45%,transparent)]"
+                    aria-hidden
+                  />
+                ) : null}
+                {/*
+                  Filet de rattachement : sans lui, un sous-élément décalé de 12 px
+                  flotte sans qu'on voie à quelle section il appartient — surtout au
+                  milieu d'une liste de trente entrées.
+                */}
+                {item.child && !effectiveCollapsed ? (
+                  <span
+                    className="absolute left-3 top-0 h-full w-px bg-black/[0.09] dark:bg-white/[0.10]"
                     aria-hidden
                   />
                 ) : null}

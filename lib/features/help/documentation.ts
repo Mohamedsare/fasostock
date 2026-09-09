@@ -37,6 +37,14 @@ export type DocGroup = {
   title: string;
   /** Ce que regroupe la famille, en une ligne. */
   summary: string;
+  /**
+   * Activités concernées (`companies.business_type_slug`). Absent = tout le monde.
+   *
+   * Sert aux familles propres à un métier : la documentation Restaurant n'a rien à
+   * dire à une quincaillerie, et vingt articles hors sujet au milieu de l'aide,
+   * c'est une aide qu'on n'ouvre plus.
+   */
+  activities?: string[];
   articles: DocArticle[];
 };
 
@@ -2661,6 +2669,410 @@ export const DOC_GROUPS: DocGroup[] = [
           },
         ],
         keywords: ["notification", "alerte", "push", "message", "activer", "autoriser", "téléphone"],
+      },
+    ],
+  },
+
+  /* ------------------------------------------------------------------ */
+  /* 7. RESTAURANT                                                       */
+  /* ------------------------------------------------------------------ */
+  {
+    id: "restaurant",
+    activities: ["restaurant-fast-food"],
+    title: "7 · Restaurant, maquis, fast-food",
+    summary:
+      "Le service en salle : les tables, le carnet du serveur, l'écran de cuisine, la carte, les livraisons et la caisse du soir.",
+    articles: [
+      {
+        id: "restaurant-principe",
+        title: "Comment marche le module Restaurant",
+        route: "/restaurant/salle/plan",
+        tagline:
+          "La commande suit le service, la vente porte l'argent. Comprendre ça, c'est comprendre tout le module.",
+        access: "Activé pour les entreprises dont l'activité est « Restaurant / Fast-food ».",
+        blocks: [
+          {
+            kind: "p",
+            text: "Dans une boutique, la vente naît au paiement. Dans un maquis, non : le client s'assoit, commande, rajoute, et paie une heure et demie plus tard. Entre les deux, il existe une commande réelle que rien n'enregistrait — et c'est là que l'argent se perd.",
+          },
+          {
+            kind: "bullets",
+            title: "Les deux objets, et ce qui les sépare",
+            items: [
+              "LA COMMANDE, c'est le carnet du serveur : la table, ce qui a été demandé, ce que la cuisine a envoyé. Elle ne touche NI au stock, NI au chiffre d'affaires.",
+              "LA VENTE, c'est l'argent. Elle est créée au moment de l'addition, par la caisse rapide ordinaire. C'est là que le stock sort et que le chiffre se compte.",
+              "Une commande annulée ne laisse donc aucune trace comptable — et ne rend rien au stock, puisqu'elle n'en avait rien pris.",
+            ],
+          },
+          {
+            kind: "note",
+            tone: "info",
+            title: "Une seule caisse",
+            text: "En restaurant, seule la caisse rapide est proposée. La facture A4 n'a pas sa place sur un écran de salle : elle est masquée, et rouvrir une ancienne commande ramène toujours à la caisse rapide.",
+          },
+          {
+            kind: "steps",
+            title: "La journée type",
+            items: [
+              "Le matin : ouvrez la caisse en déclarant le fond (Caisse › Poste de caisse).",
+              "Au service : ouvrez une table depuis le plan de salle, notez les plats, envoyez en cuisine.",
+              "En cuisine : l'écran affiche les bons ; le cuisinier touche « Je prends » puis « C'est prêt ».",
+              "À l'addition : touchez Encaisser sur la commande — la caisse rapide s'ouvre avec le panier déjà rempli.",
+              "Le soir : comptez le tiroir et clôturez. L'application vous dit ce qu'il devrait contenir.",
+            ],
+          },
+        ],
+        keywords: [
+          "restaurant", "maquis", "fast-food", "bar", "service", "salle", "commande",
+          "addition", "couvert", "serveur",
+        ],
+      },
+      {
+        id: "restaurant-salle",
+        title: "Plan de salle, tables et réservations",
+        route: "/restaurant/salle/plan",
+        tagline: "Votre salle vue d'en haut, en temps réel : ce qui est occupé, ce qui attend, ce qui est libre.",
+        access: "Le plan est visible par toute l'équipe. Créer et déplacer les tables : propriétaire ou gérant.",
+        blocks: [
+          {
+            kind: "steps",
+            title: "Installer sa salle",
+            items: [
+              "Salle & Tables › Tables › « En série » : créez « Table 1 » à « Table 12 » en un seul geste.",
+              "Créez vos zones si vous en avez (Terrasse, Salle climatisée, Étage) et rattachez-y les tables.",
+              "Salle & Tables › Plan de salle › « Déplacer » : faites glisser les tables comme dans la réalité, puis Enregistrer.",
+            ],
+          },
+          {
+            kind: "table",
+            title: "Les couleurs du plan",
+            head: ["Couleur", "Ce que ça veut dire"],
+            rows: [
+              ["Gris", "Table libre"],
+              ["Orange", "Table occupée, service en cours"],
+              ["Ambre clignotant", "Un plat est PRÊT et attend au passe"],
+              ["Rouge", "Table ouverte depuis plus d'1 h 30"],
+              ["Violet", "Table retenue par une réservation prochaine"],
+            ],
+          },
+          {
+            kind: "note",
+            tone: "tip",
+            title: "L'état d'une table ne se saisit jamais",
+            text: "Libre ou occupée se déduit des commandes ouvertes. Personne n'a à « libérer » une table : elle se libère toute seule à l'encaissement.",
+          },
+          {
+            kind: "bullets",
+            title: "Réservations",
+            items: [
+              "« Installer » ouvre la commande sur la table ET marque la réservation honorée, d'un seul geste.",
+              "« Pas venue » est un état à part : il permet de voir qui fait sauter vos meilleures tables.",
+              "Le téléphone du client est cliquable : un appui l'appelle.",
+            ],
+          },
+        ],
+        keywords: [
+          "plan", "salle", "table", "terrasse", "zone", "réservation", "installer",
+          "libre", "occupée", "couverts",
+        ],
+      },
+      {
+        id: "restaurant-commande",
+        title: "Prendre une commande",
+        route: "/restaurant/ventes/nouvelle-commande",
+        tagline: "Le carnet du serveur : un doigt par plat, et l'envoi en cuisine séparé de la saisie.",
+        access: "Toute personne qui peut créer une vente.",
+        blocks: [
+          {
+            kind: "steps",
+            title: "Le geste de base",
+            items: [
+              "Touchez la table sur le plan (ou Commandes › Nouvelle commande pour un à emporter / une livraison).",
+              "Touchez un plat : il entre dans la commande. Touchez-le deux fois pour en mettre deux.",
+              "Si l'article a des choix (taille, accompagnement, suppléments), le dialogue s'ouvre tout seul.",
+              "Corrigez librement tant que rien n'est parti : quantité, note, suppression.",
+              "Touchez « Envoyer en cuisine ». À partir de là, la ligne ne se corrige plus — elle s'annule avec un motif.",
+              "À l'addition, touchez « Encaisser » : la caisse rapide s'ouvre avec le panier déjà rempli.",
+            ],
+          },
+          {
+            kind: "note",
+            tone: "warn",
+            title: "Pourquoi l'annulation demande un motif",
+            text: "Une ligne déjà partie en cuisine ne disparaît jamais du carnet : elle reste visible, barrée, avec son motif et le nom de qui l'a annulée. Une ligne effaçable sans trace, c'est la façon la plus simple de servir un plat puis de le retirer de l'addition.",
+          },
+          {
+            kind: "bullets",
+            title: "Ce que le serveur peut faire d'autre",
+            items: [
+              "Changer de table : la commande et ses plats suivent, même ceux déjà en cuisine.",
+              "Ajouter une précision à la cuisine (« sans piment », « bien cuit ») : elle s'imprime sur le bon.",
+              "Changer le nombre de couverts ou la note de service.",
+              "Annuler toute la commande, avec un motif. Rien n'est supprimé, rien n'entre dans le chiffre d'affaires.",
+            ],
+          },
+        ],
+        keywords: [
+          "commande", "carnet", "serveur", "envoyer", "cuisine", "annuler", "addition",
+          "encaisser", "couverts", "note", "supplément",
+        ],
+      },
+      {
+        id: "restaurant-cuisine",
+        title: "Écran de cuisine (KDS)",
+        route: "/restaurant/cuisine/kds",
+        tagline: "Le panneau au-dessus du passe : les bons par ordre d'arrivée, et un seul bouton par bon.",
+        access: "Toute personne qui peut créer une vente. Prévoyez une tablette fixée en cuisine.",
+        blocks: [
+          {
+            kind: "p",
+            text: "Cet écran se regarde de deux mètres, les mains sales. Tout y est gros, il n'y a qu'un bouton par bon, et il n'affiche AUCUN prix : un écran de cuisine qui montre des montants pousse à servir d'abord les grosses tables, ce qui est exactement la mauvaise règle.",
+          },
+          {
+            kind: "table",
+            title: "Le parcours d'un plat",
+            head: ["Étape", "Qui la déclenche"],
+            rows: [
+              ["Envoyé", "Le serveur, en touchant « Envoyer en cuisine »"],
+              ["Je prends", "Le cuisinier, quand il commence"],
+              ["C'est prêt", "Le cuisinier, quand le plat est au passe"],
+              ["Servi", "Le serveur, quand il l'a porté"],
+            ],
+          },
+          {
+            kind: "note",
+            tone: "info",
+            title: "Pas de retour en arrière",
+            text: "Un plat servi ne redevient jamais « en préparation ». Sans cette règle, un écran mal touché ferait refaire un plat déjà mangé.",
+          },
+          {
+            kind: "bullets",
+            title: "Le temps est la seule couleur",
+            items: [
+              "Moins de 10 minutes : neutre.",
+              "Au-delà de 10 minutes : ambre.",
+              "Au-delà de 20 minutes : rouge, et le nombre de bons en retard s'affiche en haut.",
+              "Les stations (Cuisine, Grill, Bar) permettent à chaque poste de n'afficher que ce qui le concerne.",
+            ],
+          },
+        ],
+        keywords: [
+          "cuisine", "kds", "écran", "bon", "prêt", "préparation", "passe", "station",
+          "grill", "retard",
+        ],
+      },
+      {
+        id: "restaurant-menu",
+        title: "La carte : plats, boissons, disponibilité et options",
+        route: "/restaurant/menu/disponibilite",
+        tagline: "Vos plats sont des produits du catalogue. Ce que la carte ajoute : la station, le service, les choix, et « il n'y en a plus ».",
+        access: "Retirer un article de la carte : toute personne qui sert. Régler stations et options : propriétaire ou gérant.",
+        blocks: [
+          {
+            kind: "note",
+            tone: "tip",
+            title: "Le geste du soir",
+            text: "« Il n'y a plus de poisson » : Menu › Disponibilité, l'interrupteur en bout de ligne. Ça ne touche ni au prix, ni au stock, ni au produit — vous le remettez d'un doigt le lendemain matin.",
+          },
+          {
+            kind: "bullets",
+            title: "Réglages d'un article (touchez son nom)",
+            items: [
+              "Le SERVICE : entrée, plat, accompagnement, dessert, boisson. Sert au tri du bon et de l'addition.",
+              "La STATION de production : c'est elle qui décide sur quel écran de cuisine le bon tombe. Sans station, l'article est servi directement — le bon réglage pour les bières et les sucreries.",
+              "Le TEMPS de préparation annoncé.",
+              "La MISE EN AVANT : les six articles qui font le chiffre remontent en tête de la prise de commande.",
+              "Les CHOIX proposés au serveur (voir ci-dessous).",
+            ],
+          },
+          {
+            kind: "table",
+            title: "Variantes et suppléments",
+            head: ["Type", "Quand l'utiliser"],
+            rows: [
+              ["Variante", "Un choix obligatoire, et un seul : « Demi ou entier ? », « Frites ou attiéké ? »"],
+              ["Supplément", "Facultatif et cumulable : « + fromage », « + œuf », « sans piment »"],
+            ],
+          },
+          {
+            kind: "note",
+            tone: "warn",
+            title: "Un supplément ne peut pas être négatif",
+            text: "Une remise se décide sur l'addition, à la vue de tous. Cachée dans une option nommée « - 500 », elle devient une caisse percée que personne ne regarde.",
+          },
+        ],
+        keywords: [
+          "carte", "menu", "plat", "boisson", "disponible", "rupture", "épuisé",
+          "supplément", "variante", "option", "station", "grill",
+        ],
+      },
+      {
+        id: "restaurant-recettes",
+        title: "Fiches techniques : ce que coûte vraiment un plat",
+        route: "/restaurant/cuisine/recettes",
+        tagline: "Le chiffre que presque aucun restaurant ne connaît, et celui qui décide si la maison gagne de l'argent.",
+        access: "Propriétaire ou gérant.",
+        blocks: [
+          {
+            kind: "p",
+            text: "Vous savez qu'un poulet braisé se vend 2 500. Savez-vous qu'il vous coûte 1 700 depuis que le poulet a augmenté ? La fiche technique liste les ingrédients d'une recette et calcule le coût d'une portion — en lisant vos prix d'achat réels, donc sans jamais devenir fausse.",
+          },
+          {
+            kind: "steps",
+            title: "Créer une fiche",
+            items: [
+              "Cuisine › Fiches techniques › Nouvelle fiche, choisissez le plat.",
+              "Ajoutez chaque ingrédient : la quantité, l'unité (g, cl, pièce), et surtout le facteur d'achat.",
+              "Indiquez combien de portions produit la recette telle que vous l'écrivez.",
+              "Ajoutez la perte de préparation en % (épluchures, évaporation, gras).",
+            ],
+          },
+          {
+            kind: "note",
+            tone: "warn",
+            title: "Le facteur d'achat, la case qu'on oublie",
+            text: "Le riz s'achète au sac de 25 kg et se dose en grammes : le facteur est 25 000. Sans lui, une portion de riz coûterait un sac entier. Des raccourcis sont proposés sous le champ.",
+          },
+          {
+            kind: "table",
+            title: "Lire la marge",
+            head: ["Marge", "Ce que ça dit"],
+            rows: [
+              ["60 % et plus", "Sain : le plat paie ses ingrédients et contribue au reste"],
+              ["Entre 35 % et 60 %", "À surveiller, surtout si le plat se vend beaucoup"],
+              ["Moins de 35 %", "Le plat couvre à peine ses ingrédients : ni le gaz, ni le personnel, ni le loyer"],
+            ],
+          },
+          {
+            kind: "note",
+            tone: "info",
+            title: "Les fiches ne déstockent pas",
+            text: "Personne ne pèse l'huile. Déduire automatiquement les ingrédients rendrait votre stock faux en trois semaines. Les ingrédients se comptent à l'inventaire ; la fiche sert à chiffrer et à comparer.",
+          },
+        ],
+        keywords: [
+          "recette", "fiche technique", "coût", "revient", "marge", "food cost",
+          "ingrédient", "portion", "rentabilité",
+        ],
+      },
+      {
+        id: "restaurant-livraison",
+        title: "Livraison : livreurs, zones et suivi",
+        route: "/restaurant/livraison/suivi",
+        tagline: "Savoir ce qui est dehors, chez qui, et avec quel livreur.",
+        access: "Toute personne qui sert peut inscrire un livreur et suivre une course. Les zones : propriétaire ou gérant.",
+        blocks: [
+          {
+            kind: "note",
+            tone: "tip",
+            title: "Un livreur n'a pas besoin d'un compte",
+            text: "La plupart sont des jeunes du quartier avec une moto. Un nom et un téléphone suffisent : exiger un compte reviendrait à ne jamais se servir du module.",
+          },
+          {
+            kind: "steps",
+            title: "Le trajet d'une course",
+            items: [
+              "Créez vos zones : « Ouaga 2000 : 1 000 F, 25 min ». Le tarif cesse d'être négocié à chaque appel.",
+              "À la prise de commande, choisissez « Livraison » et saisissez l'adresse.",
+              "Quand c'est prêt : Suivi › « Confier à un livreur », choisissez la zone (le tarif se remplit tout seul).",
+              "« Il est parti », puis « Livrée » au retour.",
+              "En cas d'échec, le motif est obligatoire : « client absent » et « adresse fausse » ne se corrigent pas pareil.",
+            ],
+          },
+          {
+            kind: "bullets",
+            title: "Ce que le suivi affiche",
+            items: [
+              "Le nombre de courses en cours, en tête d'écran.",
+              "Le compteur de minutes depuis le départ, ambre au-delà de 30 minutes.",
+              "Le nombre de courses déjà confiées à chaque livreur — pour ne pas en charger un seul.",
+              "Le téléphone du client, cliquable.",
+            ],
+          },
+        ],
+        keywords: [
+          "livraison", "livreur", "zone", "course", "moto", "adresse", "suivi",
+          "frais", "échec",
+        ],
+      },
+      {
+        id: "restaurant-caisse",
+        title: "Caisse : ouvrir le matin, compter le soir",
+        route: "/restaurant/caisse",
+        tagline: "La seule façon de répondre à « il manque 6 800 francs, où sont-ils ? ».",
+        access: "Toute personne qui peut créer une vente.",
+        blocks: [
+          {
+            kind: "steps",
+            title: "La journée",
+            items: [
+              "Le matin : « Ouvrir la caisse » en déclarant le fond, c'est-à-dire la monnaie laissée pour rendre.",
+              "Dans la journée : notez chaque sortie (les 20 000 pris pour le charbon) et chaque apport.",
+              "À tout moment, l'écran affiche ce qui DEVRAIT être dans le tiroir.",
+              "Le soir : « Clôturer et compter ». Saisissez ce que vous avez compté ; l'écart s'affiche.",
+            ],
+          },
+          {
+            kind: "table",
+            title: "Le calcul, en clair",
+            head: ["Ligne", "D'où vient le chiffre"],
+            rows: [
+              ["Fond de départ", "Ce que vous avez déclaré le matin"],
+              ["Ventes en espèces", "Les encaissements ESPÈCES de la boutique depuis l'ouverture"],
+              ["Entrées / sorties", "Vos apports moins vos retraits et dépenses"],
+              ["= Attendu", "La somme des trois"],
+            ],
+          },
+          {
+            kind: "note",
+            tone: "warn",
+            title: "Seules les espèces comptent",
+            text: "L'Orange Money, Moov et Wave encaissés aujourd'hui ne sont pas dans le tiroir. Les y compter ferait apparaître un manquant tous les soirs.",
+          },
+          {
+            kind: "note",
+            tone: "info",
+            title: "Comptez avant de regarder",
+            text: "Le montant attendu reste caché tant que vous n'avez pas saisi votre comptage. Une clôture recopiée sur le chiffre du logiciel ne prouve rien — et l'écart n'est jamais corrigé en silence.",
+          },
+        ],
+        keywords: [
+          "caisse", "fond", "clôture", "écart", "compter", "tiroir", "session",
+          "retrait", "sortie", "espèces",
+        ],
+      },
+      {
+        id: "restaurant-pertes",
+        title: "Pertes et gaspillage",
+        route: "/restaurant/stock/pertes",
+        tagline: "Le plat renvoyé, la marmite brûlée, les bières périmées : la deuxième cause de disparition du bénéfice.",
+        access: "Toute personne qui sert.",
+        blocks: [
+          {
+            kind: "p",
+            text: "Dans une boutique, une perte est rare. Dans un restaurant, c'est quotidien. Non enregistrée, elle devient un manquant à l'inventaire de fin de mois que personne ne sait expliquer — et qu'on finit par mettre sur le dos du personnel.",
+          },
+          {
+            kind: "steps",
+            title: "Enregistrer une perte",
+            items: [
+              "Stock › Pertes › « Enregistrer une perte ».",
+              "Cherchez l'article, indiquez la quantité.",
+              "Choisissez la cause : périmé, cassé, renvoyé par le client, raté en cuisine, disparu.",
+              "Le stock est déduit et le coût est gardé en mémoire, au prix d'achat.",
+            ],
+          },
+          {
+            kind: "note",
+            tone: "info",
+            title: "Contrairement à une commande, une perte touche au stock",
+            text: "La marchandise est réellement partie. Si l'article n'est pas compté en inventaire (l'huile au litre, par exemple), la perte est quand même enregistrée — la ligne le signale, et le stock n'est simplement pas modifié.",
+          },
+        ],
+        keywords: [
+          "perte", "gaspillage", "jeté", "cassé", "périmé", "renvoyé", "manquant",
+          "casse", "avarié",
+        ],
       },
     ],
   },

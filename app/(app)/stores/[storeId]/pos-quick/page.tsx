@@ -2,7 +2,7 @@ import { PosScreen } from "@/components/pos/pos-screen";
 
 type Params = {
   params: Promise<{ storeId: string }>;
-  searchParams: Promise<{ editSale?: string }>;
+  searchParams: Promise<{ editSale?: string; commande?: string }>;
 };
 
 export default async function StorePosQuickPage({ params, searchParams }: Params) {
@@ -15,6 +15,13 @@ export default async function StorePosQuickPage({ params, searchParams }: Params
    * des prix qui ne sont plus ceux de la boutique affichée.
    */
   return (
-    <PosScreen key={storeId} storeId={storeId} mode="quick" editSaleId={sp.editSale} />
+    <PosScreen
+      key={storeId}
+      storeId={storeId}
+      mode="quick"
+      editSaleId={sp.editSale}
+      /* Restaurant : l'addition d'une commande de salle (voir `restaurantOrderId`). */
+      restaurantOrderId={sp.commande}
+    />
   );
 }

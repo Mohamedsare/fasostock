@@ -396,4 +396,82 @@ export const queryKeys = {
   hrIutsBrackets: (companyId: string) => ["hr", companyId, "iuts-brackets"] as const,
   hrPayslips: (params: { companyId: string; year: number; month: number }) =>
     ["hr", params.companyId, "payslips", params.year, params.month] as const,
+
+  /*
+   * Module Restaurant — TOUTES les clés commencent par `['restaurant', companyId]`.
+   * Une commande encaissée change la salle, le plan, la cuisine et le suivi de
+   * livraison en même temps : un seul `invalidateQueries({ queryKey: ['restaurant',
+   * companyId] })` les rafraîchit tous, sans avoir à se souvenir de la liste.
+   */
+  restaurantAreas: (companyId: string, storeId: string | null) =>
+    ["restaurant", companyId, "areas", storeId ?? "__all__"] as const,
+  restaurantTables: (companyId: string, storeId: string | null) =>
+    ["restaurant", companyId, "tables", storeId ?? "__all__"] as const,
+  restaurantReservations: (params: {
+    companyId: string;
+    storeId: string | null;
+    from: string;
+    to: string;
+  }) =>
+    [
+      "restaurant",
+      params.companyId,
+      "reservations",
+      params.storeId ?? "__all__",
+      params.from,
+      params.to,
+    ] as const,
+  restaurantOrders: (params: {
+    companyId: string;
+    storeId: string | null;
+    scope: string;
+    page?: number;
+  }) =>
+    [
+      "restaurant",
+      params.companyId,
+      "orders",
+      params.storeId ?? "__all__",
+      params.scope,
+      params.page ?? 0,
+    ] as const,
+  restaurantOrder: (companyId: string, orderId: string) =>
+    ["restaurant", companyId, "order", orderId] as const,
+  restaurantKitchen: (companyId: string, storeId: string | null, stationKey: string) =>
+    ["restaurant", companyId, "kitchen", storeId ?? "__all__", stationKey] as const,
+  restaurantStations: (companyId: string, storeId: string | null) =>
+    ["restaurant", companyId, "stations", storeId ?? "__all__"] as const,
+  restaurantMenu: (companyId: string, storeId: string | null) =>
+    ["restaurant", companyId, "menu", storeId ?? "__all__"] as const,
+  restaurantModifierGroups: (companyId: string) =>
+    ["restaurant", companyId, "modifier-groups"] as const,
+  restaurantProductGroups: (companyId: string, productId: string) =>
+    ["restaurant", companyId, "product-groups", productId] as const,
+  restaurantRecipes: (companyId: string) => ["restaurant", companyId, "recipes"] as const,
+  restaurantZones: (companyId: string, storeId: string | null) =>
+    ["restaurant", companyId, "zones", storeId ?? "__all__"] as const,
+  restaurantCouriers: (companyId: string, storeId: string | null) =>
+    ["restaurant", companyId, "couriers", storeId ?? "__all__"] as const,
+  restaurantCashSession: (companyId: string, storeId: string | null) =>
+    ["restaurant", companyId, "cash-session", storeId ?? "__all__"] as const,
+  restaurantCashSessionState: (companyId: string, sessionId: string) =>
+    ["restaurant", companyId, "cash-session-state", sessionId] as const,
+  restaurantCashSessions: (companyId: string, storeId: string | null, page: number) =>
+    ["restaurant", companyId, "cash-sessions", storeId ?? "__all__", page] as const,
+  restaurantCashMovements: (companyId: string, sessionId: string) =>
+    ["restaurant", companyId, "cash-movements", sessionId] as const,
+  restaurantWaste: (params: {
+    companyId: string;
+    storeId: string | null;
+    scope: string;
+    page: number;
+  }) =>
+    [
+      "restaurant",
+      params.companyId,
+      "waste",
+      params.storeId ?? "__all__",
+      params.scope,
+      params.page,
+    ] as const,
 } as const;
