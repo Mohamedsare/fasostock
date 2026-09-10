@@ -177,8 +177,8 @@ export function RestaurantWasteScreen() {
             {formatCurrency(pageCost)}
           </p>
           <p className="mt-1.5 text-[11px] leading-relaxed text-neutral-500">
-            Au prix d&apos;achat, sur cette page uniquement. Le total du mois complet se
-            lit dans Rapports.
+            Au prix d&apos;achat, sur cette page uniquement. Parcourez les pages
+            suivantes pour le total du mois.
           </p>
         </FsCard>
       ) : null}

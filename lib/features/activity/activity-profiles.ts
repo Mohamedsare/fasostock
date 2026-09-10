@@ -41,11 +41,18 @@ const ACTIVITY_PROFILES: ActivityProfile[] = [
   },
   {
     slug: "restaurant-fast-food",
+    /*
+     * Un restaurant ne tient pas de dépôt et ne fait pas de campagne d'inventaire :
+     * ses ingrédients se comptent sur la page Stock (« Stock cuisine »), et ses
+     * pertes s'enregistrent sur la page dédiée. `warehouse` et `inventorySessions`
+     * sont donc fermés — menu ET accès direct par l'URL.
+     */
     hiddenNavHrefs: [
       ROUTES.barcodes,
       ROUTES.stores,
       ROUTES.stockCashier,
       ROUTES.warehouse,
+      ROUTES.inventorySessions,
       ROUTES.transfers,
       ROUTES.reports,
       ROUTES.audit,
@@ -383,6 +390,21 @@ export function isRouteAllowedForActivity(
 ): boolean {
   const profile = resolveProfile(businessTypeSlug);
   return !profile.hiddenNavHrefs.includes(href);
+}
+
+/**
+ * Les routes qu'une activité n'a pas le droit d'ouvrir.
+ *
+ * Existe pour les navigations HIÉRARCHIQUES (restaurant), qui ne peuvent pas passer
+ * par `adaptNavItemsForActivity` : celle-ci trie sur `navOrderHrefs` et démolirait
+ * l'ordre des sections. Elles ont quand même besoin de la liste noire — sans elle,
+ * le menu proposait des entrées que `canAccessPathname` refuse déjà, et l'employé
+ * tombait sur « pas accès » depuis son propre menu.
+ */
+export function hiddenNavHrefsForActivity(
+  businessTypeSlug: string | null | undefined,
+): readonly string[] {
+  return resolveProfile(businessTypeSlug).hiddenNavHrefs;
 }
 
 export function adaptNavItemsForActivity(

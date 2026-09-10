@@ -2,7 +2,9 @@ import { redirect } from "next/navigation";
 
 import { ROUTES } from "@/lib/config/routes";
 
-/** « Qui a vendu combien » est l'onglet Équipe des Rapports. */
+/**
+ * Le rendement d'un serveur se lit sur les ventes qu'il a encaissées.
+ */
 export default function RestaurantStaffPerformancePage() {
-  redirect(ROUTES.reports);
+  redirect(ROUTES.sales);
 }

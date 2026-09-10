@@ -3,6 +3,7 @@ import { ROUTES } from "@/lib/config/routes";
 import type { NavItem } from "@/lib/config/navigation";
 import {
   adaptNavItemsForActivity,
+  hiddenNavHrefsForActivity,
   isRouteAllowedForActivity,
 } from "@/lib/features/activity/activity-profiles";
 import { activityConfig } from "@/lib/features/activity/activity-config";
@@ -904,10 +905,24 @@ export function filterNavItemsForPermissions(
    * menu court.
    */
   if (named.some((item) => item.kind === "section")) {
-    return named.filter((item, i) => {
+    /*
+     * La liste noire de l'activité s'applique AUSSI ici — c'est le correctif
+     * essentiel. `adaptNavItemsForActivity` ne peut pas être appelée sur une nav
+     * hiérarchique (elle trie sur `navOrderHrefs` et mélangerait les sections),
+     * si bien que le menu restaurant proposait Magasin, Transferts ou Rapports,
+     * que `canAccessPathname` refuse pourtant depuis toujours pour ce métier.
+     * L'employé cliquait dans son propre menu pour atterrir sur « pas accès ».
+     */
+    const blocked = hiddenNavHrefsForActivity(businessTypeSlug);
+    const allowed = blocked.length
+      ? named.filter((item) => !blocked.includes(item.href))
+      : named;
+
+    // Puis on retire les sections que ce filtrage a vidées.
+    return allowed.filter((item, i) => {
       if (item.kind !== "section") return true;
-      for (let j = i + 1; j < named.length; j++) {
-        if (named[j].kind === "section") break;
+      for (let j = i + 1; j < allowed.length; j++) {
+        if (allowed[j].kind === "section") break;
         return true;
       }
       return false;

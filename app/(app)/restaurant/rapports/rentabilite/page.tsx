@@ -1,7 +1,9 @@
 import { redirect } from "next/navigation";
 
-import { ROUTES } from "@/lib/config/routes";
-
+/**
+ * La rentabilité d'un restaurant se joue au plat, pas au mois : les fiches
+ * techniques donnent le coût de revient et la marge de chaque recette.
+ */
 export default function RestaurantProfitReportPage() {
-  redirect(ROUTES.reports);
+  redirect("/restaurant/cuisine/recettes");
 }

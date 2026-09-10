@@ -245,7 +245,7 @@ export const RESTAURANT_NAV_ITEMS: NavItem[] = [
   { href: ROUTES.shipments, label: "Expéditions", icon: Send, iconBg: "#1D4ED8", child: true },
   { href: ROUTES.onlineStore, label: "Boutique en ligne", icon: Globe, iconBg: "#9A3412", child: true },
 
-  { kind: "section", href: "/restaurant/_sec_stock", label: "Stock & Magasin", icon: Warehouse },
+  { kind: "section", href: "/restaurant/_sec_stock", label: "Stock", icon: Warehouse },
   { href: ROUTES.inventory, label: "Stock & mouvements", icon: Warehouse, iconBg: "#EA580C", child: true },
   { href: ROUTES.warehouse, label: "Magasin", icon: Boxes, iconBg: "#7C2D12", child: true },
   { href: ROUTES.inventorySessions, label: "Inventaires", icon: ClipboardCheck, iconBg: "#C2410C", child: true },
