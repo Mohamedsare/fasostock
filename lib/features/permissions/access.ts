@@ -860,6 +860,7 @@ export function filterNavItemsForPermissions(
       if (
         href.startsWith("/restaurant/salle/tables") ||
         href.startsWith("/restaurant/cuisine/recettes") ||
+        href.startsWith("/restaurant/cuisine/stations") ||
         href.startsWith("/restaurant/menu/variantes") ||
         href.startsWith("/restaurant/menu/supplements")
       ) {

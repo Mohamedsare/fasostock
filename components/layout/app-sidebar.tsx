@@ -65,10 +65,9 @@ export function AppSidebar({
   /**
    * La section qui contient la page ouverte.
    *
-   * Sans elle, un restaurateur qui arrive sur le plan de salle voit huit en-têtes
-   * fermés et aucun repère de l'endroit où il se trouve — il doit rouvrir sa
-   * section à chaque navigation. Le menu hiérarchique devenait plus lent que le
-   * menu à plat des autres métiers, ce qui est exactement l'inverse du but.
+   * Sert à teinter son intitulé : dans une liste de douze groupes, savoir d'un
+   * coup d'œil dans lequel on se trouve évite de relire tout le menu. Les sections
+   * étant ouvertes par défaut, c'est le seul rôle qui lui reste.
    */
   const activeSectionHref = useMemo(() => {
     for (let i = 0; i < items.length; i++) {
@@ -95,14 +94,19 @@ export function AppSidebar({
   }, [sectionHrefs]);
 
   /**
-   * Ouverte si l'utilisateur l'a ouverte — sinon, ouverte si elle contient la page
-   * courante.
+   * OUVERTES PAR DÉFAUT, et c'est le cœur de l'apparence du menu.
    *
-   * Dérivé pendant le rendu plutôt que stocké par un effet : un effet aurait forcé
-   * un second rendu à chaque navigation, et surtout il aurait empêché de REFERMER la
-   * section courante (il l'aurait rouverte aussitôt).
+   * Fermées, il ne restait à l'écran qu'une colonne d'intitulés gris : aucune des
+   * pastilles colorées qui font la lisibilité du menu des autres métiers n'était
+   * visible, et il fallait deux gestes pour atteindre la moindre page. Le menu
+   * hiérarchique doit se lire comme le menu à plat — les sections ne servent qu'à
+   * poser des repères dans la liste, pas à la cacher.
+   *
+   * L'utilisateur garde la main : ce qu'il replie reste replié (`openSections`).
+   * Dérivé pendant le rendu plutôt que stocké par un effet, sinon un effet aurait
+   * rouvert aussitôt toute section refermée à la main.
    */
-  const sectionExpanded = (href: string) => openSections[href] ?? href === activeSectionHref;
+  const sectionExpanded = (href: string) => openSections[href] ?? true;
   const toggleSection = (href: string) => {
     setOpenSections((prev) => ({ ...prev, [href]: !sectionExpanded(href) }));
   };
@@ -206,24 +210,36 @@ export function AppSidebar({
                   onClick={() => toggleSection(item.href)}
                   aria-expanded={isOpen}
                   className={cn(
-                    "mt-3 flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-left",
-                    "text-[11px] font-extrabold uppercase tracking-wide transition-colors",
-                    "hover:bg-black/[0.04] dark:hover:bg-white/[0.06]",
+                    /*
+                     * Un intitulé de groupe, pas un bouton. Il sépare, il ne réclame
+                     * pas l'attention : le regard doit tomber sur les entrées
+                     * colorées en dessous. D'où le texte minuscule, la couleur
+                     * atténuée, le filet de séparation au-dessus, et la hauteur
+                     * réduite au strict nécessaire pour rester touchable.
+                     */
+                    "group/sec mt-4 flex w-full items-center gap-2 rounded-md px-2 py-1 text-left first:mt-1",
+                    "border-t border-black/[0.07] pt-2.5 dark:border-white/[0.07]",
+                    "text-[10px] font-bold uppercase tracking-[0.09em] transition-colors",
+                    "hover:bg-black/[0.03] dark:hover:bg-white/[0.05]",
                     /* La section de la page ouverte se repère sans avoir à lire. */
                     item.href === activeSectionHref
                       ? "text-[var(--fs-accent)] dark:text-[var(--fs-accent)]"
-                      : "text-black/70 dark:text-neutral-200/85",
+                      : "text-black/45 dark:text-neutral-300/55",
                     effectiveCollapsed && "sr-only",
                   )}
                 >
-                  <span className="inline-flex items-center gap-1.5">
-                    <Icon className="h-4.5 w-4.5" aria-hidden />
-                    {item.label}
-                  </span>
+                  <Icon className="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden />
+                  <span className="min-w-0 flex-1 truncate">{item.label}</span>
                   {isOpen ? (
-                    <ChevronDown className="h-4 w-4 shrink-0" aria-hidden />
+                    <ChevronDown
+                      className="h-3.5 w-3.5 shrink-0 opacity-45 transition-opacity group-hover/sec:opacity-80"
+                      aria-hidden
+                    />
                   ) : (
-                    <ChevronRight className="h-4 w-4 shrink-0" aria-hidden />
+                    <ChevronRight
+                      className="h-3.5 w-3.5 shrink-0 opacity-45 transition-opacity group-hover/sec:opacity-80"
+                      aria-hidden
+                    />
                   )}
                 </button>
               );
@@ -257,7 +273,12 @@ export function AppSidebar({
                   "focus-visible:ring-2 focus-visible:ring-[var(--fs-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-fs-card",
                   effectiveCollapsed
                     ? "justify-center px-2 py-2.5"
-                    : cn("gap-3 px-3 py-2", item.child && "pl-6"),
+                    /*
+                     * `pl-5` et non `pl-6` : avec douze sections, six pixels de trop
+                     * par entrée mangent la largeur utile des libellés longs
+                     * (« Immatriculation Engins ») et les font tous couper.
+                     */
+                    : cn("gap-2.5 px-3 py-2", item.child && "pl-5"),
                   active
                     ? [
                         "bg-black/5.5 text-fs-text dark:bg-white/12 dark:text-white",
@@ -283,7 +304,7 @@ export function AppSidebar({
                 */}
                 {item.child && !effectiveCollapsed ? (
                   <span
-                    className="absolute left-3 top-0 h-full w-px bg-black/[0.09] dark:bg-white/[0.10]"
+                    className="absolute left-2.5 top-0 h-full w-px bg-black/[0.08] dark:bg-white/[0.09]"
                     aria-hidden
                   />
                 ) : null}

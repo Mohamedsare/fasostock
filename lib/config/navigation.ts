@@ -213,6 +213,7 @@ export const RESTAURANT_NAV_ITEMS: NavItem[] = [
 
   { kind: "section", href: "/restaurant/_sec_cuisine", label: "Cuisine", icon: ChefHat },
   { href: "/restaurant/cuisine/kds", label: "Écran cuisine", icon: ChefHat, iconBg: "#EA580C", child: true },
+  { href: "/restaurant/cuisine/stations", label: "Postes de production", icon: CookingPot, iconBg: "#7C2D12", child: true },
   { href: "/restaurant/cuisine/preparation", label: "En préparation", icon: CookingPot, iconBg: "#C2410C", child: true },
   { href: "/restaurant/cuisine/pretes", label: "Prêtes au passe", icon: BellPlus, iconBg: "#B45309", child: true },
   { href: "/restaurant/cuisine/recettes", label: "Fiches techniques", icon: BookOpenCheck, iconBg: "#9A3412", child: true },
