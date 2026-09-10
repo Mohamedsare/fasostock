@@ -166,28 +166,45 @@ export const NAV_ITEMS: NavItem[] = [
  * Navigation restaurant.
  *
  * ─────────────────────────────────────────────────────────────────────────────
- * DEUX SORTES D'ENTRÉES, ET C'EST DÉLIBÉRÉ
+ * C'EST UNE RÉORGANISATION DE `NAV_ITEMS`, PAS UN SOUS-ENSEMBLE
+ * ─────────────────────────────────────────────────────────────────────────────
+ * Un restaurant reste un commerce : il compte son stock, tient un magasin, suit
+ * ses péremptions, fait des promotions, encaisse à deux, vend en ligne. **Toutes**
+ * les entrées du menu standard sont donc présentes ici, simplement rangées en
+ * sections plutôt qu'en liste.
+ *
+ * Retirer une entrée de cette liste ne « simplifie » rien : cela CASSE le module
+ * pour les restaurants. Chaque entrée est déjà filtrée par
+ * `filterNavItemsForPermissions` selon le drapeau d'entreprise ET le droit de
+ * l'utilisateur — une page non activée ne s'affiche jamais, sans qu'on ait à
+ * l'omettre ici. Une omission, elle, est définitive et silencieuse.
+ *
+ * Les entrées propres à un autre métier (Vente Engins, Location, Réparations,
+ * Pièces) restent listées pour la même raison : si le super admin les ouvre à un
+ * établissement — un maquis qui loue aussi des chambres — l'entrée doit apparaître.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ * DEUX SORTES DE CIBLES
  * ─────────────────────────────────────────────────────────────────────────────
  * • Les écrans PROPRES au restaurant (`/restaurant/...`) : salle, cuisine, carte,
- *   livraison, caisse. Ils n'existent nulle part ailleurs dans l'application.
- * • Les écrans COMMUNS, pointés directement par leur route d'origine
- *   (`ROUTES.inventory`, `ROUTES.reports`…). Un restaurant compte son stock, paie
- *   ses fournisseurs et lit ses rapports comme n'importe quel commerce : leur
- *   refaire des écrans jumeaux aurait donné deux vérités pour la même donnée, et
- *   deux endroits à corriger à chaque bogue.
- *
- * Aucune page-relais : une entrée qui mène ailleurs y mène directement, et la
- * barre d'adresse dit la vérité sur où l'on est.
+ *   livraison, caisse. Ils n'existent nulle part ailleurs.
+ * • Les écrans COMMUNS, pointés DIRECTEMENT par leur route d'origine. Pas de
+ *   page-relais : la barre d'adresse dit la vérité sur où l'on est.
  */
 export const RESTAURANT_NAV_ITEMS: NavItem[] = [
   { href: ROUTES.dashboard, label: "Tableau de bord", icon: LayoutDashboard, iconBg: "#C2410C" },
+  { href: ROUTES.tradeWorkspace, label: "Mon métier", icon: Compass, iconBg: "#B45309" },
 
   { kind: "section", href: "/restaurant/_sec_ventes", label: "Commandes", icon: ShoppingCart },
   { href: "/restaurant/ventes/nouvelle-commande", label: "Nouvelle commande", icon: CirclePlus, iconBg: "#EA580C", child: true },
   { href: "/restaurant/ventes/salle", label: "Commandes en salle", icon: UtensilsCrossed, iconBg: "#C2410C", child: true },
   { href: "/restaurant/ventes/emporter", label: "À emporter", icon: HandPlatter, iconBg: "#B45309", child: true },
   { href: "/restaurant/ventes/livraisons", label: "Livraisons", icon: Bike, iconBg: "#9A3412", child: true },
-  { href: "/restaurant/ventes/historique", label: "Historique", icon: History, iconBg: "#7C2D12", child: true },
+  { href: "/restaurant/ventes/historique", label: "Historique des commandes", icon: History, iconBg: "#7C2D12", child: true },
+  { href: ROUTES.sales, label: "Ventes encaissées", icon: Coins, iconBg: "#92400E", child: true },
+  { href: ROUTES.checkoutQueue, label: "Encaissement à deux", icon: HandCoins, iconBg: "#EA580C", child: true },
+  { href: ROUTES.saleDocuments, label: "Devis & Factures", icon: FileSignature, iconBg: "#C2410C", child: true },
+  { href: ROUTES.progressive, label: "Achats Progressifs", icon: PiggyBank, iconBg: "#B45309", child: true },
 
   { kind: "section", href: "/restaurant/_sec_salle", label: "Salle & Tables", icon: LayoutGrid },
   { href: "/restaurant/salle/plan", label: "Plan de salle", icon: LayoutGrid, iconBg: "#EA580C", child: true },
@@ -200,52 +217,82 @@ export const RESTAURANT_NAV_ITEMS: NavItem[] = [
   { href: "/restaurant/cuisine/pretes", label: "Prêtes au passe", icon: BellPlus, iconBg: "#B45309", child: true },
   { href: "/restaurant/cuisine/recettes", label: "Fiches techniques", icon: BookOpenCheck, iconBg: "#9A3412", child: true },
 
-  { kind: "section", href: "/restaurant/_sec_menu", label: "Menu", icon: ClipboardList },
+  { kind: "section", href: "/restaurant/_sec_menu", label: "Menu & Catalogue", icon: ClipboardList },
   { href: "/restaurant/menu/disponibilite", label: "Disponibilité", icon: ListChecks, iconBg: "#EA580C", child: true },
   { href: "/restaurant/menu/plats", label: "Plats", icon: Beef, iconBg: "#C2410C", child: true },
   { href: "/restaurant/menu/boissons", label: "Boissons", icon: CupSoda, iconBg: "#B45309", child: true },
   { href: "/restaurant/menu/variantes", label: "Variantes", icon: SlidersHorizontal, iconBg: "#9A3412", child: true },
   { href: "/restaurant/menu/supplements", label: "Suppléments", icon: PackagePlus, iconBg: "#7C2D12", child: true },
-  // Le catalogue lui-même reste la page Produits : un plat EST un produit.
+  // Un plat EST un produit : le catalogue et ses pages satellites restent communs.
   { href: ROUTES.products, label: "Catalogue", icon: Package, iconBg: "#92400E", child: true },
+  { href: ROUTES.draftProducts, label: "Ajout produit", icon: BadgePlus, iconBg: "#EA580C", child: true },
+  { href: ROUTES.productPhotos, label: "Photos produits", icon: Camera, iconBg: "#C2410C", child: true },
+  { href: ROUTES.packagings, label: "Conditionnements", icon: Layers, iconBg: "#B45309", child: true },
+  { href: ROUTES.promotions, label: "Promotions", icon: BadgePercent, iconBg: "#9A3412", child: true },
+  { href: ROUTES.barcodes, label: "Code Barre", icon: Barcode, iconBg: "#7C2D12", child: true },
+  { href: ROUTES.parts, label: "Pièces", icon: Puzzle, iconBg: "#92400E", child: true },
 
   { kind: "section", href: "/restaurant/_sec_caisse", label: "Caisse", icon: CreditCard },
   { href: "/restaurant/caisse", label: "Poste de caisse", icon: Banknote, iconBg: "#EA580C", child: true },
   { href: "/restaurant/caisse/sessions", label: "Sessions de caisse", icon: ReceiptText, iconBg: "#C2410C", child: true },
   { href: "/restaurant/caisse/cloture", label: "Clôture", icon: ClipboardCheck, iconBg: "#B45309", child: true },
 
-  { kind: "section", href: "/restaurant/_sec_livraison", label: "Livraison", icon: Truck },
+  { kind: "section", href: "/restaurant/_sec_livraison", label: "Livraison & Expédition", icon: Truck },
   { href: "/restaurant/livraison/suivi", label: "Suivi des courses", icon: Route, iconBg: "#EA580C", child: true },
   { href: "/restaurant/livraison/livreurs", label: "Livreurs", icon: Bike, iconBg: "#C2410C", child: true },
   { href: "/restaurant/livraison/zones", label: "Zones de livraison", icon: MapPin, iconBg: "#B45309", child: true },
+  { href: ROUTES.shipments, label: "Expéditions", icon: Send, iconBg: "#1D4ED8", child: true },
+  { href: ROUTES.onlineStore, label: "Boutique en ligne", icon: Globe, iconBg: "#9A3412", child: true },
 
-  { kind: "section", href: "/restaurant/_sec_stock", label: "Stock", icon: Warehouse },
+  { kind: "section", href: "/restaurant/_sec_stock", label: "Stock & Magasin", icon: Warehouse },
   { href: ROUTES.inventory, label: "Stock & mouvements", icon: Warehouse, iconBg: "#EA580C", child: true },
-  { href: ROUTES.inventorySessions, label: "Inventaires", icon: ClipboardCheck, iconBg: "#C2410C", child: true },
-  { href: "/restaurant/stock/pertes", label: "Pertes / Gaspillage", icon: Trash2, iconBg: "#B91C1C", child: true },
   { href: ROUTES.warehouse, label: "Magasin", icon: Boxes, iconBg: "#7C2D12", child: true },
+  { href: ROUTES.inventorySessions, label: "Inventaires", icon: ClipboardCheck, iconBg: "#C2410C", child: true },
+  { href: ROUTES.stockCashier, label: "Stock", icon: PackageOpen, iconBg: "#B45309", child: true },
+  { href: ROUTES.expiry, label: "Péremptions", icon: CalendarClock, iconBg: "#B91C1C", child: true },
+  { href: "/restaurant/stock/pertes", label: "Pertes / Gaspillage", icon: Trash2, iconBg: "#B91C1C", child: true },
+  { href: ROUTES.restock, label: "Réassort", icon: PackagePlus, iconBg: "#9A3412", child: true },
+  { href: ROUTES.transfers, label: "Transferts", icon: ArrowLeftRight, iconBg: "#EA580C", child: true },
+  { href: ROUTES.productLocations, label: "Emplacements", icon: MapPin, iconBg: "#92400E", child: true },
+  { href: ROUTES.partnerOfftakes, label: "Enlèvements", icon: PackageOpen, iconBg: "#C2410C", child: true },
 
   { kind: "section", href: "/restaurant/_sec_achats", label: "Achats", icon: Truck },
   { href: ROUTES.quickSupply, label: "Arrivage express", icon: PackageOpen, iconBg: "#EA580C", child: true },
   { href: ROUTES.purchases, label: "Liste des achats", icon: Truck, iconBg: "#C2410C", child: true },
   { href: ROUTES.suppliers, label: "Fournisseurs", icon: Building2, iconBg: "#B45309", child: true },
+  { href: ROUTES.landedCost, label: "Prix de revient", icon: Calculator, iconBg: "#9A3412", child: true },
 
   { kind: "section", href: "/restaurant/_sec_clients", label: "Clients", icon: Users },
   { href: ROUTES.customers, label: "Base clients", icon: Users, iconBg: "#EA580C", child: true },
   { href: ROUTES.credit, label: "Ardoises", icon: CreditCard, iconBg: "#C2410C", child: true },
-  { href: ROUTES.creditReminders, label: "Rappels", icon: BellDot, iconBg: "#B45309", child: true },
+  { href: ROUTES.creditReminders, label: "Rappels crédit", icon: BellDot, iconBg: "#B45309", child: true },
+
+  { kind: "section", href: "/restaurant/_sec_autres", label: "Autres activités", icon: KeySquare },
+  { href: ROUTES.engines, label: "Vente Engins", icon: Bike, iconBg: "#EA580C", child: true },
+  { href: ROUTES.engineRegistration, label: "Immatriculation Engins", icon: IdCard, iconBg: "#C2410C", child: true },
+  { href: ROUTES.rental, label: "Location", icon: KeySquare, iconBg: "#B45309", child: true },
+  { href: ROUTES.repairs, label: "Réparations", icon: Wrench, iconBg: "#9A3412", child: true },
 
   { kind: "section", href: "/restaurant/_sec_gestion", label: "Gestion", icon: BarChart3 },
   { href: ROUTES.expenses, label: "Dépenses", icon: Wallet, iconBg: "#EA580C", child: true },
   { href: ROUTES.reports, label: "Rapports", icon: BarChart3, iconBg: "#C2410C", child: true },
+  { href: ROUTES.ai, label: "Prédictions IA", icon: Sparkles, iconBg: "#78350F", child: true },
   { href: ROUTES.accounting, label: "Comptabilité", icon: Calculator, iconBg: "#166534", child: true },
-  { href: ROUTES.users, label: "Employés", icon: UserCog, iconBg: "#92400E", child: true },
   { href: ROUTES.hr, label: "R. Humaine", icon: BriefcaseBusiness, iconBg: "#1E3A8A", child: true },
+  { href: ROUTES.users, label: "Employés", icon: UserCog, iconBg: "#92400E", child: true },
   { href: ROUTES.audit, label: "Journal d'audit", icon: ScrollText, iconBg: "#7C2D12", child: true },
 
   { kind: "section", href: "/restaurant/_sec_parametres", label: "Paramètres", icon: Settings },
   { href: ROUTES.settings, label: "Paramètres", icon: Settings, iconBg: "#92400E", child: true },
   { href: ROUTES.stores, label: "Boutiques", icon: Store, iconBg: "#C2410C", child: true },
+  {
+    href: ROUTES.integrations,
+    label: "Intégrations API",
+    icon: KeyRound,
+    iconBg: "#9A3412",
+    showInSidebar: false,
+    child: true,
+  },
   { href: ROUTES.notifications, label: "Notifications", icon: BellRing, iconBg: "#B45309", child: true },
   { href: ROUTES.help, label: "Aide", icon: HelpCircle, iconBg: "#D97706", child: true },
   { href: ROUTES.subscription, label: "Abonnement", icon: Crown, iconBg: "#CA8A04", child: true },

@@ -3,7 +3,7 @@
 import { cn } from "@/lib/utils/cn";
 import type { NavItem } from "@/lib/config/navigation";
 import Link from "next/link";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 
 type MoreSheetProps = {
   open: boolean;
@@ -20,6 +20,27 @@ export function MoreSheet({ open, onClose, items }: MoreSheetProps) {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
+
+  /**
+   * Regroupe les entrées sous leur intitulé de section, quand le menu en a un.
+   *
+   * Les menus à plat (tous les métiers sauf le restaurant) produisent un groupe
+   * unique sans titre : la grille reste exactement celle d'avant, au pixel près.
+   */
+  const groups = useMemo(() => {
+    const out: Array<{ key: string; title: string | null; items: NavItem[] }> = [];
+    for (const item of items) {
+      if (item.kind === "section") {
+        out.push({ key: item.href, title: item.label, items: [] });
+        continue;
+      }
+      if (out.length === 0) out.push({ key: "__flat__", title: null, items: [] });
+      out[out.length - 1].items.push(item);
+    }
+    // Une section dont toutes les entrées sont dans la barre du bas ne laisse
+    // qu'un titre orphelin : on la retire.
+    return out.filter((g) => g.items.length > 0);
+  }, [items]);
 
   if (!open) return null;
 
@@ -50,10 +71,21 @@ export function MoreSheet({ open, onClose, items }: MoreSheetProps) {
           Autres sections
         </h2>
         <div className="max-h-[min(70dvh,520px)] overflow-y-auto px-3 pb-[max(12px,var(--fs-safe-bottom))] pt-3 sm:px-4 sm:pb-4 sm:pt-4">
+          {groups.map((group) => (
+            <section key={group.key} className={group.title ? "mb-3 last:mb-0" : ""}>
+              {/*
+                Intitulé de section — seulement pour les menus qui en ont un
+                (restaurant). Trente-cinq tuiles à plat ne se parcourent pas : on
+                cherche « Clôture » et on lit toute la grille. Les métiers à menu
+                plat, eux, gardent exactement la grille d'avant.
+              */}
+              {group.title ? (
+                <h3 className="mb-1.5 px-0.5 text-[11px] font-extrabold uppercase tracking-wide text-fs-accent">
+                  {group.title}
+                </h3>
+              ) : null}
           <ul className="grid grid-cols-3 gap-1 sm:gap-2.5">
-            {items
-              .filter((item) => item.kind !== "section")
-              .map((item) => {
+            {group.items.map((item) => {
               const Icon = item.icon;
               return (
                 <li key={`${item.href}-${item.label}`}>
@@ -87,6 +119,8 @@ export function MoreSheet({ open, onClose, items }: MoreSheetProps) {
               );
               })}
           </ul>
+            </section>
+          ))}
         </div>
       </div>
     </div>

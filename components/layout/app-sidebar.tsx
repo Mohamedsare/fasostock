@@ -79,29 +79,32 @@ export function AppSidebar({
     return null;
   }, [items, parentSectionHrefs, isActive]);
 
+  /*
+   * Purge des sections disparues quand la navigation change de métier. On ne réécrit
+   * PAS les autres à `false` : l'absence de clé est justement ce qui laisse la règle
+   * d'ouverture ci-dessous s'appliquer.
+   */
   useEffect(() => {
     setOpenSections((prev) => {
       const next: Record<string, boolean> = {};
-      for (const href of sectionHrefs) next[href] = prev[href] ?? false;
+      for (const href of sectionHrefs) {
+        if (href in prev) next[href] = prev[href];
+      }
       return next;
     });
   }, [sectionHrefs]);
 
-  /*
-   * L'utilisateur garde la main : une section qu'il a ouverte reste ouverte, et il
-   * peut refermer celle de la page courante s'il veut faire de la place. On force
-   * seulement l'état INITIAL, à chaque changement de page.
+  /**
+   * Ouverte si l'utilisateur l'a ouverte — sinon, ouverte si elle contient la page
+   * courante.
+   *
+   * Dérivé pendant le rendu plutôt que stocké par un effet : un effet aurait forcé
+   * un second rendu à chaque navigation, et surtout il aurait empêché de REFERMER la
+   * section courante (il l'aurait rouverte aussitôt).
    */
-  useEffect(() => {
-    if (!activeSectionHref) return;
-    setOpenSections((prev) =>
-      prev[activeSectionHref] ? prev : { ...prev, [activeSectionHref]: true },
-    );
-  }, [activeSectionHref]);
-
-  const sectionExpanded = (href: string) => openSections[href] ?? false;
+  const sectionExpanded = (href: string) => openSections[href] ?? href === activeSectionHref;
   const toggleSection = (href: string) => {
-    setOpenSections((prev) => ({ ...prev, [href]: !(prev[href] ?? false) }));
+    setOpenSections((prev) => ({ ...prev, [href]: !sectionExpanded(href) }));
   };
 
   useEffect(() => {

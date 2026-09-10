@@ -842,6 +842,38 @@ export function filterNavItemsForPermissions(
     if (href === ROUTES.notifications) return h.canNotifications;
     if (href === ROUTES.subscription) return h.isOwner;
     if (href === ROUTES.integrations) return false;
+
+    /*
+     * Écrans propres au restaurant.
+     *
+     * Sans ces règles, ils tombaient sur le `return true` final : un caissier voyait
+     * « Fiches techniques » (les coûts de revient de la maison) et « Tables » dans
+     * son menu, pour n'y trouver qu'une carte « Accès réservé ». Un menu qui promet
+     * des pages interdites use la confiance aussi sûrement qu'un menu incomplet.
+     *
+     * Le service (salle, cuisine, commandes) suit `sales.create` — c'est déjà le
+     * droit qu'on donne à un serveur, et `can_serve_restaurant` en base applique
+     * exactement le même test.
+     */
+    if (href.startsWith("/restaurant/")) {
+      // Configuration de la maison : la carte, les tables, les coûts.
+      if (
+        href.startsWith("/restaurant/salle/tables") ||
+        href.startsWith("/restaurant/cuisine/recettes") ||
+        href.startsWith("/restaurant/menu/variantes") ||
+        href.startsWith("/restaurant/menu/supplements")
+      ) {
+        return h.isOwner || h.hasPermission(P.settingsManage);
+      }
+      // Le reste du service : qui peut tenir la caisse peut tenir la salle.
+      return (
+        h.isOwner ||
+        h.hasPermission(P.salesCreate) ||
+        h.hasPermission(P.salesUpdate) ||
+        h.hasPermission(P.settingsManage)
+      );
+    }
+
     return true;
   });
 
@@ -861,8 +893,25 @@ export function filterNavItemsForPermissions(
       )
     : filtered;
 
-  // Navigation hiérarchique dédiée (restaurant) : garder l'ordre défini tel quel.
-  if (named.some((item) => item.kind === "section")) return named;
+  /*
+   * Navigation hiérarchique dédiée (restaurant) : garder l'ordre défini tel quel,
+   * mais SANS les sections devenues vides.
+   *
+   * Les en-têtes traversent le filtre de permissions sans être examinés (ils ne
+   * mènent nulle part). Un caissier voyait donc « Gestion » ou « Achats » s'ouvrir
+   * sur rien du tout — un menu qui promet des pages inexistantes est pire qu'un
+   * menu court.
+   */
+  if (named.some((item) => item.kind === "section")) {
+    return named.filter((item, i) => {
+      if (item.kind !== "section") return true;
+      for (let j = i + 1; j < named.length; j++) {
+        if (named[j].kind === "section") break;
+        return true;
+      }
+      return false;
+    });
+  }
 
   return adaptNavItemsForActivity(named, businessTypeSlug);
 }

@@ -55,6 +55,24 @@ import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "
 const BOTTOM_PATHS = [ROUTES.dashboard, ROUTES.products, ROUTES.sales];
 
 /**
+ * Barre du bas en RESTAURANT.
+ *
+ * Les trois raccourcis par défaut (Tableau de bord, Produits, Ventes) ne
+ * conviennent pas : `/sales` n'existe pas dans le menu restaurant, donc l'onglet
+ * disparaissait purement et simplement — il ne restait que deux boutons, dont
+ * aucun ne mène à ce qu'un serveur touche cent fois par soir.
+ *
+ * Ici, les trois écrans du service : la salle, ce qui est en cours, et la cuisine.
+ * Le tableau de bord reste accessible d'un doigt via « Plus » — il appartient au
+ * patron, pas au coup de feu.
+ */
+const RESTAURANT_BOTTOM_PATHS = [
+  "/restaurant/salle/plan",
+  "/restaurant/ventes/salle",
+  "/restaurant/cuisine/kds",
+];
+
+/**
  * Écrans qui pilotent eux-mêmes leur boutique (portée Entreprise / Boutique,
  * sélecteur propre, période, onglet) : ils suivent `ctx.storeId` et ne doivent
  * PAS être remontés au changement de boutique, sous peine de perdre ce réglage.
@@ -275,21 +293,37 @@ export function AppShell({ children, userEmail }: AppShellProps) {
     [filterNavItems, sidebarItems],
   );
 
+  const bottomPaths = useMemo(
+    () =>
+      data?.businessTypeSlug === "restaurant-fast-food"
+        ? RESTAURANT_BOTTOM_PATHS
+        : BOTTOM_PATHS,
+    [data?.businessTypeSlug],
+  );
+
   const primaryMobile = useMemo(() => {
     if (visibleNav.length === 0) return [];
-    const hasDash = visibleNav.some((i) => i.href === ROUTES.dashboard);
-    if (hasDash) {
-      return BOTTOM_PATHS.map((h) => visibleNav.find((n) => n.href === h)).filter(
-        Boolean,
-      ) as typeof NAV_ITEMS;
-    }
-    return visibleNav.slice(0, 3);
-  }, [visibleNav]);
+    const fallback = visibleNav
+      .filter((i) => i.kind !== "section")
+      .slice(0, 3) as typeof NAV_ITEMS;
+    /*
+     * Repli d'origine, conservé tel quel : un utilisateur qui n'a même pas accès au
+     * PREMIER raccourci (le tableau de bord ailleurs, le plan de salle en
+     * restaurant) est trop restreint pour que les raccourcis standards aient un
+     * sens — on lui donne ses trois premières entrées visibles.
+     */
+    const anchor = bottomPaths[0];
+    if (!visibleNav.some((i) => i.href === anchor)) return fallback;
+    const picked = bottomPaths
+      .map((h) => visibleNav.find((n) => n.href === h))
+      .filter(Boolean) as typeof NAV_ITEMS;
+    return picked.length > 0 ? picked : fallback;
+  }, [visibleNav, bottomPaths]);
 
   const moreSheetItems = useMemo(() => {
-    const bottomSet = new Set<string>(BOTTOM_PATHS);
+    const bottomSet = new Set<string>(primaryMobile.map((i) => i.href));
     return visibleNav.filter((i) => !bottomSet.has(i.href));
-  }, [visibleNav]);
+  }, [visibleNav, primaryMobile]);
 
   function isActive(href: string): boolean {
     if (href === "/dashboard") {
