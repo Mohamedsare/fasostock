@@ -2592,14 +2592,17 @@ export const DOC_GROUPS: DocGroup[] = [
         id: "integrations",
         title: "Intégrations API",
         route: "/integrations",
-        tagline: "Connecter FasoStock à un autre outil.",
+        tagline: "Exposer le catalogue d'une boutique à un site web ou un autre logiciel.",
         access: "Propriétaire. Accessible depuis Paramètres.",
         blocks: [
           {
             kind: "bullets",
             items: [
-              "Génération de clés d'accès pour un logiciel tiers.",
-              "Révocation d'une clé à tout moment.",
+              "Créez une clé par logiciel ou prestataire, pour toutes vos boutiques ou une seule.",
+              "L'API renvoie, pour chaque produit de la boutique : nom, codes, catégorie, marque, photos, stock, prix de vente, promotion en cours et conditionnements (paquet, carton…) avec le prix du lot et le prix ramené à la pièce.",
+              "Lecture seule : l'API ne modifie rien et n'expose jamais les prix d'achat ni les marges.",
+              "La page affiche la documentation et des exemples prêts à copier pour votre développeur.",
+              "La clé n'est montrée qu'une fois à sa création ; révoquez-la à tout moment, elle cesse aussitôt de fonctionner.",
             ],
           },
           {

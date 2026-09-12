@@ -7,7 +7,11 @@ const PUBLIC_API_ROUTES: readonly string[] = [
   "/api/presence/heartbeat",
 ];
 
-const PUBLIC_API_PREFIXES: readonly string[] = ["/api/cron/"];
+const PUBLIC_API_PREFIXES: readonly string[] = [
+  "/api/cron/",
+  /** API publique produits : authentifiée par clé API (`lib/server/public-api/v1.ts`), pas par session. */
+  "/api/v1/",
+];
 
 export function isPublicApiRoute(pathname: string): boolean {
   if (PUBLIC_API_ROUTES.includes(pathname)) return true;

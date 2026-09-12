@@ -3871,8 +3871,10 @@ export function SettingsScreen() {
           >
             <MdKey className="h-[22px] w-[22px] shrink-0 text-fs-accent" aria-hidden />
             <div className="min-w-0 flex-1">
-              <p className="text-base font-semibold text-fs-text">Intégrations API & Webhooks</p>
-              <p className="mt-0.5 text-xs text-neutral-600">Clés API et URLs de webhook pour vos intégrations</p>
+              <p className="text-base font-semibold text-fs-text">Intégrations API</p>
+              <p className="mt-0.5 text-xs text-neutral-600">
+                Clés API pour exposer vos produits, prix et conditionnements à un site ou un logiciel
+              </p>
             </div>
             <ChevronRight className="h-5 w-5 shrink-0 text-neutral-400" aria-hidden />
           </Link>
